@@ -10,7 +10,7 @@
  *
  * Options:
  *   --at-bats <n>     At-bats per matchup (default: 500)
- *   --seed <string>   RNG seed for reproducibility (default: 'showdown-sim-2024')
+ *   --seed <string>   RNG seed for reproducible results (default: random)
  *   --output <file>   Output filename (default: 'results.html')
  *   --format <type>   Output format: 'html' or 'xlsx' (default: based on extension)
  *   --help            Show this help message
@@ -1011,7 +1011,7 @@ function buildHtmlPage(hitterTabs, hitterContent, pitcherTabs, pitcherContent, c
 </head>
 <body>
     <h1>MLB Showdown Simulation Results</h1>
-    <div class="sim-info">${config.AT_BATS_PER_MATCHUP} at-bats per matchup | Seed: "${config.SEED}"</div>
+    <div class="sim-info">${config.AT_BATS_PER_MATCHUP} at-bats per matchup${config.SEED ? ' | Seed: "' + config.SEED + '"' : ''}</div>
     <div id="tooltip"></div>
 
     <div class="section" id="hitter-section">
@@ -1216,14 +1216,14 @@ function printProgress(current, total, startTime) {
 
 function runSimulation(config) {
     const startTime = Date.now();
-    const rng = seedrandom(config.SEED);
+    const rng = config.SEED ? seedrandom(config.SEED) : Math.random;
     const rollDie = () => Math.floor(rng() * 20) + 1;
 
     const hitters = JSON.parse(fs.readFileSync('./hitters.json'));
     const pitchers = JSON.parse(fs.readFileSync('./pitchers.json'));
 
     console.log(`Hitters: ${hitters.length} | Pitchers: ${pitchers.length} | At-bats/matchup: ${config.AT_BATS_PER_MATCHUP}`);
-    console.log(`Seed: "${config.SEED}" | Output: ${config.OUTPUT} (${config.FORMAT})`);
+    console.log(`Seed: ${config.SEED ? '"' + config.SEED + '"' : 'random'} | Output: ${config.OUTPUT} (${config.FORMAT})`);
     console.log(`Total matchups: ${(hitters.length * pitchers.length).toLocaleString()} | Total at-bats: ${(hitters.length * pitchers.length * config.AT_BATS_PER_MATCHUP).toLocaleString()}`);
 
     validateData(hitters, pitchers);

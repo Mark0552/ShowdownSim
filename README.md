@@ -17,7 +17,7 @@ Opens `results.html` in your browser when done.
 node sim.js [options]
 
 --at-bats <n>      At-bats per hitter-pitcher matchup (default: 500)
---seed <string>     RNG seed for reproducibility (default: 'showdown-sim-2024')
+--seed <string>     RNG seed for reproducible results (default: random)
 --output <file>     Output filename (default: 'results.html')
 --format <type>     Output format: 'html' or 'xlsx' (default: auto from extension)
 --help              Show help
@@ -26,11 +26,11 @@ node sim.js [options]
 **Examples:**
 
 ```bash
-node sim.js                                    # 500 ABs per matchup, HTML output
+node sim.js                                    # 500 ABs per matchup, random rolls, HTML output
 node sim.js --at-bats 1000                     # Higher precision (slower)
 node sim.js --at-bats 100                      # Quick preview
 node sim.js --output results.xlsx              # Excel output (auto-detects format)
-node sim.js --seed my-seed-2025                # Different RNG seed
+node sim.js --seed my-seed                     # Fixed seed for reproducible results
 ```
 
 **npm scripts:**
@@ -52,6 +52,7 @@ The output is an interactive HTML page where you can:
 - **Sort** any column by clicking its header
 - **Filter** every column — text search for names/positions/icons, min/max ranges for all numeric stats
 - **Hover** over any player name to see a rich tooltip with their full card: position, speed, hand, team, edition, chart ranges, and icon impact breakdown
+- **Hover** over any stat column header to see a description of what it measures, including the formula
 - **Tab** between position groups (C, 1B, 2B, SS, etc.) for hitters, and Starters vs Relievers+Closers for pitchers
 - **Clear filters** with one click per section
 
@@ -315,7 +316,7 @@ Edit `config.js` to change default simulation parameters without touching the ma
 ```js
 const CONFIG = {
     AT_BATS_PER_MATCHUP: 500,    // More = higher precision, slower
-    SEED: 'showdown-sim-2024',    // Change for different random outcomes
+    SEED: null,                   // null = random each run, or set a string for reproducibility
     OUTPUT: 'results.html',       // Default output file
     FORMAT: 'html',               // 'html' or 'xlsx'
     WEIGHTS: { ... }              // wOBA linear weights

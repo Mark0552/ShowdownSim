@@ -8,7 +8,7 @@
 const CONFIG = {
     AT_BATS_PER_MATCHUP: 500,
     ICON_CHARGE_THRESHOLD: 3,
-    SEED: 'showdown-sim-2024',
+    SEED: null,
     OUTPUT: 'results.html',
     FORMAT: 'html', // 'html' or 'xlsx'
     WEIGHTS: {
