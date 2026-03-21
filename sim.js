@@ -117,6 +117,8 @@ function parseRange(range) {
     if (!range) return null;
     if (range.includes('-')) {
         const [low, high] = range.split('-').map(Number);
+        // Handle bad data like "3-0" or "1-0" where high < low — treat as single number
+        if (high < low) return { low, high: low };
         return { low, high };
     }
     if (range.includes('+')) {
@@ -227,6 +229,9 @@ function initializePitcher(pitcher) {
         ...pitcher,
         name: `${pitcher.Name} ${pitcher["Yr."]} ${pitcher.Ed} ${pitcher["#"]} ${pitcher.Team}`,
         points: pitcher.Points,
+        hand: pitcher.H,
+        team: pitcher.Team,
+        edition: pitcher.Ed,
         chart: {
             PU: pitcher.PU || '-',
             SO: pitcher.SO || '-',
@@ -273,6 +278,9 @@ function createHitterStats(hitter) {
         onBase: hitter.onBase,
         Speed: hitter.Speed,
         Position: hitter.Position,
+        hand: hitter.H,
+        team: hitter.Team,
+        edition: hitter.Ed,
         chart: {
             SO: hitter.SO || '-',
             GB: hitter.GB || '-',
@@ -492,13 +500,28 @@ function updatePitcherStats(pitcher, outcome, weights) {
 }
 
 function calculateFinalStats(stats, weights) {
-    const ab = stats.atBats - stats.walks;
+    const pa = stats.atBats; // plate appearances
+    const ab = pa - stats.walks; // at-bats (excluding walks)
     const singles = stats.hits - stats.doubles - stats.triples - stats.homeRuns - stats.singleplus;
     const totalBases = singles + (2 * stats.singleplus) + (2 * stats.doubles) + (3 * stats.triples) + (4 * stats.homeRuns);
+    const totalOuts = stats.strikeouts + stats.popups + stats.flyballs + stats.groundballs;
 
     const battingAverage = ab === 0 ? 0 : stats.hits / ab;
-    const onBasePercentage = stats.atBats === 0 ? 0 : (stats.hits + stats.walks) / stats.atBats;
+    const onBasePercentage = pa === 0 ? 0 : (stats.hits + stats.walks) / pa;
     const sluggingPercentage = ab === 0 ? 0 : totalBases / ab;
+    const iso = sluggingPercentage - battingAverage;
+
+    // K%, BB%, HR%
+    const kPct = pa === 0 ? 0 : stats.strikeouts / pa;
+    const bbPct = pa === 0 ? 0 : stats.walks / pa;
+    const hrPct = ab === 0 ? 0 : stats.homeRuns / ab;
+
+    // BABIP = (H - HR) / (AB - K - HR + SF) — no SF in showdown, so (AB - K - HR)
+    const babipDenom = ab - stats.strikeouts - stats.homeRuns;
+    const babip = babipDenom <= 0 ? 0 : (stats.hits - stats.homeRuns) / babipDenom;
+
+    // GB/FB ratio
+    const gbFbRatio = stats.flyballs === 0 ? 0 : stats.groundballs / stats.flyballs;
 
     const w = weights;
     const woba = (ab + stats.walks) === 0 ? 0 : (
@@ -512,24 +535,31 @@ function calculateFinalStats(stats, weights) {
 
     const iconImpact = stats.iconImpact;
     const vHitsEstimate = iconImpact.V.outsAvoided * 0.30;
-    const vObpImpact = stats.atBats > 0 ? vHitsEstimate / stats.atBats : 0;
+    const vObpImpact = pa > 0 ? vHitsEstimate / pa : 0;
     const sSlgImpact = ab > 0 ? iconImpact.S.tbGained / ab : 0;
     const hrSlgImpact = ab > 0 ? iconImpact.HR.tbGained / ab : 0;
     const totalIconSlgImpact = sSlgImpact + hrSlgImpact;
 
-    const vWobaImpact = stats.atBats > 0 ? (vHitsEstimate * w.single) / stats.atBats : 0;
-    const sWobaImpact = stats.atBats > 0 ? (iconImpact.S.doublesFromSingles * (w.double - w.single)) / stats.atBats : 0;
-    const hrWobaImpact = stats.atBats > 0 ? ((iconImpact.HR.hrsFromDoubles * (w.hr - w.double)) + (iconImpact.HR.hrsFromTriples * (w.hr - w.triple))) / stats.atBats : 0;
+    const vWobaImpact = pa > 0 ? (vHitsEstimate * w.single) / pa : 0;
+    const sWobaImpact = pa > 0 ? (iconImpact.S.doublesFromSingles * (w.double - w.single)) / pa : 0;
+    const hrWobaImpact = pa > 0 ? ((iconImpact.HR.hrsFromDoubles * (w.hr - w.double)) + (iconImpact.HR.hrsFromTriples * (w.hr - w.triple))) / pa : 0;
     const totalIconWobaImpact = vWobaImpact + sWobaImpact + hrWobaImpact;
 
     const { iconList, hasV, hasS, hasHR, iconImpact: _, gameAbCount, gameVuses, gameSused, gameHRused, ...exportStats } = stats;
     return {
         ...exportStats,
+        singles,
         battingAverage,
         onBasePercentage,
         sluggingPercentage,
+        iso,
         ops: onBasePercentage + sluggingPercentage,
         woba,
+        kPct,
+        bbPct,
+        hrPct,
+        babip,
+        gbFbRatio,
         vIconOutsAvoided: iconImpact.V.outsAvoided,
         vIconObpImpact: vObpImpact,
         sIconUpgrades: iconImpact.S.doublesFromSingles,
@@ -619,25 +649,46 @@ function calculatePitcherValueScore(pitchers) {
     });
 }
 
-function calculatePitcherIconImpact(pitchers) {
+function calculatePitcherFinalStats(pitchers, weights) {
     pitchers.forEach(p => {
-        if (!p.iconImpact) return;
+        const bf = p.battersFaced || 1;
+        const ip = p.outs / 3 || 1;
+        const totalHits = p.singles + p.singlepluses + p.doubles + p.triples + p.homeruns;
+        const ab = bf - p.walks; // at-bats against (exclude walks)
 
-        p.kIconHRsBlocked = p.iconImpact.K.hrsBlocked;
-        p.kIconTBSaved = p.iconImpact.K.tbSaved;
-        p.kIconSlgImpact = p.iconImpact.K.tbSaved / (p.battersFaced || 1);
+        // Rate stats
+        p.kPct = p.strikeouts / bf;
+        p.bbPct = p.walks / bf;
+        p.kBbRatio = p.walks === 0 ? p.strikeouts : p.strikeouts / p.walks;
+        p.hr9 = (p.homeruns / ip) * 9;
+        p.gbPct = (bf - p.walks) === 0 ? 0 : p.groundballs / (bf - p.walks);
+        p.oppAvg = ab === 0 ? 0 : totalHits / ab;
 
-        p.twentyIconAdvantageSwings = p.iconImpact.twenty.advantageSwings;
-        p.twentyIconSwingRate = p.twentyUsed > 0
-            ? (p.iconImpact.twenty.advantageSwings / p.twentyUsed)
-            : 0;
+        // Opponent OPS
+        const oppSingles = totalHits - p.doubles - p.triples - p.homeruns;
+        const totalBases = oppSingles + (2 * p.singlepluses) + (2 * p.doubles) + (3 * p.triples) + (4 * p.homeruns);
+        const oppObp = bf === 0 ? 0 : (totalHits + p.walks) / bf;
+        const oppSlg = ab === 0 ? 0 : totalBases / ab;
+        p.oppOps = oppObp + oppSlg;
 
-        p.rpIconAdvantageSwings = p.iconImpact.RP.advantageSwings;
-        p.rpIconSwingRate = p.RPused > 0
-            ? (p.iconImpact.RP.advantageSwings / p.RPused)
-            : 0;
+        // Icon impact
+        if (p.iconImpact) {
+            p.kIconHRsBlocked = p.iconImpact.K.hrsBlocked;
+            p.kIconTBSaved = p.iconImpact.K.tbSaved;
+            p.kIconSlgImpact = p.iconImpact.K.tbSaved / bf;
 
-        p.totalIconSlgReduction = p.kIconSlgImpact;
+            p.twentyIconAdvantageSwings = p.iconImpact.twenty.advantageSwings;
+            p.twentyIconSwingRate = p.twentyUsed > 0
+                ? (p.iconImpact.twenty.advantageSwings / p.twentyUsed)
+                : 0;
+
+            p.rpIconAdvantageSwings = p.iconImpact.RP.advantageSwings;
+            p.rpIconSwingRate = p.RPused > 0
+                ? (p.iconImpact.RP.advantageSwings / p.RPused)
+                : 0;
+
+            p.totalIconSlgReduction = p.kIconSlgImpact;
+        }
 
         delete p.iconImpact;
         delete p.iconCounts;
@@ -649,38 +700,110 @@ function calculatePitcherIconImpact(pitchers) {
 // HTML EXPORT
 // ============================================================================
 
-function generateChartTooltip(chart, isHitter) {
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function generateTooltipHtml(row, isHitter) {
+    const chart = row.chart;
     if (!chart) return '';
+
     if (isHitter) {
-        return `SO: ${chart.SO} | GB: ${chart.GB} | FB: ${chart.FB} | W: ${chart.W} | S: ${chart.S} | S+: ${chart.SPlus} | DB: ${chart.DB} | TR: ${chart.TR} | HR: ${chart.HR}`;
+        const pos = escapeHtml(row.Position || '-');
+        const spd = row.Speed || '-';
+        const hand = escapeHtml(row.hand || '-');
+        const team = escapeHtml(row.team || '-');
+        const edition = escapeHtml(row.edition || '-');
+        const icons = escapeHtml(row.icons || 'None');
+        return `<div class='tt-section'><b>${escapeHtml(row.name)}</b></div>`
+            + `<div class='tt-section'><span class='tt-label'>Team:</span> ${team} | <span class='tt-label'>Ed:</span> ${edition} | <span class='tt-label'>Hand:</span> ${hand}</div>`
+            + `<div class='tt-section'><span class='tt-label'>Position:</span> ${pos} | <span class='tt-label'>Speed:</span> ${spd} | <span class='tt-label'>OB:</span> ${row.onBase}</div>`
+            + `<div class='tt-section'><span class='tt-label'>Icons:</span> ${icons}</div>`
+            + `<div class='tt-divider'></div>`
+            + `<div class='tt-section tt-chart'>`
+            + `<span class='tt-label'>SO:</span> ${chart.SO} | <span class='tt-label'>GB:</span> ${chart.GB} | <span class='tt-label'>FB:</span> ${chart.FB} | <span class='tt-label'>W:</span> ${chart.W}<br>`
+            + `<span class='tt-label'>S:</span> ${chart.S} | <span class='tt-label'>S+:</span> ${chart.SPlus} | <span class='tt-label'>DB:</span> ${chart.DB} | <span class='tt-label'>TR:</span> ${chart.TR} | <span class='tt-label'>HR:</span> ${chart.HR}`
+            + `</div>`
+            + (row.Vused || row.Sused || row.HRused ? `<div class='tt-divider'></div><div class='tt-section'>`
+                + (row.Vused ? `<span class='tt-label'>V:</span> ${row.vIconOutsAvoided} outs avoided, +${(row.vIconObpImpact || 0).toFixed(3)} OBP est.<br>` : '')
+                + (row.Sused ? `<span class='tt-label'>S:</span> ${row.sIconUpgrades} upgrades, +${(row.sIconSlgImpact || 0).toFixed(3)} SLG<br>` : '')
+                + (row.HRused ? `<span class='tt-label'>HR:</span> ${row.hrIconUpgrades} upgrades, +${(row.hrIconSlgImpact || 0).toFixed(3)} SLG` : '')
+                + `</div>` : '');
+    } else {
+        const role = escapeHtml(row.Position || '-');
+        const ip = row.IP || '-';
+        const hand = escapeHtml(row.hand || '-');
+        const team = escapeHtml(row.team || '-');
+        const edition = escapeHtml(row.edition || '-');
+        const icons = escapeHtml(row.Icons || 'None');
+        return `<div class='tt-section'><b>${escapeHtml(row.name)}</b></div>`
+            + `<div class='tt-section'><span class='tt-label'>Team:</span> ${team} | <span class='tt-label'>Ed:</span> ${edition} | <span class='tt-label'>Hand:</span> ${hand}</div>`
+            + `<div class='tt-section'><span class='tt-label'>Role:</span> ${role} | <span class='tt-label'>IP:</span> ${ip} | <span class='tt-label'>Control:</span> ${row.Control}</div>`
+            + `<div class='tt-section'><span class='tt-label'>Icons:</span> ${icons}</div>`
+            + `<div class='tt-divider'></div>`
+            + `<div class='tt-section tt-chart'>`
+            + `<span class='tt-label'>PU:</span> ${chart.PU} | <span class='tt-label'>SO:</span> ${chart.SO} | <span class='tt-label'>GB:</span> ${chart.GB} | <span class='tt-label'>FB:</span> ${chart.FB}<br>`
+            + `<span class='tt-label'>W:</span> ${chart.W} | <span class='tt-label'>S:</span> ${chart.S} | <span class='tt-label'>DB:</span> ${chart.DB} | <span class='tt-label'>HR:</span> ${chart.HR}`
+            + `</div>`
+            + (row.kIconHRsBlocked || row.twentyIconAdvantageSwings || row.rpIconAdvantageSwings ? `<div class='tt-divider'></div><div class='tt-section'>`
+                + (row.kIconHRsBlocked ? `<span class='tt-label'>K:</span> ${row.kIconHRsBlocked} HRs blocked, -${(row.kIconSlgImpact || 0).toFixed(3)} SLG<br>` : '')
+                + (row.twentyIconAdvantageSwings ? `<span class='tt-label'>20:</span> ${row.twentyIconAdvantageSwings} advantage swings<br>` : '')
+                + (row.rpIconAdvantageSwings ? `<span class='tt-label'>RP:</span> ${row.rpIconAdvantageSwings} advantage swings` : '')
+                + `</div>` : '');
     }
-    return `PU: ${chart.PU} | SO: ${chart.SO} | GB: ${chart.GB} | FB: ${chart.FB} | W: ${chart.W} | S: ${chart.S} | DB: ${chart.DB} | HR: ${chart.HR}`;
 }
 
 function generateHtmlTable(data, columns, isHitter = true) {
     if (!data || data.length === 0) return '<p>No data</p>';
 
-    const headers = columns.map(col => `<th onclick="sortTable(this)">${col.label}</th>`).join('');
+    const headers = columns.map((col, i) =>
+        `<th onclick="sortTable(this)" data-col="${i}">${col.label}</th>`
+    ).join('');
+
+    // Filter row: text input for string columns, min/max for numeric
+    const filters = columns.map((col, i) => {
+        if (col.filter === 'text' || col.key === 'name' || col.key === 'icons' || col.key === 'Icons'
+            || col.key === 'Position' || col.key === 'hand' || col.key === 'edition') {
+            return `<th class="filter-cell"><input type="text" class="filter-input" data-col="${i}" data-type="text" placeholder="filter..." oninput="applyFilters(this)"></th>`;
+        }
+        return `<th class="filter-cell"><div class="filter-range">`
+            + `<input type="number" class="filter-input filter-min" data-col="${i}" data-type="min" placeholder="min" oninput="applyFilters(this)" step="any">`
+            + `<input type="number" class="filter-input filter-max" data-col="${i}" data-type="max" placeholder="max" oninput="applyFilters(this)" step="any">`
+            + `</div></th>`;
+    }).join('');
+
     const rows = data.map(row => {
+        const tooltipHtml = (row.chart) ? generateTooltipHtml(row, isHitter) : '';
         const cells = columns.map(col => {
             let val = row[col.key];
             if (val === undefined || val === null) val = '';
             if (typeof val === 'number') {
                 val = col.decimals !== undefined ? val.toFixed(col.decimals) : val;
             }
-            if (col.key === 'name' && row.chart) {
-                const tooltip = generateChartTooltip(row.chart, isHitter);
-                return `<td class="name-cell" data-tooltip="${tooltip}">${val}</td>`;
+            let cls = '';
+            if (col.colorCode && typeof row[col.key] === 'number') {
+                const v = row[col.key];
+                if (col.colorCode === 'positive-good') {
+                    if (v > 0.02) cls = ' val-good';
+                    else if (v < -0.02) cls = ' val-bad';
+                } else if (col.colorCode === 'negative-good') {
+                    if (v < -0.02) cls = ' val-good';
+                    else if (v > 0.02) cls = ' val-bad';
+                }
             }
-            return `<td>${val}</td>`;
+            if (col.key === 'name') {
+                return `<td class="name-cell${cls}" data-tooltip-html="${escapeHtml(tooltipHtml)}">${val}</td>`;
+            }
+            return `<td class="${cls}">${val}</td>`;
         }).join('');
         return `<tr>${cells}</tr>`;
     }).join('');
 
-    return `<table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
+    return `<table><thead><tr>${headers}</tr><tr class="filter-row">${filters}</tr></thead><tbody>${rows}</tbody></table>`;
 }
 
-function exportToHtml(hittersData, pitchersData, filename) {
+function exportToHtml(hittersData, pitchersData, filename, config) {
     const positions = ["C", "1B", "2B", "3B", "SS", "LF-RF", "CF", "DH", "All Hitters"];
     const playersByPosition = Object.fromEntries(positions.map(p => [p, []]));
 
@@ -703,21 +826,42 @@ function exportToHtml(hittersData, pitchersData, filename) {
         { key: 'name', label: 'Name' },
         { key: 'points', label: 'Pts', decimals: 0 },
         { key: 'onBase', label: 'OB', decimals: 0 },
+        { key: 'Speed', label: 'Spd', decimals: 0 },
+        { key: 'Position', label: 'Pos' },
+        { key: 'hand', label: 'Hand' },
         { key: 'icons', label: 'Icons' },
         { key: 'battingAverage', label: 'AVG', decimals: 3 },
         { key: 'onBasePercentage', label: 'OBP', decimals: 3 },
         { key: 'sluggingPercentage', label: 'SLG', decimals: 3 },
         { key: 'ops', label: 'OPS', decimals: 3 },
-        { key: 'opsPercentile', label: 'OPS%', decimals: 0 },
         { key: 'woba', label: 'wOBA', decimals: 3 },
+        { key: 'iso', label: 'ISO', decimals: 3 },
+        { key: 'babip', label: 'BABIP', decimals: 3 },
+        { key: 'kPct', label: 'K%', decimals: 3 },
+        { key: 'bbPct', label: 'BB%', decimals: 3 },
+        { key: 'hrPct', label: 'HR%', decimals: 3 },
+        { key: 'gbFbRatio', label: 'GB/FB', decimals: 2 },
+        { key: 'opsPercentile', label: 'OPS%', decimals: 0 },
         { key: 'wobaPercentile', label: 'wOBA%', decimals: 0 },
-        { key: 'opsDeviation', label: 'OPS Dev', decimals: 3 },
-        { key: 'wobaDeviation', label: 'wOBA Dev', decimals: 3 },
+        { key: 'opsDeviation', label: 'OPS Dev', decimals: 3, colorCode: 'positive-good' },
+        { key: 'wobaDeviation', label: 'wOBA Dev', decimals: 3, colorCode: 'positive-good' },
+        { key: 'atBats', label: 'PA', decimals: 0 },
+        { key: 'hits', label: 'H', decimals: 0 },
+        { key: 'singles', label: '1B', decimals: 0 },
+        { key: 'singleplus', label: '1B+', decimals: 0 },
+        { key: 'doubles', label: '2B', decimals: 0 },
+        { key: 'triples', label: '3B', decimals: 0 },
+        { key: 'homeRuns', label: 'HR', decimals: 0 },
+        { key: 'walks', label: 'BB', decimals: 0 },
+        { key: 'strikeouts', label: 'SO', decimals: 0 },
+        { key: 'groundballs', label: 'GB', decimals: 0 },
+        { key: 'flyballs', label: 'FB', decimals: 0 },
+        { key: 'popups', label: 'PU', decimals: 0 },
         { key: 'Vused', label: 'V Used', decimals: 0 },
         { key: 'Sused', label: 'S Used', decimals: 0 },
         { key: 'HRused', label: 'HR Used', decimals: 0 },
-        { key: 'totalIconSlgImpact', label: 'Icon SLG+', decimals: 3 },
-        { key: 'totalIconWobaImpact', label: 'Icon wOBA+', decimals: 3 }
+        { key: 'totalIconSlgImpact', label: 'Icon SLG+', decimals: 3, colorCode: 'positive-good' },
+        { key: 'totalIconWobaImpact', label: 'Icon wOBA+', decimals: 3, colorCode: 'positive-good' }
     ];
 
     let hitterTabs = '';
@@ -749,13 +893,34 @@ function exportToHtml(hittersData, pitchersData, filename) {
         { key: 'name', label: 'Name' },
         { key: 'points', label: 'Pts', decimals: 0 },
         { key: 'Control', label: 'Ctrl', decimals: 0 },
+        { key: 'IP', label: 'IP', decimals: 0 },
+        { key: 'hand', label: 'Hand' },
         { key: 'Icons', label: 'Icons' },
         { key: 'whip', label: 'WHIP', decimals: 3 },
-        { key: 'whipPercentile', label: 'WHIP%', decimals: 0 },
         { key: 'mWHIP', label: 'mWHIP', decimals: 3 },
+        { key: 'oppAvg', label: 'Opp AVG', decimals: 3 },
+        { key: 'oppOps', label: 'Opp OPS', decimals: 3 },
+        { key: 'kPct', label: 'K%', decimals: 3 },
+        { key: 'bbPct', label: 'BB%', decimals: 3 },
+        { key: 'kBbRatio', label: 'K/BB', decimals: 2 },
+        { key: 'hr9', label: 'HR/9', decimals: 2 },
+        { key: 'gbPct', label: 'GB%', decimals: 3 },
+        { key: 'whipPercentile', label: 'WHIP%', decimals: 0 },
         { key: 'mWHIPPercentile', label: 'mWHIP%', decimals: 0 },
-        { key: 'whipDeviation', label: 'WHIP Dev', decimals: 3 },
-        { key: 'mWHIPDeviation', label: 'mWHIP Dev', decimals: 3 },
+        { key: 'whipDeviation', label: 'WHIP Dev', decimals: 3, colorCode: 'negative-good' },
+        { key: 'mWHIPDeviation', label: 'mWHIP Dev', decimals: 3, colorCode: 'negative-good' },
+        { key: 'battersFaced', label: 'BF', decimals: 0 },
+        { key: 'outs', label: 'Outs', decimals: 0 },
+        { key: 'strikeouts', label: 'SO', decimals: 0 },
+        { key: 'walks', label: 'BB', decimals: 0 },
+        { key: 'singles', label: '1B', decimals: 0 },
+        { key: 'singlepluses', label: '1B+', decimals: 0 },
+        { key: 'doubles', label: '2B', decimals: 0 },
+        { key: 'triples', label: '3B', decimals: 0 },
+        { key: 'homeruns', label: 'HR', decimals: 0 },
+        { key: 'groundballs', label: 'GB', decimals: 0 },
+        { key: 'flyballs', label: 'FB', decimals: 0 },
+        { key: 'popups', label: 'PU', decimals: 0 },
         { key: 'kIconHRsBlocked', label: 'K HRs', decimals: 0 },
         { key: 'kIconSlgImpact', label: 'K SLG-', decimals: 3 },
         { key: 'twentyIconAdvantageSwings', label: '20 Swings', decimals: 0 },
@@ -766,7 +931,7 @@ function exportToHtml(hittersData, pitchersData, filename) {
     let pitcherContent = '';
 
     Object.entries(pitchersByRole).forEach(([role, pitchers], idx) => {
-        calculatePitcherIconImpact(pitchers);
+        calculatePitcherFinalStats(pitchers, config.WEIGHTS);
         calculateRegressions(pitchers, 'points', [
             { value: 'whip', deviation: 'whipDeviation' },
             { value: 'mWHIP', deviation: 'mWHIPDeviation' }
@@ -780,7 +945,12 @@ function exportToHtml(hittersData, pitchersData, filename) {
         pitcherContent += `<div id="pitcher-${role}" class="tab-content ${activeClass}">${generateHtmlTable(pitchers, pitcherColumns, false)}</div>`;
     });
 
-    const html = `<!DOCTYPE html>
+    const html = buildHtmlPage(hitterTabs, hitterContent, pitcherTabs, pitcherContent, config);
+    fs.writeFileSync(filename, html);
+}
+
+function buildHtmlPage(hitterTabs, hitterContent, pitcherTabs, pitcherContent, config) {
+    return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -790,101 +960,178 @@ function exportToHtml(hittersData, pitchersData, filename) {
         * { box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: #1a1a2e; color: #eee; }
         h1, h2 { color: #fff; }
+        h1 { margin-bottom: 5px; }
+        .sim-info { color: #888; font-size: 13px; margin-bottom: 20px; }
         .tabs { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
-        .tab { padding: 8px 16px; border: none; background: #16213e; color: #eee; cursor: pointer; border-radius: 5px 5px 0 0; }
+        .tab { padding: 8px 16px; border: none; background: #16213e; color: #eee; cursor: pointer; border-radius: 5px 5px 0 0; font-size: 14px; }
         .tab:hover { background: #1f4068; }
         .tab.active { background: #1f4068; font-weight: bold; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        table { border-collapse: collapse; width: 100%; background: #16213e; margin-bottom: 30px; }
-        th, td { padding: 8px 12px; text-align: left; border: 1px solid #1f4068; white-space: nowrap; }
-        th { background: #1f4068; cursor: pointer; user-select: none; position: sticky; top: 0; }
+        table { border-collapse: collapse; width: 100%; background: #16213e; margin-bottom: 30px; font-size: 13px; }
+        th, td { padding: 6px 10px; text-align: left; border: 1px solid #1f4068; white-space: nowrap; }
+        th { background: #1f4068; cursor: pointer; user-select: none; position: sticky; top: 0; z-index: 11; font-size: 12px; }
         th:hover { background: #e94560; }
         tr:nth-child(even) { background: #1a1a2e; }
         tr:hover { background: #0f3460; }
         .section { margin-bottom: 40px; }
-        .table-container { overflow-x: auto; max-height: 600px; overflow-y: auto; }
+        .table-container { overflow-x: auto; max-height: 700px; overflow-y: auto; }
         td:first-child { font-weight: bold; }
-        .name-cell { position: relative; cursor: help; }
-        .name-cell::after {
-            content: attr(data-tooltip);
-            position: absolute;
-            left: 0;
-            top: 100%;
-            background: #0f3460;
-            color: #fff;
-            padding: 10px 15px;
-            border-radius: 5px;
-            white-space: nowrap;
-            z-index: 1000;
-            font-size: 13px;
-            font-weight: normal;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.2s;
-            border: 1px solid #e94560;
+        .val-good { color: #4ade80; }
+        .val-bad { color: #f87171; }
+        .name-cell { cursor: help; }
+        /* Filter row */
+        .filter-row th { background: #0f1f3a; position: sticky; top: 29px; z-index: 10; padding: 3px 4px; cursor: default; }
+        .filter-row th:hover { background: #0f1f3a; }
+        .filter-input { width: 100%; background: #16213e; color: #eee; border: 1px solid #1f4068; border-radius: 3px; padding: 3px 5px; font-size: 11px; }
+        .filter-input:focus { outline: none; border-color: #e94560; }
+        .filter-input::placeholder { color: #556; }
+        .filter-range { display: flex; gap: 2px; }
+        .filter-range .filter-input { width: 50%; }
+        .filter-cell { cursor: default !important; }
+        /* Match count */
+        .match-count { color: #888; font-size: 12px; margin-top: 4px; }
+        /* Clear filters button */
+        .clear-filters { padding: 4px 12px; border: 1px solid #1f4068; background: #16213e; color: #888; cursor: pointer; border-radius: 3px; font-size: 12px; margin-left: 10px; }
+        .clear-filters:hover { background: #1f4068; color: #eee; border-color: #e94560; }
+        /* Tooltip */
+        #tooltip {
+            display: none; position: fixed; background: #0a1628; color: #eee;
+            padding: 12px 16px; border-radius: 8px; border: 1px solid #e94560;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6); z-index: 10000;
+            font-size: 13px; line-height: 1.5; max-width: 500px; pointer-events: none;
         }
-        .name-cell:hover::after {
-            opacity: 1;
-            visibility: visible;
-        }
+        #tooltip .tt-section { margin-bottom: 4px; }
+        #tooltip .tt-label { color: #e94560; font-weight: 600; }
+        #tooltip .tt-divider { border-top: 1px solid #1f4068; margin: 6px 0; }
+        #tooltip .tt-chart { font-family: 'Consolas', 'Courier New', monospace; font-size: 12px; }
     </style>
 </head>
 <body>
     <h1>MLB Showdown Simulation Results</h1>
+    <div class="sim-info">${config.AT_BATS_PER_MATCHUP} at-bats per matchup | Seed: "${config.SEED}"</div>
+    <div id="tooltip"></div>
 
-    <div class="section">
-        <h2>Hitters</h2>
+    <div class="section" id="hitter-section">
+        <h2>Hitters <button class="clear-filters" onclick="clearFilters('hitter-section')">Clear Filters</button></h2>
         <div class="tabs">${hitterTabs}</div>
         <div class="table-container">${hitterContent}</div>
+        <div class="match-count" id="hitter-match-count"></div>
     </div>
 
-    <div class="section">
-        <h2>Pitchers</h2>
+    <div class="section" id="pitcher-section">
+        <h2>Pitchers <button class="clear-filters" onclick="clearFilters('pitcher-section')">Clear Filters</button></h2>
         <div class="tabs">${pitcherTabs}</div>
         <div class="table-container">${pitcherContent}</div>
+        <div class="match-count" id="pitcher-match-count"></div>
     </div>
 
     <script>
+        // Tab switching
         function showTab(id) {
             const section = id.startsWith('hitter') ? 'hitter' : 'pitcher';
-            document.querySelectorAll('[id^="' + section + '-"]').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('[id^="' + section + '-"].tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tabs .tab').forEach(el => {
-                if (el.onclick.toString().includes(section)) {
-                    el.classList.remove('active');
-                }
+                if (el.onclick.toString().includes(section)) el.classList.remove('active');
             });
             document.getElementById(id).classList.add('active');
             event.target.classList.add('active');
         }
 
+        // Sorting
         function sortTable(th) {
+            if (th.closest('.filter-row')) return;
             const table = th.closest('table');
             const tbody = table.querySelector('tbody');
             const rows = Array.from(tbody.querySelectorAll('tr'));
             const idx = Array.from(th.parentNode.children).indexOf(th);
             const asc = th.dataset.sort !== 'asc';
-
             rows.sort((a, b) => {
-                let aVal = a.children[idx].textContent;
-                let bVal = b.children[idx].textContent;
-                const aNum = parseFloat(aVal);
-                const bNum = parseFloat(bVal);
-                if (!isNaN(aNum) && !isNaN(bNum)) {
-                    return asc ? aNum - bNum : bNum - aNum;
-                }
-                return asc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                const aNum = parseFloat(a.children[idx].textContent);
+                const bNum = parseFloat(b.children[idx].textContent);
+                if (!isNaN(aNum) && !isNaN(bNum)) return asc ? aNum - bNum : bNum - aNum;
+                return asc ? a.children[idx].textContent.localeCompare(b.children[idx].textContent)
+                           : b.children[idx].textContent.localeCompare(a.children[idx].textContent);
             });
-
             th.dataset.sort = asc ? 'asc' : 'desc';
             rows.forEach(row => tbody.appendChild(row));
         }
+
+        // Filtering
+        function applyFilters(input) {
+            const table = input.closest('table');
+            const filterRow = table.querySelector('.filter-row');
+            const inputs = filterRow.querySelectorAll('.filter-input');
+            const tbody = table.querySelector('tbody');
+            const rows = tbody.querySelectorAll('tr');
+            let visible = 0;
+
+            rows.forEach(row => {
+                let show = true;
+                inputs.forEach(fi => {
+                    const col = parseInt(fi.dataset.col);
+                    const type = fi.dataset.type;
+                    const val = fi.value.trim();
+                    if (!val) return;
+                    const cellText = row.children[col]?.textContent || '';
+
+                    if (type === 'text') {
+                        if (!cellText.toLowerCase().includes(val.toLowerCase())) show = false;
+                    } else if (type === 'min') {
+                        const cellNum = parseFloat(cellText);
+                        if (isNaN(cellNum) || cellNum < parseFloat(val)) show = false;
+                    } else if (type === 'max') {
+                        const cellNum = parseFloat(cellText);
+                        if (isNaN(cellNum) || cellNum > parseFloat(val)) show = false;
+                    }
+                });
+                row.style.display = show ? '' : 'none';
+                if (show) visible++;
+            });
+
+            // Update match count
+            const section = table.closest('.section');
+            const countEl = section.querySelector('.match-count');
+            if (countEl) {
+                const total = rows.length;
+                const hasFilters = Array.from(inputs).some(i => i.value.trim());
+                countEl.textContent = hasFilters ? visible + ' of ' + total + ' shown' : '';
+            }
+        }
+
+        function clearFilters(sectionId) {
+            const section = document.getElementById(sectionId);
+            section.querySelectorAll('.filter-input').forEach(input => {
+                input.value = '';
+            });
+            section.querySelectorAll('tbody tr').forEach(row => {
+                row.style.display = '';
+            });
+            const countEl = section.querySelector('.match-count');
+            if (countEl) countEl.textContent = '';
+        }
+
+        // Rich tooltip
+        const tooltip = document.getElementById('tooltip');
+        document.addEventListener('mouseover', (e) => {
+            const cell = e.target.closest('.name-cell');
+            if (cell && cell.dataset.tooltipHtml) {
+                tooltip.innerHTML = cell.dataset.tooltipHtml;
+                tooltip.style.display = 'block';
+            }
+        });
+        document.addEventListener('mousemove', (e) => {
+            if (tooltip.style.display === 'block') {
+                tooltip.style.left = Math.min(e.clientX + 15, window.innerWidth - tooltip.offsetWidth - 20) + 'px';
+                tooltip.style.top = Math.min(e.clientY + 15, window.innerHeight - tooltip.offsetHeight - 20) + 'px';
+            }
+        });
+        document.addEventListener('mouseout', (e) => {
+            if (e.target.closest('.name-cell')) tooltip.style.display = 'none';
+        });
     </script>
 </body>
 </html>`;
-
-    fs.writeFileSync(filename, html);
 }
 
 // ============================================================================
@@ -931,7 +1178,7 @@ function exportToXlsx(hittersData, pitchersData, filename) {
     });
 
     Object.entries(pitchersByRole).forEach(([role, pitchers]) => {
-        calculatePitcherIconImpact(pitchers);
+        calculatePitcherFinalStats(pitchers, defaultConfig.WEIGHTS);
         calculateRegressions(pitchers, 'points', [
             { value: 'whip', deviation: 'whipDeviation' },
             { value: 'mWHIP', deviation: 'mWHIPDeviation' }
@@ -1021,7 +1268,7 @@ function runSimulation(config) {
     if (config.FORMAT === 'xlsx') {
         exportToXlsx(hittersResults, pitchersResults, config.OUTPUT);
     } else {
-        exportToHtml(hittersResults, pitchersResults, config.OUTPUT);
+        exportToHtml(hittersResults, pitchersResults, config.OUTPUT, config);
     }
 
     console.log(`Results exported to ${config.OUTPUT}`);

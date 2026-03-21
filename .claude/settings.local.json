@@ -11,7 +11,10 @@
       "WebFetch(domain:www.ccgtrader.net)",
       "Bash(npm test:*)",
       "Bash(node:*)",
-      "Bash(ls -la *.js *.json .gitignore)"
+      "Bash(ls -la *.js *.json .gitignore)",
+      "Bash(gh auth:*)",
+      "Bash(git config:*)",
+      "Bash(grep:*)"
     ]
   }
 }
