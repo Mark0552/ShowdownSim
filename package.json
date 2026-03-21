@@ -1,14 +1,17 @@
 {
   "name": "showdownsim",
-  "version": "1.0.0",
-  "description": "",
+  "version": "2.0.0",
+  "description": "Monte Carlo simulator for the MLB Showdown card game",
   "main": "sim.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node sim.js",
+    "test": "node test.js",
+    "sim:xlsx": "node sim.js --output results.xlsx --format xlsx"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "seedrandom": "^3.0.5",
     "simple-statistics": "^7.8.3",
     "xlsx": "^0.18.5"
   }

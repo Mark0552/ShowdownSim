@@ -1,1 +1,5 @@
 /node_modules
+results.html
+results.xlsx
+*.xlsx
+!mlb_showdown_player_card_data.xlsx

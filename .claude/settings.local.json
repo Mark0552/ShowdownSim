@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(node -e:*)",
+      "Bash(powershell -Command \"\n@''\nconst fs = require(''fs'');\n\nconst newContent = \\`const xlsx = require(''xlsx'');\nconst fs = require(''fs'');\nconst ss = require(''simple-statistics'');\nconst seedrandom = require(''seedrandom'');\n\n// Configuration constants\nconst CONFIG = {\n    AT_BATS_PER_MATCHUP: 500,\n    ICON_CHARGE_THRESHOLD: 3,\n    SEED: ''showdown-sim-2024'',\n    WEIGHTS: {\n        walk: 0.69,\n        single: 0.88,\n        singlePlus: 1.08,\n        double: 1.24,\n        triple: 1.56,\n        hr: 1.95\n    }\n};\n\nconst rng = seedrandom(CONFIG.SEED);\n\\`;\nfs.writeFileSync(''test_write.txt'', newContent);\nconsole.log(''wrote test'');\n''@ | Out-File -Encoding UTF8 writer.js\nnode writer.js\n\")",
+      "Bash(node -c:*)",
+      "WebFetch(domain:www.showdowncards.com)",
+      "WebSearch",
+      "WebFetch(domain:www.tcdb.com)",
+      "WebFetch(domain:www.ccgtrader.net)",
+      "Bash(npm test:*)",
+      "Bash(node:*)",
+      "Bash(ls -la *.js *.json .gitignore)"
+    ]
+  }
+}
