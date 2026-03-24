@@ -6,8 +6,10 @@ let allPitchers: PitcherCard[] = [];
 let allCards: Card[] = [];
 let loaded = false;
 
+const BASE = import.meta.env.BASE_URL;
+
 function normalizeImagePath(p: string): string {
-    return '/' + p.replace(/\\/g, '/');
+    return BASE + p.replace(/\\/g, '/');
 }
 
 function makeId(name: string, ed: string, yr: string, num: number, team: string): string {
@@ -66,8 +68,8 @@ export async function loadCards(): Promise<{ hitters: HitterCard[]; pitchers: Pi
     if (loaded) return { hitters: allHitters, pitchers: allPitchers, all: allCards };
 
     const [hittersRes, pitchersRes] = await Promise.all([
-        fetch('/hitters.json'),
-        fetch('/pitchers.json'),
+        fetch(`${BASE}hitters.json`),
+        fetch(`${BASE}pitchers.json`),
     ]);
 
     const rawHitters: RawHitter[] = await hittersRes.json();
