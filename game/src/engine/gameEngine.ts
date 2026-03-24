@@ -832,8 +832,10 @@ function advanceToNextBatter(state: GameState): GameState {
 }
 
 function endHalfInning(state: GameState): GameState {
-    // Check CY Young icon: +1 IP if 1-2-3 inning
-    let newState = state;
+    // Advance batting team's batter index so they start with the next batter next time
+    const battingTeam = getBattingTeam(state);
+    const nextBatterIndex = (battingTeam.currentBatterIndex + 1) % 9;
+    let newState = setBattingTeam(state, { ...battingTeam, currentBatterIndex: nextBatterIndex });
     if (!state.runnersReachedThisInning) {
         const fieldingTeam = getFieldingTeam(state);
         const pitcher = fieldingTeam.pitchers[fieldingTeam.currentPitcherIndex];
