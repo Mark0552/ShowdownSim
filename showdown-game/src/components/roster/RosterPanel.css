@@ -1,0 +1,83 @@
+.roster-panel {
+    padding: var(--card-gap);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.rp-section h3 {
+    font-size: 16px;
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+/* Card grid — 2 columns */
+.rp-card-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--card-gap);
+}
+
+.rp-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 4px;
+    border-radius: 6px;
+    background: var(--bg-card);
+    border: 2px solid transparent;
+    cursor: pointer;
+    text-align: center;
+    position: relative;
+    width: var(--card-w);
+    transition: border-color 0.15s;
+}
+
+.rp-card.empty {
+    opacity: 0.3;
+    min-height: calc(var(--card-h) + 40px);
+    justify-content: center;
+}
+
+.rp-card.empty:hover { opacity: 1; border-color: var(--accent); }
+.rp-card.active { border-color: var(--accent); opacity: 1; background: var(--bg-hover); }
+.rp-card.drop-target { border-color: var(--success); opacity: 1; background: rgba(74, 222, 128, 0.1); }
+.rp-card.filled:hover { border-color: var(--accent-dim); }
+.rp-card.filled { cursor: grab; }
+.rp-card.dragging { opacity: 0.3; }
+
+.rp-card-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.rp-card-img {
+    width: var(--card-w);
+    height: var(--card-h);
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.rp-card-name {
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: var(--card-w);
+}
+
+.rp-card-sub {
+    font-size: 9px;
+    color: var(--text-dim);
+}
+
+.rp-card-empty {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+

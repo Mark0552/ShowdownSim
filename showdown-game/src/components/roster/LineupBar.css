@@ -1,0 +1,116 @@
+.lineup-bar {
+    padding: var(--card-padding) var(--card-gap);
+}
+
+.lineup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.lineup-header h3 {
+    font-size: 16px;
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.lineup-auto-btn {
+    padding: 3px 10px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.lineup-auto-btn:hover { background: var(--accent-dim); }
+
+.lineup-slots {
+    display: flex;
+    gap: var(--card-gap);
+}
+
+.lineup-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 4px;
+    border-radius: 6px;
+    background: var(--bg-card);
+    border: 2px solid transparent;
+    cursor: pointer;
+    text-align: center;
+    position: relative;
+    width: var(--card-w);
+    flex-shrink: 0;
+    transition: border-color 0.15s, opacity 0.15s;
+}
+
+.lineup-card.empty {
+    opacity: 0.3;
+    min-height: calc(var(--card-h) + 40px);
+    justify-content: center;
+}
+
+.lineup-card.empty:hover { opacity: 1; border-color: var(--accent); }
+.lineup-card.active { border-color: var(--accent); background: var(--bg-hover); opacity: 1; }
+.lineup-card.drop-target { border-color: var(--success); opacity: 1; background: rgba(74, 222, 128, 0.1); }
+.lineup-card.filled:hover { border-color: var(--accent-dim); }
+.lineup-card.filled { cursor: grab; }
+.lineup-card.dragging { opacity: 0.3; }
+
+.lineup-order {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent);
+    color: white;
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: 10px;
+    z-index: 1;
+}
+
+.lineup-pos {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.lineup-img {
+    width: var(--card-w);
+    height: var(--card-h);
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.lineup-name {
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: var(--card-w);
+    line-height: 1.2;
+}
+
+.lineup-pts {
+    font-size: 9px;
+    color: var(--text-dim);
+}
+
+.lineup-empty {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+

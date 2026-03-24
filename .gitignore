@@ -1,5 +1,21 @@
 /node_modules
+/cards
+Claude API Key.txt
+*.pdf
 results.html
 results.xlsx
 *.xlsx
 !mlb_showdown_player_card_data.xlsx
+
+# Intermediate data files
+hitters_scraped.json
+pitchers_scraped.json
+hitters_verified.json
+pitchers_verified.json
+
+# Showdown game
+showdown-game/node_modules/
+showdown-game/dist/
+showdown-game/public/cards
+showdown-game/public/hitters.json
+showdown-game/public/pitchers.json

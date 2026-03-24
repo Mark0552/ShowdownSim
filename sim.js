@@ -232,6 +232,8 @@ function initializePitcher(pitcher) {
         hand: pitcher.H,
         team: pitcher.Team,
         edition: pitcher.Ed,
+        year: pitcher['Yr.'] || null,
+        expansion: pitcher.expansion || null,
         chart: {
             PU: pitcher.PU || '-',
             SO: pitcher.SO || '-',
@@ -281,6 +283,9 @@ function createHitterStats(hitter) {
         hand: hitter.H,
         team: hitter.Team,
         edition: hitter.Ed,
+        year: hitter['Yr.'] || null,
+        expansion: hitter.expansion || null,
+        imagePath: hitter.imagePath || null,
         chart: {
             SO: hitter.SO || '-',
             GB: hitter.GB || '-',
@@ -709,15 +714,23 @@ function generateTooltipHtml(row, isHitter) {
     const chart = row.chart;
     if (!chart) return '';
 
+    const imgTag = row.imagePath
+        ? `<div class='tt-img'><img src='${escapeHtml(row.imagePath)}' alt='card'></div>`
+        : '';
+
     if (isHitter) {
         const pos = escapeHtml(row.Position || '-');
         const spd = row.Speed || '-';
         const hand = escapeHtml(row.hand || '-');
         const team = escapeHtml(row.team || '-');
         const edition = escapeHtml(row.edition || '-');
+        const year = escapeHtml(row.year || '-');
+        const expansion = escapeHtml(row.expansion || '-');
         const icons = escapeHtml(row.icons || 'None');
-        return `<div class='tt-section'><b>${escapeHtml(row.name)}</b></div>`
-            + `<div class='tt-section'><span class='tt-label'>Team:</span> ${team} | <span class='tt-label'>Ed:</span> ${edition} | <span class='tt-label'>Hand:</span> ${hand}</div>`
+        return `<div class='tt-layout'>${imgTag}<div class='tt-info'>`
+            + `<div class='tt-section'><b>${escapeHtml(row.name)}</b></div>`
+            + `<div class='tt-section'><span class='tt-label'>Year:</span> ${year} | <span class='tt-label'>Set:</span> ${expansion} | <span class='tt-label'>Ed:</span> ${edition}</div>`
+            + `<div class='tt-section'><span class='tt-label'>Team:</span> ${team} | <span class='tt-label'>Hand:</span> ${hand}</div>`
             + `<div class='tt-section'><span class='tt-label'>Position:</span> ${pos} | <span class='tt-label'>Speed:</span> ${spd} | <span class='tt-label'>OB:</span> ${row.onBase}</div>`
             + `<div class='tt-section'><span class='tt-label'>Icons:</span> ${icons}</div>`
             + `<div class='tt-divider'></div>`
@@ -729,16 +742,21 @@ function generateTooltipHtml(row, isHitter) {
                 + (row.Vused ? `<span class='tt-label'>V:</span> ${row.vIconOutsAvoided} outs avoided, +${(row.vIconObpImpact || 0).toFixed(3)} OBP est.<br>` : '')
                 + (row.Sused ? `<span class='tt-label'>S:</span> ${row.sIconUpgrades} upgrades, +${(row.sIconSlgImpact || 0).toFixed(3)} SLG<br>` : '')
                 + (row.HRused ? `<span class='tt-label'>HR:</span> ${row.hrIconUpgrades} upgrades, +${(row.hrIconSlgImpact || 0).toFixed(3)} SLG` : '')
-                + `</div>` : '');
+                + `</div>` : '')
+            + `</div></div>`;
     } else {
         const role = escapeHtml(row.Position || '-');
         const ip = row.IP || '-';
         const hand = escapeHtml(row.hand || '-');
         const team = escapeHtml(row.team || '-');
         const edition = escapeHtml(row.edition || '-');
+        const year = escapeHtml(row.year || '-');
+        const expansion = escapeHtml(row.expansion || '-');
         const icons = escapeHtml(row.Icons || 'None');
-        return `<div class='tt-section'><b>${escapeHtml(row.name)}</b></div>`
-            + `<div class='tt-section'><span class='tt-label'>Team:</span> ${team} | <span class='tt-label'>Ed:</span> ${edition} | <span class='tt-label'>Hand:</span> ${hand}</div>`
+        return `<div class='tt-layout'>${imgTag}<div class='tt-info'>`
+            + `<div class='tt-section'><b>${escapeHtml(row.name)}</b></div>`
+            + `<div class='tt-section'><span class='tt-label'>Year:</span> ${year} | <span class='tt-label'>Set:</span> ${expansion} | <span class='tt-label'>Ed:</span> ${edition}</div>`
+            + `<div class='tt-section'><span class='tt-label'>Team:</span> ${team} | <span class='tt-label'>Hand:</span> ${hand}</div>`
             + `<div class='tt-section'><span class='tt-label'>Role:</span> ${role} | <span class='tt-label'>IP:</span> ${ip} | <span class='tt-label'>Control:</span> ${row.Control}</div>`
             + `<div class='tt-section'><span class='tt-label'>Icons:</span> ${icons}</div>`
             + `<div class='tt-divider'></div>`
@@ -750,7 +768,8 @@ function generateTooltipHtml(row, isHitter) {
                 + (row.kIconHRsBlocked ? `<span class='tt-label'>K:</span> ${row.kIconHRsBlocked} HRs blocked, -${(row.kIconSlgImpact || 0).toFixed(3)} SLG<br>` : '')
                 + (row.twentyIconAdvantageSwings ? `<span class='tt-label'>20:</span> ${row.twentyIconAdvantageSwings} advantage swings<br>` : '')
                 + (row.rpIconAdvantageSwings ? `<span class='tt-label'>RP:</span> ${row.rpIconAdvantageSwings} advantage swings` : '')
-                + `</div>` : '');
+                + `</div>` : '')
+            + `</div></div>`;
     }
 }
 
@@ -1001,12 +1020,15 @@ function buildHtmlPage(hitterTabs, hitterContent, pitcherTabs, pitcherContent, c
             display: none; position: fixed; background: #0a1628; color: #eee;
             padding: 12px 16px; border-radius: 8px; border: 1px solid #e94560;
             box-shadow: 0 8px 24px rgba(0,0,0,0.6); z-index: 10000;
-            font-size: 13px; line-height: 1.5; max-width: 500px; pointer-events: none;
+            font-size: 13px; line-height: 1.5; max-width: 650px; pointer-events: none;
         }
         #tooltip .tt-section { margin-bottom: 4px; }
         #tooltip .tt-label { color: #e94560; font-weight: 600; }
         #tooltip .tt-divider { border-top: 1px solid #1f4068; margin: 6px 0; }
         #tooltip .tt-chart { font-family: 'Consolas', 'Courier New', monospace; font-size: 12px; }
+        #tooltip .tt-layout { display: flex; gap: 12px; align-items: flex-start; }
+        #tooltip .tt-img img { width: 150px; height: auto; border-radius: 4px; border: 1px solid #1f4068; }
+        #tooltip .tt-info { flex: 1; min-width: 200px; }
     </style>
 </head>
 <body>

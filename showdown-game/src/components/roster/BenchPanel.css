@@ -1,0 +1,71 @@
+.bench-panel {
+    padding: var(--card-gap);
+}
+
+.bench-panel h3 {
+    font-size: 16px;
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.bench-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--card-gap);
+}
+
+.bench-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 4px;
+    border-radius: 6px;
+    background: var(--bg-card);
+    border: 2px solid transparent;
+    cursor: pointer;
+    text-align: center;
+    position: relative;
+    width: var(--card-w);
+    transition: border-color 0.15s;
+}
+
+.bench-card.empty {
+    opacity: 0.3;
+    min-height: calc(var(--card-h) + 40px);
+    justify-content: center;
+}
+
+.bench-card.empty:hover { opacity: 1; border-color: var(--accent); }
+.bench-card.active { border-color: var(--accent); opacity: 1; }
+.bench-card.drop-target { border-color: var(--success); opacity: 1; background: rgba(74, 222, 128, 0.1); }
+.bench-card.filled:hover { border-color: var(--accent-dim); }
+
+.bench-img {
+    width: var(--card-w);
+    height: var(--card-h);
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.bench-name {
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: var(--card-w);
+}
+
+.bench-pts {
+    font-size: 9px;
+    color: var(--text-dim);
+}
+
+.bench-empty {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
