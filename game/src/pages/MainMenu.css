@@ -1,0 +1,81 @@
+.main-menu {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: var(--bg-primary);
+}
+
+.menu-card {
+    text-align: center;
+    width: 450px;
+}
+
+.menu-card h1 {
+    font-size: 36px;
+    color: var(--accent);
+    margin-bottom: 4px;
+}
+
+.menu-user {
+    color: var(--text-dim);
+    font-size: 14px;
+    margin-bottom: 32px;
+}
+
+.menu-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.menu-btn {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 24px;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.menu-btn:hover { border-color: var(--accent); background: var(--bg-card); }
+.menu-btn.disabled { opacity: 0.4; cursor: not-allowed; }
+.menu-btn.disabled:hover { border-color: var(--border); background: var(--bg-secondary); }
+
+.menu-btn-icon {
+    font-size: 28px;
+    width: 40px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.menu-btn-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.menu-btn-title {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.menu-btn-desc {
+    font-size: 13px;
+    color: var(--text-dim);
+}
+
+.menu-logout {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.menu-logout:hover { color: var(--error); }

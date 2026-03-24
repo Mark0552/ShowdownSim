@@ -29,7 +29,28 @@
     flex-shrink: 0;
 }
 
-.tb-header h1 { font-size: 18px; font-weight: 700; }
+.tb-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.back-btn { font-size: 18px; padding: 4px 10px; }
+
+.lineup-name-input {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 700;
+    width: 250px;
+    outline: none;
+}
+
+.lineup-name-input:focus { border-color: var(--accent); }
+.lineup-name-input::placeholder { color: var(--text-muted); font-weight: 400; }
 
 .tb-header-stats {
     display: flex;

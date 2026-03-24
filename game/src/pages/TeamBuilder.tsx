@@ -3,6 +3,8 @@ import type { Card, PitcherCard } from '../types/cards';
 import type { TeamStore } from '../store/teamStore';
 import type { DragStore } from '../store/dragStore';
 import type { SlotSelection } from '../components/roster/RosterPanel';
+import type { SavedLineup } from '../lib/lineups';
+import { createLineup, updateLineup } from '../lib/lineups';
 import { FilterState, DEFAULT_FILTERS, filterCards, getFilterOptions } from '../data/filters';
 import FilterBar from '../components/catalog/FilterBar';
 import CardCatalog from '../components/catalog/CardCatalog';
@@ -15,32 +17,14 @@ interface Props {
     cards: Card[];
     teamStore: TeamStore;
     dragStore: DragStore;
+    editingLineup?: SavedLineup | null;
+    onBack?: () => void;
 }
 
-export default function TeamBuilder({ cards, teamStore, dragStore }: Props) {
+export default function TeamBuilder({ cards, teamStore, dragStore, editingLineup, onBack }: Props) {
     const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
     const [activeSlot, setActiveSlot] = useState<SlotSelection | null>(null);
 
-    // Load saved roster on mount
-    useEffect(() => {
-        const saved = localStorage.getItem('showdown-roster');
-        if (!saved) return;
-        try {
-            const team = JSON.parse(saved);
-            // Re-hydrate: match saved card IDs to actual card objects
-            const cardMap = new Map(cards.map(c => [c.id, c]));
-            const hydratedSlots = team.slots
-                ?.map((slot: any) => {
-                    const card = cardMap.get(slot.card?.id);
-                    if (!card) return null;
-                    return { ...slot, card };
-                })
-                .filter(Boolean);
-            if (hydratedSlots?.length > 0) {
-                teamStore.dispatch({ type: 'LOAD' as any, team: { ...team, slots: hydratedSlots } });
-            }
-        } catch (e) { /* ignore bad save data */ }
-    }, []); // eslint-disable-line
     const filterOptions = useMemo(() => getFilterOptions(cards), [cards]);
 
     const effectiveFilters = useMemo(() => {
@@ -110,10 +94,41 @@ export default function TeamBuilder({ cards, teamStore, dragStore }: Props) {
         : 'Add to Bench'
         : '+ Add';
 
+    const [saving, setSaving] = useState(false);
+    const [lineupName, setLineupName] = useState(editingLineup?.name || '');
+
+    const handleSave = async () => {
+        const name = lineupName.trim() || prompt('Lineup name:');
+        if (!name) return;
+        setLineupName(name);
+        setSaving(true);
+        try {
+            const teamData = JSON.parse(JSON.stringify(teamStore.team));
+            if (editingLineup) {
+                await updateLineup(editingLineup.id, name, teamData);
+            } else {
+                await createLineup(name, teamData);
+            }
+            if (onBack) onBack();
+        } catch (err: any) {
+            alert('Save failed: ' + err.message);
+        } finally {
+            setSaving(false);
+        }
+    };
+
     return (
         <div className="team-builder">
             <header className="tb-header">
-                <h1>MLB Showdown Team Builder</h1>
+                <div className="tb-header-left">
+                    {onBack && <button className="header-btn back-btn" onClick={onBack}>&larr;</button>}
+                    <input
+                        className="lineup-name-input"
+                        value={lineupName}
+                        onChange={e => setLineupName(e.target.value)}
+                        placeholder="Lineup name..."
+                    />
+                </div>
                 <div className="tb-header-stats">
                     <span className={`header-stat ${teamStore.team.slots.length !== 20 ? 'over-cap' : ''}`}>
                         {teamStore.team.slots.length} / 20 players
@@ -123,12 +138,9 @@ export default function TeamBuilder({ cards, teamStore, dragStore }: Props) {
                         {teamStore.totalPoints.toLocaleString()} / 5,000 pts
                     </span>
                     <span className="divider">|</span>
-                    <button className="header-btn save-btn" onClick={() => {
-                        if (confirm('Save current lineup?')) {
-                            // lineupOrder is attached to the team object by LineupBar
-                            localStorage.setItem('showdown-roster', JSON.stringify(teamStore.team));
-                        }
-                    }}>Save Lineup</button>
+                    <button className="header-btn save-btn" onClick={handleSave} disabled={saving}>
+                        {saving ? 'Saving...' : 'Save'}
+                    </button>
                     <button className="header-btn clear-btn" onClick={() => {
                         if (teamStore.team.slots.length === 0 || confirm('Clear entire roster?')) {
                             teamStore.clearTeam();
