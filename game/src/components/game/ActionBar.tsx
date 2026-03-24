@@ -2,7 +2,7 @@ import type { GameState } from '../../types/gameState';
 import type { GameAction } from '../../types/gameActions';
 import type { PlayerRole } from '../../types/game';
 import { whoseTurn, getPhaseDescription } from '../../engine/gameEngine';
-import { getOffensiveIcons, getDefensiveIcons, getPrePitchOffenseIcons } from '../../engine/icons';
+import { getOffensiveIcons, getDefensiveIcons, getPrePitchOffenseIcons, getDefensePrePitchIcons } from '../../engine/icons';
 import { getAvailablePinchHitters, getAvailableRelievers } from '../../engine/substitutions';
 import { rollD20 } from '../../engine/dice';
 import './ActionBar.css';
@@ -86,6 +86,7 @@ function renderActions(
 
         case 'defense_sub': {
             const relievers = getAvailableRelievers(fieldingTeam, state.inning);
+            const defIcons20 = getDefensePrePitchIcons(state);
             return (
                 <>
                     {relievers.length > 0 && (
@@ -104,7 +105,12 @@ function renderActions(
                     <button className="action-btn warn" onClick={() => onAction({ type: 'INTENTIONAL_WALK' })}>
                         Intentional Walk
                     </button>
-                    <button className="action-btn" onClick={() => onAction({ type: 'SKIP_DEFENSE_SUB' })}>
+                    {defIcons20.map(ic => (
+                        <button key={ic.icon} className="action-btn icon-btn" onClick={() => onAction({ type: 'USE_ICON_20' })}>
+                            {ic.description}
+                        </button>
+                    ))}
+                    <button className="action-btn primary" onClick={() => onAction({ type: 'SKIP_DEFENSE_SUB' })}>
                         Continue
                     </button>
                 </>

@@ -88,9 +88,9 @@ export async function startGameSession(
 
     // Subscribe to updates
     const channel = subscribeToGame(gameId, (updated) => {
-        const newState = updated.state as GameState;
-        if (newState && newState.inning) {
-            onStateUpdate(newState);
+        const newState = updated.state;
+        if (newState && typeof newState === 'object' && newState.inning && newState.isOver !== undefined) {
+            onStateUpdate(newState as GameState);
         }
 
         // Host: check for pending actions from away player

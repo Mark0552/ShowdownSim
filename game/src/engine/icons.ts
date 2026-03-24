@@ -101,8 +101,32 @@ export function getPrePitchOffenseIcons(state: GameState): IconOption[] {
 }
 
 /**
- * Get pre-pitch icon options for defense (20, RP).
- * 20 and RP are auto-applied when chosen, not interactive mid-at-bat.
+ * Get available pre-pitch defense icon options (20, RP).
+ * These are choices, not auto-applied.
+ */
+export function getDefensePrePitchIcons(state: GameState): IconOption[] {
+    const fieldingTeam = state.halfInning === 'top' ? state.homeTeam : state.awayTeam;
+    const pitcher = fieldingTeam.pitchers[fieldingTeam.currentPitcherIndex];
+    if (!pitcher) return [];
+
+    const options: IconOption[] = [];
+
+    // 20 icon: +3 control, once per inning
+    if (pitcher.card.icons.includes('20') && !pitcher.twentyUsedThisInning) {
+        options.push({ icon: '20', cardId: pitcher.cardId, description: '20 icon: +3 control this pitch' });
+    }
+
+    // RP icon: +3 control for 1 full inning after 6th, 1x per game
+    if (pitcher.card.icons.includes('RP') && !pitcher.rpUsedThisGame && state.inning > 6) {
+        options.push({ icon: 'RP', cardId: pitcher.cardId, description: 'RP icon: +3 control this inning' });
+    }
+
+    return options;
+}
+
+/**
+ * Get pitch modifiers based on what defense has already chosen to activate.
+ * Called during pitch resolution.
  */
 export function getPitchModifiers(state: GameState): { modifier: number; descriptions: string[] } {
     const fieldingTeam = state.halfInning === 'top' ? state.homeTeam : state.awayTeam;
@@ -112,14 +136,14 @@ export function getPitchModifiers(state: GameState): { modifier: number; descrip
     let modifier = 0;
     const descriptions: string[] = [];
 
-    // 20 icon: +3 control, once per inning
-    if (pitcher.card.icons.includes('20') && !pitcher.twentyUsedThisInning) {
+    // 20 icon: only if already marked as used this inning (defense chose it)
+    if (pitcher.twentyUsedThisInning) {
         modifier += 3;
         descriptions.push('+3 control (20 icon)');
     }
 
-    // RP icon: +3 control for 1 full inning after 6th, 1x per game
-    if (pitcher.card.icons.includes('RP') && !pitcher.rpUsedThisGame && state.inning > 6) {
+    // RP icon: active for the full inning once chosen
+    if (pitcher.rpInningActive) {
         modifier += 3;
         descriptions.push('+3 control (RP icon)');
     }

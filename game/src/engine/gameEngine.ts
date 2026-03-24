@@ -13,7 +13,7 @@ import type { SavedLineup } from '../lib/lineups';
 import { resolveHitterChart, resolvePitcherChart, resolvePitch } from './charts';
 import { advanceRunners, resolveDoublePlay, resolveExtraBase } from './baserunning';
 import { getFatiguePenalty } from './fatigue';
-import { getPitchModifiers } from './icons';
+import { getPitchModifiers, getOffensiveIcons as getOffIcons, getDefensiveIcons as getDefIcons } from './icons';
 import { applyPinchHit, applyPitchingChange, getTotalInfieldFielding, getTotalOutfieldFielding } from './substitutions';
 
 // ============================================================================
@@ -175,6 +175,18 @@ export function processAction(state: GameState, action: GameAction): GameState {
         case 'USE_ICON_G':
             newState = handleGoldGlove(newState, action.cardId);
             break;
+
+        case 'USE_ICON_20': {
+            const ft20 = getFieldingTeam(newState);
+            const np20 = [...ft20.pitchers];
+            const p20 = np20[ft20.currentPitcherIndex];
+            np20[ft20.currentPitcherIndex] = { ...p20, twentyUsedThisInning: true };
+            newState = setFieldingTeam(newState, { ...ft20, pitchers: np20 });
+            newState.currentAtBatEvents = [...newState.currentAtBatEvents, `${p20.card.name} uses 20 icon (+3 control)`];
+            newState.gameLog = [...newState.gameLog, `${p20.card.name} uses 20 icon`];
+            newState.phase = 'pitch';
+            break;
+        }
 
         case 'DECLINE_ICON':
             newState = handleDeclineIcon(newState);
@@ -360,25 +372,11 @@ function handlePitch(state: GameState, pitchRoll: number): GameState {
     if (fatiguePenalty !== 0) modDescriptions.push(`Fatigue ${fatiguePenalty}`);
     modDescriptions.push(...descriptions);
 
-    // Mark 20 icon as used this inning if applicable
-    let fieldingTeam = getFieldingTeam(state);
-    if (iconModifier > 0) {
-        const newPitchers = [...fieldingTeam.pitchers];
-        const p = newPitchers[fieldingTeam.currentPitcherIndex];
-        if (p.card.icons.includes('20') && !p.twentyUsedThisInning) {
-            newPitchers[fieldingTeam.currentPitcherIndex] = { ...p, twentyUsedThisInning: true };
-        }
-        if (p.card.icons.includes('RP') && !p.rpUsedThisGame && state.inning > 6) {
-            newPitchers[fieldingTeam.currentPitcherIndex] = { ...newPitchers[fieldingTeam.currentPitcherIndex], rpUsedThisGame: true, rpInningActive: true };
-        }
-        fieldingTeam = { ...fieldingTeam, pitchers: newPitchers };
-    }
-
     const chartSide = usePitcherChart ? `${pitcher.card.name}'s chart` : `${batter.card.name}'s chart`;
     const log = `Pitch: ${pitchRoll} + ${pitcher.card.control}${totalModifier !== 0 ? ` (${totalModifier > 0 ? '+' : ''}${totalModifier})` : ''} = ${total} vs OB ${batter.card.onBase} → ${chartSide}`;
 
     return {
-        ...setFieldingTeam(state, fieldingTeam),
+        ...state,
         phase: 'swing',
         pendingResult: {
             outcome: 'FB', // placeholder until swing
@@ -413,12 +411,21 @@ function handleSwing(state: GameState, swingRoll: number): GameState {
 
     const log = `Swing: ${swingRoll} → ${outcomeNames[outcome]}`;
 
-    return {
+    let newState: GameState = {
         ...state,
         phase: 'result_pending',
         pendingResult: { ...state.pendingResult, outcome, swingRoll },
         currentAtBatEvents: [...state.currentAtBatEvents, log],
     };
+
+    // Check if any icons are available — if not, auto-apply result
+    const offIcons = getOffIcons(newState);
+    const defIcons = getDefIcons(newState);
+    if (offIcons.length === 0 && defIcons.length === 0) {
+        return applyResult(newState);
+    }
+
+    return newState;
 }
 
 function handleVisionReroll(state: GameState, cardId: string): GameState {
@@ -489,11 +496,8 @@ function handleGoldGlove(state: GameState, cardId: string): GameState {
 }
 
 function handleDeclineIcon(state: GameState): GameState {
-    // Move to next phase based on current context
-    if (state.phase === 'icon_offense' || state.phase === 'icon_defense') {
-        return applyResult(state);
-    }
-    return state;
+    // Apply the result — this handles all phases where icons could be used
+    return applyResult(state);
 }
 
 function handleDeclineExtraBase(state: GameState, runnerId: string): GameState {
