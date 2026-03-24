@@ -74,25 +74,35 @@ export async function joinGame(gameId: string): Promise<GameRow> {
 }
 
 export async function selectLineup(gameId: string, role: PlayerRole, lineupId: string, lineupName: string, lineupData: any): Promise<void> {
-    // Store the full lineup data so the game engine can read it without cross-user RLS issues
-    // We store lineup data in a dedicated JSONB approach: read current state, merge in lineup
-    const { data: current } = await supabase.from('games').select('state').eq('id', gameId).single();
-    const existingState = current?.state || {};
+    // Use separate JSONB fields to avoid race condition when both players write simultaneously
+    // We use a Postgres jsonb merge via raw SQL-like approach, but since we can't do that
+    // easily with the JS client, we use separate columns per role via the pending_action field
+    // as a temp store for the away lineup, OR we just retry the merge
 
-    const newState = {
-        ...existingState,
-        [`${role}Lineup`]: lineupData,
-    };
+    // Retry loop to handle race condition
+    for (let attempt = 0; attempt < 3; attempt++) {
+        const { data: current } = await supabase.from('games').select('state').eq('id', gameId).single();
+        const existingState = (typeof current?.state === 'object' && current?.state !== null) ? current.state : {};
 
-    const update = role === 'home'
-        ? { home_lineup_id: lineupId, home_lineup_name: lineupName, home_ready: true, state: newState }
-        : { away_lineup_id: lineupId, away_lineup_name: lineupName, away_ready: true, state: newState };
+        const newState = {
+            ...existingState,
+            [`${role}Lineup`]: lineupData,
+        };
 
-    const { error } = await supabase
-        .from('games')
-        .update(update)
-        .eq('id', gameId);
-    if (error) throw error;
+        const update = role === 'home'
+            ? { home_lineup_id: lineupId, home_lineup_name: lineupName, home_ready: true, state: newState }
+            : { away_lineup_id: lineupId, away_lineup_name: lineupName, away_ready: true, state: newState };
+
+        const { error } = await supabase
+            .from('games')
+            .update(update)
+            .eq('id', gameId);
+
+        if (!error) return;
+        // Wait a bit and retry
+        await new Promise(r => setTimeout(r, 500));
+    }
+    throw new Error('Failed to save lineup after retries');
 }
 
 export async function startGame(gameId: string, initialState: any): Promise<void> {

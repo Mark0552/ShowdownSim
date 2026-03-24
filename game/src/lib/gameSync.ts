@@ -37,9 +37,19 @@ export async function startGameSession(
         if (game.state && game.state.inning) {
             state = game.state as GameState;
         } else {
-            // Initialize from lineup data stored on the game row
-            const homeLineup = game.state?.homeLineup;
-            const awayLineup = game.state?.awayLineup;
+            // Wait for both lineups to be on the game row
+            let gameData = game;
+            for (let attempt = 0; attempt < 15; attempt++) {
+                const homeLineup = gameData.state?.homeLineup;
+                const awayLineup = gameData.state?.awayLineup;
+                if (homeLineup && awayLineup) break;
+                await new Promise(r => setTimeout(r, 1000));
+                const { data } = await supabase.from('games').select('*').eq('id', gameId).single();
+                if (data) gameData = data;
+            }
+
+            const homeLineup = gameData.state?.homeLineup;
+            const awayLineup = gameData.state?.awayLineup;
 
             if (!homeLineup || !awayLineup) {
                 throw new Error('Both lineups must be selected before starting');
@@ -48,8 +58,8 @@ export async function startGameSession(
             state = initializeGameState(
                 homeLineup,
                 awayLineup,
-                game.home_user_id,
-                game.away_user_id!,
+                gameData.home_user_id,
+                gameData.away_user_id!,
             );
 
             // Update game status and write initial state
