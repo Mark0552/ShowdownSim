@@ -1,0 +1,53 @@
+.game-log {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.game-log h3 {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    flex-shrink: 0;
+}
+
+.log-entries {
+    overflow-y: auto;
+    flex: 1;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.log-entry {
+    padding: 2px 0;
+    color: var(--text-dim);
+}
+
+.log-entry.inning-break {
+    color: var(--accent);
+    font-weight: 600;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+}
+
+.log-entry.highlight { color: var(--accent); font-weight: 700; }
+.log-entry.scored { color: var(--success); font-weight: 600; }
+
+.log-current {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px dashed var(--border);
+}
+
+.log-event {
+    padding: 1px 0;
+    color: var(--text);
+    font-size: 12px;
+}

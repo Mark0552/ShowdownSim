@@ -1,0 +1,43 @@
+.diamond {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.diamond-svg {
+    width: 260px;
+    height: 230px;
+}
+
+.runner-label {
+    fill: white;
+    font-size: 12px;
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+
+.diamond-outs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.out-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: transparent;
+}
+
+.out-dot.active {
+    background: var(--error);
+    border-color: var(--error);
+}
+
+.outs-label {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-left: 4px;
+}

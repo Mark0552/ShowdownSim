@@ -9,6 +9,7 @@ import LoginPage from './pages/LoginPage';
 import MainMenu from './pages/MainMenu';
 import LineupsPage from './pages/LineupsPage';
 import LobbyPage from './pages/LobbyPage';
+import GamePage from './pages/GamePage';
 import TeamBuilder from './pages/TeamBuilder';
 
 type Page = 'login' | 'menu' | 'lineups' | 'builder' | 'lobby' | 'game';
@@ -123,19 +124,12 @@ export default function App() {
                 />
             );
         case 'game':
-            // Placeholder until Phase 2+3
+            if (!activeGameId) return null;
             return (
-                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', gap: 16 }}>
-                    <h1 style={{ color: 'var(--accent)' }}>Game Starting...</h1>
-                    <p style={{ color: 'var(--text-dim)' }}>Game ID: {activeGameId?.slice(0, 8)}</p>
-                    <p style={{ color: 'var(--text-muted)' }}>Game engine coming soon</p>
-                    <button
-                        onClick={() => { setActiveGameId(null); setPage('lobby'); }}
-                        style={{ padding: '10px 20px', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}
-                    >
-                        Back to Lobby
-                    </button>
-                </div>
+                <GamePage
+                    gameId={activeGameId}
+                    onBack={() => { setActiveGameId(null); setPage('lobby'); }}
+                />
             );
     }
 }
