@@ -1,0 +1,1752 @@
+[
+    {
+        "#": 1,
+        "Name": "Bad Call",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on a SO result.",
+        "Description": "Discard a card. Reroll the swing. (Use the same chart as before.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223688.jpg"
+    },
+    {
+        "#": 2,
+        "Name": "Burned",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play after an intentional walk.",
+        "Description": "Add +4 to your next batter’s swing.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223689.jpg"
+    },
+    {
+        "#": 3,
+        "Name": "Check Swing",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on a SO result on the batter’s chart.",
+        "Description": "Discard 2 cards. Change the result to a BB. If your batter has the V icon you may play Check Swing on a SO result on the pitcher’s chart.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223690.jpg"
+    },
+    {
+        "#": 4,
+        "Name": "Deep in the Gap",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on a FB result.",
+        "Description": "Discard a card. Roll a die. If your roll ties or beats the center fielder’s Speed change the result to a 2B.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223691.jpg"
+    },
+    {
+        "#": 5,
+        "Name": "Drained",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "If the pitcher is tired and there’s a runner on first with Speed A or Speed B he steals second without a throw. (You can steal a base only if it’s open.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223692.jpg"
+    },
+    {
+        "#": 6,
+        "Name": "Ducks on the Pond",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Discard a card. Add +1 to the swing for each runner.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223693.jpg"
+    },
+    {
+        "#": 7,
+        "Name": "Great Addition",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play at any time.",
+        "Description": "Discard a card. Add +1 to any roll. If your player has the RY icon instead add +2 to any roll. (You can use Great Addition to change a roll that has been made already.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223694.jpg"
+    },
+    {
+        "#": 8,
+        "Name": "Hard Slide",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play after a double-play attempt.",
+        "Description": "Discard a card. The defense rerolls the double-play attempt.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223695.jpg"
+    },
+    {
+        "#": 9,
+        "Name": "Inside the Park Home Run",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on a 1B+ or 3B result.",
+        "Description": "If your batter is Speed A the defense makes an outfield Fielding check at +8. If it succeeds your batter is out and each runner scores. If it fails your batter and each runner scores. If your batter has the SB icon instead make the check at +3.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223696.jpg"
+    },
+    {
+        "#": 10,
+        "Name": "Options",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Choose one: Add +1 to the swing subtract 1 from the pitch or draw a card and then discard a card.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223697.jpg"
+    },
+    {
+        "#": 11,
+        "Name": "Out of the Frying Pan",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play after a HR result.",
+        "Description": "Discard any number of cards. Look at your opponent’s hand and choose that many cards. Your opponent discards the chosen cards.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223698.jpg"
+    },
+    {
+        "#": 12,
+        "Name": "Play the Percentages",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "If the pitcher is LHP and your batter bats R or S add +2 to the swing.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223699.jpg"
+    },
+    {
+        "#": 13,
+        "Name": "Pointers",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before your batter’s swing is rerolled.",
+        "Description": "Add +3 to the reroll.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223700.jpg"
+    },
+    {
+        "#": 14,
+        "Name": "Poor Positioning",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Add +1 to the swing. If the defense has any players with the R icon on defense instead add +3 to the swing.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223701.jpg"
+    },
+    {
+        "#": 15,
+        "Name": "Pull the Ball",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on any out result.",
+        "Description": "If the pitcher is RHP and your batter bats L or S reroll the swing. (Use the same chart as before.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223702.jpg"
+    },
+    {
+        "#": 16,
+        "Name": "Rough Outing",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "If at least 4 runs have been charged to your opponent’s pitcher he gets –1 IP.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223703.jpg"
+    },
+    {
+        "#": 17,
+        "Name": "Slow Roller",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before a double-play attempt.",
+        "Description": "Subtract 3 from the defense’s roll.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223704.jpg"
+    },
+    {
+        "#": 18,
+        "Name": "Stick a Fork in Him",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on any out result.",
+        "Description": "If the pitcher is tired reroll the swing. (Use the same chart as before.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223705.jpg"
+    },
+    {
+        "#": 19,
+        "Name": "Sweet Swing",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "If the pitcher is RHP and your batter bats L or S add +2 to the swing.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223706.jpg"
+    },
+    {
+        "#": 20,
+        "Name": "Take What’s Given",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Add +2 to the swing. If your batter gets a HR result change the result to a 1B.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223707.jpg"
+    },
+    {
+        "#": 21,
+        "Name": "Think Again",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play at any time.",
+        "Description": "If your opponent just played a card that made you discard Think Again return Think Again to your hand and draw a card.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223708.jpg"
+    },
+    {
+        "#": 22,
+        "Name": "Turn on It",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on any out result.",
+        "Description": "If the pitcher is LHP and your batter bats R or S reroll the swing. (Use the same chart as before.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223709.jpg"
+    },
+    {
+        "#": 23,
+        "Name": "Aces Up",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on a 1B result on the pitcher’s chart.",
+        "Description": "Reroll the pitch and the swing. If your pitcher has the CY icon you may instead reroll the pitch and swing for any result (on the pitcher’s chart).",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223710.jpg"
+    },
+    {
+        "#": 24,
+        "Name": "Caught Him Leaning",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "If there is a runner on first with Speed A and second base is open roll a die. 1-17: No effect. 18-20: The runner on first is out.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223711.jpg"
+    },
+    {
+        "#": 25,
+        "Name": "Caught the Corner",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Subtract 1 from the batter’s swing. If the batter gets a SO result draw a card. If your pitcher has the K icon and the batter gets a SO result your opponent also chooses a card from his or her hand and discards it. 1 2 [Next] [End]",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223712.jpg"
+    },
+    {
+        "#": 26,
+        "Name": "Choke",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play after the third out of an inning.",
+        "Description": "If the bases were loaded your opponent chooses and discards 3 cards from his or her hand. (If your opponent has only 1 or 2 cards discard all of them.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223713.jpg"
+    },
+    {
+        "#": 27,
+        "Name": "Cover Second",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before a stolen-base attempt.",
+        "Description": "Choose either your second baseman or shortstop. Add that player’s Fielding to the defense’s total roll. If the chosen player has the G icon and the stolen-base attempt fails your opponent discards 2 cards.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223714.jpg"
+    },
+    {
+        "#": 28,
+        "Name": "Dominating",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "If your pitcher is a closer and the batter gets an out result change the result to a SO.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223715.jpg"
+    },
+    {
+        "#": 29,
+        "Name": "Foul Ball",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on a 1B or 1B+ result.",
+        "Description": "Discard a card. Reroll the swing. (Use the same chart as before.) If your pitcher has the 20 icon your opponent also chooses a card from his or her hand and discards it.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223716.jpg"
+    },
+    {
+        "#": 30,
+        "Name": "Good Leather",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play at any time.",
+        "Description": "Add +2 to a player’s Fielding for any roll. If that player has the G icon instead add +6 to his Fielding for any roll.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223717.jpg"
+    },
+    {
+        "#": 31,
+        "Name": "Hooking Foul",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on a 1B or 2B result on the pitcher’s chart.",
+        "Description": "If your pitcher is LHP and the batter bats L reroll the swing. (Use the same chart as before.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223718.jpg"
+    },
+    {
+        "#": 32,
+        "Name": "In the Zone",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play after the third out of an inning.",
+        "Description": "If your pitcher got 3 SO results this inning add +2 to each of his pitches next inning.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223719.jpg"
+    },
+    {
+        "#": 33,
+        "Name": "Infield In",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "If first base is open and the batter gets a GB result runners on second and third don’t advance.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223720.jpg"
+    },
+    {
+        "#": 34,
+        "Name": "Lined Out of Play",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on a 1B or 2B result on the pitcher’s chart.",
+        "Description": "If your pitcher is RHP and the batter bats R reroll the swing. (Use the same chart as before.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223721.jpg"
+    },
+    {
+        "#": 35,
+        "Name": "Locate",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Leave this card on your pitcher until the end of the inning. If your pitcher gets a natural 20 on a pitch roll you may discard Locate to draw 4 cards.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223722.jpg"
+    },
+    {
+        "#": 36,
+        "Name": "Locked In",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Your opponent chooses one: Subtract 2 from the swing; or you draw 2 cards.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223723.jpg"
+    },
+    {
+        "#": 37,
+        "Name": "Nerves of Steel",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "If your pitcher is a closer add +3 to the pitch.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223724.jpg"
+    },
+    {
+        "#": 38,
+        "Name": "Paint the Corner",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Discard a card. Subtract 2 from the swing. If your pitcher has the 20 icon draw a card.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223725.jpg"
+    },
+    {
+        "#": 39,
+        "Name": "Power Pitching",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Subtract 3 from the swing. If the batter gets a FB result change the result to a HR. If your pitcher has the CY icon and the batter gets an out result draw 2 cards.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223726.jpg"
+    },
+    {
+        "#": 40,
+        "Name": "Short Fly",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on a FB result.",
+        "Description": "Change the result to a PU.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223727.jpg"
+    },
+    {
+        "#": 41,
+        "Name": "Sloppy Bunt",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on a sacrifice bunt.",
+        "Description": "If the batter is a pitcher the lead runner is out. The batter and each other runner is safe.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223728.jpg"
+    },
+    {
+        "#": 42,
+        "Name": "Split-Finger Fastball",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the batter’s swing is rerolled.",
+        "Description": "Subtract 3 from the reroll.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223729.jpg"
+    },
+    {
+        "#": 43,
+        "Name": "Top-Level Strategy",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "If the batter is a pinch hitter and gets an out result your opponent reveals his or her hand. You choose 3 cards from his or her hand and discard them. (If your opponent has only 1 or 2 cards discard all of them.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223730.jpg"
+    },
+    {
+        "#": 44,
+        "Name": "Tough as Nails",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "If there is a runner in scoring position with less than 2 outs subtract 2 from the swing. If your pitcher has the RP icon draw a card.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223731.jpg"
+    },
+    {
+        "#": 45,
+        "Name": "Change in Strategy",
+        "Type": "Util",
+        "Yr.": "'04",
+        "WhenPlayed": "Play at any time.",
+        "Description": "Draw 3 cards and then discard 3 cards.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223732.jpg"
+    },
+    {
+        "#": 46,
+        "Name": "Close Call",
+        "Type": "Util",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before any die roll.",
+        "Description": "Discard a card. If the roll isn’t for a pitch or a swing add +2 to it or subtract 2 from it.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223733.jpg"
+    },
+    {
+        "#": 47,
+        "Name": "New Strategies",
+        "Type": "Util",
+        "Yr.": "'04",
+        "WhenPlayed": "Play after any substitution.",
+        "Description": "Reveal the top 3 cards of your deck. Your opponent chooses 2 of those cards. Put the chosen cards into your hand and the remaining card on the bottom of your deck.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223734.jpg"
+    },
+    {
+        "#": 48,
+        "Name": "Second Look",
+        "Type": "Util",
+        "Yr.": "'04",
+        "WhenPlayed": "Play after an extra-base attempt.",
+        "Description": "Reroll the attempt.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223735.jpg"
+    },
+    {
+        "#": 49,
+        "Name": "Swing at Anything",
+        "Type": "Util",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on a BB result.",
+        "Description": "Reroll the swing. (Use the same chart as before.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223736.jpg"
+    },
+    {
+        "#": 50,
+        "Name": "Think Twice",
+        "Type": "Util",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on a reroll of a pitch or a swing.",
+        "Description": "Draw 2 cards. [Begin] [Previous] 1 2",
+        "expansion": "Base Set",
+        "imagePath": "cards/2004-Strategy/2223737.jpg"
+    },
+    {
+        "#": 1,
+        "Name": "Down the Middle",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on a 2B result.",
+        "Description": "If the pitcher is tired change the result to a HR.",
+        "expansion": "Pennant Run",
+        "imagePath": "cards/2004-Pennant-Run-Strategy/2223663.jpg"
+    },
+    {
+        "#": 2,
+        "Name": "Grooved",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Discard a card. If the bases are empty add +3 to the swing or subtract 2 from the pitch.",
+        "expansion": "Pennant Run",
+        "imagePath": "cards/2004-Pennant-Run-Strategy/2223664.jpg"
+    },
+    {
+        "#": 3,
+        "Name": "Lost in the Sun",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on a FB result.",
+        "Description": "Discard a card. The defense makes a combined infield and outfield Fielding check. If it fails change the result to a 1B that doesn’t let runners try for extra bases.",
+        "expansion": "Pennant Run",
+        "imagePath": "cards/2004-Pennant-Run-Strategy/2223665.jpg"
+    },
+    {
+        "#": 4,
+        "Name": "Protect the Runner",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Make a stolen-base attempt using a runner on first or second. Subtract 3 from the catcher’s roll. Add +2 to the pitch. (You can steal a base only if it’s open.)",
+        "expansion": "Pennant Run",
+        "imagePath": "cards/2004-Pennant-Run-Strategy/2223666.jpg"
+    },
+    {
+        "#": 5,
+        "Name": "Running on Fumes",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on a SO result.",
+        "Description": "If the pitcher is tired reroll the swing on your batter’s chart. (If he’s a pitcher use his chart anyway.)",
+        "expansion": "Pennant Run",
+        "imagePath": "cards/2004-Pennant-Run-Strategy/2223667.jpg"
+    },
+    {
+        "#": 6,
+        "Name": "Serious Wheels",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Make a stolen-base attempt using a runner on first or second and add +5 to the runner’s speed. If your player has the {SB} icon steal without a throw. (You can steal a base only if it’s open.)",
+        "expansion": "Pennant Run",
+        "imagePath": "cards/2004-Pennant-Run-Strategy/2223668.jpg"
+    },
+    {
+        "#": 7,
+        "Name": "Smash up the Middle",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on a GB result.",
+        "Description": "Discard a card. The second baseman and shortstop make a Fielding check. If it fails change the result to a 1B.",
+        "expansion": "Pennant Run",
+        "imagePath": "cards/2004-Pennant-Run-Strategy/2223669.jpg"
+    },
+    {
+        "#": 8,
+        "Name": "Superior Talent",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Leave this card on your batter until the end of the game. If your batter gets a natural 20 on a swing roll you may discard Superior Talent to draw 4 cards.",
+        "expansion": "Pennant Run",
+        "imagePath": "cards/2004-Pennant-Run-Strategy/2223670.jpg"
+    },
+    {
+        "#": 9,
+        "Name": "Swat!",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "If your batter gets the advantage add +3 to the swing. If your batter gets the advantage and has the {S} icon draw a card. If your batter gets any out result change the result to a SO.",
+        "expansion": "Pennant Run",
+        "imagePath": "cards/2004-Pennant-Run-Strategy/2223671.jpg"
+    },
+    {
+        "#": 10,
+        "Name": "Timing",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on a FB or GB result.",
+        "Description": "If a reliever or closer is on the mound roll a die. 1–5: Change the result to a SO. 6–16: Reroll the swing. (Use the same chart as before.) 17–18: Change the result to a 1B. 19–20: Change the result to a 2B.",
+        "expansion": "Pennant Run",
+        "imagePath": "cards/2004-Pennant-Run-Strategy/2223672.jpg"
+    },
+    {
+        "#": 11,
+        "Name": "Calculated Risk",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "The batter is intentionally walked. (This isn’t a BB result.) Return each offensive strategy card played this at-bat to its owner’s hand.",
+        "expansion": "Pennant Run",
+        "imagePath": "cards/2004-Pennant-Run-Strategy/2223673.jpg"
+    },
+    {
+        "#": 12,
+        "Name": "Chin Music",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play after a BB result.",
+        "Description": "Discard a card. Leave this card on the batter who just walked. (It remains in play.) Subtract 1 from each of that batter’s swings.",
+        "expansion": "Pennant Run",
+        "imagePath": "cards/2004-Pennant-Run-Strategy/2223674.jpg"
+    },
+    {
+        "#": 13,
+        "Name": "Great Start",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play after the third out of an inning.",
+        "Description": "If your starter would be tired next inning and he’s given up 3 or fewer runs he gets +1 IP. (Playing another Great Start this inning won’t do anything.)",
+        "expansion": "Pennant Run",
+        "imagePath": "cards/2004-Pennant-Run-Strategy/2223675.jpg"
+    },
+    {
+        "#": 14,
+        "Name": "High and Tight",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "If your opponent’s last batter this inning got a hit result add +2 to the pitch or subtract 1 from the swing.",
+        "expansion": "Pennant Run",
+        "imagePath": "cards/2004-Pennant-Run-Strategy/2223676.jpg"
+    },
+    {
+        "#": 15,
+        "Name": "Intimidation",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "If the last batter struck out add +2 to the pitch.",
+        "expansion": "Pennant Run",
+        "imagePath": "cards/2004-Pennant-Run-Strategy/2223677.jpg"
+    },
+    {
+        "#": 16,
+        "Name": "On Your Toes",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before a double-play attempt.",
+        "Description": "Add +10 to your attempt. If you fail discard a card.",
+        "expansion": "Pennant Run",
+        "imagePath": "cards/2004-Pennant-Run-Strategy/2223678.jpg"
+    },
+    {
+        "#": 17,
+        "Name": "Rally Killer",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play after a successful double-play attempt.",
+        "Description": "Your opponent discards 2 cards (1 if he or she has only 1).",
+        "expansion": "Pennant Run",
+        "imagePath": "cards/2004-Pennant-Run-Strategy/2223679.jpg"
+    },
+    {
+        "#": 18,
+        "Name": "Setup Man",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Play Setup Man only on a reliever. Subtract 2 from the swing. If your pitcher has the {RP} icon no more strategy cards may be played until the next at-bat.",
+        "expansion": "Pennant Run",
+        "imagePath": "cards/2004-Pennant-Run-Strategy/2223680.jpg"
+    },
+    {
+        "#": 19,
+        "Name": "Whiff!",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on a PU or SO result.",
+        "Description": "Look at the top 3 cards of your opponent’s strategy deck. Discard one of those cards and put the other 2 back on top of the deck in any order. (You don’t have to show your opponent the cards you put back.)",
+        "expansion": "Pennant Run",
+        "imagePath": "cards/2004-Pennant-Run-Strategy/2223681.jpg"
+    },
+    {
+        "#": 20,
+        "Name": "Dugout General",
+        "Type": "Util",
+        "Yr.": "'04",
+        "WhenPlayed": "Play at any time.",
+        "Description": "If it’s the 9th inning or later choose a card in your discard pile and return it to your hand.",
+        "expansion": "Pennant Run",
+        "imagePath": "cards/2004-Pennant-Run-Strategy/2223682.jpg"
+    },
+    {
+        "#": 21,
+        "Name": "Old Tricks",
+        "Type": "Util",
+        "Yr.": "'04",
+        "WhenPlayed": "Play at any time.",
+        "Description": "Choose 1 card in your discard pile and put it on the bottom of your strategy deck. Draw a card.",
+        "expansion": "Pennant Run",
+        "imagePath": "cards/2004-Pennant-Run-Strategy/2223683.jpg"
+    },
+    {
+        "#": 22,
+        "Name": "Out of Sync",
+        "Type": "Util",
+        "Yr.": "'04",
+        "WhenPlayed": "Play at any time.",
+        "Description": "Play Out of Sync after your opponent rolls a natural 1. Look at his or her hand and choose 2 cards. Your opponent discards those cards. (If your opponent has only 1 card discard it.)",
+        "expansion": "Pennant Run",
+        "imagePath": "cards/2004-Pennant-Run-Strategy/2223684.jpg"
+    },
+    {
+        "#": 23,
+        "Name": "Revelation",
+        "Type": "Util",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "If you’re losing look at your opponent’s hand. Choose a card there and set it aside. You may play that set aside card as though it were in your hand. At the start of the next inning if you didn’t play that card put it into its owner’s discard pile.",
+        "expansion": "Pennant Run",
+        "imagePath": "cards/2004-Pennant-Run-Strategy/2223685.jpg"
+    },
+    {
+        "#": 24,
+        "Name": "Stealing Signals",
+        "Type": "Util",
+        "Yr.": "'04",
+        "WhenPlayed": "Play at any time.",
+        "Description": "Look at your opponent’s hand. You may discard a card from your hand and draw a card.",
+        "expansion": "Pennant Run",
+        "imagePath": "cards/2004-Pennant-Run-Strategy/2223686.jpg"
+    },
+    {
+        "#": 25,
+        "Name": "Superstar",
+        "Type": "Util",
+        "Yr.": "'04",
+        "WhenPlayed": "Play at any time.",
+        "Description": "Play Superstar only on a player with a point value of 500 or more. Discard a card. Add +2 to any roll. (You can use Superstar to change a roll that has been made already.) 1",
+        "expansion": "Pennant Run",
+        "imagePath": "cards/2004-Pennant-Run-Strategy/2223687.jpg"
+    },
+    {
+        "#": 1,
+        "Name": "Dialed-In",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Discard 2 cards. If there’s a runner in scoring position skip the pitch and roll for the swing on the batter’s chart. If the batter has the {S} icon draw a card.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2004-Trading-Deadline-Strategy/2223738.jpg"
+    },
+    {
+        "#": 2,
+        "Name": "En Fuego!",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play after a hit result.",
+        "Description": "Leave this card on your batter. Add +1 to your batter’s On-Base. (Playing another En Fuego! on this player will have no effect.)",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2004-Trading-Deadline-Strategy/2223739.jpg"
+    },
+    {
+        "#": 3,
+        "Name": "Last Chance",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "If there are 2 outs add +2 to the swing.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2004-Trading-Deadline-Strategy/2223740.jpg"
+    },
+    {
+        "#": 4,
+        "Name": "On the Move",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Play On the Move only if there’s a runner on first if there are runners on first and second or if the bases are loaded. The defense can’t make a double-play attempt. If you score any runs draw a card.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2004-Trading-Deadline-Strategy/2223741.jpg"
+    },
+    {
+        "#": 5,
+        "Name": "Opposite-Field Power",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on a 2B result on the batter’s chart.",
+        "Description": "Discard a card. If the pitcher is LHP and your batter bats R or S change the result to a HR. If your batter has the {S} icon you may play Opposite-Field Power on a 2B result on the pitcher’s chart instead.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2004-Trading-Deadline-Strategy/2223742.jpg"
+    },
+    {
+        "#": 6,
+        "Name": "Out of Gas",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "If the pitcher is tired add +3 to the swing.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2004-Trading-Deadline-Strategy/2223743.jpg"
+    },
+    {
+        "#": 7,
+        "Name": "Quick Thinking",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play at any time.",
+        "Description": "Choose one: Remove a defensive (blue) card attached to a player; or you may have your opponent choose and discard a card.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2004-Trading-Deadline-Strategy/2223744.jpg"
+    },
+    {
+        "#": 8,
+        "Name": "Swing for the Fences",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Add +2 to the swing. If your batter rolls a BB change the result to a SO.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2004-Trading-Deadline-Strategy/2223745.jpg"
+    },
+    {
+        "#": 9,
+        "Name": "Wheelhouse",
+        "Type": "Off",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on a 2B result on the batter’s chart.",
+        "Description": "Discard a card. If the pitcher is RHP and your batter bats L or S change the result to a HR. If your batter has the {S} icon you may play Wheelhouse on a 2B result on the pitcher’s chart instead.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2004-Trading-Deadline-Strategy/2223746.jpg"
+    },
+    {
+        "#": 10,
+        "Name": "Beaned",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "You can’t play Beaned if another strategy card has been played or used this at-bat. The batter is intentionally walked (BB). Subtract 2 from the swing of the next batter.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2004-Trading-Deadline-Strategy/2223747.jpg"
+    },
+    {
+        "#": 11,
+        "Name": "Broken Bat",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Roll a die. 1–5: Skip the pitch and the swing. The result is a GB on the pitcher’s chart. If a double-play attempt is made this at-bat add +5 to the roll. 6–20: No effect (foul ball). Roll for the pitch and the swing normally.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2004-Trading-Deadline-Strategy/2223748.jpg"
+    },
+    {
+        "#": 12,
+        "Name": "Caught Napping",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on a hit or a FB result.",
+        "Description": "Runners with Speed C can’t try for extra bases this at-bat.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2004-Trading-Deadline-Strategy/2223749.jpg"
+    },
+    {
+        "#": 13,
+        "Name": "Chopper",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on a GB result.",
+        "Description": "The lead runner is out. Each other runner is safe. You can’t make a double-play attempt.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2004-Trading-Deadline-Strategy/2223750.jpg"
+    },
+    {
+        "#": 14,
+        "Name": "Dying Quail",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on a 1B or a 1B+ result.",
+        "Description": "Your opponent can’t make any extra-base attempts this at-bat.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2004-Trading-Deadline-Strategy/2223751.jpg"
+    },
+    {
+        "#": 15,
+        "Name": "Great Reactions",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play at any time.",
+        "Description": "Choose one: Remove an offensive (red) card attached to a player; or you may have your opponent choose and discard a card.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2004-Trading-Deadline-Strategy/2223752.jpg"
+    },
+    {
+        "#": 16,
+        "Name": "Insult to Injury",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play after a SO result.",
+        "Description": "Look at your opponent’s hand. Choose 1 of those cards and discard it.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2004-Trading-Deadline-Strategy/2223753.jpg"
+    },
+    {
+        "#": 17,
+        "Name": "Lefty Shift",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "If the batter bats L add +1 to the Fielding of each player on defense this at-bat.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2004-Trading-Deadline-Strategy/2223754.jpg"
+    },
+    {
+        "#": 18,
+        "Name": "Pumped Up",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play after the third out of an inning.",
+        "Description": "Draw a card for every batter your pitchers struck out this inning.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2004-Trading-Deadline-Strategy/2223755.jpg"
+    },
+    {
+        "#": 19,
+        "Name": "Punched Out",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play after a SO result.",
+        "Description": "Leave Punched Out on the batter who just struck out. (It remains in play.) Before a pitch to the batter that has this card on it you may discard Punched Out to subtract 2 from the swing.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2004-Trading-Deadline-Strategy/2223756.jpg"
+    },
+    {
+        "#": 20,
+        "Name": "Robbed!",
+        "Type": "Def",
+        "Yr.": "'04",
+        "WhenPlayed": "Play at any time.",
+        "Description": "Discard a card. Subtract 1 from any roll. If your opponent has any player with the RY icon in the game, instead subtract 2 from any roll. (You can use Robbed! to change a roll that has been made already.)",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2004-Trading-Deadline-Strategy/2223757.jpg"
+    },
+    {
+        "#": 21,
+        "Name": "Feast or Famine",
+        "Type": "Util",
+        "Yr.": "'04",
+        "WhenPlayed": "Play at any time.",
+        "Description": "Discard a card. Reveal the top 4 cards of your strategy deck. Your opponent splits those cards into 2 face-up piles. Put 1 pile in your hand and put the other pile into your discard pile",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2004-Trading-Deadline-Strategy/2223758.jpg"
+    },
+    {
+        "#": 22,
+        "Name": "Home-Field Advantage",
+        "Type": "Util",
+        "Yr.": "'04",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "If you’re the home team add +2 to the pitch or the swing.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2004-Trading-Deadline-Strategy/2223759.jpg"
+    },
+    {
+        "#": 23,
+        "Name": "Just Over the Rail",
+        "Type": "Util",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on a PU result.",
+        "Description": "Reroll the swing. (Use the same chart as before.)",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2004-Trading-Deadline-Strategy/2223760.jpg"
+    },
+    {
+        "#": 24,
+        "Name": "Late Call",
+        "Type": "Util",
+        "Yr.": "'04",
+        "WhenPlayed": "Play on any die roll.",
+        "Description": "Discard a card. If the roll isn’t for a pitch or a swing reroll it.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2004-Trading-Deadline-Strategy/2223761.jpg"
+    },
+    {
+        "#": 25,
+        "Name": "Outmanaged",
+        "Type": "Util",
+        "Yr.": "'04",
+        "WhenPlayed": "Play at any time.",
+        "Description": "Your opponent chooses 3 cards in his or her hand and shows them to you. Choose 1 of those cards and discard it. If your opponent has any players with the {R} icon on his or her roster instead choose 2 of those cards and discard them. 1",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2004-Trading-Deadline-Strategy/2223762.jpg"
+    },
+    {
+        "#": 1,
+        "Name": "Goodbye Baseball!",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play on a walk or hit result.",
+        "Description": "Play Goodbye Baseball! on a batter who has a HR result of 18+ or lower or has the {HR} icon. Reroll the swing. (Use the same chart as before.) If your batter has the {HR} icon add +3 to the swing.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434919.jpg"
+    },
+    {
+        "#": 2,
+        "Name": "Great Addition",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play at any time.",
+        "Description": "Discard a card. Add +1 to any roll. If your player has the {RY} icon instead add +2 to any roll. (You can use Great Addition to change a roll that has been made already.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434920.jpg"
+    },
+    {
+        "#": 3,
+        "Name": "Hacker",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Add +3 to the swing. Change each BB and 1B result to a SO.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434921.jpg"
+    },
+    {
+        "#": 4,
+        "Name": "Helping Himself",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play after any hit result.",
+        "Description": "Play Helping Himself on a pitcher who just got a hit on offense. Leave this card on your pitcher until the end of the game. Add +1 to each of his pitches and +3 to each of his swings. (Playing another Helping Himself on this player will have no effect.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434922.jpg"
+    },
+    {
+        "#": 5,
+        "Name": "High Pitch Count",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play after a hit or walk result.",
+        "Description": "If the bases are loaded the pitcher gets –1 IP.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434923.jpg"
+    },
+    {
+        "#": 6,
+        "Name": "Hit the Foul Pole",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play on a FB result.",
+        "Description": "Discard 1 card. Roll a die. 1–17: No effect. 18–20: Change the result to a HR.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434924.jpg"
+    },
+    {
+        "#": 7,
+        "Name": "Make Contact",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Discard a card. If there is a runner in scoring position change any BB result to a 1B result.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434925.jpg"
+    },
+    {
+        "#": 8,
+        "Name": "Pull the Ball",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play on any out result.",
+        "Description": "If the pitcher is RHP and your batter bats L or S reroll the swing. (Use the same chart as before.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434926.jpg"
+    },
+    {
+        "#": 9,
+        "Name": "Rattled",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play after the third out of an inning.",
+        "Description": "If your team scored 2 or more runs off the pitcher this inning he gets –1 IP.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434927.jpg"
+    },
+    {
+        "#": 10,
+        "Name": "Role Player",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Play Role Player on a player who didn’t start the game. Leave this card on your player until the end of the game. Add +1 to each of his swings. (Playing another Role Player on this player will have no effect.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434928.jpg"
+    },
+    {
+        "#": 11,
+        "Name": "Scuffling",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play after any hit result.",
+        "Description": "Play Scuffling on a pitcher who is tired. Leave this card on that pitcher until the end of the game. Subtract 3 from each of his pitches.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434929.jpg"
+    },
+    {
+        "#": 12,
+        "Name": "See It Clearly",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Subtract 1 from the pitcher’s roll. If your batter has the {S} icon instead subtract 3 from the pitcher’s roll.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434930.jpg"
+    },
+    {
+        "#": 13,
+        "Name": "Serious Wheels",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Make a stolen-base attempt using a runner on first or second and add +5 to the runner’s Speed. If your player has the {SB} icon steal without a throw. (You can steal a base only if it’s open.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434931.jpg"
+    },
+    {
+        "#": 14,
+        "Name": "Sprint to Second",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play on a double-play attempt.",
+        "Description": "Use the Speed of your runner on first for the attempt. If the attempt fails your batter and runner are both safe. (If it succeeds they’re both out.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434932.jpg"
+    },
+    {
+        "#": 15,
+        "Name": "Steal the Sign",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Play Steal the Sign on a runner on second base. Leave this card on your player until the end of the game. Add +2 to each of his swings. (Playing another Steal the Sign on this player will have no effect.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434933.jpg"
+    },
+    {
+        "#": 16,
+        "Name": "Turn on It",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play on any out result.",
+        "Description": "If the pitcher is LHP and your batter bats R or S reroll the swing. (Use the same chart as before.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434934.jpg"
+    },
+    {
+        "#": 17,
+        "Name": "Upper-Deck Shot",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play after a HR result.",
+        "Description": "Discard a card. Search your deck for any card reveal it to your opponent and put it into your hand. Then shuffle your deck. If the player who hit the HR has the {HR} icon your opponent chooses and discards 2 cards.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434935.jpg"
+    },
+    {
+        "#": 18,
+        "Name": "Valuable Asset",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Discard a card. Add +2 to the swing. If your batter has the {V} icon draw a card.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434936.jpg"
+    },
+    {
+        "#": 19,
+        "Name": "Weakest Link",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play on any out result.",
+        "Description": "Play Weakest Link only if your opponent has a player with the {R} icon in his or her lineup. Reroll the swing. (Use the same chart as before.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434937.jpg"
+    },
+    {
+        "#": 20,
+        "Name": "Work the Count",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play on a PU result.",
+        "Description": "Change the result to a BB.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434938.jpg"
+    },
+    {
+        "#": 21,
+        "Name": "6–4–3",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play after a successful double-play attempt.",
+        "Description": "Play 6–4–3 on one of your infielders. Leave this card on that player until the end of the game. That infielder’s Fielding is now +3. (Playing another 6–4–3 on this player will have no effect.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434939.jpg"
+    },
+    {
+        "#": 22,
+        "Name": "Aces Up",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play on a 1B result on the pitcher’s chart.",
+        "Description": "Reroll the pitch and the swing. If your pitcher has the {CY} icon you may instead reroll the pitch and swing for any result on the pitcher’s chart.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434940.jpg"
+    },
+    {
+        "#": 23,
+        "Name": "Can of Corn",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play on a FB result.",
+        "Description": "Your opponent can’t make any extra-base attempts this at-bat. If one of your outfielders has the {G} icon draw a card.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434941.jpg"
+    },
+    {
+        "#": 24,
+        "Name": "De-nied!",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play after a successful double-play attempt.",
+        "Description": "Draw 2 cards. If any of your infielders have the {G} icon instead draw 3 cards.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434942.jpg"
+    },
+    {
+        "#": 25,
+        "Name": "Fireballer",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play after the third out of an inning.",
+        "Description": "If your pitcher got 3 SO results this inning draw 2 cards and your opponent chooses and discards 2 cards from his or her hand. 1 2 [Next] [End]",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434943.jpg"
+    },
+    {
+        "#": 26,
+        "Name": "Full Windup",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "If the bases are empty add +2 to the pitch.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434944.jpg"
+    },
+    {
+        "#": 27,
+        "Name": "Good Leather",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play at any time.",
+        "Description": "Add +2 to a player’s Fielding for any roll. If that player has the {G} icon instead add +6 to his Fielding for any roll.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434945.jpg"
+    },
+    {
+        "#": 28,
+        "Name": "Hooking Foul",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play on a 1B or 2B result on the pitcher’s chart.",
+        "Description": "If your pitcher is LHP and the batter bats L reroll the swing. (Use the same chart as before.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434946.jpg"
+    },
+    {
+        "#": 29,
+        "Name": "Knuckleball",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Roll a die. 1–2: Each runner advances one base and you roll again on this card. 3–5: Skip the pitch and swing; the result is a BB. 6–12: No effect. 13–20: Subtract 4 from the swing.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434947.jpg"
+    },
+    {
+        "#": 30,
+        "Name": "Lined Out of Play",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play on a 1B or 2B result on the pitcher’s chart.",
+        "Description": "If your pitcher is RHP and the batter bats R reroll the swing. (Use the same chart as before.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434948.jpg"
+    },
+    {
+        "#": 31,
+        "Name": "Masterpiece",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Discard 2 cards. If the bases are empty skip the pitch and roll for the swing on the pitcher’s chart. If your pitcher has the {20} icon draw 2 cards and discard 1 card from your hand.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434949.jpg"
+    },
+    {
+        "#": 32,
+        "Name": "Out Pitch",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play after a 1-2-3 inning.",
+        "Description": "Leave Out Pitch on your pitcher until the end of the game. Change one type of out result on his chart (PU SO GB or FB) to another type of out result. (For example all FB’s become GB’s or all GB’s become SO’s.) (Once a type of out result is chosen it can’t be changed.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434950.jpg"
+    },
+    {
+        "#": 33,
+        "Name": "Paint the Corner",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Discard a card. Subtract 2 from the swing. If your pitcher has the {20} icon draw a card.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434951.jpg"
+    },
+    {
+        "#": 34,
+        "Name": "Playing Shallow",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play on a 1B or 1B+ result.",
+        "Description": "If the batter has a chart with a HR result of 21+ or more (or is a pitcher) reroll the swing. (Use the same chart as before.) If you have 2 or more outfielders with the {G} icon draw a card.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434952.jpg"
+    },
+    {
+        "#": 35,
+        "Name": "Robbed!",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play at any time.",
+        "Description": "Discard a card. Subtract 1 from any roll. If your opponent has any player with the {RY} icon on his or her roster instead subtract 2 from any roll. (You can use Robbed! to change a roll that has been made already.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434953.jpg"
+    },
+    {
+        "#": 36,
+        "Name": "Shut the Door",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Play Shut the Door on a closer only if it's the ninth inning or later and the bases are empty. Leave this card on your pitcher until he gives up a hit or a walk. Add +2 to each of his pitches. If your pitcher has the {RP} icon draw a card. (Playing another Shut the Door on this player will have no effect.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434954.jpg"
+    },
+    {
+        "#": 37,
+        "Name": "Up and In",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Discard a card. No more offensive strategy cards may be played until the next at-bat.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434955.jpg"
+    },
+    {
+        "#": 38,
+        "Name": "Working the Edge",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play after a SO result.",
+        "Description": "Leave this card on your pitcher until he gives up a hit. Add +1 to each of his pitches. If your pitcher has the {CY} icon your opponent randomly chooses and discards 1 card from his or her hand. (Playing another Working the Edge on this player will have no effect.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434956.jpg"
+    },
+    {
+        "#": 39,
+        "Name": "25th Man",
+        "Type": "Util",
+        "Yr.": "'05",
+        "WhenPlayed": "Play on any die roll.",
+        "Description": "Play 25th Man on your opponent's player with a point value of 50 or less. Discard a card. Subtract 2 from that roll. (You can use 25th Man to subtract from a roll that has already been made.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434957.jpg"
+    },
+    {
+        "#": 40,
+        "Name": "Change in Strategy",
+        "Type": "Util",
+        "Yr.": "'05",
+        "WhenPlayed": "Play at any time.",
+        "Description": "Draw 3 cards and then discard 3 cards.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434958.jpg"
+    },
+    {
+        "#": 41,
+        "Name": "Close Call",
+        "Type": "Util",
+        "Yr.": "'05",
+        "WhenPlayed": "Play before any die roll.",
+        "Description": "Discard a card. If the roll isn’t for a pitch or a swing add +2 to it or subtract 2 from it.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434959.jpg"
+    },
+    {
+        "#": 42,
+        "Name": "Fake to Third",
+        "Type": "Util",
+        "Yr.": "'05",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Play Fake to Third only if there are runners on first base and third base. Roll a die. 1–3: The pitcher balks and each runner advances one base. 4–16: No effect. 17–20: The runner at first is out.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434960.jpg"
+    },
+    {
+        "#": 43,
+        "Name": "Fan Interference",
+        "Type": "Util",
+        "Yr.": "'05",
+        "WhenPlayed": "Play on a FB or 3B result.",
+        "Description": "If you’re on defense change the result to a 2B that doesn’t let runners try for extra bases. If you’re on offense reroll the swing. (Use the same chart as before.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434961.jpg"
+    },
+    {
+        "#": 44,
+        "Name": "Field General",
+        "Type": "Util",
+        "Yr.": "'05",
+        "WhenPlayed": "Play at any time.",
+        "Description": "Play Field General only if you are losing and have less cards than your opponent. Draw cards until you have the same number of cards as your opponent.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434962.jpg"
+    },
+    {
+        "#": 45,
+        "Name": "Intensity",
+        "Type": "Util",
+        "Yr.": "'05",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Play Intensity only if the bases are loaded. Subtract 2 from the pitch or the swing.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434963.jpg"
+    },
+    {
+        "#": 46,
+        "Name": "Mind Games",
+        "Type": "Util",
+        "Yr.": "'05",
+        "WhenPlayed": "Play after your opponent makes a substitution.",
+        "Description": "Return a card in your discard pile to your hand.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434964.jpg"
+    },
+    {
+        "#": 47,
+        "Name": "New Strategies",
+        "Type": "Util",
+        "Yr.": "'05",
+        "WhenPlayed": "Play after any substitution.",
+        "Description": "Reveal the top 3 cards of your deck. Your opponent chooses 2 of those cards. Put the chosen cards into your hand and the remaining card on the bottom of your deck.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434965.jpg"
+    },
+    {
+        "#": 48,
+        "Name": "Scouting Report",
+        "Type": "Util",
+        "Yr.": "'05",
+        "WhenPlayed": "Play at any time.",
+        "Description": "You and your opponent each count the number of cards in your hands shuffle them into your decks and then draw that many cards. (Don’t count Scouting Report as a card in hand for the new draw.)",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434966.jpg"
+    },
+    {
+        "#": 49,
+        "Name": "Second Look",
+        "Type": "Util",
+        "Yr.": "'05",
+        "WhenPlayed": "Play after an extra-base attempt.",
+        "Description": "Reroll the attempt.",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434967.jpg"
+    },
+    {
+        "#": 50,
+        "Name": "Swing at Anything",
+        "Type": "Util",
+        "Yr.": "'05",
+        "WhenPlayed": "Play on a BB result.",
+        "Description": "Reroll the swing. (Use the same chart as before.) [Begin] [Previous] 1 2",
+        "expansion": "Base Set",
+        "imagePath": "cards/2005-Strategy/2434968.jpg"
+    },
+    {
+        "#": 1,
+        "Name": "Free Steal",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play after a BB result.",
+        "Description": "If your batter has Speed A and second is open he steals it without a throw.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2005-Trading-Deadline-Strategy/2434977.jpg"
+    },
+    {
+        "#": 2,
+        "Name": "Get Under It",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "If your batter rolls a PU or a GB change the result to a FB.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2005-Trading-Deadline-Strategy/2434978.jpg"
+    },
+    {
+        "#": 3,
+        "Name": "Go Yard!",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play after a HR result.",
+        "Description": "Look at your opponent’s hand and choose 2 cards. He or she discards those cards. If the player who hit the HR has the {V} icon your opponent discards his or her hand instead.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2005-Trading-Deadline-Strategy/2434979.jpg"
+    },
+    {
+        "#": 4,
+        "Name": "Just Called Up",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Play Just Called Up only on a player with the {R} icon. Add +3 to the swing.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2005-Trading-Deadline-Strategy/2434980.jpg"
+    },
+    {
+        "#": 5,
+        "Name": "Leadoff Man",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "If your batter has Speed A and hits first or second in your batting order subtract 2 from the pitch or add +3 to the swing. If that batter has the {SB} icon and gets a BB or 1B result you may make a stolen-base attempt using that player. (You can steal a base only if it’s open.)",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2005-Trading-Deadline-Strategy/2434981.jpg"
+    },
+    {
+        "#": 6,
+        "Name": "Lofted",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play on a 2B result.",
+        "Description": "Roll a die. 1-10: No effect. 11-20: Change the result to a HR.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2005-Trading-Deadline-Strategy/2434982.jpg"
+    },
+    {
+        "#": 7,
+        "Name": "Missed the Cutoff",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play after an extra-base attempt.",
+        "Description": "If the defense tried to throw a runner out at home runners on first and second advance 1 base.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2005-Trading-Deadline-Strategy/2434983.jpg"
+    },
+    {
+        "#": 8,
+        "Name": "Momentum Swing",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Play Momentum Swing only if you’re losing by 2 or more runs. Leave this card on your opponent’s pitcher until the end of the inning. Subtract 1 from each pitch.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2005-Trading-Deadline-Strategy/2434984.jpg"
+    },
+    {
+        "#": 9,
+        "Name": "Shaken",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Play Shaken only if your last 2 (or more) batters got hit results this inning. Add +3 to the swing. (A walk isn't a hit.)",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2005-Trading-Deadline-Strategy/2434985.jpg"
+    },
+    {
+        "#": 10,
+        "Name": "Shelled",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Play Shelled only on a pitcher who’s given up a hit or BB to your last 4 (or more) batters this inning. Leave this card on that pitcher until the end of the game. Add +2 to each of your batter's swings. (Playing another Shelled on that pitcher will have no effect.)",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2005-Trading-Deadline-Strategy/2434986.jpg"
+    },
+    {
+        "#": 11,
+        "Name": "Texas Leaguer",
+        "Type": "Off",
+        "Yr.": "'05",
+        "WhenPlayed": "Play on a FB result.",
+        "Description": "Discard a card. The defense makes an outfield Fielding check at +5. If the check fails change the result to a 1B that doesn’t let runners try for extra bases. If your batter has the {S} icon draw a card.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2005-Trading-Deadline-Strategy/2434987.jpg"
+    },
+    {
+        "#": 12,
+        "Name": "Caught Looking",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play after a SO result.",
+        "Description": "Draw 2 cards. If your pitcher has the {K} icon you may put a card from your discard pile on the bottom of your deck.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2005-Trading-Deadline-Strategy/2434988.jpg"
+    },
+    {
+        "#": 13,
+        "Name": "Great Range",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play after a FB result.",
+        "Description": "Play Great Range only if there is a runner on first. Roll a die: 1-4: Each runner advances 1 base. Draw a card. 5-16: No effect. 17-20: The runner on first is out and your opponent draws a card.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2005-Trading-Deadline-Strategy/2434989.jpg"
+    },
+    {
+        "#": 14,
+        "Name": "High Heat",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play on any out result.",
+        "Description": "Discard a card. Change the result to a SO.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2005-Trading-Deadline-Strategy/2434990.jpg"
+    },
+    {
+        "#": 15,
+        "Name": "Just Over the Wall",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play on a HR result.",
+        "Description": "If the total swing was 20 or more make an outfield Fielding check. If it succeeds change the result to a FB that advances each runner 1 base.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2005-Trading-Deadline-Strategy/2434991.jpg"
+    },
+    {
+        "#": 16,
+        "Name": "Slider",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Subtract 1 from the pitch. If the batter gets a PU SO or FB result change the result to a GB.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2005-Trading-Deadline-Strategy/2434992.jpg"
+    },
+    {
+        "#": 17,
+        "Name": "Stranded",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play after the third out of an inning.",
+        "Description": "Draw a card for each runner left on base.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2005-Trading-Deadline-Strategy/2434993.jpg"
+    },
+    {
+        "#": 18,
+        "Name": "Superior Athlete",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "Leave this card on your pitcher until the end of the game. Add +2 to your infield Fielding checks. (Playing another Superior Athlete on this player will have no effect.)",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2005-Trading-Deadline-Strategy/2434994.jpg"
+    },
+    {
+        "#": 19,
+        "Name": "Taking a Risk",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "You and your opponent flip over the top 3 cards of your decks. Whoever reveals more defense cards puts those cards in his or her hand and discards the others. The loser discards all 3 cards. If there is a tie you both discard all 3 cards and repeat the process.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2005-Trading-Deadline-Strategy/2434995.jpg"
+    },
+    {
+        "#": 20,
+        "Name": "Team Defense",
+        "Type": "Def",
+        "Yr.": "'05",
+        "WhenPlayed": "Play before the pitch.",
+        "Description": "If the last batter this inning got a PU GB or FB result add +2 to the pitch. If your pitcher has the {20} icon instead add +3 to the pitch.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2005-Trading-Deadline-Strategy/2434996.jpg"
+    },
+    {
+        "#": 21,
+        "Name": "Brainstorm",
+        "Type": "Util",
+        "Yr.": "'05",
+        "WhenPlayed": "Play at any time.",
+        "Description": "Look at the top 3 cards of your deck. Put 1 of them into your hand and discard the others.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2005-Trading-Deadline-Strategy/2434997.jpg"
+    },
+    {
+        "#": 22,
+        "Name": "Change the Scorecard",
+        "Type": "Util",
+        "Yr.": "'05",
+        "WhenPlayed": "Play after any substitution.",
+        "Description": "Look at the top 2 cards of your deck then choose one: Draw those 2 cards or discard those 2 cards and return Change the Scorecard to your hand.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2005-Trading-Deadline-Strategy/2434998.jpg"
+    },
+    {
+        "#": 23,
+        "Name": "Good Coaching",
+        "Type": "Util",
+        "Yr.": "'05",
+        "WhenPlayed": "Play at any time.",
+        "Description": "Remove an offense (red) defense (blue) or utility (white) card that is attached to a player.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2005-Trading-Deadline-Strategy/2434999.jpg"
+    },
+    {
+        "#": 24,
+        "Name": "Preparation",
+        "Type": "Util",
+        "Yr.": "'05",
+        "WhenPlayed": "Play after the third out of an inning.",
+        "Description": "Name a card. Your opponent reveals his or her hand. If the named card is there search his or her deck and hand and put all cards with that name into the discard pile.",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2005-Trading-Deadline-Strategy/2435000.jpg"
+    },
+    {
+        "#": 25,
+        "Name": "Shell Game",
+        "Type": "Util",
+        "Yr.": "'05",
+        "WhenPlayed": "Play at any time.",
+        "Description": "You and your opponent roll the die. Whoever rolls higher may choose: Draw 2 cards or your opponent discards 2 cards. 1",
+        "expansion": "Trading Deadline",
+        "imagePath": "cards/2005-Trading-Deadline-Strategy/2435001.jpg"
+    }
+]

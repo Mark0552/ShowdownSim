@@ -33,6 +33,9 @@ const SETS = [
     { sid: 8149, name: '2005-Trading-Deadline', slug: '2005-MLB-Showdown-Trading-Deadline', pages: 2 },
     { sid: 8148, name: '2005-Strategy', slug: '2005-MLB-Showdown---Strategy', pages: 1 },
     { sid: 254755, name: '2005-Promos', slug: '2005-MLB-Showdown---Showdown-League-Promos', pages: 1 },
+    { sid: 8140, name: '2004-Pennant-Run-Strategy', slug: '2004-MLB-Showdown-Pennant-Run---Strategy', pages: 1 },
+    { sid: 8143, name: '2004-Trading-Deadline-Strategy', slug: '2004-MLB-Showdown-Trading-Deadline---Strategy', pages: 1 },
+    { sid: 8150, name: '2005-Trading-Deadline-Strategy', slug: '2005-MLB-Showdown-Trading-Deadline---Strategy', pages: 1 },
 ];
 
 const BASE_URL = 'https://www.tcdb.com';

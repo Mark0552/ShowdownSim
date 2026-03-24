@@ -348,7 +348,8 @@ function determineOutcome(player, roll, isHitter) {
     return OUTCOME.FLYBALL;
 }
 
-function applyHitterIcons(outcome, stats, usingHitterChart) {
+function applyHitterIcons(outcome, stats, usingHitterChart, iconsEnabled = true) {
+    if (!iconsEnabled) return outcome;
     if (stats.hasV && stats.gameVuses < 2 && usingHitterChart && OUT_OUTCOMES.includes(outcome)) {
         stats.gameVuses++;
         stats.Vused++;
@@ -380,7 +381,7 @@ function applyHitterIcons(outcome, stats, usingHitterChart) {
     return outcome;
 }
 
-function simulateAtBat(hitter, pitcher, stats, rollDie) {
+function simulateAtBat(hitter, pitcher, stats, rollDie, iconsEnabled = true) {
     stats.gameAbCount++;
     if (stats.gameAbCount > 5) {
         stats.gameAbCount = 1;
@@ -395,25 +396,28 @@ function simulateAtBat(hitter, pitcher, stats, rollDie) {
 
     const wouldUsePitcherChartWithoutIcons = baseRoll > hitter.onBase;
 
-    const outsInCurrentGame = pitcher.outs % 27;
-    if (pitcher.hasRP && outsInCurrentGame < 3) {
-        pitcherRoll += 3;
-        if (pitcher.iconCounts['RP'] === 0) {
-            pitcher.RPused++;
-            pitcher.iconCounts['RP'] = 1;
+    // Pitcher icons (RP, 20, K) — only when icons enabled
+    if (iconsEnabled) {
+        const outsInCurrentGame = pitcher.outs % 27;
+        if (pitcher.hasRP && outsInCurrentGame < 3) {
+            pitcherRoll += 3;
+            if (pitcher.iconCounts['RP'] === 0) {
+                pitcher.RPused++;
+                pitcher.iconCounts['RP'] = 1;
+            }
+            if (!wouldUsePitcherChartWithoutIcons && pitcherRoll > hitter.onBase) {
+                pitcher.iconImpact.RP.advantageSwings++;
+            }
         }
-        if (!wouldUsePitcherChartWithoutIcons && pitcherRoll > hitter.onBase) {
-            pitcher.iconImpact.RP.advantageSwings++;
-        }
-    }
 
-    if (pitcher.has20 && pitcher.iconCounts['20'] < 1) {
-        const rollBefore20 = pitcherRoll;
-        pitcherRoll += 3;
-        pitcher.iconCounts['20']++;
-        pitcher.twentyUsed++;
-        if (rollBefore20 <= hitter.onBase && pitcherRoll > hitter.onBase) {
-            pitcher.iconImpact.twenty.advantageSwings++;
+        if (pitcher.has20 && pitcher.iconCounts['20'] < 1) {
+            const rollBefore20 = pitcherRoll;
+            pitcherRoll += 3;
+            pitcher.iconCounts['20']++;
+            pitcher.twentyUsed++;
+            if (rollBefore20 <= hitter.onBase && pitcherRoll > hitter.onBase) {
+                pitcher.iconImpact.twenty.advantageSwings++;
+            }
         }
     }
 
@@ -425,10 +429,11 @@ function simulateAtBat(hitter, pitcher, stats, rollDie) {
         outcome = usePitcherChart
             ? determineOutcome(pitcher, hitterRoll, false)
             : determineOutcome(hitter, hitterRoll, true);
-        outcome = applyHitterIcons(outcome, stats, usingHitterChart);
+        outcome = applyHitterIcons(outcome, stats, usingHitterChart, iconsEnabled);
     } while (outcome === null);
 
-    if (outcome === OUTCOME.HOMERUN && pitcher.hasK && pitcher.iconCounts['K'] < 1) {
+    // K icon blocks home runs
+    if (iconsEnabled && outcome === OUTCOME.HOMERUN && pitcher.hasK && pitcher.iconCounts['K'] < 1) {
         outcome = OUTCOME.STRIKEOUT;
         pitcher.kused++;
         pitcher.iconCounts['K']++;
@@ -436,6 +441,7 @@ function simulateAtBat(hitter, pitcher, stats, rollDie) {
         pitcher.iconImpact.K.tbSaved += 4;
     }
 
+    // Icon cooldown resets (still track outs even with icons off)
     if (pitcher.outs > 0 && pitcher.outs % 27 === 0) {
         pitcher.iconCounts['K'] = 0;
         pitcher.iconCounts['RP'] = 0;
@@ -823,7 +829,7 @@ function generateHtmlTable(data, columns, isHitter = true) {
     return `<table><thead><tr>${headers}</tr><tr class="filter-row">${filters}</tr></thead><tbody>${rows}</tbody></table>`;
 }
 
-function exportToHtml(hittersData, pitchersData, filename, config) {
+function buildResultTabs(hittersData, pitchersData, config, prefix) {
     const positions = ["C", "1B", "2B", "3B", "SS", "LF-RF", "CF", "DH", "All Hitters"];
     const playersByPosition = Object.fromEntries(positions.map(p => [p, []]));
 
@@ -898,8 +904,8 @@ function exportToHtml(hittersData, pitchersData, filename, config) {
         players.sort((a, b) => (b.valueRating || 0) - (a.valueRating || 0));
 
         const activeClass = idx === 0 ? 'active' : '';
-        hitterTabs += `<button class="tab ${activeClass}" onclick="showTab('hitter-${pos}')">${pos}</button>`;
-        hitterContent += `<div id="hitter-${pos}" class="tab-content ${activeClass}">${generateHtmlTable(players, hitterColumns, true)}</div>`;
+        hitterTabs += `<button class="tab ${activeClass}" onclick="showTab('${prefix}-hitter-${pos}')">${pos}</button>`;
+        hitterContent += `<div id="${prefix}-hitter-${pos}" class="tab-content ${activeClass}">${generateHtmlTable(players, hitterColumns, true)}</div>`;
     });
 
     const pitchersByRole = { 'Starters': [], 'Relievers+Closers': [] };
@@ -961,15 +967,21 @@ function exportToHtml(hittersData, pitchersData, filename, config) {
         pitchers.sort((a, b) => (b.valueRating || 0) - (a.valueRating || 0));
 
         const activeClass = idx === 0 ? 'active' : '';
-        pitcherTabs += `<button class="tab ${activeClass}" onclick="showTab('pitcher-${role}')">${role}</button>`;
-        pitcherContent += `<div id="pitcher-${role}" class="tab-content ${activeClass}">${generateHtmlTable(pitchers, pitcherColumns, false)}</div>`;
+        pitcherTabs += `<button class="tab ${activeClass}" onclick="showTab('${prefix}-pitcher-${role}')">${role}</button>`;
+        pitcherContent += `<div id="${prefix}-pitcher-${role}" class="tab-content ${activeClass}">${generateHtmlTable(pitchers, pitcherColumns, false)}</div>`;
     });
 
-    const html = buildHtmlPage(hitterTabs, hitterContent, pitcherTabs, pitcherContent, config);
+    return { hitterTabs, hitterContent, pitcherTabs, pitcherContent };
+}
+
+function exportToHtml(hittersOn, pitchersOn, filename, config, hittersOff, pitchersOff) {
+    const on = buildResultTabs(hittersOn, pitchersOn, config, 'on');
+    const off = buildResultTabs(hittersOff, pitchersOff, config, 'off');
+    const html = buildHtmlPage(on, off, config);
     fs.writeFileSync(filename, html);
 }
 
-function buildHtmlPage(hitterTabs, hitterContent, pitcherTabs, pitcherContent, config) {
+function buildHtmlPage(on, off, config) {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1001,6 +1013,15 @@ function buildHtmlPage(hitterTabs, hitterContent, pitcherTabs, pitcherContent, c
         .val-good { color: #4ade80; }
         .val-bad { color: #f87171; }
         .name-cell { cursor: help; }
+        /* Mode toggle */
+        .mode-toggle { display: flex; gap: 0; margin-bottom: 20px; }
+        .mode-btn { padding: 10px 24px; border: 2px solid #1f4068; background: #16213e; color: #eee; cursor: pointer; font-size: 15px; font-weight: 600; }
+        .mode-btn:first-child { border-radius: 6px 0 0 6px; }
+        .mode-btn:last-child { border-radius: 0 6px 6px 0; }
+        .mode-btn.active { background: #e94560; border-color: #e94560; }
+        .mode-btn:hover:not(.active) { background: #1f4068; }
+        .mode-panel { display: none; }
+        .mode-panel.active { display: block; }
         /* Filter row */
         .filter-row th { background: #0f1f3a; position: sticky; top: 29px; z-index: 10; padding: 3px 4px; cursor: default; }
         .filter-row th:hover { background: #0f1f3a; }
@@ -1034,30 +1055,62 @@ function buildHtmlPage(hitterTabs, hitterContent, pitcherTabs, pitcherContent, c
 <body>
     <h1>MLB Showdown Simulation Results</h1>
     <div class="sim-info">${config.AT_BATS_PER_MATCHUP} at-bats per matchup${config.SEED ? ' | Seed: "' + config.SEED + '"' : ''}</div>
-    <div id="tooltip"></div>
 
-    <div class="section" id="hitter-section">
-        <h2>Hitters <button class="clear-filters" onclick="clearFilters('hitter-section')">Clear Filters</button></h2>
-        <div class="tabs">${hitterTabs}</div>
-        <div class="table-container">${hitterContent}</div>
-        <div class="match-count" id="hitter-match-count"></div>
+    <div class="mode-toggle">
+        <button class="mode-btn active" onclick="switchMode('on')">With Icons</button>
+        <button class="mode-btn" onclick="switchMode('off')">Without Icons</button>
     </div>
 
-    <div class="section" id="pitcher-section">
-        <h2>Pitchers <button class="clear-filters" onclick="clearFilters('pitcher-section')">Clear Filters</button></h2>
-        <div class="tabs">${pitcherTabs}</div>
-        <div class="table-container">${pitcherContent}</div>
-        <div class="match-count" id="pitcher-match-count"></div>
+    <div id="tooltip"></div>
+
+    <div id="mode-on" class="mode-panel active">
+        <div class="section" id="on-hitter-section">
+            <h2>Hitters (Icons ON) <button class="clear-filters" onclick="clearFilters('on-hitter-section')">Clear Filters</button></h2>
+            <div class="tabs">${on.hitterTabs}</div>
+            <div class="table-container">${on.hitterContent}</div>
+            <div class="match-count"></div>
+        </div>
+        <div class="section" id="on-pitcher-section">
+            <h2>Pitchers (Icons ON) <button class="clear-filters" onclick="clearFilters('on-pitcher-section')">Clear Filters</button></h2>
+            <div class="tabs">${on.pitcherTabs}</div>
+            <div class="table-container">${on.pitcherContent}</div>
+            <div class="match-count"></div>
+        </div>
+    </div>
+
+    <div id="mode-off" class="mode-panel">
+        <div class="section" id="off-hitter-section">
+            <h2>Hitters (No Icons) <button class="clear-filters" onclick="clearFilters('off-hitter-section')">Clear Filters</button></h2>
+            <div class="tabs">${off.hitterTabs}</div>
+            <div class="table-container">${off.hitterContent}</div>
+            <div class="match-count"></div>
+        </div>
+        <div class="section" id="off-pitcher-section">
+            <h2>Pitchers (No Icons) <button class="clear-filters" onclick="clearFilters('off-pitcher-section')">Clear Filters</button></h2>
+            <div class="tabs">${off.pitcherTabs}</div>
+            <div class="table-container">${off.pitcherContent}</div>
+            <div class="match-count"></div>
+        </div>
     </div>
 
     <script>
+        // Mode toggle (icons on/off)
+        function switchMode(mode) {
+            document.querySelectorAll('.mode-panel').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.mode-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('mode-' + mode).classList.add('active');
+            event.target.classList.add('active');
+        }
+
         // Tab switching
         function showTab(id) {
-            const section = id.startsWith('hitter') ? 'hitter' : 'pitcher';
-            document.querySelectorAll('[id^="' + section + '-"].tab-content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.tabs .tab').forEach(el => {
-                if (el.onclick.toString().includes(section)) el.classList.remove('active');
-            });
+            // Find the parent section by walking up from the tab ID
+            const el = document.getElementById(id);
+            if (!el) return;
+            const section = el.closest('.section');
+            if (!section) return;
+            section.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+            section.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
             document.getElementById(id).classList.add('active');
             event.target.classList.add('active');
         }
@@ -1220,7 +1273,7 @@ function exportToXlsx(hittersData, pitchersData, filename) {
 // PROGRESS BAR
 // ============================================================================
 
-function printProgress(current, total, startTime) {
+function printProgress(current, total, startTime, label = '') {
     const percent = Math.round(current / total * 100);
     const elapsed = (Date.now() - startTime) / 1000;
     const rate = current / elapsed;
@@ -1228,44 +1281,27 @@ function printProgress(current, total, startTime) {
     const barWidth = 30;
     const filled = Math.round(barWidth * current / total);
     const bar = '#'.repeat(filled) + '-'.repeat(barWidth - filled);
+    const prefix = label ? `${label}: ` : '';
 
-    process.stdout.write(`\r  [${bar}] ${percent}% (${current}/${total}) ${remaining}s remaining  `);
+    process.stdout.write(`\r  ${prefix}[${bar}] ${percent}% (${current}/${total}) ${remaining}s remaining  `);
 }
 
 // ============================================================================
 // MAIN SIMULATION
 // ============================================================================
 
-function runSimulation(config) {
-    const startTime = Date.now();
-    const rng = config.SEED ? seedrandom(config.SEED) : Math.random;
-    const rollDie = () => Math.floor(rng() * 20) + 1;
-
-    const hitters = JSON.parse(fs.readFileSync('./hitters.json'));
-    const pitchers = JSON.parse(fs.readFileSync('./pitchers.json'));
-
-    console.log(`Hitters: ${hitters.length} | Pitchers: ${pitchers.length} | At-bats/matchup: ${config.AT_BATS_PER_MATCHUP}`);
-    console.log(`Seed: ${config.SEED ? '"' + config.SEED + '"' : 'random'} | Output: ${config.OUTPUT} (${config.FORMAT})`);
-    console.log(`Total matchups: ${(hitters.length * pitchers.length).toLocaleString()} | Total at-bats: ${(hitters.length * pitchers.length * config.AT_BATS_PER_MATCHUP).toLocaleString()}`);
-
-    validateData(hitters, pitchers);
-
-    console.log('Pre-computing ranges...');
-    precomputeRanges(hitters, ['SO', 'GB', 'FB', 'W', 'S', 'SPlus', 'DB', 'TR', 'HR']);
-    precomputeRanges(pitchers, ['PU', 'SO', 'GB', 'FB', 'W', 'S', 'DB', 'HR']);
-
+function runSingleSim(hitters, pitchers, config, rollDie, iconsEnabled, label, startTime) {
     const pitcherData = pitchers.map(initializePitcher);
     const pitchersResults = {};
     pitcherData.forEach(p => {
         pitchersResults[`${p.Name} ${p["Yr."]} ${p.Ed} ${p["#"]} ${p.Team}`] = p;
     });
 
-    console.log('Simulating...');
     const hittersResults = {};
     const totalHitters = hitters.length;
 
     hitters.forEach((hitter, index) => {
-        printProgress(index, totalHitters, startTime);
+        printProgress(index, totalHitters, startTime, label);
 
         const stats = createHitterStats(hitter);
 
@@ -1273,7 +1309,7 @@ function runSimulation(config) {
             pitcher.iconCounts = { '20': 0, 'K': 0, 'RP': 0 };
 
             for (let i = 0; i < config.AT_BATS_PER_MATCHUP; i++) {
-                const outcome = simulateAtBat(hitter, pitcher, stats, rollDie);
+                const outcome = simulateAtBat(hitter, pitcher, stats, rollDie, iconsEnabled);
                 updateHitterStats(stats, outcome);
                 updatePitcherStats(pitcher, outcome, config.WEIGHTS);
             }
@@ -1282,17 +1318,48 @@ function runSimulation(config) {
         hittersResults[stats.name] = calculateFinalStats(stats, config.WEIGHTS);
     });
 
-    printProgress(totalHitters, totalHitters, startTime);
+    printProgress(totalHitters, totalHitters, startTime, label);
     console.log('');
+
+    return { hittersResults, pitchersResults };
+}
+
+function runSimulation(config) {
+    const startTime = Date.now();
+
+    const hitters = JSON.parse(fs.readFileSync('./hitters.json'));
+    const pitchers = JSON.parse(fs.readFileSync('./pitchers.json'));
+
+    console.log(`Hitters: ${hitters.length} | Pitchers: ${pitchers.length} | At-bats/matchup: ${config.AT_BATS_PER_MATCHUP}`);
+    console.log(`Seed: ${config.SEED ? '"' + config.SEED + '"' : 'random'} | Output: ${config.OUTPUT} (${config.FORMAT})`);
+    console.log(`Total matchups: ${(hitters.length * pitchers.length).toLocaleString()} | Total at-bats: ${(hitters.length * pitchers.length * config.AT_BATS_PER_MATCHUP * 2).toLocaleString()} (x2 for icons on/off)`);
+
+    validateData(hitters, pitchers);
+
+    console.log('Pre-computing ranges...');
+    precomputeRanges(hitters, ['SO', 'GB', 'FB', 'W', 'S', 'SPlus', 'DB', 'TR', 'HR']);
+    precomputeRanges(pitchers, ['PU', 'SO', 'GB', 'FB', 'W', 'S', 'DB', 'HR']);
+
+    // Run with icons ON
+    console.log('\n--- Simulating WITH icons ---');
+    const rng1 = config.SEED ? seedrandom(config.SEED) : seedrandom(String(Date.now()));
+    const rollDie1 = () => Math.floor(rng1() * 20) + 1;
+    const iconsOn = runSingleSim(hitters, pitchers, config, rollDie1, true, 'Icons ON', startTime);
+
+    // Run with icons OFF (same seed for fair comparison)
+    console.log('--- Simulating WITHOUT icons ---');
+    const rng2 = config.SEED ? seedrandom(config.SEED) : seedrandom(String(Date.now()));
+    const rollDie2 = () => Math.floor(rng2() * 20) + 1;
+    const iconsOff = runSingleSim(hitters, pitchers, config, rollDie2, false, 'Icons OFF', Date.now());
 
     const simTime = Date.now() - startTime;
     console.log(`Simulation complete in ${(simTime / 1000).toFixed(2)}s`);
     console.log('Exporting results...');
 
     if (config.FORMAT === 'xlsx') {
-        exportToXlsx(hittersResults, pitchersResults, config.OUTPUT);
+        exportToXlsx(iconsOn.hittersResults, iconsOn.pitchersResults, config.OUTPUT);
     } else {
-        exportToHtml(hittersResults, pitchersResults, config.OUTPUT, config);
+        exportToHtml(iconsOn.hittersResults, iconsOn.pitchersResults, config.OUTPUT, config, iconsOff.hittersResults, iconsOff.pitchersResults);
     }
 
     console.log(`Results exported to ${config.OUTPUT}`);
