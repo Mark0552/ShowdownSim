@@ -102,15 +102,16 @@ export async function startGameSession(
     // Also poll for state changes (Realtime fallback)
     const pollInterval = setInterval(async () => {
         try {
-            const { data } = await supabase.from('games').select('state, pending_action').eq('id', gameId).single();
-            if (data?.state?.inning) {
+            const { data, error } = await supabase.from('games').select('state, pending_action').eq('id', gameId).maybeSingle();
+            if (error || !data) return;
+            if (data.state && typeof data.state === 'object' && data.state.inning) {
                 onStateUpdate(data.state as GameState);
             }
-            if (role === 'home' && data?.pending_action) {
+            if (role === 'home' && data.pending_action) {
                 handlePendingAction(gameId, data.pending_action, data.state as GameState, onStateUpdate);
             }
         } catch (e) { /* ignore */ }
-    }, 2000);
+    }, 3000);
 
     onStateUpdate(state);
 

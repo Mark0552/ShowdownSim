@@ -34,17 +34,17 @@ export function getOffensiveIcons(state: GameState): IconOption[] {
         }
     }
 
-    // S (Speed): upgrade 1B/1B+ to 2B, 1x per game
+    // S (Silver Slugger): upgrade 1B/1B+ to 2B, 1x per game
     if (icons.includes('S') && (result === 'S' || result === 'SPlus')) {
         if (!battingTeam.icons.speedUsed[batter.cardId]) {
-            options.push({ icon: 'S', cardId: batter.cardId, description: 'Speed: Upgrade to double' });
+            options.push({ icon: 'S', cardId: batter.cardId, description: 'Silver Slugger: Upgrade to double (1x/game)' });
         }
     }
 
     // HR (Power): upgrade 2B/3B to HR, 1x per game
     if (icons.includes('HR') && (result === 'DB' || result === 'TR')) {
         if (!battingTeam.icons.hrUsed[batter.cardId]) {
-            options.push({ icon: 'HR', cardId: batter.cardId, description: 'Power: Upgrade to home run' });
+            options.push({ icon: 'HR', cardId: batter.cardId, description: 'Power: Upgrade to home run (1x/game)' });
         }
     }
 

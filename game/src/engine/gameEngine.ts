@@ -13,7 +13,7 @@ import type { SavedLineup } from '../lib/lineups';
 import { resolveHitterChart, resolvePitcherChart, resolvePitch } from './charts';
 import { advanceRunners, resolveDoublePlay, resolveExtraBase } from './baserunning';
 import { getFatiguePenalty } from './fatigue';
-import { getPitchModifiers, getOffensiveIcons as getOffIcons, getDefensiveIcons as getDefIcons } from './icons';
+import { getPitchModifiers, getOffensiveIcons as getOffIcons, getDefensiveIcons as getDefIcons, getPrePitchOffenseIcons as getPrePitchOffenseIconsFn } from './icons';
 import { applyPinchHit, applyPitchingChange, getTotalInfieldFielding, getTotalOutfieldFielding } from './substitutions';
 
 // ============================================================================
@@ -123,9 +123,14 @@ export function processAction(state: GameState, action: GameAction): GameState {
             newState.phase = 'defense_sub';
             break;
 
-        case 'SKIP_DEFENSE_SUB':
-            newState.phase = 'offense_pre';
+        case 'SKIP_DEFENSE_SUB': {
+            // Skip offense_pre if no options available (no runners = no bunt/steal)
+            const hasBases = newState.bases.first || newState.bases.second;
+            const hasSB = getPrePitchOffenseIconsFn(newState).length > 0;
+            const canBunt = hasBases && !newState.bases.third;
+            newState.phase = (canBunt || hasSB) ? 'offense_pre' : 'pitch';
             break;
+        }
 
         case 'PITCHING_CHANGE':
             newState = handlePitchingChange(newState, action.pitcherIndex);
@@ -449,12 +454,20 @@ function handleSpeedUpgrade(state: GameState, cardId: string): GameState {
     const newIcons = { ...team.icons, speedUsed: { ...team.icons.speedUsed, [cardId]: true } };
     const newTeam = { ...team, icons: newIcons };
 
-    return {
+    let newState = {
         ...setBattingTeam(state, newTeam),
-        pendingResult: { ...state.pendingResult, outcome: 'DB' },
-        currentAtBatEvents: [...state.currentAtBatEvents, 'Speed icon: upgraded to double'],
-        gameLog: [...state.gameLog, `${getCurrentBatter(state).card.name} uses Speed icon`],
+        pendingResult: { ...state.pendingResult, outcome: 'DB' as const },
+        currentAtBatEvents: [...state.currentAtBatEvents, 'Silver Slugger: upgraded to double'],
+        gameLog: [...state.gameLog, `${getCurrentBatter(state).card.name} uses Silver Slugger icon`],
     };
+
+    // Re-check if more icons available (HR could upgrade the DB), or auto-apply
+    const offIcons = getOffIcons(newState);
+    const defIcons = getDefIcons(newState);
+    if (offIcons.length === 0 && defIcons.length === 0) {
+        return applyResult(newState);
+    }
+    return newState;
 }
 
 function handleHRUpgrade(state: GameState, cardId: string): GameState {
@@ -463,12 +476,17 @@ function handleHRUpgrade(state: GameState, cardId: string): GameState {
     const newIcons = { ...team.icons, hrUsed: { ...team.icons.hrUsed, [cardId]: true } };
     const newTeam = { ...team, icons: newIcons };
 
-    return {
+    let newState = {
         ...setBattingTeam(state, newTeam),
-        pendingResult: { ...state.pendingResult, outcome: 'HR' },
+        pendingResult: { ...state.pendingResult, outcome: 'HR' as const },
         currentAtBatEvents: [...state.currentAtBatEvents, 'Power icon: upgraded to HOME RUN!'],
         gameLog: [...state.gameLog, `${getCurrentBatter(state).card.name} uses HR icon`],
     };
+
+    // Check for remaining icons (K could block), or auto-apply
+    const defIcons = getDefIcons(newState);
+    if (defIcons.length === 0) return applyResult(newState);
+    return newState;
 }
 
 function handleKBlock(state: GameState): GameState {
@@ -477,12 +495,15 @@ function handleKBlock(state: GameState): GameState {
     const newIcons = { ...team.icons, kUsedThisGame: true };
     const newTeam = { ...team, icons: newIcons };
 
-    return {
+    // K changes to SO — no more icons possible, auto-apply
+    let newState = {
         ...setFieldingTeam(state, newTeam),
-        pendingResult: { ...state.pendingResult, outcome: 'SO' },
+        pendingResult: { ...state.pendingResult, outcome: 'SO' as const },
         currentAtBatEvents: [...state.currentAtBatEvents, 'K icon: result changed to strikeout!'],
         gameLog: [...state.gameLog, `${getCurrentPitcher(state).card.name} uses K icon`],
     };
+
+    return applyResult(newState);
 }
 
 function handleGoldGlove(state: GameState, cardId: string): GameState {

@@ -43,7 +43,9 @@ export default function GamePage({ gameId, onBack }: Props) {
                 setAwayEmail(game.away_user_email || '');
 
                 const session = await startGameSession(gameId, role, (state) => {
-                    if (mounted) setGameState(state);
+                    if (mounted && state && state.isOver !== undefined) {
+                        setGameState(state);
+                    }
                 });
 
                 sessionRef.current = session;
