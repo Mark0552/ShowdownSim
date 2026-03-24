@@ -51,7 +51,8 @@ export async function joinGame(gameId: string): Promise<GameRow> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not logged in');
 
-    const { data, error } = await supabase
+    // Update first
+    const { error: updateError } = await supabase
         .from('games')
         .update({
             away_user_id: user.id,
@@ -59,8 +60,14 @@ export async function joinGame(gameId: string): Promise<GameRow> {
             status: 'lineup_select',
         })
         .eq('id', gameId)
-        .eq('status', 'waiting')
-        .select()
+        .eq('status', 'waiting');
+    if (updateError) throw updateError;
+
+    // Then fetch (now the user is a participant, so RLS allows it)
+    const { data, error } = await supabase
+        .from('games')
+        .select('*')
+        .eq('id', gameId)
         .single();
     if (error) throw error;
     return data;
