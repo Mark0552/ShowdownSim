@@ -33,6 +33,7 @@ jobs:
 
       - name: Copy data and card images to game
         run: |
+          mkdir -p game/public
           cp simulation/hitters.json game/public/
           cp simulation/pitchers.json game/public/
           cp -r cards game/public/cards
