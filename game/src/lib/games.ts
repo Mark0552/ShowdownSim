@@ -73,10 +73,20 @@ export async function joinGame(gameId: string): Promise<GameRow> {
     return data;
 }
 
-export async function selectLineup(gameId: string, role: PlayerRole, lineupId: string, lineupName: string): Promise<void> {
+export async function selectLineup(gameId: string, role: PlayerRole, lineupId: string, lineupName: string, lineupData: any): Promise<void> {
+    // Store the full lineup data so the game engine can read it without cross-user RLS issues
+    // We store lineup data in a dedicated JSONB approach: read current state, merge in lineup
+    const { data: current } = await supabase.from('games').select('state').eq('id', gameId).single();
+    const existingState = current?.state || {};
+
+    const newState = {
+        ...existingState,
+        [`${role}Lineup`]: lineupData,
+    };
+
     const update = role === 'home'
-        ? { home_lineup_id: lineupId, home_lineup_name: lineupName, home_ready: true }
-        : { away_lineup_id: lineupId, away_lineup_name: lineupName, away_ready: true };
+        ? { home_lineup_id: lineupId, home_lineup_name: lineupName, home_ready: true, state: newState }
+        : { away_lineup_id: lineupId, away_lineup_name: lineupName, away_ready: true, state: newState };
 
     const { error } = await supabase
         .from('games')

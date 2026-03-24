@@ -107,7 +107,7 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
         const role = getMyRole(activeGame, userId);
         if (!role) return;
         try {
-            await selectLineup(activeGame.id, role, lineup.id, lineup.name);
+            await selectLineup(activeGame.id, role, lineup.id, lineup.name, lineup.data);
             // Refresh
             const { data } = await supabase.from('games').select('*').eq('id', activeGame.id).single();
             if (data) {

@@ -22,7 +22,6 @@ export interface GameSession {
 
 /**
  * Start a game session.
- * Host initializes state; away subscribes.
  */
 export async function startGameSession(
     gameId: string,
@@ -34,31 +33,53 @@ export async function startGameSession(
     let state: GameState;
 
     if (role === 'home') {
-        // Host: initialize game state from both lineups
-        state = initializeGameState(
-            game.state && Object.keys(game.state).length > 1 ? game.state :
-            await loadLineupData(game.home_lineup_id!),
-            await loadLineupData(game.away_lineup_id!),
-            game.home_user_id,
-            game.away_user_id!,
-        );
-
-        // If game state already exists (resuming), use it
+        // Check if game already has a full state (resuming)
         if (game.state && game.state.inning) {
             state = game.state as GameState;
-        }
+        } else {
+            // Initialize from lineup data stored on the game row
+            const homeLineup = game.state?.homeLineup;
+            const awayLineup = game.state?.awayLineup;
 
-        // Write initial state
-        await updateGameState(gameId, state);
+            if (!homeLineup || !awayLineup) {
+                throw new Error('Both lineups must be selected before starting');
+            }
+
+            state = initializeGameState(
+                homeLineup,
+                awayLineup,
+                game.home_user_id,
+                game.away_user_id!,
+            );
+
+            // Update game status and write initial state
+            await supabase.from('games').update({
+                status: 'in_progress',
+                state: state,
+            }).eq('id', gameId);
+        }
     } else {
-        // Away: read current state
-        state = game.state as GameState;
+        // Away: wait for host to initialize, then read state
+        // Poll until state is ready
+        let attempts = 0;
+        while (attempts < 20) {
+            const { data } = await supabase.from('games').select('state, status').eq('id', gameId).single();
+            if (data?.state?.inning) {
+                state = data.state as GameState;
+                break;
+            }
+            await new Promise(r => setTimeout(r, 1000));
+            attempts++;
+        }
+        if (!state!) {
+            throw new Error('Game failed to initialize');
+        }
     }
 
     // Subscribe to updates
     const channel = subscribeToGame(gameId, (updated) => {
         const newState = updated.state as GameState;
-        if (newState) {
+        if (newState && newState.inning) {
             onStateUpdate(newState);
         }
 
@@ -68,14 +89,32 @@ export async function startGameSession(
         }
     });
 
+    // Also poll for state changes (Realtime fallback)
+    const pollInterval = setInterval(async () => {
+        try {
+            const { data } = await supabase.from('games').select('state, pending_action').eq('id', gameId).single();
+            if (data?.state?.inning) {
+                onStateUpdate(data.state as GameState);
+            }
+            if (role === 'home' && data?.pending_action) {
+                handlePendingAction(gameId, data.pending_action, data.state as GameState, onStateUpdate);
+            }
+        } catch (e) { /* ignore */ }
+    }, 2000);
+
     onStateUpdate(state);
 
-    return { gameId, role, state, channel, onStateUpdate };
+    return {
+        gameId,
+        role,
+        state,
+        channel: Object.assign(channel, { _pollInterval: pollInterval }),
+        onStateUpdate,
+    };
 }
 
 /**
  * Submit an action.
- * Host processes directly; away writes to pending_action.
  */
 export async function submitAction(
     session: GameSession,
@@ -108,7 +147,6 @@ async function handlePendingAction(
 ) {
     const newState = processAction(currentState, action);
 
-    // Clear pending_action and write new state
     const { error } = await supabase
         .from('games')
         .update({ state: newState, pending_action: null })
@@ -120,21 +158,11 @@ async function handlePendingAction(
 }
 
 /**
- * Load a lineup's data from Supabase.
- */
-async function loadLineupData(lineupId: string): Promise<any> {
-    const { data, error } = await supabase
-        .from('lineups')
-        .select('data')
-        .eq('id', lineupId)
-        .single();
-    if (error) throw error;
-    return data.data;
-}
-
-/**
  * Clean up a game session.
  */
 export function endGameSession(session: GameSession) {
     session.channel.unsubscribe();
+    if ((session.channel as any)._pollInterval) {
+        clearInterval((session.channel as any)._pollInterval);
+    }
 }
