@@ -63,10 +63,11 @@ export function getDefensiveIcons(state: GameState): IconOption[] {
     const pitcher = fieldingTeam.pitchers[fieldingTeam.currentPitcherIndex];
 
     // K (Strikeout): change any result to SO, 1x per game
+    // Only offer on hits (not walks/outs — no reason to K a walk or an existing out)
     if (pitcher && pitcher.card.icons.includes('K') && !fieldingTeam.icons.kUsedThisGame) {
-        // K is most useful on hits, especially HR
-        if (result !== 'SO' && result !== 'PU') {
-            options.push({ icon: 'K', cardId: pitcher.cardId, description: 'Strikeout: Change result to SO' });
+        const hitResults: Outcome[] = ['S', 'SPlus', 'DB', 'TR', 'HR'];
+        if (hitResults.includes(result)) {
+            options.push({ icon: 'K', cardId: pitcher.cardId, description: 'K icon: Change result to strikeout (1x/game)' });
         }
     }
 

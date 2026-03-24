@@ -919,7 +919,14 @@ export function whoseTurn(state: GameState): 'home' | 'away' {
         case 'offense_pre': return batting;
         case 'pitch': return fielding;
         case 'swing': return batting;
-        case 'result_pending': return batting;
+        case 'result_pending': {
+            // Check who has icons to decide whose turn it is
+            const offIc = getOffIcons(state);
+            const defIc = getDefIcons(state);
+            if (offIc.length > 0) return batting;
+            if (defIc.length > 0) return fielding;
+            return batting; // no icons, batting team applies result
+        }
         case 'fielding_check': return fielding;
         case 'extra_base_decision': return batting;
         default: return 'home';
