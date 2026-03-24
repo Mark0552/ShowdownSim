@@ -24,7 +24,7 @@ try {
 
 // Also copy the JSON data files
 for (const file of ['hitters.json', 'pitchers.json']) {
-    const src = path.resolve(__dirname, '../../' + file);
+    const src = path.resolve(__dirname, '../../simulation/' + file);
     const dest = path.resolve(__dirname, '../public/' + file);
     if (!fs.existsSync(dest)) {
         fs.copyFileSync(src, dest);

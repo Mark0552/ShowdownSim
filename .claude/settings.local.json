@@ -14,7 +14,30 @@
       "Bash(ls -la *.js *.json .gitignore)",
       "Bash(gh auth:*)",
       "Bash(git config:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(pip install:*)",
+      "Bash(python -c \":*)",
+      "Bash(curl:*)",
+      "Bash(npm list:*)",
+      "Bash(npm install:*)",
+      "Bash(node -e ':*)",
+      "Bash(ls cards/2004-Base/*.jpg)",
+      "Bash(ls -la cards/2004-Base/*.jpg)",
+      "Bash(ls cards/2004-Pennant-Run/*.jpg)",
+      "Bash(ls cards/2004-Trading-Deadline/*.jpg)",
+      "Bash(ls cards/2005-Base/*.jpg)",
+      "Bash(ls cards/2005-Trading-Deadline/*.jpg)",
+      "Bash(node -e \":*)",
+      "Bash(npx tsc:*)",
+      "Bash(python:*)",
+      "Bash(git status:*)",
+      "Bash(ls *.json *.js *.pdf)",
+      "Bash(git add:*)",
+      "Bash(git rm:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(ls -la *.js *.json README.md .gitignore)",
+      "Bash(gh repo:*)"
     ]
   }
 }

@@ -1,4 +1,4 @@
-/node_modules
+node_modules/
 /cards
 Claude API Key.txt
 *.pdf
@@ -13,9 +13,9 @@ pitchers_scraped.json
 hitters_verified.json
 pitchers_verified.json
 
-# Showdown game
-showdown-game/node_modules/
-showdown-game/dist/
-showdown-game/public/cards
-showdown-game/public/hitters.json
-showdown-game/public/pitchers.json
+# Game build artifacts
+game/node_modules/
+game/dist/
+game/public/cards
+game/public/hitters.json
+game/public/pitchers.json
