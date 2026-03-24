@@ -1,0 +1,167 @@
+.lobby-page {
+    min-height: 100vh;
+    background: var(--bg-primary);
+    padding: 24px;
+}
+
+.lobby-container { max-width: 700px; margin: 0 auto; }
+
+.lobby-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.lobby-header h1 { font-size: 24px; color: var(--accent); }
+
+.lobby-back {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.lobby-back:hover { border-color: var(--accent); color: var(--text); }
+
+.lobby-create {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.lobby-create:hover { background: var(--accent-dim); }
+
+.lobby-error {
+    color: var(--error);
+    background: rgba(248,113,113,0.1);
+    border: 1px solid var(--error);
+    padding: 10px 16px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    font-size: 13px;
+}
+
+.lobby-section { margin-bottom: 32px; }
+.lobby-section h2 { font-size: 16px; color: var(--text-dim); margin-bottom: 12px; }
+
+.lobby-games { display: flex; flex-direction: column; gap: 8px; }
+.lobby-loading, .lobby-empty { color: var(--text-muted); font-size: 14px; }
+
+.game-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 18px;
+}
+
+.game-row:hover { border-color: var(--accent-dim); }
+
+.game-info { display: flex; flex-direction: column; gap: 2px; }
+.game-host { font-weight: 600; }
+.game-opponent { font-weight: 600; }
+.game-time { font-size: 12px; color: var(--text-muted); }
+.game-status { font-size: 12px; text-transform: capitalize; }
+.status-lineup_select { color: var(--warning); }
+.status-in_progress { color: var(--success); }
+
+.game-join, .game-resume {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 5px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.game-join:hover, .game-resume:hover { background: var(--accent-dim); }
+
+/* Waiting state */
+.lobby-waiting {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-dim);
+}
+
+.waiting-spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 16px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.waiting-id { font-size: 12px; color: var(--text-muted); margin-top: 8px; font-family: var(--font-mono); }
+
+/* Matchup display */
+.lobby-matchup {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 32px;
+    padding: 20px;
+}
+
+.matchup-player {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 16px 24px;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    min-width: 180px;
+}
+
+.matchup-player.ready { border-color: var(--success); }
+
+.matchup-label { font-weight: 600; font-size: 14px; }
+.matchup-lineup { font-size: 12px; color: var(--accent); }
+.matchup-status { font-size: 12px; color: var(--text-muted); }
+.matchup-status.ready { color: var(--success); font-weight: 600; }
+.matchup-vs { font-size: 24px; font-weight: 700; color: var(--accent); }
+
+/* Lineup picker */
+.lineup-picker { text-align: center; }
+.lineup-picker h2 { font-size: 18px; margin-bottom: 16px; }
+.no-lineups { color: var(--text-muted); }
+
+.lineup-picker-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.lineup-pick-btn {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    cursor: pointer;
+    text-align: left;
+}
+
+.lineup-pick-btn:hover { border-color: var(--accent); }
+.pick-name { font-weight: 600; font-size: 15px; }
+.pick-meta { font-size: 12px; color: var(--text-dim); }

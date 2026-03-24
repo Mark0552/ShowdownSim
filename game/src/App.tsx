@@ -8,9 +8,10 @@ import { useDragStore } from './store/dragStore';
 import LoginPage from './pages/LoginPage';
 import MainMenu from './pages/MainMenu';
 import LineupsPage from './pages/LineupsPage';
+import LobbyPage from './pages/LobbyPage';
 import TeamBuilder from './pages/TeamBuilder';
 
-type Page = 'login' | 'menu' | 'lineups' | 'builder';
+type Page = 'login' | 'menu' | 'lineups' | 'builder' | 'lobby' | 'game';
 
 export default function App() {
     const [cards, setCards] = useState<Card[]>([]);
@@ -18,10 +19,10 @@ export default function App() {
     const [page, setPage] = useState<Page>('login');
     const [userEmail, setUserEmail] = useState('');
     const [editingLineup, setEditingLineup] = useState<SavedLineup | null>(null);
+    const [activeGameId, setActiveGameId] = useState<string | null>(null);
     const teamStore = useTeamStore();
     const dragStore = useDragStore();
 
-    // Load cards
     useEffect(() => {
         loadCards().then(({ all }) => {
             setCards(all);
@@ -29,7 +30,6 @@ export default function App() {
         });
     }, []);
 
-    // Check existing session
     useEffect(() => {
         supabase.auth.getUser().then(({ data: { user } }) => {
             if (user) {
@@ -38,7 +38,7 @@ export default function App() {
             }
         });
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
             if (event === 'SIGNED_OUT') {
                 setPage('login');
                 setUserEmail('');
@@ -59,7 +59,6 @@ export default function App() {
     const handleEditLineup = (lineup: SavedLineup | null) => {
         setEditingLineup(lineup);
         if (lineup) {
-            // Load the lineup data into the team store
             const cardMap = new Map(cards.map(c => [c.id, c]));
             const hydratedSlots = lineup.data.slots
                 ?.map((slot: any) => {
@@ -68,19 +67,16 @@ export default function App() {
                     return { ...slot, card };
                 })
                 .filter(Boolean) || [];
-            teamStore.dispatch({
-                type: 'LOAD',
-                team: { ...lineup.data, slots: hydratedSlots }
-            });
+            teamStore.dispatch({ type: 'LOAD', team: { ...lineup.data, slots: hydratedSlots } });
         } else {
             teamStore.clearTeam();
         }
         setPage('builder');
     };
 
-    const handleBuilderBack = () => {
-        setEditingLineup(null);
-        setPage('lineups');
+    const handleGameStart = (gameId: string) => {
+        setActiveGameId(gameId);
+        setPage('game');
     };
 
     if (cardsLoading) {
@@ -116,8 +112,30 @@ export default function App() {
                     teamStore={teamStore}
                     dragStore={dragStore}
                     editingLineup={editingLineup}
-                    onBack={handleBuilderBack}
+                    onBack={() => { setEditingLineup(null); setPage('lineups'); }}
                 />
+            );
+        case 'lobby':
+            return (
+                <LobbyPage
+                    onBack={() => setPage('menu')}
+                    onGameStart={handleGameStart}
+                />
+            );
+        case 'game':
+            // Placeholder until Phase 2+3
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', gap: 16 }}>
+                    <h1 style={{ color: 'var(--accent)' }}>Game Starting...</h1>
+                    <p style={{ color: 'var(--text-dim)' }}>Game ID: {activeGameId?.slice(0, 8)}</p>
+                    <p style={{ color: 'var(--text-muted)' }}>Game engine coming soon</p>
+                    <button
+                        onClick={() => { setActiveGameId(null); setPage('lobby'); }}
+                        style={{ padding: '10px 20px', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                    >
+                        Back to Lobby
+                    </button>
+                </div>
             );
     }
 }

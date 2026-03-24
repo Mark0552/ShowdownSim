@@ -28,11 +28,11 @@ export default function MainMenu({ userEmail, onNavigate, onLogout }: Props) {
                         </span>
                     </button>
 
-                    <button className="menu-btn disabled" disabled>
+                    <button className="menu-btn" onClick={() => onNavigate('lobby')}>
                         <span className="menu-btn-icon">&#9878;</span>
                         <span className="menu-btn-text">
                             <span className="menu-btn-title">Play Game</span>
-                            <span className="menu-btn-desc">Coming soon</span>
+                            <span className="menu-btn-desc">Create or join a game</span>
                         </span>
                     </button>
                 </div>
