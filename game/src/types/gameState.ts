@@ -11,14 +11,10 @@ export type AtBatPhase =
     | 'defense_sub'         // defense may change pitcher or IBB
     | 'offense_pre'         // offense may sac bunt or steal
     | 'pitch'               // waiting for pitch roll
-    | 'swing'               // waiting for swing roll
+    | 'swing'               // waiting for swing roll (or sac bunt roll)
     | 'result_pending'      // result determined, check for icon opportunities
-    | 'icon_offense'        // offense may use icon (V, S, HR)
-    | 'icon_defense'        // defense may use icon (K, G)
     | 'fielding_check'      // DP attempt or extra base throw
     | 'extra_base_decision' // offense decides whether runner tries extra base
-    | 'result_final'        // result applied, advance to next batter
-    | 'half_inning_over'    // 3 outs, switching sides
     | 'game_over';
 
 export interface BaseState {
@@ -107,6 +103,9 @@ export interface GameState {
 
     isOver: boolean;
     winnerId: string | null;
+
+    // Gold Glove bonus active for current fielding check
+    goldGloveBonus: number;
 
     // Track 1-2-3 innings for CY icon
     runnersReachedThisInning: boolean;

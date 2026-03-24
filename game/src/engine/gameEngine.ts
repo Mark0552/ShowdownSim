@@ -41,6 +41,7 @@ export function initializeGameState(
         gameLog: ['Game started!'],
         isOver: false,
         winnerId: null,
+        goldGloveBonus: 0,
         runnersReachedThisInning: false,
     };
 }
@@ -141,7 +142,22 @@ export function processAction(state: GameState, action: GameAction): GameState {
             break;
 
         case 'SACRIFICE_BUNT':
-            newState = handleSacBunt(newState);
+            // Sac bunt needs a roll on the pitcher's chart
+            newState.phase = 'swing'; // reuse swing phase for the bunt roll
+            newState.pendingResult = {
+                outcome: 'GB', // placeholder
+                pitchRoll: 0,
+                pitchTotal: 0,
+                swingRoll: 0,
+                usedPitcherChart: true,
+                modifiers: ['Sacrifice bunt'],
+            };
+            newState.currentAtBatEvents = [...newState.currentAtBatEvents, 'Sacrifice bunt attempt'];
+            newState.gameLog = [...newState.gameLog, `${getCurrentBatter(newState).card.name} attempts sacrifice bunt`];
+            break;
+
+        case 'SAC_BUNT_ROLL':
+            newState = handleSacBuntRoll(newState, action.roll);
             break;
 
         case 'STEAL_BASE':
@@ -184,6 +200,18 @@ export function processAction(state: GameState, action: GameAction): GameState {
             newState = setFieldingTeam(newState, { ...ft20, pitchers: np20 });
             newState.currentAtBatEvents = [...newState.currentAtBatEvents, `${p20.card.name} uses 20 icon (+3 control)`];
             newState.gameLog = [...newState.gameLog, `${p20.card.name} uses 20 icon`];
+            newState.phase = shouldShowOffensePre(newState) ? 'offense_pre' : 'pitch';
+            break;
+        }
+
+        case 'USE_ICON_RP': {
+            const ftRP = getFieldingTeam(newState);
+            const npRP = [...ftRP.pitchers];
+            const pRP = npRP[ftRP.currentPitcherIndex];
+            npRP[ftRP.currentPitcherIndex] = { ...pRP, rpUsedThisGame: true, rpInningActive: true };
+            newState = setFieldingTeam(newState, { ...ftRP, pitchers: npRP });
+            newState.currentAtBatEvents = [...newState.currentAtBatEvents, `${pRP.card.name} uses RP icon (+3 control this inning)`];
+            newState.gameLog = [...newState.gameLog, `${pRP.card.name} uses RP icon`];
             newState.phase = shouldShowOffensePre(newState) ? 'offense_pre' : 'pitch';
             break;
         }
@@ -306,33 +334,76 @@ function handleIntentionalWalk(state: GameState): GameState {
     return advanceToNextBatter(newState);
 }
 
-function handleSacBunt(state: GameState): GameState {
+/**
+ * Sacrifice bunt: roll on pitcher's chart.
+ * PU = batter out, runners stay.
+ * Any other result = batter out, all runners advance 1 base.
+ */
+function handleSacBuntRoll(state: GameState, roll: number): GameState {
     const batter = getCurrentBatter(state);
     const pitcher = getCurrentPitcher(state);
 
-    // Roll on pitcher's chart. PU = out and runners stay.
-    // Any other result = batter out but runners advance 1.
-    // We'll need a swing roll — but for sac bunt, we auto-roll
-    // Actually per rules: "roll for the swing on the pitcher's chart"
-    // This should be a separate roll. For now, transition to a special phase.
-    // Simplified: batter is out, runners advance 1 (unless PU on pitcher chart)
+    // Resolve on pitcher's chart
+    const chartResult = resolvePitcherChart(pitcher.card, roll);
 
-    const newState = {
-        ...state,
-        phase: 'swing' as const, // need swing roll for sac bunt
-        currentAtBatEvents: [...state.currentAtBatEvents, 'Sacrifice bunt attempt'],
-        gameLog: [...state.gameLog, `${batter.card.name} attempts sacrifice bunt`],
-        pendingResult: {
-            outcome: 'GB' as Outcome, // placeholder, will be resolved on swing
-            pitchRoll: 0,
-            pitchTotal: 0,
-            swingRoll: 0,
-            usedPitcherChart: true, // sac bunt always uses pitcher chart
-            modifiers: ['Sacrifice bunt'],
-        },
-    };
+    let newState = { ...state };
 
-    return newState;
+    if (chartResult === 'PU') {
+        // PU on sac bunt: batter out, runners stay
+        newState.outs += 1;
+        newState = recordPitcherOut(newState);
+        newState.currentAtBatEvents = [...newState.currentAtBatEvents,
+            `Bunt roll: ${roll} → Popup! Batter out, runners hold`];
+        newState.gameLog = [...newState.gameLog,
+            `${batter.card.name} pops up the bunt`];
+
+        if (newState.outs >= 3) return endHalfInning(newState);
+        return advanceToNextBatter(newState);
+    }
+
+    // Any other result: batter out, all runners advance 1 base
+    newState.outs += 1;
+    newState = recordPitcherOut(newState);
+
+    // Advance runners 1 base
+    let runsScored = 0;
+    const scorers: string[] = [];
+    const newBases = { ...state.bases };
+
+    if (newBases.third) {
+        runsScored++;
+        scorers.push(newBases.third);
+        newBases.third = null;
+    }
+    if (newBases.second) {
+        newBases.third = newBases.second;
+        newBases.second = null;
+    }
+    if (newBases.first) {
+        newBases.second = newBases.first;
+        newBases.first = null;
+    }
+
+    newState.bases = newBases;
+    newState.currentAtBatEvents = [...newState.currentAtBatEvents,
+        `Bunt roll: ${roll} → Sacrifice successful! Batter out, runners advance`];
+    newState.gameLog = [...newState.gameLog,
+        `${batter.card.name} sacrifices, runners advance`];
+
+    if (runsScored > 0) {
+        newState.runnersReachedThisInning = true;
+        newState = scoreRuns(newState, runsScored, scorers);
+    }
+
+    if (newState.outs >= 3) return endHalfInning(newState);
+
+    // Check walk-off
+    if (newState.inning >= 9 && newState.halfInning === 'bottom' && newState.score.home > newState.score.away) {
+        return { ...newState, isOver: true, winnerId: newState.homeTeam.userId, phase: 'game_over',
+            gameLog: [...newState.gameLog, 'Walk-off! Home team wins!'] };
+    }
+
+    return advanceToNextBatter(newState);
 }
 
 function handleSteal(state: GameState, runnerId: string, useSBIcon?: boolean): GameState {
@@ -514,11 +585,14 @@ function handleKBlock(state: GameState): GameState {
 
 function handleGoldGlove(state: GameState, cardId: string): GameState {
     const team = getFieldingTeam(state);
+    const player = team.lineup.find(p => p.cardId === cardId);
     const newIcons = { ...team.icons, goldGloveUsed: { ...team.icons.goldGloveUsed, [cardId]: true } };
     const newTeam = { ...team, icons: newIcons };
     return {
         ...setFieldingTeam(state, newTeam),
-        currentAtBatEvents: [...state.currentAtBatEvents, 'Gold Glove icon: +10 fielding'],
+        goldGloveBonus: 10,
+        currentAtBatEvents: [...state.currentAtBatEvents, `Gold Glove: ${player?.card.name || 'Fielder'} +10 fielding`],
+        gameLog: [...state.gameLog, `${player?.card.name || 'Fielder'} uses Gold Glove icon`],
     };
 }
 
@@ -612,11 +686,7 @@ function resolveDoublePlayRoll(state: GameState, roll: number): GameState {
     const batter = getCurrentBatter(state);
     const totalFielding = getTotalInfieldFielding(fieldingTeam);
 
-    // Check for Gold Glove bonus
-    let goldGloveBonus = 0;
-    // (already applied via icon handler if used)
-
-    const { batterOut, log } = resolveDoublePlay(roll, totalFielding, batter.card.speed);
+    const { batterOut, log } = resolveDoublePlay(roll, totalFielding + state.goldGloveBonus, batter.card.speed);
 
     let newState = {
         ...state,
@@ -654,6 +724,7 @@ function resolveExtraBaseRoll(state: GameState, roll: number): GameState {
         roll, totalFielding, runnerSpeed,
         attempt.toBase === 'home',
         state.outs === 2,
+        state.goldGloveBonus,
     );
 
     let newState = {
@@ -755,6 +826,7 @@ function advanceToNextBatter(state: GameState): GameState {
         phase: 'pre_atbat',
         pendingResult: null,
         pendingExtraBases: [],
+        goldGloveBonus: 0, // reset per at-bat
         currentAtBatEvents: [`Now batting: ${batter.card.name}`],
     };
 }
@@ -791,6 +863,7 @@ function endHalfInning(state: GameState): GameState {
             pendingResult: null,
             pendingExtraBases: [],
             runnersReachedThisInning: false,
+            goldGloveBonus: 0,
             currentAtBatEvents: [],
             gameLog: [...newState.gameLog, `--- Bottom of inning ${state.inning} ---`],
         };
@@ -822,6 +895,7 @@ function endHalfInning(state: GameState): GameState {
             pendingResult: null,
             pendingExtraBases: [],
             runnersReachedThisInning: false,
+            goldGloveBonus: 0,
             currentAtBatEvents: [],
             gameLog: [...newState.gameLog, `--- Top of inning ${state.inning + 1} ---`],
         };
@@ -843,21 +917,15 @@ export function whoseTurn(state: GameState): 'home' | 'away' {
         case 'pre_atbat': return batting;
         case 'defense_sub': return fielding;
         case 'offense_pre': return batting;
-        case 'pitch': return fielding;      // host rolls
-        case 'swing': return batting;       // but host rolls for both
-        case 'result_pending':
-        case 'icon_offense': return batting;
-        case 'icon_defense': return fielding;
+        case 'pitch': return fielding;
+        case 'swing': return batting;
+        case 'result_pending': return batting;
         case 'fielding_check': return fielding;
         case 'extra_base_decision': return batting;
-        case 'result_final': return batting;
         default: return 'home';
     }
 }
 
-/**
- * Get display-friendly description of current phase.
- */
 export function getPhaseDescription(state: GameState): string {
     const batter = getCurrentBatter(state);
     const pitcher = getCurrentPitcher(state);
@@ -867,14 +935,10 @@ export function getPhaseDescription(state: GameState): string {
         case 'defense_sub': return `Pitching change or intentional walk?`;
         case 'offense_pre': return `Sacrifice bunt or steal?`;
         case 'pitch': return `${pitcher.card.name} pitching to ${batter.card.name}`;
-        case 'swing': return `${batter.card.name} swings!`;
+        case 'swing': return state.pendingResult?.modifiers.includes('Sacrifice bunt') ? 'Roll for bunt' : `${batter.card.name} swings!`;
         case 'result_pending': return `Result: ${state.pendingResult?.outcome}. Use icons?`;
-        case 'icon_offense': return `Use icon?`;
-        case 'icon_defense': return `Defense icon?`;
         case 'fielding_check': return `Fielding check`;
         case 'extra_base_decision': return `Try for extra base?`;
-        case 'result_final': return `At-bat complete`;
-        case 'half_inning_over': return `Side retired`;
         case 'game_over': return `Game Over`;
         default: return '';
     }

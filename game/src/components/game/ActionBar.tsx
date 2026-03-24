@@ -106,7 +106,10 @@ function renderActions(
                         Intentional Walk
                     </button>
                     {defIcons20.map(ic => (
-                        <button key={ic.icon} className="action-btn icon-btn" onClick={() => onAction({ type: 'USE_ICON_20' })}>
+                        <button key={ic.icon} className="action-btn icon-btn" onClick={() => {
+                            if (ic.icon === '20') onAction({ type: 'USE_ICON_20' });
+                            else if (ic.icon === 'RP') onAction({ type: 'USE_ICON_RP' });
+                        }}>
                             {ic.description}
                         </button>
                     ))}
@@ -146,12 +149,20 @@ function renderActions(
                 </button>
             );
 
-        case 'swing':
+        case 'swing': {
+            const isSacBunt = state.pendingResult?.modifiers.includes('Sacrifice bunt');
             return (
-                <button className="action-btn primary big" onClick={() => onAction({ type: 'ROLL_SWING', roll: rollD20() })}>
-                    Roll Swing (d20)
+                <button className="action-btn primary big" onClick={() => {
+                    if (isSacBunt) {
+                        onAction({ type: 'SAC_BUNT_ROLL', roll: rollD20() });
+                    } else {
+                        onAction({ type: 'ROLL_SWING', roll: rollD20() });
+                    }
+                }}>
+                    {isSacBunt ? 'Roll Bunt (d20)' : 'Roll Swing (d20)'}
                 </button>
             );
+        }
 
         case 'result_pending': {
             // Check for icon opportunities
@@ -219,13 +230,6 @@ function renderActions(
                 </>
             );
         }
-
-        case 'result_final':
-            return (
-                <button className="action-btn primary" onClick={() => onAction({ type: 'ADVANCE_ATBAT' })}>
-                    Next Batter
-                </button>
-            );
 
         default:
             return (
