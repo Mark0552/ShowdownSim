@@ -123,18 +123,13 @@ export function processAction(state: GameState, action: GameAction): GameState {
             newState.phase = 'defense_sub';
             break;
 
-        case 'SKIP_DEFENSE_SUB': {
-            // Skip offense_pre if no options available (no runners = no bunt/steal)
-            const hasBases = newState.bases.first || newState.bases.second;
-            const hasSB = getPrePitchOffenseIconsFn(newState).length > 0;
-            const canBunt = hasBases && !newState.bases.third;
-            newState.phase = (canBunt || hasSB) ? 'offense_pre' : 'pitch';
+        case 'SKIP_DEFENSE_SUB':
+            newState.phase = shouldShowOffensePre(newState) ? 'offense_pre' : 'pitch';
             break;
-        }
 
         case 'PITCHING_CHANGE':
             newState = handlePitchingChange(newState, action.pitcherIndex);
-            newState.phase = 'offense_pre';
+            newState.phase = shouldShowOffensePre(newState) ? 'offense_pre' : 'pitch';
             break;
 
         case 'INTENTIONAL_WALK':
@@ -189,7 +184,7 @@ export function processAction(state: GameState, action: GameAction): GameState {
             newState = setFieldingTeam(newState, { ...ft20, pitchers: np20 });
             newState.currentAtBatEvents = [...newState.currentAtBatEvents, `${p20.card.name} uses 20 icon (+3 control)`];
             newState.gameLog = [...newState.gameLog, `${p20.card.name} uses 20 icon`];
-            newState.phase = 'pitch';
+            newState.phase = shouldShowOffensePre(newState) ? 'offense_pre' : 'pitch';
             break;
         }
 
@@ -228,6 +223,17 @@ export function processAction(state: GameState, action: GameAction): GameState {
 // ============================================================================
 // ACTION HANDLERS
 // ============================================================================
+
+/**
+ * Check if offense_pre phase has any actions to offer.
+ * Returns true if there are runners who could bunt or use SB icon.
+ */
+function shouldShowOffensePre(state: GameState): boolean {
+    const hasRunners = !!(state.bases.first || state.bases.second);
+    const canBunt = hasRunners && !state.bases.third;
+    const hasSB = getPrePitchOffenseIconsFn(state).length > 0;
+    return canBunt || hasSB;
+}
 
 function getBattingTeam(state: GameState): TeamState {
     return state.halfInning === 'top' ? state.awayTeam : state.homeTeam;
