@@ -53,17 +53,35 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
         return () => { channel.unsubscribe(); };
     }, []);
 
-    // Subscribe to active game for lineup select
+    // Subscribe to active game for lineup select + poll as fallback
     useEffect(() => {
         if (!activeGame) return;
+
+        // Realtime subscription
         const channel = subscribeToGame(activeGame.id, (updated) => {
             setActiveGame(updated);
-            // Both ready? Start the game
             if (updated.home_ready && updated.away_ready && updated.status === 'lineup_select') {
                 onGameStart(updated.id);
             }
         });
-        return () => { channel.unsubscribe(); };
+
+        // Polling fallback every 3 seconds (Realtime can be unreliable)
+        const poll = setInterval(async () => {
+            try {
+                const { data } = await supabase.from('games').select('*').eq('id', activeGame.id).single();
+                if (data) {
+                    setActiveGame(data);
+                    if (data.home_ready && data.away_ready && data.status === 'lineup_select') {
+                        onGameStart(data.id);
+                    }
+                }
+            } catch (e) { /* ignore */ }
+        }, 3000);
+
+        return () => {
+            channel.unsubscribe();
+            clearInterval(poll);
+        };
     }, [activeGame?.id]);
 
     const handleCreate = async () => {
