@@ -87,6 +87,8 @@ export default function GamePage({ gameId, onBack }: Props) {
                             setStatus('');
                             break;
                         case 'joined':
+                            // Use the server-confirmed role
+                            setMyRole(msg.role as PlayerRole);
                             setStatus(`Joined as ${msg.role}. ${msg.players < 2 ? 'Waiting for opponent...' : 'Starting...'}`);
                             break;
                         case 'waiting':
@@ -151,6 +153,7 @@ export default function GamePage({ gameId, onBack }: Props) {
     }
 
     const isMyTurn = myTurn === myRole;
+    console.log('GamePage render:', { myRole, myTurn, isMyTurn, phase: gameState.phase, halfInning: gameState.halfInning });
 
     return (
         <div className="game-page">
