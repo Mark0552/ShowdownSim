@@ -1,28 +1,77 @@
 /**
- * MLB Showdown Game Engine — Pure State Machine
+ * MLB Showdown Game Engine — Minimal Working Version
  *
- * (state, action) => newState
- *
- * The engine processes one action at a time and returns the new game state.
- * All dice rolls are provided as action parameters (rolled by the host client).
+ * Flow: pitch → swing → result → next batter
+ * Basic baserunning, no icons, no substitutions, no DP, no extra bases.
  */
-import type { GameState, TeamState, BaseState, PendingResult, Outcome, PitcherState, LineupPlayer } from '../types/gameState';
-import type { GameAction } from '../types/gameActions';
 import type { HitterCard, PitcherCard } from '../types/cards';
-import type { SavedLineup } from '../lib/lineups';
-import { resolveHitterChart, resolvePitcherChart, resolvePitch } from './charts';
-import { advanceRunners, resolveDoublePlay, resolveExtraBase } from './baserunning';
-import { getFatiguePenalty } from './fatigue';
-import { getPitchModifiers, getOffensiveIcons as getOffIcons, getDefensiveIcons as getDefIcons, getPrePitchOffenseIcons as getPrePitchOffenseIconsFn } from './icons';
-import { applyPinchHit, applyPitchingChange, getTotalInfieldFielding, getTotalOutfieldFielding } from './substitutions';
 
 // ============================================================================
-// INITIALIZE GAME STATE
+// TYPES
+// ============================================================================
+
+export type Outcome = 'SO' | 'GB' | 'FB' | 'PU' | 'W' | 'S' | 'SPlus' | 'DB' | 'TR' | 'HR';
+
+export type Phase = 'pitch' | 'swing' | 'game_over';
+
+export interface BaseState {
+    first: string | null;
+    second: string | null;
+    third: string | null;
+}
+
+export interface PlayerSlot {
+    cardId: string;
+    name: string;
+    onBase: number;
+    speed: number;
+    chart: any;
+    icons: string[];
+    imagePath: string;
+    type: 'hitter' | 'pitcher';
+    control?: number;
+    ip?: number;
+    role?: string;
+}
+
+export interface TeamState {
+    userId: string;
+    lineup: PlayerSlot[];       // 9 batters in order
+    pitcher: PlayerSlot;        // active pitcher
+    currentBatterIndex: number;
+    runsPerInning: number[];
+}
+
+export interface GameState {
+    inning: number;
+    halfInning: 'top' | 'bottom';
+    outs: number;
+    bases: BaseState;
+    score: { home: number; away: number };
+    homeTeam: TeamState;
+    awayTeam: TeamState;
+    phase: Phase;
+    lastPitchRoll: number;
+    lastPitchTotal: number;
+    lastSwingRoll: number;
+    lastOutcome: Outcome | null;
+    usedPitcherChart: boolean;
+    gameLog: string[];
+    isOver: boolean;
+    winnerId: string | null;
+}
+
+export type GameAction =
+    | { type: 'ROLL_PITCH'; roll: number }
+    | { type: 'ROLL_SWING'; roll: number };
+
+// ============================================================================
+// INITIALIZATION
 // ============================================================================
 
 export function initializeGameState(
-    homeLineup: any, // SavedLineup data
-    awayLineup: any,
+    homeLineupData: any,
+    awayLineupData: any,
     homeUserId: string,
     awayUserId: string,
 ): GameState {
@@ -32,874 +81,398 @@ export function initializeGameState(
         outs: 0,
         bases: { first: null, second: null, third: null },
         score: { home: 0, away: 0 },
-        homeTeam: buildTeamState(homeLineup, homeUserId),
-        awayTeam: buildTeamState(awayLineup, awayUserId),
-        phase: 'pre_atbat',
-        pendingResult: null,
-        pendingExtraBases: [],
-        currentAtBatEvents: [],
-        gameLog: ['Game started!'],
+        homeTeam: buildTeam(homeLineupData, homeUserId),
+        awayTeam: buildTeam(awayLineupData, awayUserId),
+        phase: 'pitch',
+        lastPitchRoll: 0,
+        lastPitchTotal: 0,
+        lastSwingRoll: 0,
+        lastOutcome: null,
+        usedPitcherChart: false,
+        gameLog: ['⚾ Play ball!'],
         isOver: false,
         winnerId: null,
-        goldGloveBonus: 0,
-        runnersReachedThisInning: false,
     };
 }
 
-function buildTeamState(lineupData: any, userId: string): TeamState {
-    const slots = lineupData.slots || [];
+function buildTeam(data: any, userId: string): TeamState {
+    const slots = data.slots || [];
 
-    // Build lineup from slots that have batting order
-    const lineupSlots = slots
-        .filter((s: any) => s.card.type === 'hitter' && s.assignedPosition !== 'bench')
-        .sort((a: any, b: any) => (a.battingOrder || 99) - (b.battingOrder || 99));
+    // Extract batters (those with battingOrder) sorted by order
+    const batters = slots
+        .filter((s: any) => s.battingOrder != null && s.card.type === 'hitter')
+        .sort((a: any, b: any) => a.battingOrder - b.battingOrder)
+        .map((s: any) => slotToPlayer(s));
 
-    const lineup: LineupPlayer[] = lineupSlots.map((s: any) => ({
-        cardId: s.card.id,
-        card: s.card,
-        assignedPosition: s.assignedPosition,
-        isActive: true,
-    }));
+    // If no batting order set, use all hitters in slot order
+    if (batters.length === 0) {
+        const allHitters = slots
+            .filter((s: any) => s.card.type === 'hitter' && s.assignedPosition !== 'bench')
+            .map((s: any) => slotToPlayer(s));
+        batters.push(...allHitters);
+    }
 
-    // Build pitchers
-    const pitcherSlots = slots.filter((s: any) => s.card.type === 'pitcher');
-    const pitchers: PitcherState[] = pitcherSlots.map((s: any, i: number) => ({
-        cardId: s.card.id,
-        card: s.card,
-        outsRecorded: 0,
-        runsAllowed: 0,
-        isActive: i === 0, // first pitcher is active (SP1)
-        isAvailable: true,
-        rpUsedThisGame: false,
-        rpInningActive: false,
-        cyBonusIP: 0,
-        twentyUsedThisInning: false,
-        inningStartedIn: 1,
-    }));
+    // Get first starter
+    const starterSlot = slots.find((s: any) =>
+        s.card.type === 'pitcher' && s.assignedPosition?.startsWith('Starter')
+    ) || slots.find((s: any) => s.card.type === 'pitcher');
 
-    // Build bench
-    const benchSlots = slots.filter((s: any) => s.assignedPosition === 'bench');
-    const bench: LineupPlayer[] = benchSlots.map((s: any) => ({
-        cardId: s.card.id,
-        card: s.card,
-        assignedPosition: 'bench',
-        isActive: true,
-    }));
+    const pitcher = starterSlot ? slotToPlayer(starterSlot) : {
+        cardId: 'default-pitcher', name: 'Pitcher', onBase: 0, speed: 8,
+        chart: { PU: '1', SO: '2-7', GB: '8-12', FB: '13-16', W: '17-18', S: '19-20' },
+        icons: [], imagePath: '', type: 'pitcher' as const, control: 4, ip: 7,
+    };
 
     return {
         userId,
-        lineup,
-        pitchers,
-        bench,
-        currentPitcherIndex: 0,
+        lineup: batters.length >= 9 ? batters.slice(0, 9) : padLineup(batters),
+        pitcher,
         currentBatterIndex: 0,
-        icons: {
-            visionUses: {},
-            speedUsed: {},
-            hrUsed: {},
-            sbUsed: {},
-            goldGloveUsed: {},
-            kUsedThisGame: false,
-        },
         runsPerInning: [0],
     };
 }
 
+function slotToPlayer(slot: any): PlayerSlot {
+    const card = slot.card;
+    return {
+        cardId: card.id || card.name,
+        name: card.name,
+        onBase: card.onBase || 0,
+        speed: card.speed || 8,
+        chart: card.chart || {},
+        icons: card.icons || [],
+        imagePath: card.imagePath || '',
+        type: card.type,
+        control: card.control,
+        ip: card.ip,
+        role: card.role,
+    };
+}
+
+function padLineup(batters: PlayerSlot[]): PlayerSlot[] {
+    // Pad to 9 if needed by repeating
+    while (batters.length < 9) {
+        batters.push(batters[batters.length - 1] || {
+            cardId: 'empty', name: 'Empty', onBase: 8, speed: 10,
+            chart: { SO: '1-10', GB: '11-15', FB: '16-18', W: '19', S: '20' },
+            icons: [], imagePath: '', type: 'hitter',
+        });
+    }
+    return batters;
+}
+
 // ============================================================================
-// MAIN DISPATCH
+// CHART RESOLUTION
+// ============================================================================
+
+function parseRange(range: string | null): { low: number; high: number } | null {
+    if (!range) return null;
+    if (range.includes('-')) {
+        const [low, high] = range.split('-').map(Number);
+        if (high < low) return { low, high: low };
+        return { low, high };
+    }
+    if (range.includes('+')) {
+        return { low: parseInt(range.split('+')[0]), high: 99 };
+    }
+    const num = Number(range);
+    if (isNaN(num)) return null;
+    return { low: num, high: num };
+}
+
+function resolveChart(chart: any, roll: number, isHitter: boolean): Outcome {
+    const fields = isHitter
+        ? [['SO','SO'],['GB','GB'],['FB','FB'],['W','W'],['S','S'],['SPlus','SPlus'],['DB','DB'],['TR','TR']]
+        : [['PU','PU'],['SO','SO'],['GB','GB'],['FB','FB'],['W','W'],['S','S'],['DB','DB']];
+
+    for (const [field, outcome] of fields) {
+        const range = parseRange(chart[field]);
+        if (range && roll >= range.low && roll <= range.high) {
+            return outcome as Outcome;
+        }
+    }
+
+    // HR check
+    const hrRange = parseRange(chart.HR);
+    if (hrRange && roll >= hrRange.low) return 'HR';
+
+    return 'FB'; // fallback
+}
+
+// ============================================================================
+// PROCESS ACTION
 // ============================================================================
 
 export function processAction(state: GameState, action: GameAction): GameState {
     if (state.isOver) return state;
 
-    let newState = { ...state };
-
     switch (action.type) {
-        case 'SKIP_PRE_ATBAT':
-            newState.phase = 'defense_sub';
-            break;
-
-        case 'PINCH_HIT':
-            newState = handlePinchHit(newState, action.benchIndex, action.replacingIndex);
-            newState.phase = 'defense_sub';
-            break;
-
-        case 'SKIP_DEFENSE_SUB':
-            newState.phase = shouldShowOffensePre(newState) ? 'offense_pre' : 'pitch';
-            break;
-
-        case 'PITCHING_CHANGE':
-            newState = handlePitchingChange(newState, action.pitcherIndex);
-            newState.phase = shouldShowOffensePre(newState) ? 'offense_pre' : 'pitch';
-            break;
-
-        case 'INTENTIONAL_WALK':
-            newState = handleIntentionalWalk(newState);
-            break;
-
-        case 'SKIP_OFFENSE_PRE':
-            newState.phase = 'pitch';
-            break;
-
-        case 'SACRIFICE_BUNT':
-            // Sac bunt needs a roll on the pitcher's chart
-            newState.phase = 'swing'; // reuse swing phase for the bunt roll
-            newState.pendingResult = {
-                outcome: 'GB', // placeholder
-                pitchRoll: 0,
-                pitchTotal: 0,
-                swingRoll: 0,
-                usedPitcherChart: true,
-                modifiers: ['Sacrifice bunt'],
-            };
-            newState.currentAtBatEvents = [...newState.currentAtBatEvents, 'Sacrifice bunt attempt'];
-            newState.gameLog = [...newState.gameLog, `${getCurrentBatter(newState).card.name} attempts sacrifice bunt`];
-            break;
-
-        case 'SAC_BUNT_ROLL':
-            newState = handleSacBuntRoll(newState, action.roll);
-            break;
-
-        case 'STEAL_BASE':
-            newState = handleSteal(newState, action.runnerId, action.icon);
-            break;
-
         case 'ROLL_PITCH':
-            newState = handlePitch(newState, action.roll);
-            break;
-
+            return handlePitch(state, action.roll);
         case 'ROLL_SWING':
-            newState = handleSwing(newState, action.roll);
-            break;
-
-        case 'USE_ICON_V':
-            newState = handleVisionReroll(newState, action.cardId);
-            break;
-
-        case 'USE_ICON_S':
-            newState = handleSpeedUpgrade(newState, action.cardId);
-            break;
-
-        case 'USE_ICON_HR':
-            newState = handleHRUpgrade(newState, action.cardId);
-            break;
-
-        case 'USE_ICON_K':
-            newState = handleKBlock(newState);
-            break;
-
-        case 'USE_ICON_G':
-            newState = handleGoldGlove(newState, action.cardId);
-            break;
-
-        case 'USE_ICON_20': {
-            const ft20 = getFieldingTeam(newState);
-            const np20 = [...ft20.pitchers];
-            const p20 = np20[ft20.currentPitcherIndex];
-            np20[ft20.currentPitcherIndex] = { ...p20, twentyUsedThisInning: true };
-            newState = setFieldingTeam(newState, { ...ft20, pitchers: np20 });
-            newState.currentAtBatEvents = [...newState.currentAtBatEvents, `${p20.card.name} uses 20 icon (+3 control)`];
-            newState.gameLog = [...newState.gameLog, `${p20.card.name} uses 20 icon`];
-            newState.phase = shouldShowOffensePre(newState) ? 'offense_pre' : 'pitch';
-            break;
-        }
-
-        case 'USE_ICON_RP': {
-            const ftRP = getFieldingTeam(newState);
-            const npRP = [...ftRP.pitchers];
-            const pRP = npRP[ftRP.currentPitcherIndex];
-            npRP[ftRP.currentPitcherIndex] = { ...pRP, rpUsedThisGame: true, rpInningActive: true };
-            newState = setFieldingTeam(newState, { ...ftRP, pitchers: npRP });
-            newState.currentAtBatEvents = [...newState.currentAtBatEvents, `${pRP.card.name} uses RP icon (+3 control this inning)`];
-            newState.gameLog = [...newState.gameLog, `${pRP.card.name} uses RP icon`];
-            newState.phase = shouldShowOffensePre(newState) ? 'offense_pre' : 'pitch';
-            break;
-        }
-
-        case 'DECLINE_ICON':
-            newState = handleDeclineIcon(newState);
-            break;
-
-        case 'EXTRA_BASE_YES':
-            // Handled after fielding roll
-            break;
-
-        case 'EXTRA_BASE_NO':
-            newState = handleDeclineExtraBase(newState, action.runnerId);
-            break;
-
-        case 'FIELDING_ROLL':
-            newState = handleFieldingRoll(newState, action.roll);
-            break;
-
-        case 'ADVANCE_ATBAT':
-            newState = advanceToNextBatter(newState);
-            break;
-
-        case 'FORFEIT':
-            newState.isOver = true;
-            const forfeitTeam = state.halfInning === 'top' ? state.awayTeam : state.homeTeam;
-            const winnerTeam = state.halfInning === 'top' ? state.homeTeam : state.awayTeam;
-            newState.winnerId = winnerTeam.userId;
-            newState.gameLog = [...state.gameLog, 'Game forfeited'];
-            break;
+            return handleSwing(state, action.roll);
+        default:
+            return state;
     }
+}
+
+function handlePitch(state: GameState, roll: number): GameState {
+    if (state.phase !== 'pitch') return state;
+
+    const fieldingTeam = state.halfInning === 'top' ? state.homeTeam : state.awayTeam;
+    const battingTeam = state.halfInning === 'top' ? state.awayTeam : state.homeTeam;
+    const pitcher = fieldingTeam.pitcher;
+    const batter = battingTeam.lineup[battingTeam.currentBatterIndex];
+
+    const control = pitcher.control || 0;
+    const total = roll + control;
+    const usePitcherChart = total > batter.onBase;
+
+    const chartOwner = usePitcherChart ? pitcher.name : batter.name;
+    const log = `Pitch: ${roll} + ${control} = ${total} vs OB ${batter.onBase} → ${chartOwner}'s chart`;
+
+    return {
+        ...state,
+        phase: 'swing',
+        lastPitchRoll: roll,
+        lastPitchTotal: total,
+        usedPitcherChart: usePitcherChart,
+        lastOutcome: null,
+        lastSwingRoll: 0,
+        gameLog: [...state.gameLog, `${batter.name} vs ${pitcher.name}`, log],
+    };
+}
+
+function handleSwing(state: GameState, roll: number): GameState {
+    if (state.phase !== 'swing') return state;
+
+    const fieldingTeam = state.halfInning === 'top' ? state.homeTeam : state.awayTeam;
+    const battingTeam = state.halfInning === 'top' ? state.awayTeam : state.homeTeam;
+    const pitcher = fieldingTeam.pitcher;
+    const batter = battingTeam.lineup[battingTeam.currentBatterIndex];
+
+    const chart = state.usedPitcherChart ? pitcher.chart : batter.chart;
+    const outcome = resolveChart(chart, roll, !state.usedPitcherChart);
+
+    const outcomeNames: Record<Outcome, string> = {
+        SO: 'Strikeout', GB: 'Ground Ball Out', FB: 'Fly Ball Out', PU: 'Popup Out',
+        W: 'Walk', S: 'Single', SPlus: 'Single+', DB: 'Double', TR: 'Triple', HR: 'HOME RUN',
+    };
+
+    const log = `Swing: ${roll} → ${outcomeNames[outcome]}`;
+
+    // Apply result
+    let newState: GameState = {
+        ...state,
+        lastSwingRoll: roll,
+        lastOutcome: outcome as Outcome | null,
+        gameLog: [...state.gameLog, log],
+    };
+
+    newState = applyResult(newState, outcome, batter.cardId);
 
     return newState;
 }
 
 // ============================================================================
-// ACTION HANDLERS
+// BASERUNNING (Simple)
 // ============================================================================
 
-/**
- * Check if offense_pre phase has any actions to offer.
- * Returns true if there are runners who could bunt or use SB icon.
- */
-function shouldShowOffensePre(state: GameState): boolean {
-    const hasRunners = !!(state.bases.first || state.bases.second);
-    const canBunt = hasRunners && !state.bases.third;
-    const hasSB = getPrePitchOffenseIconsFn(state).length > 0;
-    return canBunt || hasSB;
-}
+function applyResult(state: GameState, outcome: Outcome, batterId: string): GameState {
+    const bases = { ...state.bases };
+    let outs = state.outs;
+    let runs = 0;
+    const logs: string[] = [];
+    const side = state.halfInning === 'top' ? 'away' : 'home';
 
-function getBattingTeam(state: GameState): TeamState {
-    return state.halfInning === 'top' ? state.awayTeam : state.homeTeam;
-}
+    switch (outcome) {
+        case 'SO':
+        case 'PU':
+            outs++;
+            break;
 
-function getFieldingTeam(state: GameState): TeamState {
-    return state.halfInning === 'top' ? state.homeTeam : state.awayTeam;
-}
+        case 'GB':
+        case 'FB':
+            outs++;
+            break;
 
-function setBattingTeam(state: GameState, team: TeamState): GameState {
-    if (state.halfInning === 'top') return { ...state, awayTeam: team };
-    return { ...state, homeTeam: team };
-}
-
-function setFieldingTeam(state: GameState, team: TeamState): GameState {
-    if (state.halfInning === 'top') return { ...state, homeTeam: team };
-    return { ...state, awayTeam: team };
-}
-
-function getCurrentBatter(state: GameState): LineupPlayer {
-    const team = getBattingTeam(state);
-    return team.lineup[team.currentBatterIndex];
-}
-
-function getCurrentPitcher(state: GameState): PitcherState {
-    const team = getFieldingTeam(state);
-    return team.pitchers[team.currentPitcherIndex];
-}
-
-function handlePinchHit(state: GameState, benchIndex: number, replacingIndex: number): GameState {
-    const team = getBattingTeam(state);
-    const newTeam = applyPinchHit(team, benchIndex, replacingIndex);
-    const batter = newTeam.lineup[replacingIndex];
-    return {
-        ...setBattingTeam(state, newTeam),
-        currentAtBatEvents: [...state.currentAtBatEvents, `Pinch hitter: ${batter.card.name}`],
-        gameLog: [...state.gameLog, `Pinch hitter: ${batter.card.name}`],
-    };
-}
-
-function handlePitchingChange(state: GameState, pitcherIndex: number): GameState {
-    const team = getFieldingTeam(state);
-    const outsInInning = state.outs; // current outs this half-inning
-    const newTeam = applyPitchingChange(team, pitcherIndex, state.inning, outsInInning);
-    const pitcher = newTeam.pitchers[pitcherIndex];
-    return {
-        ...setFieldingTeam(state, newTeam),
-        currentAtBatEvents: [...state.currentAtBatEvents, `Pitching change: ${pitcher.card.name}`],
-        gameLog: [...state.gameLog, `Pitching change: ${pitcher.card.name}`],
-    };
-}
-
-function handleIntentionalWalk(state: GameState): GameState {
-    const batter = getCurrentBatter(state);
-    const result = advanceRunners(state.bases, 'W', batter.cardId, state.outs);
-
-    let newState = {
-        ...state,
-        bases: result.newBases,
-        runnersReachedThisInning: true,
-        currentAtBatEvents: [...state.currentAtBatEvents, 'Intentional walk'],
-        gameLog: [...state.gameLog, `${batter.card.name} intentionally walked`],
-    };
-
-    // Score runs
-    if (result.runsScored > 0) {
-        newState = scoreRuns(newState, result.runsScored, result.scoringRunners);
-    }
-
-    return advanceToNextBatter(newState);
-}
-
-/**
- * Sacrifice bunt: roll on pitcher's chart.
- * PU = batter out, runners stay.
- * Any other result = batter out, all runners advance 1 base.
- */
-function handleSacBuntRoll(state: GameState, roll: number): GameState {
-    const batter = getCurrentBatter(state);
-    const pitcher = getCurrentPitcher(state);
-
-    // Resolve on pitcher's chart
-    const chartResult = resolvePitcherChart(pitcher.card, roll);
-
-    let newState = { ...state };
-
-    if (chartResult === 'PU') {
-        // PU on sac bunt: batter out, runners stay
-        newState.outs += 1;
-        newState = recordPitcherOut(newState);
-        newState.currentAtBatEvents = [...newState.currentAtBatEvents,
-            `Bunt roll: ${roll} → Popup! Batter out, runners hold`];
-        newState.gameLog = [...newState.gameLog,
-            `${batter.card.name} pops up the bunt`];
-
-        if (newState.outs >= 3) return endHalfInning(newState);
-        return advanceToNextBatter(newState);
-    }
-
-    // Any other result: batter out, all runners advance 1 base
-    newState.outs += 1;
-    newState = recordPitcherOut(newState);
-
-    // Advance runners 1 base
-    let runsScored = 0;
-    const scorers: string[] = [];
-    const newBases = { ...state.bases };
-
-    if (newBases.third) {
-        runsScored++;
-        scorers.push(newBases.third);
-        newBases.third = null;
-    }
-    if (newBases.second) {
-        newBases.third = newBases.second;
-        newBases.second = null;
-    }
-    if (newBases.first) {
-        newBases.second = newBases.first;
-        newBases.first = null;
-    }
-
-    newState.bases = newBases;
-    newState.currentAtBatEvents = [...newState.currentAtBatEvents,
-        `Bunt roll: ${roll} → Sacrifice successful! Batter out, runners advance`];
-    newState.gameLog = [...newState.gameLog,
-        `${batter.card.name} sacrifices, runners advance`];
-
-    if (runsScored > 0) {
-        newState.runnersReachedThisInning = true;
-        newState = scoreRuns(newState, runsScored, scorers);
-    }
-
-    if (newState.outs >= 3) return endHalfInning(newState);
-
-    // Check walk-off
-    if (newState.inning >= 9 && newState.halfInning === 'bottom' && newState.score.home > newState.score.away) {
-        return { ...newState, isOver: true, winnerId: newState.homeTeam.userId, phase: 'game_over',
-            gameLog: [...newState.gameLog, 'Walk-off! Home team wins!'] };
-    }
-
-    return advanceToNextBatter(newState);
-}
-
-function handleSteal(state: GameState, runnerId: string, useSBIcon?: boolean): GameState {
-    const battingTeam = getBattingTeam(state);
-
-    if (useSBIcon) {
-        // SB icon: steal without a throw
-        const newIcons = { ...battingTeam.icons, sbUsed: { ...battingTeam.icons.sbUsed, [runnerId]: true } };
-        const newTeam = { ...battingTeam, icons: newIcons };
-
-        // Move runner
-        let newBases = { ...state.bases };
-        if (state.bases.first === runnerId && !state.bases.second) {
-            newBases.first = null;
-            newBases.second = runnerId;
-        } else if (state.bases.second === runnerId && !state.bases.third) {
-            newBases.second = null;
-            newBases.third = runnerId;
+        case 'W': {
+            // Walk: force advancement
+            if (bases.first) {
+                if (bases.second) {
+                    if (bases.third) {
+                        runs++;
+                        logs.push('Runner scores on walk');
+                    }
+                    bases.third = bases.second;
+                }
+                bases.second = bases.first;
+            }
+            bases.first = batterId;
+            break;
         }
 
-        const runner = battingTeam.lineup.find(p => p.cardId === runnerId);
-        return {
-            ...setBattingTeam(state, newTeam),
-            bases: newBases,
-            phase: 'pitch',
-            currentAtBatEvents: [...state.currentAtBatEvents, `${runner?.card.name || 'Runner'} steals (SB icon)`],
-            gameLog: [...state.gameLog, `${runner?.card.name || 'Runner'} steals using SB icon`],
-        };
+        case 'S':
+        case 'SPlus': {
+            // Single: runners advance 1
+            if (bases.third) { runs++; logs.push('Runner scores from third'); }
+            if (bases.second) { bases.third = bases.second; }
+            else { bases.third = null; }
+            if (bases.first) { bases.second = bases.first; }
+            else { bases.second = null; }
+            bases.first = batterId;
+            break;
+        }
+
+        case 'DB': {
+            // Double: runners advance 2
+            if (bases.third) { runs++; }
+            if (bases.second) { runs++; }
+            if (bases.first) { bases.third = bases.first; }
+            else { bases.third = null; }
+            bases.second = batterId;
+            bases.first = null;
+            break;
+        }
+
+        case 'TR': {
+            // Triple: all runners score
+            if (bases.third) runs++;
+            if (bases.second) runs++;
+            if (bases.first) runs++;
+            bases.third = batterId;
+            bases.second = null;
+            bases.first = null;
+            break;
+        }
+
+        case 'HR': {
+            // Home run: everyone scores
+            if (bases.third) runs++;
+            if (bases.second) runs++;
+            if (bases.first) runs++;
+            runs++; // batter
+            bases.first = null;
+            bases.second = null;
+            bases.third = null;
+            if (runs > 1) logs.push(`${runs}-run homer!`);
+            else logs.push('Solo home run!');
+            break;
+        }
     }
 
-    // Regular steal — not implemented for advanced rules (requires strategy cards in expert)
-    // In advanced rules, only SB icon allows steals
-    return { ...state, phase: 'pitch' };
-}
+    // Update score
+    const newScore = { ...state.score };
+    newScore[side] += runs;
 
-function handlePitch(state: GameState, pitchRoll: number): GameState {
-    const pitcher = getCurrentPitcher(state);
-    const batter = getCurrentBatter(state);
-    const fatiguePenalty = getFatiguePenalty(pitcher);
-    const { modifier: iconModifier, descriptions } = getPitchModifiers(state);
-
-    const totalModifier = fatiguePenalty + iconModifier;
-    const { total, usePitcherChart } = resolvePitch(
-        pitcher.card.control, batter.card.onBase, pitchRoll, totalModifier
-    );
-
-    const modDescriptions = [];
-    if (fatiguePenalty !== 0) modDescriptions.push(`Fatigue ${fatiguePenalty}`);
-    modDescriptions.push(...descriptions);
-
-    const chartSide = usePitcherChart ? `${pitcher.card.name}'s chart` : `${batter.card.name}'s chart`;
-    const log = `Pitch: ${pitchRoll} + ${pitcher.card.control}${totalModifier !== 0 ? ` (${totalModifier > 0 ? '+' : ''}${totalModifier})` : ''} = ${total} vs OB ${batter.card.onBase} → ${chartSide}`;
-
-    return {
-        ...state,
-        phase: 'swing',
-        pendingResult: {
-            outcome: 'FB', // placeholder until swing
-            pitchRoll,
-            pitchTotal: total,
-            swingRoll: 0,
-            usedPitcherChart: usePitcherChart,
-            modifiers: modDescriptions,
-        },
-        currentAtBatEvents: [...state.currentAtBatEvents, log],
-    };
-}
-
-function handleSwing(state: GameState, swingRoll: number): GameState {
-    if (!state.pendingResult) return state;
-
-    const pitcher = getCurrentPitcher(state);
-    const batter = getCurrentBatter(state);
-
-    let outcome: Outcome;
-    if (state.pendingResult.usedPitcherChart) {
-        outcome = resolvePitcherChart(pitcher.card, swingRoll);
-    } else {
-        outcome = resolveHitterChart(batter.card, swingRoll);
-    }
-
-    const outcomeNames: Record<Outcome, string> = {
-        SO: 'Strikeout', GB: 'Ground Ball', FB: 'Fly Ball', PU: 'Popup',
-        W: 'Walk', S: 'Single', SPlus: 'Single+', DB: 'Double',
-        TR: 'Triple', HR: 'Home Run',
-    };
-
-    const log = `Swing: ${swingRoll} → ${outcomeNames[outcome]}`;
+    // Update team runs per inning
+    const battingTeam = state.halfInning === 'top' ? { ...state.awayTeam } : { ...state.homeTeam };
+    const rpi = [...battingTeam.runsPerInning];
+    while (rpi.length < state.inning) rpi.push(0);
+    rpi[state.inning - 1] = (rpi[state.inning - 1] || 0) + runs;
+    battingTeam.runsPerInning = rpi;
 
     let newState: GameState = {
         ...state,
-        phase: 'result_pending',
-        pendingResult: { ...state.pendingResult, outcome, swingRoll },
-        currentAtBatEvents: [...state.currentAtBatEvents, log],
+        bases,
+        outs,
+        score: newScore,
+        gameLog: [...state.gameLog, ...logs],
     };
 
-    // Check if any icons are available — if not, auto-apply result
-    const offIcons = getOffIcons(newState);
-    const defIcons = getDefIcons(newState);
-    if (offIcons.length === 0 && defIcons.length === 0) {
-        return applyResult(newState);
-    }
-
-    return newState;
-}
-
-function handleVisionReroll(state: GameState, cardId: string): GameState {
-    const team = getBattingTeam(state);
-    const uses = team.icons.visionUses[cardId] || 0;
-    const newIcons = { ...team.icons, visionUses: { ...team.icons.visionUses, [cardId]: uses + 1 } };
-    const newTeam = { ...team, icons: newIcons };
-
-    // Go back to swing phase for a reroll
-    return {
-        ...setBattingTeam(state, newTeam),
-        phase: 'swing',
-        currentAtBatEvents: [...state.currentAtBatEvents, 'Vision icon: rerolling'],
-        gameLog: [...state.gameLog, `${getCurrentBatter(state).card.name} uses Vision icon`],
-    };
-}
-
-function handleSpeedUpgrade(state: GameState, cardId: string): GameState {
-    if (!state.pendingResult) return state;
-    const team = getBattingTeam(state);
-    const newIcons = { ...team.icons, speedUsed: { ...team.icons.speedUsed, [cardId]: true } };
-    const newTeam = { ...team, icons: newIcons };
-
-    let newState = {
-        ...setBattingTeam(state, newTeam),
-        pendingResult: { ...state.pendingResult, outcome: 'DB' as const },
-        currentAtBatEvents: [...state.currentAtBatEvents, 'Silver Slugger: upgraded to double'],
-        gameLog: [...state.gameLog, `${getCurrentBatter(state).card.name} uses Silver Slugger icon`],
-    };
-
-    // Re-check if more icons available (HR could upgrade the DB), or auto-apply
-    const offIcons = getOffIcons(newState);
-    const defIcons = getDefIcons(newState);
-    if (offIcons.length === 0 && defIcons.length === 0) {
-        return applyResult(newState);
-    }
-    return newState;
-}
-
-function handleHRUpgrade(state: GameState, cardId: string): GameState {
-    if (!state.pendingResult) return state;
-    const team = getBattingTeam(state);
-    const newIcons = { ...team.icons, hrUsed: { ...team.icons.hrUsed, [cardId]: true } };
-    const newTeam = { ...team, icons: newIcons };
-
-    let newState = {
-        ...setBattingTeam(state, newTeam),
-        pendingResult: { ...state.pendingResult, outcome: 'HR' as const },
-        currentAtBatEvents: [...state.currentAtBatEvents, 'Power icon: upgraded to HOME RUN!'],
-        gameLog: [...state.gameLog, `${getCurrentBatter(state).card.name} uses HR icon`],
-    };
-
-    // Check for remaining icons (K could block), or auto-apply
-    const defIcons = getDefIcons(newState);
-    if (defIcons.length === 0) return applyResult(newState);
-    return newState;
-}
-
-function handleKBlock(state: GameState): GameState {
-    if (!state.pendingResult) return state;
-    const team = getFieldingTeam(state);
-    const newIcons = { ...team.icons, kUsedThisGame: true };
-    const newTeam = { ...team, icons: newIcons };
-
-    // K changes to SO — no more icons possible, auto-apply
-    let newState = {
-        ...setFieldingTeam(state, newTeam),
-        pendingResult: { ...state.pendingResult, outcome: 'SO' as const },
-        currentAtBatEvents: [...state.currentAtBatEvents, 'K icon: result changed to strikeout!'],
-        gameLog: [...state.gameLog, `${getCurrentPitcher(state).card.name} uses K icon`],
-    };
-
-    return applyResult(newState);
-}
-
-function handleGoldGlove(state: GameState, cardId: string): GameState {
-    const team = getFieldingTeam(state);
-    const player = team.lineup.find(p => p.cardId === cardId);
-    const newIcons = { ...team.icons, goldGloveUsed: { ...team.icons.goldGloveUsed, [cardId]: true } };
-    const newTeam = { ...team, icons: newIcons };
-    return {
-        ...setFieldingTeam(state, newTeam),
-        goldGloveBonus: 10,
-        currentAtBatEvents: [...state.currentAtBatEvents, `Gold Glove: ${player?.card.name || 'Fielder'} +10 fielding`],
-        gameLog: [...state.gameLog, `${player?.card.name || 'Fielder'} uses Gold Glove icon`],
-    };
-}
-
-function handleDeclineIcon(state: GameState): GameState {
-    // Apply the result — this handles all phases where icons could be used
-    return applyResult(state);
-}
-
-function handleDeclineExtraBase(state: GameState, runnerId: string): GameState {
-    const remaining = state.pendingExtraBases.filter(e => e.runnerId !== runnerId);
-    if (remaining.length === 0) {
-        return checkEndOfAtBat({ ...state, pendingExtraBases: [] });
-    }
-    return { ...state, pendingExtraBases: remaining };
-}
-
-function handleFieldingRoll(state: GameState, roll: number): GameState {
-    // Could be DP attempt or extra base throw
-    if (state.pendingResult?.outcome === 'GB' && state.phase === 'fielding_check') {
-        return resolveDoublePlayRoll(state, roll);
-    }
-    if (state.pendingExtraBases.length > 0) {
-        return resolveExtraBaseRoll(state, roll);
-    }
-    return state;
-}
-
-// ============================================================================
-// RESULT APPLICATION
-// ============================================================================
-
-function applyResult(state: GameState): GameState {
-    if (!state.pendingResult) return state;
-
-    const outcome = state.pendingResult.outcome;
-    const batter = getCurrentBatter(state);
-    const isOut = ['SO', 'GB', 'FB', 'PU'].includes(outcome);
-
-    // Apply baserunning
-    const brResult = advanceRunners(state.bases, outcome, batter.cardId, state.outs);
-
-    let newState = {
-        ...state,
-        bases: brResult.newBases,
-        currentAtBatEvents: [...state.currentAtBatEvents, ...brResult.log],
-    };
-
-    // Track if runners reached base
-    if (!isOut) {
-        newState.runnersReachedThisInning = true;
-    }
-
-    // Score runs
-    if (brResult.runsScored > 0) {
-        newState = scoreRuns(newState, brResult.runsScored, brResult.scoringRunners);
-    }
-
-    // Handle outs
-    if (isOut) {
-        if (outcome === 'GB' && brResult.isDoublePlayAttempt) {
-            // One out already (runner on 1st), DP attempt pending
-            newState.outs += 1;
-            newState = recordPitcherOut(newState);
-            if (newState.outs >= 3) {
-                return endHalfInning(newState);
-            }
-            newState.phase = 'fielding_check';
-            newState.pendingExtraBases = brResult.pendingExtraBases;
-            return newState;
-        }
-
-        newState.outs += 1;
-        newState = recordPitcherOut(newState);
-        if (newState.outs >= 3) {
-            return endHalfInning(newState);
-        }
-    }
-
-    // Check for extra base opportunities
-    if (brResult.pendingExtraBases.length > 0 && newState.outs < 3) {
-        newState.pendingExtraBases = brResult.pendingExtraBases;
-        newState.phase = 'extra_base_decision';
-        return newState;
-    }
-
-    return checkEndOfAtBat(newState);
-}
-
-function resolveDoublePlayRoll(state: GameState, roll: number): GameState {
-    const fieldingTeam = getFieldingTeam(state);
-    const batter = getCurrentBatter(state);
-    const totalFielding = getTotalInfieldFielding(fieldingTeam);
-
-    const { batterOut, log } = resolveDoublePlay(roll, totalFielding + state.goldGloveBonus, batter.card.speed);
-
-    let newState = {
-        ...state,
-        currentAtBatEvents: [...state.currentAtBatEvents, log],
-        gameLog: [...state.gameLog, log],
-    };
-
-    if (batterOut) {
-        newState.outs += 1;
-        newState = recordPitcherOut(newState);
-        if (newState.outs >= 3) {
-            // Third out on DP — runs don't score
-            return endHalfInning(newState);
-        }
+    // Put updated team back
+    if (state.halfInning === 'top') {
+        newState.awayTeam = battingTeam;
     } else {
-        // Batter safe at first
-        newState.bases = { ...newState.bases, first: batter.cardId };
+        newState.homeTeam = battingTeam;
     }
 
-    return checkEndOfAtBat(newState);
-}
-
-function resolveExtraBaseRoll(state: GameState, roll: number): GameState {
-    if (state.pendingExtraBases.length === 0) return state;
-
-    const attempt = state.pendingExtraBases[0];
-    const fieldingTeam = getFieldingTeam(state);
-    const battingTeam = getBattingTeam(state);
-    const totalFielding = getTotalOutfieldFielding(fieldingTeam);
-
-    const runner = battingTeam.lineup.find(p => p.cardId === attempt.runnerId);
-    const runnerSpeed = runner?.card.speed || 10;
-
-    const { runnerSafe, log } = resolveExtraBase(
-        roll, totalFielding, runnerSpeed,
-        attempt.toBase === 'home',
-        state.outs === 2,
-        state.goldGloveBonus,
-    );
-
-    let newState = {
-        ...state,
-        currentAtBatEvents: [...state.currentAtBatEvents, log],
-        gameLog: [...state.gameLog, log],
-        pendingExtraBases: state.pendingExtraBases.slice(1),
-    };
-
-    if (runnerSafe) {
-        // Advance runner
-        if (attempt.toBase === 'home') {
-            newState = scoreRuns(newState, 1, [attempt.runnerId]);
-            newState.bases = { ...newState.bases, [attempt.fromBase]: null };
-        } else {
-            newState.bases = {
-                ...newState.bases,
-                [attempt.fromBase]: null,
-                [attempt.toBase]: attempt.runnerId,
-            };
-        }
-    } else {
-        // Runner out
-        newState.bases = { ...newState.bases, [attempt.fromBase]: null };
-        newState.outs += 1;
-        newState = recordPitcherOut(newState);
-        if (newState.outs >= 3) {
-            return endHalfInning(newState);
-        }
+    // Check 3 outs
+    if (outs >= 3) {
+        return endHalfInning(newState);
     }
 
-    if (newState.pendingExtraBases.length > 0) {
-        newState.phase = 'extra_base_decision';
-        return newState;
-    }
-
-    return checkEndOfAtBat(newState);
-}
-
-// ============================================================================
-// GAME FLOW
-// ============================================================================
-
-function scoreRuns(state: GameState, runs: number, scoringRunners: string[]): GameState {
-    const side = state.halfInning === 'top' ? 'away' : 'home';
-    const newScore = { ...state.score, [side]: state.score[side] + runs };
-
-    // Track runs per inning
-    const team = getBattingTeam(state);
-    const inningIdx = state.inning - 1;
-    const runsPerInning = [...team.runsPerInning];
-    while (runsPerInning.length <= inningIdx) runsPerInning.push(0);
-    runsPerInning[inningIdx] += runs;
-
-    // Charge runs to pitcher
-    const fieldingTeam = getFieldingTeam(state);
-    const newPitchers = [...fieldingTeam.pitchers];
-    const pitcher = newPitchers[fieldingTeam.currentPitcherIndex];
-    newPitchers[fieldingTeam.currentPitcherIndex] = { ...pitcher, runsAllowed: pitcher.runsAllowed + runs };
-
-    let result = { ...state, score: newScore };
-    result = setBattingTeam(result, { ...team, runsPerInning });
-    result = setFieldingTeam(result, { ...fieldingTeam, pitchers: newPitchers });
-    result.gameLog = [...state.gameLog, `${runs} run(s) scored!`];
-    return result;
-}
-
-function recordPitcherOut(state: GameState): GameState {
-    const fieldingTeam = getFieldingTeam(state);
-    const newPitchers = [...fieldingTeam.pitchers];
-    const pitcher = newPitchers[fieldingTeam.currentPitcherIndex];
-    newPitchers[fieldingTeam.currentPitcherIndex] = { ...pitcher, outsRecorded: pitcher.outsRecorded + 1 };
-    return setFieldingTeam(state, { ...fieldingTeam, pitchers: newPitchers });
-}
-
-function checkEndOfAtBat(state: GameState): GameState {
-    // Check for walk-off
-    if (state.inning >= 9 && state.halfInning === 'bottom' && state.score.home > state.score.away) {
+    // Check walk-off
+    if (state.inning >= 9 && state.halfInning === 'bottom' && newScore.home > newScore.away) {
         return {
-            ...state,
+            ...newState,
+            phase: 'game_over',
             isOver: true,
             winnerId: state.homeTeam.userId,
-            phase: 'game_over',
-            gameLog: [...state.gameLog, 'Walk-off! Home team wins!'],
+            gameLog: [...newState.gameLog, '🎉 Walk-off! Home team wins!'],
         };
     }
 
-    return advanceToNextBatter(state);
+    // Advance to next batter
+    return advanceToNextBatter(newState);
 }
 
 function advanceToNextBatter(state: GameState): GameState {
-    const team = getBattingTeam(state);
-    const nextBatterIndex = (team.currentBatterIndex + 1) % 9;
-    const newTeam = { ...team, currentBatterIndex: nextBatterIndex };
-    const batter = newTeam.lineup[nextBatterIndex];
+    const battingTeam = state.halfInning === 'top' ? { ...state.awayTeam } : { ...state.homeTeam };
+    battingTeam.currentBatterIndex = (battingTeam.currentBatterIndex + 1) % 9;
 
-    return {
-        ...setBattingTeam(state, newTeam),
-        phase: 'pre_atbat',
-        pendingResult: null,
-        pendingExtraBases: [],
-        goldGloveBonus: 0, // reset per at-bat
-        currentAtBatEvents: [`Now batting: ${batter.card.name}`],
-    };
+    let newState = { ...state, phase: 'pitch' as Phase };
+    if (state.halfInning === 'top') {
+        newState.awayTeam = battingTeam;
+    } else {
+        newState.homeTeam = battingTeam;
+    }
+    return newState;
 }
 
 function endHalfInning(state: GameState): GameState {
-    // Advance batting team's batter index so they start with the next batter next time
-    const battingTeam = getBattingTeam(state);
-    const nextBatterIndex = (battingTeam.currentBatterIndex + 1) % 9;
-    let newState = setBattingTeam(state, { ...battingTeam, currentBatterIndex: nextBatterIndex });
-    if (!state.runnersReachedThisInning) {
-        const fieldingTeam = getFieldingTeam(state);
-        const pitcher = fieldingTeam.pitchers[fieldingTeam.currentPitcherIndex];
-        if (pitcher.card.icons.includes('CY')) {
-            const newPitchers = [...fieldingTeam.pitchers];
-            newPitchers[fieldingTeam.currentPitcherIndex] = { ...pitcher, cyBonusIP: pitcher.cyBonusIP + 1 };
-            newState = setFieldingTeam(newState, { ...fieldingTeam, pitchers: newPitchers });
-            newState.gameLog = [...newState.gameLog, `${pitcher.card.name}: CY icon grants +1 IP (1-2-3 inning)`];
-        }
+    // Advance batting team's batter index
+    const battingTeam = state.halfInning === 'top' ? { ...state.awayTeam } : { ...state.homeTeam };
+    battingTeam.currentBatterIndex = (battingTeam.currentBatterIndex + 1) % 9;
+
+    let newState = { ...state };
+    if (state.halfInning === 'top') {
+        newState.awayTeam = battingTeam;
+    } else {
+        newState.homeTeam = battingTeam;
     }
 
-    // Reset 20 icon for new inning
-    const ft = getFieldingTeam(newState);
-    const newPitchers = [...ft.pitchers];
-    const p = newPitchers[ft.currentPitcherIndex];
-    newPitchers[ft.currentPitcherIndex] = { ...p, twentyUsedThisInning: false };
-    newState = setFieldingTeam(newState, { ...ft, pitchers: newPitchers });
-
     if (state.halfInning === 'top') {
-        // Switch to bottom of inning
+        // Bottom of inning
         return {
             ...newState,
             halfInning: 'bottom',
             outs: 0,
             bases: { first: null, second: null, third: null },
-            phase: 'pre_atbat',
-            pendingResult: null,
-            pendingExtraBases: [],
-            runnersReachedThisInning: false,
-            goldGloveBonus: 0,
-            currentAtBatEvents: [],
-            gameLog: [...newState.gameLog, `--- Bottom of inning ${state.inning} ---`],
+            phase: 'pitch',
+            lastOutcome: null,
+            gameLog: [...newState.gameLog, `--- Bottom of ${state.inning} ---`],
         };
     } else {
-        // End of full inning — check if game is over
-        if (state.inning >= 9) {
-            if (state.score.home !== state.score.away) {
-                // Game over
-                const winner = state.score.home > state.score.away ? state.homeTeam.userId : state.awayTeam.userId;
-                return {
-                    ...newState,
-                    isOver: true,
-                    winnerId: winner,
-                    phase: 'game_over',
-                    gameLog: [...newState.gameLog, `Game Over! Final: ${state.score.away}-${state.score.home}`],
-                };
-            }
-            // Tied — extra innings
+        // End of full inning
+        if (state.inning >= 9 && state.score.home !== state.score.away) {
+            const winner = state.score.home > state.score.away ? state.homeTeam.userId : state.awayTeam.userId;
+            return {
+                ...newState,
+                phase: 'game_over',
+                isOver: true,
+                winnerId: winner,
+                gameLog: [...newState.gameLog, `Game Over! ${state.score.away}-${state.score.home}`],
+            };
         }
 
-        // Move to next inning
+        // Ensure away team has runs array for next inning
+        const away = { ...newState.awayTeam, runsPerInning: [...newState.awayTeam.runsPerInning] };
+        while (away.runsPerInning.length < state.inning + 1) away.runsPerInning.push(0);
+        const home = { ...newState.homeTeam, runsPerInning: [...newState.homeTeam.runsPerInning] };
+        while (home.runsPerInning.length < state.inning + 1) home.runsPerInning.push(0);
+
         return {
             ...newState,
+            awayTeam: away,
+            homeTeam: home,
             inning: state.inning + 1,
             halfInning: 'top',
             outs: 0,
             bases: { first: null, second: null, third: null },
-            phase: 'pre_atbat',
-            pendingResult: null,
-            pendingExtraBases: [],
-            runnersReachedThisInning: false,
-            goldGloveBonus: 0,
-            currentAtBatEvents: [],
-            gameLog: [...newState.gameLog, `--- Top of inning ${state.inning + 1} ---`],
+            phase: 'pitch',
+            lastOutcome: null,
+            gameLog: [...newState.gameLog, `--- Top of ${state.inning + 1} ---`],
         };
     }
 }
@@ -908,47 +481,17 @@ function endHalfInning(state: GameState): GameState {
 // HELPERS
 // ============================================================================
 
-/**
- * Determine whose turn it is to act.
- */
 export function whoseTurn(state: GameState): 'home' | 'away' {
-    const batting = state.halfInning === 'top' ? 'away' : 'home';
-    const fielding = state.halfInning === 'top' ? 'home' : 'away';
-
-    switch (state.phase) {
-        case 'pre_atbat': return batting;
-        case 'defense_sub': return fielding;
-        case 'offense_pre': return batting;
-        case 'pitch': return fielding;
-        case 'swing': return batting;
-        case 'result_pending': {
-            // Check who has icons to decide whose turn it is
-            const offIc = getOffIcons(state);
-            const defIc = getDefIcons(state);
-            if (offIc.length > 0) return batting;
-            if (defIc.length > 0) return fielding;
-            return batting; // no icons, batting team applies result
-        }
-        case 'fielding_check': return fielding;
-        case 'extra_base_decision': return batting;
-        default: return 'home';
-    }
+    // Home team always acts as host and rolls for both
+    return 'home';
 }
 
-export function getPhaseDescription(state: GameState): string {
-    const batter = getCurrentBatter(state);
-    const pitcher = getCurrentPitcher(state);
+export function getCurrentBatter(state: GameState): PlayerSlot {
+    const team = state.halfInning === 'top' ? state.awayTeam : state.homeTeam;
+    return team.lineup[team.currentBatterIndex];
+}
 
-    switch (state.phase) {
-        case 'pre_atbat': return `${batter.card.name} at bat. Pinch hit?`;
-        case 'defense_sub': return `Pitching change or intentional walk?`;
-        case 'offense_pre': return `Sacrifice bunt or steal?`;
-        case 'pitch': return `${pitcher.card.name} pitching to ${batter.card.name}`;
-        case 'swing': return state.pendingResult?.modifiers.includes('Sacrifice bunt') ? 'Roll for bunt' : `${batter.card.name} swings!`;
-        case 'result_pending': return `Result: ${state.pendingResult?.outcome}. Use icons?`;
-        case 'fielding_check': return `Fielding check`;
-        case 'extra_base_decision': return `Try for extra base?`;
-        case 'game_over': return `Game Over`;
-        default: return '';
-    }
+export function getCurrentPitcher(state: GameState): PlayerSlot {
+    const team = state.halfInning === 'top' ? state.homeTeam : state.awayTeam;
+    return team.pitcher;
 }
