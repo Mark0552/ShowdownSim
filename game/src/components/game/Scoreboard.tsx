@@ -42,14 +42,14 @@ export default function Scoreboard({ state, homeEmail, awayEmail }: Props) {
                 </thead>
                 <tbody>
                     <tr className={state.halfInning === 'top' ? 'batting' : ''}>
-                        <td className="sb-team-name">{awayEmail.split('@')[0]}</td>
+                        <td className="sb-team-name">{awayEmail}</td>
                         {innings.map(i => (
                             <td key={i} className={isCurrentInning(i) ? 'current' : ''}>{getInningRuns('away', i)}</td>
                         ))}
                         <td className="sb-total">{state.score.away}</td>
                     </tr>
                     <tr className={state.halfInning === 'bottom' ? 'batting' : ''}>
-                        <td className="sb-team-name">{homeEmail.split('@')[0]}</td>
+                        <td className="sb-team-name">{homeEmail}</td>
                         {innings.map(i => (
                             <td key={i} className={isCurrentInning(i) ? 'current' : ''}>{getInningRuns('home', i)}</td>
                         ))}

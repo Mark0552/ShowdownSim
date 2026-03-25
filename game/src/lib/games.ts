@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { getUsername } from './auth';
 import type { GameRow, PlayerRole } from '../types/game';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
@@ -10,7 +11,7 @@ export async function createGame(): Promise<GameRow> {
         .from('games')
         .insert({
             home_user_id: user.id,
-            home_user_email: user.email,
+            home_user_email: getUsername(user),
             status: 'waiting',
         })
         .select()
@@ -56,7 +57,7 @@ export async function joinGame(gameId: string): Promise<GameRow> {
         .from('games')
         .update({
             away_user_id: user.id,
-            away_user_email: user.email,
+            away_user_email: getUsername(user),
             status: 'lineup_select',
         })
         .eq('id', gameId)

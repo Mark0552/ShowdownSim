@@ -3,6 +3,7 @@ import type { Card } from './types/cards';
 import type { SavedLineup } from './lib/lineups';
 import { loadCards } from './data/cardData';
 import { supabase } from './lib/supabase';
+import { getUsername } from './lib/auth';
 import { useTeamStore } from './store/teamStore';
 import { useDragStore } from './store/dragStore';
 import LoginPage from './pages/LoginPage';
@@ -34,7 +35,7 @@ export default function App() {
     useEffect(() => {
         supabase.auth.getUser().then(({ data: { user } }) => {
             if (user) {
-                setUserEmail(user.email || '');
+                setUserEmail(getUsername(user));
                 setPage('menu');
             }
         });
@@ -52,7 +53,7 @@ export default function App() {
     const handleLogin = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-            setUserEmail(user.email || '');
+            setUserEmail(getUsername(user));
             setPage('menu');
         }
     };
