@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { initializeGameState, processAction, getCurrentBatter, getCurrentPitcher } from '../engine/gameEngine';
-import type { GameState, GameAction } from '../engine/gameEngine';
-import { getGame, subscribeToGame, getMyRole } from '../lib/games';
+import type { GameState } from '../engine/gameEngine';
+import { getGame, getMyRole } from '../lib/games';
+import { getLineups } from '../lib/lineups';
 import { supabase } from '../lib/supabase';
 import type { PlayerRole } from '../types/game';
 import Scoreboard from '../components/game/Scoreboard';
@@ -11,6 +11,8 @@ import ActionBar from '../components/game/ActionBar';
 import GameLog from '../components/game/GameLog';
 import './GamePage.css';
 
+const WS_URL = 'wss://showdownsim-production.up.railway.app';
+
 interface Props {
     gameId: string;
     onBack: () => void;
@@ -19,16 +21,18 @@ interface Props {
 export default function GamePage({ gameId, onBack }: Props) {
     const [gameState, setGameState] = useState<GameState | null>(null);
     const [myRole, setMyRole] = useState<PlayerRole | null>(null);
+    const [myTurn, setMyTurn] = useState<string | null>(null);
     const [homeName, setHomeName] = useState('Home');
     const [awayName, setAwayName] = useState('Away');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(true);
+    const [status, setStatus] = useState('Connecting...');
+    const wsRef = useRef<WebSocket | null>(null);
 
-    // Initialize game
     useEffect(() => {
         let mounted = true;
 
-        async function init() {
+        async function connect() {
             try {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) throw new Error('Not logged in');
@@ -41,53 +45,70 @@ export default function GamePage({ gameId, onBack }: Props) {
                 setHomeName(game.home_user_email || 'Home');
                 setAwayName(game.away_user_email || 'Away');
 
-                // Check if game already has an active state
-                if (game.state?.inning && game.state?.homeTeam) {
-                    if (mounted) {
-                        setGameState(game.state as GameState);
-                        setLoading(false);
-                    }
-                    return;
+                // Get lineup data
+                const lineupId = role === 'home' ? game.home_lineup_id : game.away_lineup_id;
+                let lineupData = null;
+
+                // Try to get lineup from the game state first (stored during selection)
+                if (game.state && game.state[`${role}Lineup`]) {
+                    lineupData = game.state[`${role}Lineup`];
+                } else if (lineupId) {
+                    // Fetch from lineups table
+                    const lineups = await getLineups();
+                    const lineup = lineups.find(l => l.id === lineupId);
+                    if (lineup) lineupData = lineup.data;
                 }
 
-                // Host initializes the game
-                if (role === 'home') {
-                    // Wait for both lineups
-                    let gameData = game;
-                    for (let i = 0; i < 15; i++) {
-                        if (gameData.state?.homeLineup && gameData.state?.awayLineup) break;
-                        await new Promise(r => setTimeout(r, 1000));
-                        const { data } = await supabase.from('games').select('*').eq('id', gameId).maybeSingle();
-                        if (data) gameData = data;
+                // Connect WebSocket
+                const ws = new WebSocket(WS_URL);
+                wsRef.current = ws;
+
+                ws.onopen = () => {
+                    if (!mounted) return;
+                    setStatus('Connected. Joining game...');
+                    ws.send(JSON.stringify({
+                        type: 'join_game',
+                        gameId,
+                        userId: user.id,
+                        role,
+                        lineupData,
+                    }));
+                };
+
+                ws.onmessage = (event) => {
+                    if (!mounted) return;
+                    const msg = JSON.parse(event.data);
+
+                    switch (msg.type) {
+                        case 'game_state':
+                            setGameState(msg.state);
+                            setMyTurn(msg.turn);
+                            setLoading(false);
+                            setStatus('');
+                            break;
+                        case 'joined':
+                            setStatus(`Joined as ${msg.role}. ${msg.players < 2 ? 'Waiting for opponent...' : 'Starting...'}`);
+                            break;
+                        case 'waiting':
+                            setStatus(msg.message);
+                            break;
+                        case 'player_left':
+                            setStatus('Opponent disconnected');
+                            break;
+                        case 'error':
+                            setError(msg.message);
+                            break;
                     }
+                };
 
-                    const homeLineup = gameData.state?.homeLineup;
-                    const awayLineup = gameData.state?.awayLineup;
-                    if (!homeLineup || !awayLineup) throw new Error('Lineups not ready');
+                ws.onclose = () => {
+                    if (mounted) setStatus('Disconnected. Refresh to reconnect.');
+                };
 
-                    const state = initializeGameState(homeLineup, awayLineup, game.home_user_id, game.away_user_id!);
+                ws.onerror = () => {
+                    if (mounted) setError('Connection error');
+                };
 
-                    await supabase.from('games').update({ status: 'in_progress', state }).eq('id', gameId);
-
-                    if (mounted) {
-                        setGameState(state);
-                        setLoading(false);
-                    }
-                } else {
-                    // Away: poll until state is ready
-                    for (let i = 0; i < 20; i++) {
-                        const { data } = await supabase.from('games').select('state').eq('id', gameId).maybeSingle();
-                        if (data?.state?.inning && data?.state?.homeTeam) {
-                            if (mounted) {
-                                setGameState(data.state as GameState);
-                                setLoading(false);
-                            }
-                            return;
-                        }
-                        await new Promise(r => setTimeout(r, 1000));
-                    }
-                    throw new Error('Game failed to start');
-                }
             } catch (err: any) {
                 if (mounted) {
                     setError(err.message);
@@ -96,55 +117,19 @@ export default function GamePage({ gameId, onBack }: Props) {
             }
         }
 
-        init();
-        return () => { mounted = false; };
+        connect();
+
+        return () => {
+            mounted = false;
+            wsRef.current?.close();
+        };
     }, [gameId]);
 
-    // Poll for state updates (both players)
-    useEffect(() => {
-        if (!gameState || !myRole) return;
-
-        const interval = setInterval(async () => {
-            try {
-                const { data } = await supabase.from('games').select('state, pending_action').eq('id', gameId).maybeSingle();
-                if (!data) return;
-
-                // Host: process pending actions from away
-                if (myRole === 'home' && data.pending_action) {
-                    const currentState = data.state as GameState;
-                    if (currentState?.phase) {
-                        const newState = processAction(currentState, data.pending_action);
-                        await supabase.from('games').update({ state: newState, pending_action: null }).eq('id', gameId);
-                        setGameState(newState);
-                    }
-                }
-
-                // Away: read latest state
-                if (myRole === 'away' && data.state?.inning) {
-                    setGameState(data.state as GameState);
-                }
-            } catch (e) { /* ignore */ }
-        }, 2000);
-
-        return () => clearInterval(interval);
-    }, [gameState?.inning, myRole, gameId]);
-
-    // Handle action (host processes directly, away writes to pending_action)
-    const handleAction = useCallback(async (action: GameAction) => {
-        if (!gameState) return;
-
-        if (myRole === 'home') {
-            const newState = processAction(gameState, action);
-            setGameState(newState);
-            await supabase.from('games').update({ state: newState }).eq('id', gameId);
-        } else {
-            await supabase.from('games').update({ pending_action: action }).eq('id', gameId);
+    const handleAction = useCallback((action: any) => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'action', action }));
         }
-    }, [gameState, myRole, gameId]);
-
-    if (loading) {
-        return <div className="game-page loading"><div>Loading game...</div></div>;
-    }
+    }, []);
 
     if (error) {
         return (
@@ -157,20 +142,40 @@ export default function GamePage({ gameId, onBack }: Props) {
         );
     }
 
-    if (!gameState) {
-        return <div className="game-page loading"><div>Initializing...</div></div>;
+    if (loading || !gameState) {
+        return (
+            <div className="game-page loading">
+                <div>{status || 'Loading game...'}</div>
+            </div>
+        );
     }
+
+    const isMyTurn = myTurn === myRole;
 
     return (
         <div className="game-page">
             <div className="game-top">
                 <button className="game-back-btn" onClick={onBack}>&larr; Leave</button>
                 <Scoreboard state={gameState} homeName={homeName} awayName={awayName} />
+                {!gameState.isOver && (
+                    <div className="turn-indicator">
+                        {isMyTurn
+                            ? <span className="your-turn">Your turn — {gameState.phase === 'pitch' ? 'Roll Pitch' : 'Roll Swing'}</span>
+                            : <span className="opp-turn">Waiting for opponent...</span>
+                        }
+                    </div>
+                )}
             </div>
             <div className="game-main">
                 <div className="game-left">
                     <Diamond state={gameState} />
-                    <ActionBar state={gameState} onRoll={handleAction} />
+                    {isMyTurn && <ActionBar state={gameState} onRoll={handleAction} />}
+                    {!isMyTurn && !gameState.isOver && (
+                        <div className="action-bar">
+                            <div className="waiting-msg">Waiting for opponent...</div>
+                        </div>
+                    )}
+                    {gameState.isOver && <ActionBar state={gameState} onRoll={handleAction} />}
                 </div>
                 <div className="game-center">
                     <AtBatPanel state={gameState} />

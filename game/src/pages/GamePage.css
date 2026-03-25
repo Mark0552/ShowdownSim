@@ -37,6 +37,27 @@
 
 .game-back-btn:hover { border-color: var(--accent); color: var(--text); }
 
+.turn-indicator {
+    display: flex;
+    align-items: center;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.your-turn { color: var(--success); }
+.opp-turn { color: var(--text-muted); font-style: italic; font-weight: 400; }
+
+.waiting-msg {
+    color: var(--text-muted);
+    font-size: 14px;
+    font-style: italic;
+    padding: 12px;
+    text-align: center;
+}
+
 .game-main {
     display: flex;
     flex: 1;
