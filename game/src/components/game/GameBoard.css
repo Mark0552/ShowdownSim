@@ -5,6 +5,7 @@
     align-items: center;
     justify-content: center;
     background: #030810;
+    position: relative;
 }
 
 .game-board-svg {
@@ -19,10 +20,138 @@
     transition: opacity 0.15s;
 }
 
-.roll-button:hover {
-    opacity: 0.85;
+.roll-button:hover { opacity: 0.85; }
+.roll-button:active rect { filter: brightness(1.2); }
+
+/* Player card tooltip */
+.player-tooltip {
+    position: fixed;
+    z-index: 1000;
+    display: flex;
+    gap: 12px;
+    background: #0a1628;
+    border: 1px solid #e94560;
+    border-radius: 10px;
+    padding: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+    pointer-events: none;
+    max-width: 400px;
 }
 
-.roll-button:active rect {
-    filter: brightness(1.2);
+.tooltip-card-img {
+    width: 120px;
+    height: 168px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid #1f4068;
+    flex-shrink: 0;
+}
+
+.tooltip-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 140px;
+}
+
+.tooltip-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: #eee;
+}
+
+.tooltip-stats {
+    display: flex;
+    gap: 10px;
+    font-size: 13px;
+    color: #e94560;
+    font-weight: 600;
+}
+
+.tooltip-icons {
+    font-size: 12px;
+    color: #d4a018;
+    font-weight: 600;
+}
+
+.tooltip-chart {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    font-size: 11px;
+    color: #8aade0;
+    font-family: 'Consolas', 'Courier New', monospace;
+}
+
+/* Bullpen/Bench expand panels */
+.bullpen-panel {
+    position: absolute;
+    z-index: 500;
+    background: #0c1e3a;
+    border: 1px solid #d4a018;
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    min-width: 200px;
+}
+
+.away-panel {
+    left: 20px;
+    bottom: 60px;
+}
+
+.home-panel {
+    right: 20px;
+    bottom: 60px;
+}
+
+.bp-header {
+    font-size: 11px;
+    color: #d4a018;
+    font-weight: 700;
+    letter-spacing: 1px;
+    cursor: pointer;
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.bp-header:hover { color: #f0c840; }
+
+.bp-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.bp-section-label {
+    font-size: 10px;
+    color: #6a8aba;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.bp-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.bp-card:hover {
+    background: rgba(255,255,255,0.05);
+}
+
+.bp-card img {
+    width: 36px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 3px;
+}
+
+.bp-card span {
+    font-size: 12px;
+    color: #8aade0;
+    font-weight: 500;
 }
