@@ -1,33 +1,142 @@
-.diamond {
+/* Diamond board — the entire playing field */
+.diamond-board {
+    position: relative;
+    width: 100%;
+    flex: 1;
+    min-height: 400px;
+}
+
+/* Green grass background */
+.diamond-grass {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, #1a5c1a 0%, #2d7a2d 50%, #1a5c1a 100%);
+    border-radius: 8px;
+    border: 2px solid #0f3f0f;
+    overflow: hidden;
+}
+
+/* The infield area — positioned as a diamond */
+.diamond-infield {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Base positions — absolute within the diamond */
+.base {
+    position: absolute;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    z-index: 2;
 }
 
-.diamond-svg {
-    width: 260px;
-    height: 230px;
+/* When I'm batting: home at bottom */
+.i-bat .base-home { bottom: 4%; left: 50%; transform: translateX(-50%); }
+.i-bat .base-1st  { right: 8%; top: 50%; transform: translateY(-50%); }
+.i-bat .base-2nd  { top: 4%; left: 50%; transform: translateX(-50%); }
+.i-bat .base-3rd  { left: 8%; top: 50%; transform: translateY(-50%); }
+.i-bat .mound     { top: 50%; left: 50%; transform: translate(-50%, -60%); }
+
+/* When opponent bats: home at top (diamond flipped) */
+.opp-bats .base-home { top: 4%; left: 50%; transform: translateX(-50%); }
+.opp-bats .base-1st  { left: 8%; top: 50%; transform: translateY(-50%); }
+.opp-bats .base-2nd  { bottom: 4%; left: 50%; transform: translateX(-50%); }
+.opp-bats .base-3rd  { right: 8%; top: 50%; transform: translateY(-50%); }
+.opp-bats .mound     { top: 50%; left: 50%; transform: translate(-50%, -40%); }
+
+/* Card images on bases */
+.base-card {
+    width: 50px;
+    height: 70px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 2px solid #4ade80;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
 }
 
-.runner-label {
-    fill: white;
-    font-size: 12px;
+.base-empty {
+    width: 20px;
+    height: 20px;
+    background: white;
+    transform: rotate(45deg);
+    border: 2px solid #666;
+}
+
+/* Pitcher on mound */
+.mound {
+    position: absolute;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.mound-card {
+    width: 60px;
+    height: 84px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 2px solid #60a5fa;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+}
+
+.mound-name {
+    font-size: 10px;
+    color: white;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    font-weight: 600;
+}
+
+/* Batter at home plate */
+.home-card {
+    width: 65px;
+    height: 91px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 2px solid var(--accent);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+}
+
+.home-name {
+    font-size: 11px;
+    color: white;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
     font-weight: 700;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
 }
 
+/* Base paths */
+.base-path {
+    position: absolute;
+    background: #c4a57b;
+    z-index: 1;
+}
+
+/* Outs indicator */
 .diamond-outs {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
+    background: rgba(0,0,0,0.6);
+    padding: 4px 10px;
+    border-radius: 12px;
+    z-index: 10;
+    color: white;
+    font-size: 12px;
 }
 
 .out-dot {
-    width: 14px;
-    height: 14px;
+    width: 12px;
+    height: 12px;
     border-radius: 50%;
-    border: 2px solid var(--border);
+    border: 2px solid #888;
     background: transparent;
 }
 
@@ -36,8 +145,86 @@
     border-color: var(--error);
 }
 
-.outs-label {
-    font-size: 13px;
-    color: var(--text-dim);
-    margin-left: 4px;
+/* Roll result overlay */
+.roll-result {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, 30px);
+    font-size: 16px;
+    font-weight: 700;
+    padding: 4px 14px;
+    border-radius: 6px;
+    z-index: 20;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    animation: fadeResult 0.3s ease-out;
+}
+
+.roll-result.out { background: rgba(248,113,113,0.8); color: white; }
+.roll-result.hit { background: rgba(74,222,128,0.8); color: white; }
+.roll-result.hr  { background: rgba(233,69,96,0.9); color: white; font-size: 20px; }
+
+@keyframes fadeResult {
+    from { opacity: 0; transform: translate(-50%, 40px) scale(0.8); }
+    to { opacity: 1; transform: translate(-50%, 30px) scale(1); }
+}
+
+/* Pitch info */
+.pitch-info {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background: rgba(0,0,0,0.6);
+    padding: 6px 10px;
+    border-radius: 6px;
+    z-index: 10;
+    font-size: 11px;
+    color: #ddd;
+    font-family: var(--font-mono);
+}
+
+/* Action button overlay */
+.diamond-action {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+}
+
+.roll-btn {
+    padding: 12px 32px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    transition: transform 0.1s;
+}
+
+.roll-btn:hover { transform: scale(1.05); }
+.roll-btn:active { transform: scale(0.95); }
+
+.waiting-text {
+    color: rgba(255,255,255,0.6);
+    font-size: 14px;
+    font-style: italic;
+    background: rgba(0,0,0,0.5);
+    padding: 8px 16px;
+    border-radius: 6px;
+}
+
+.game-over-text {
+    color: white;
+    font-size: 20px;
+    font-weight: 700;
+    background: rgba(0,0,0,0.7);
+    padding: 12px 24px;
+    border-radius: 8px;
 }
