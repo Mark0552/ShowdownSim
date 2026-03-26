@@ -99,11 +99,37 @@ export default function GameBoard({ state, myRole, isMyTurn, onRoll, homeName, a
                         AWAY BULLPEN & BENCH ▲
                     </div>
                     <div className="bp-cards">
-                        <div className="bp-section-label">Pitcher</div>
-                        <div className="bp-card" onMouseEnter={(e) => handlePlayerHover(state.awayTeam.pitcher, e)} onMouseLeave={handlePlayerLeave}>
-                            <img src={state.awayTeam.pitcher.imagePath} alt="" />
-                            <span>{state.awayTeam.pitcher.name}</span>
-                        </div>
+                        {(state.awayTeam.bullpen?.length > 0) && (
+                            <>
+                                <div className="bp-section-label">Bullpen</div>
+                                {state.awayTeam.bullpen.map((p, i) => (
+                                    <div key={`aw-bp-${i}`} className="bp-card" onMouseEnter={(e) => handlePlayerHover(p, e)} onMouseLeave={handlePlayerLeave}>
+                                        <img src={p.imagePath} alt="" />
+                                        <div className="bp-card-info">
+                                            <span className="bp-card-name">{p.name}</span>
+                                            <span className="bp-card-stats">Ctrl:{p.control} IP:{p.ip} {p.role}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </>
+                        )}
+                        {(state.awayTeam.bench?.length > 0) && (
+                            <>
+                                <div className="bp-section-label">Bench</div>
+                                {state.awayTeam.bench.map((p, i) => (
+                                    <div key={`aw-bn-${i}`} className="bp-card" onMouseEnter={(e) => handlePlayerHover(p, e)} onMouseLeave={handlePlayerLeave}>
+                                        <img src={p.imagePath} alt="" />
+                                        <div className="bp-card-info">
+                                            <span className="bp-card-name">{p.name}</span>
+                                            <span className="bp-card-stats">OB:{p.onBase} Spd:{p.speed}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </>
+                        )}
+                        {(!state.awayTeam.bullpen?.length && !state.awayTeam.bench?.length) && (
+                            <div className="bp-empty">No bullpen or bench players</div>
+                        )}
                     </div>
                 </div>
             )}
@@ -115,11 +141,37 @@ export default function GameBoard({ state, myRole, isMyTurn, onRoll, homeName, a
                         HOME BULLPEN & BENCH ▲
                     </div>
                     <div className="bp-cards">
-                        <div className="bp-section-label">Pitcher</div>
-                        <div className="bp-card" onMouseEnter={(e) => handlePlayerHover(state.homeTeam.pitcher, e)} onMouseLeave={handlePlayerLeave}>
-                            <img src={state.homeTeam.pitcher.imagePath} alt="" />
-                            <span>{state.homeTeam.pitcher.name}</span>
-                        </div>
+                        {(state.homeTeam.bullpen?.length > 0) && (
+                            <>
+                                <div className="bp-section-label">Bullpen</div>
+                                {state.homeTeam.bullpen.map((p, i) => (
+                                    <div key={`hm-bp-${i}`} className="bp-card" onMouseEnter={(e) => handlePlayerHover(p, e)} onMouseLeave={handlePlayerLeave}>
+                                        <img src={p.imagePath} alt="" />
+                                        <div className="bp-card-info">
+                                            <span className="bp-card-name">{p.name}</span>
+                                            <span className="bp-card-stats">Ctrl:{p.control} IP:{p.ip} {p.role}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </>
+                        )}
+                        {(state.homeTeam.bench?.length > 0) && (
+                            <>
+                                <div className="bp-section-label">Bench</div>
+                                {state.homeTeam.bench.map((p, i) => (
+                                    <div key={`hm-bn-${i}`} className="bp-card" onMouseEnter={(e) => handlePlayerHover(p, e)} onMouseLeave={handlePlayerLeave}>
+                                        <img src={p.imagePath} alt="" />
+                                        <div className="bp-card-info">
+                                            <span className="bp-card-name">{p.name}</span>
+                                            <span className="bp-card-stats">OB:{p.onBase} Spd:{p.speed}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </>
+                        )}
+                        {(!state.homeTeam.bullpen?.length && !state.homeTeam.bench?.length) && (
+                            <div className="bp-empty">No bullpen or bench players</div>
+                        )}
                     </div>
                 </div>
             )}
@@ -224,7 +276,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onRoll, homeName, a
                 <rect x="806" y="101" width="68" height="32" fill="#3a0a0a"/>
                 <text x="840" y="124" textAnchor="middle" fontSize="18" fill="white" fontWeight="bold" fontFamily="Impact">{state.score.away}</text>
                 <rect x="874" y="101" width="68" height="32" fill="#081222"/>
-                <text x="908" y="124" textAnchor="middle" fontSize="18" fill="#285090" fontWeight="bold" fontFamily="Impact">0</text>
+                <text x="908" y="124" textAnchor="middle" fontSize="18" fill="#c8d8f8" fontWeight="bold" fontFamily="Impact">{state.awayTeam.hits || 0}</text>
                 <rect x="942" y="101" width="64" height="32" fill="#081222"/>
                 <text x="974" y="124" textAnchor="middle" fontSize="18" fill="#285090" fontWeight="bold" fontFamily="Impact">0</text>
 
@@ -243,7 +295,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onRoll, homeName, a
                 <rect x="806" y="134" width="68" height="32" fill="#3a0a0a"/>
                 <text x="840" y="157" textAnchor="middle" fontSize="18" fill="white" fontWeight="bold" fontFamily="Impact">{state.score.home}</text>
                 <rect x="874" y="134" width="68" height="32" fill="#081222"/>
-                <text x="908" y="157" textAnchor="middle" fontSize="18" fill="#285090" fontWeight="bold" fontFamily="Impact">0</text>
+                <text x="908" y="157" textAnchor="middle" fontSize="18" fill="#c8d8f8" fontWeight="bold" fontFamily="Impact">{state.homeTeam.hits || 0}</text>
                 <rect x="942" y="134" width="64" height="32" fill="#081222"/>
                 <text x="974" y="157" textAnchor="middle" fontSize="18" fill="#285090" fontWeight="bold" fontFamily="Impact">0</text>
 

@@ -38,8 +38,11 @@ export interface TeamState {
     userId: string;
     lineup: PlayerSlot[];       // 9 batters in order
     pitcher: PlayerSlot;        // active pitcher
+    bullpen: PlayerSlot[];      // available relievers/closers
+    bench: PlayerSlot[];        // bench players
     currentBatterIndex: number;
     runsPerInning: number[];
+    hits: number;
 }
 
 export interface GameState {
@@ -112,8 +115,10 @@ function buildTeam(data: any, userId: string): TeamState {
         batters.push(...allHitters);
     }
 
-    // Get first starter
+    // Get first starter (SP1)
     const starterSlot = slots.find((s: any) =>
+        s.card.type === 'pitcher' && s.assignedPosition === 'Starter-1'
+    ) || slots.find((s: any) =>
         s.card.type === 'pitcher' && s.assignedPosition?.startsWith('Starter')
     ) || slots.find((s: any) => s.card.type === 'pitcher');
 
@@ -123,12 +128,25 @@ function buildTeam(data: any, userId: string): TeamState {
         icons: [], imagePath: '', type: 'pitcher' as const, control: 4, ip: 7,
     };
 
+    // Bullpen: relievers + closers + other starters (not the active one)
+    const bullpen = slots
+        .filter((s: any) => s.card.type === 'pitcher' && s !== starterSlot)
+        .map((s: any) => slotToPlayer(s));
+
+    // Bench: hitters assigned to bench
+    const bench = slots
+        .filter((s: any) => s.assignedPosition === 'bench' && s.card.type === 'hitter')
+        .map((s: any) => slotToPlayer(s));
+
     return {
         userId,
         lineup: batters.length >= 9 ? batters.slice(0, 9) : padLineup(batters),
         pitcher,
+        bullpen,
+        bench,
         currentBatterIndex: 0,
         runsPerInning: [0],
+        hits: 0,
     };
 }
 
@@ -361,16 +379,20 @@ function applyResult(state: GameState, outcome: Outcome, batterId: string): Game
         }
     }
 
+    // Track hits
+    const isHit = ['S', 'SPlus', 'DB', 'TR', 'HR'].includes(outcome);
+
     // Update score
     const newScore = { ...state.score };
     newScore[side] += runs;
 
-    // Update team runs per inning
+    // Update team runs per inning + hits
     const battingTeam = state.halfInning === 'top' ? { ...state.awayTeam } : { ...state.homeTeam };
     const rpi = [...battingTeam.runsPerInning];
     while (rpi.length < state.inning) rpi.push(0);
     rpi[state.inning - 1] = (rpi[state.inning - 1] || 0) + runs;
     battingTeam.runsPerInning = rpi;
+    if (isHit) battingTeam.hits = (battingTeam.hits || 0) + 1;
 
     let newState: GameState = {
         ...state,

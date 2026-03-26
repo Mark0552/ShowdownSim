@@ -78,7 +78,8 @@ function buildTeam(data, userId) {
             .forEach(s => batters.push(toPlayer(s)));
     }
 
-    const starterSlot = slots.find(s => s.card.type === 'pitcher' && s.assignedPosition?.startsWith('Starter'))
+    const starterSlot = slots.find(s => s.card.type === 'pitcher' && s.assignedPosition === 'Starter-1')
+        || slots.find(s => s.card.type === 'pitcher' && s.assignedPosition?.startsWith('Starter'))
         || slots.find(s => s.card.type === 'pitcher');
 
     const pitcher = starterSlot ? toPlayer(starterSlot) : {
@@ -86,6 +87,16 @@ function buildTeam(data, userId) {
         chart: { PU:'1', SO:'2-7', GB:'8-12', FB:'13-16', W:'17-18', S:'19-20' },
         icons: [], imagePath: '', type: 'pitcher', control: 4, ip: 7,
     };
+
+    // Bullpen: all pitchers except active starter
+    const bullpen = slots
+        .filter(s => s.card.type === 'pitcher' && s !== starterSlot)
+        .map(s => toPlayer(s));
+
+    // Bench: hitters on bench
+    const bench = slots
+        .filter(s => s.assignedPosition === 'bench' && s.card.type === 'hitter')
+        .map(s => toPlayer(s));
 
     while (batters.length < 9) {
         batters.push(batters[batters.length - 1] || {
@@ -95,7 +106,7 @@ function buildTeam(data, userId) {
         });
     }
 
-    return { userId, lineup: batters.slice(0, 9), pitcher, currentBatterIndex: 0, runsPerInning: [0] };
+    return { userId, lineup: batters.slice(0, 9), pitcher, bullpen, bench, currentBatterIndex: 0, runsPerInning: [0], hits: 0 };
 }
 
 function toPlayer(slot) {
@@ -243,15 +254,17 @@ function applyResult(state, outcome, batterId) {
             break;
     }
 
+    const isHit = ['S', 'SPlus', 'DB', 'TR', 'HR'].includes(outcome);
+
     const newScore = { ...state.score };
     newScore[side] += runs;
 
-    // Update team runs per inning
     const battingTeam = state.halfInning === 'top' ? { ...state.awayTeam } : { ...state.homeTeam };
     const rpi = [...battingTeam.runsPerInning];
     while (rpi.length < state.inning) rpi.push(0);
     rpi[state.inning - 1] = (rpi[state.inning - 1] || 0) + runs;
     battingTeam.runsPerInning = rpi;
+    if (isHit) battingTeam.hits = (battingTeam.hits || 0) + 1;
 
     let newState = { ...state, bases, outs, score: newScore, gameLog: [...state.gameLog, ...logs] };
     if (state.halfInning === 'top') newState.awayTeam = battingTeam;
