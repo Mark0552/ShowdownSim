@@ -239,15 +239,30 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
                             {myGames.map(game => {
                                 const role = getMyRole(game, userId);
                                 const opp = role === 'home' ? game.away_user_email : game.home_user_email;
+                                const isCreator = game.home_user_id === userId;
                                 return (
                                     <div key={game.id} className="game-row">
                                         <div className="game-info">
                                             <span className="game-opponent">vs {opp || '???'}</span>
                                             <span className={`game-status status-${game.status}`}>{game.status.replace('_', ' ')}</span>
                                         </div>
-                                        <button className="game-resume" onClick={() => handleResumeGame(game)}>
-                                            {game.status === 'in_progress' ? 'Resume' : 'Continue'}
-                                        </button>
+                                        <div className="game-actions">
+                                            <button className="game-resume" onClick={() => handleResumeGame(game)}>
+                                                {game.status === 'in_progress' ? 'Resume' : 'Continue'}
+                                            </button>
+                                            {isCreator && (
+                                                <button className="game-delete" onClick={async () => {
+                                                    if (confirm('Delete this game?')) {
+                                                        try {
+                                                            await deleteGame(game.id);
+                                                            setMyGames(prev => prev.filter(g => g.id !== game.id));
+                                                        } catch (err: any) {
+                                                            setError(err.message);
+                                                        }
+                                                    }
+                                                }}>Delete</button>
+                                            )}
+                                        </div>
                                     </div>
                                 );
                             })}

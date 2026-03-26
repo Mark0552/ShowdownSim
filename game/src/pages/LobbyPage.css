@@ -86,6 +86,20 @@
 
 .game-join:hover, .game-resume:hover { background: var(--accent-dim); }
 
+.game-actions { display: flex; gap: 8px; }
+
+.game-delete {
+    background: var(--bg-card);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    padding: 8px 14px;
+    border-radius: 5px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.game-delete:hover { background: var(--error); color: white; border-color: var(--error); }
+
 /* Waiting state */
 .lobby-waiting {
     text-align: center;
