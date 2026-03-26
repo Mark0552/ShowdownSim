@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { GameState } from '../engine/gameEngine';
+import type { GameState, GameAction } from '../engine/gameEngine';
 import { getGame, getMyRole } from '../lib/games';
 import { getLineups } from '../lib/lineups';
 import { supabase } from '../lib/supabase';
@@ -98,7 +98,7 @@ export default function GamePage({ gameId, onBack }: Props) {
         return () => { mounted = false; wsRef.current?.close(); };
     }, [gameId]);
 
-    const handleAction = useCallback((action: any) => {
+    const handleAction = useCallback((action: GameAction) => {
         if (wsRef.current?.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({ type: 'action', action }));
         }
@@ -129,7 +129,7 @@ export default function GamePage({ gameId, onBack }: Props) {
                 state={gameState}
                 myRole={myRole}
                 isMyTurn={isMyTurn}
-                onRoll={handleAction}
+                onAction={handleAction}
                 homeName={homeName}
                 awayName={awayName}
             />

@@ -196,6 +196,16 @@ async function handleJoinGame(ws, msg, setContext) {
     }
 }
 
+// Valid actions per game phase
+const VALID_ACTIONS = {
+    'pre_atbat':    ['PINCH_HIT', 'SKIP_SUB', 'USE_ICON', 'SAC_BUNT'],
+    'defense_sub':  ['PITCHING_CHANGE', 'SKIP_SUB', 'USE_ICON'],
+    'pitch':        ['ROLL_PITCH'],
+    'swing':        ['ROLL_SWING'],
+    'result_icons': ['USE_ICON', 'SKIP_ICONS'],
+    'extra_base':   ['EXTRA_BASE_THROW', 'SKIP_EXTRA_BASE'],
+};
+
 function handleAction(ws, msg, userId, room) {
     if (!room || !room.state) {
         ws.send(JSON.stringify({ type: 'error', message: 'Not in a game' }));
@@ -219,6 +229,17 @@ function handleAction(ws, msg, userId, room) {
         return;
     }
 
+    // Validate action is valid for current phase
+    const actionType = msg.action?.type;
+    const allowed = VALID_ACTIONS[room.state.phase] || [];
+    if (!allowed.includes(actionType)) {
+        ws.send(JSON.stringify({
+            type: 'error',
+            message: `Invalid action '${actionType}' for phase '${room.state.phase}'`,
+        }));
+        return;
+    }
+
     // Process the action (server rolls the dice)
     const newState = processAction(room.state, msg.action);
     room.state = newState;
@@ -230,8 +251,8 @@ function handleAction(ws, msg, userId, room) {
         turn: whoseTurn(newState),
     });
 
-    // Save to Supabase periodically (every at-bat or on game over)
-    if (newState.phase === 'pitch' || newState.isOver) {
+    // Save to Supabase periodically (every new at-bat or on game over)
+    if (newState.phase === 'pre_atbat' || newState.phase === 'pitch' || newState.isOver) {
         saveState(room.gameId, newState);
     }
 }

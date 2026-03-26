@@ -1,4 +1,4 @@
-import type { GameState, getCurrentBatter, getCurrentPitcher } from '../../engine/gameEngine';
+import type { GameState } from '../../engine/gameEngine';
 import { getCurrentBatter as getBatter, getCurrentPitcher as getPitcher } from '../../engine/gameEngine';
 import './AtBatPanel.css';
 

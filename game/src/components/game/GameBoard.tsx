@@ -1,9 +1,10 @@
 /**
  * MLB Showdown Game Board — SVG-based layout matching the 2005 physical board.
  * Card slots hold actual card images during gameplay.
+ * Handles all Advanced rule phases: subs, icons, extra bases, DP.
  */
 import { useState, useRef } from 'react';
-import type { GameState, PlayerSlot, TeamState } from '../../engine/gameEngine';
+import type { GameState, GameAction, PlayerSlot, TeamState } from '../../engine/gameEngine';
 import { getCurrentBatter, getCurrentPitcher } from '../../engine/gameEngine';
 import './GameBoard.css';
 
@@ -11,20 +12,22 @@ interface Props {
     state: GameState;
     myRole: 'home' | 'away';
     isMyTurn: boolean;
-    onRoll: (action: { type: string }) => void;
+    onAction: (action: GameAction) => void;
     homeName: string;
     awayName: string;
 }
 
-export default function GameBoard({ state, myRole, isMyTurn, onRoll, homeName, awayName }: Props) {
+export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName, awayName }: Props) {
     const [hoveredPlayer, setHoveredPlayer] = useState<PlayerSlot | null>(null);
     const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
     const [showAwayBullpen, setShowAwayBullpen] = useState(false);
     const [showHomeBullpen, setShowHomeBullpen] = useState(false);
+    const [showSubPanel, setShowSubPanel] = useState(false);
     const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const batter = getCurrentBatter(state);
     const pitcher = getCurrentPitcher(state);
     const battingTeam = state.halfInning === 'top' ? state.awayTeam : state.homeTeam;
+    const fieldingTeam = state.halfInning === 'top' ? state.homeTeam : state.awayTeam;
     const iAmBatting = (state.halfInning === 'top' && myRole === 'away') || (state.halfInning === 'bottom' && myRole === 'home');
 
     const getRunner = (base: 'first' | 'second' | 'third'): PlayerSlot | null => {
@@ -42,7 +45,6 @@ export default function GameBoard({ state, myRole, isMyTurn, onRoll, homeName, a
         W: 'WALK', S: 'SINGLE', SPlus: 'SINGLE+', DB: 'DOUBLE', TR: 'TRIPLE', HR: 'HOME RUN!',
     };
 
-    // Inning scores
     const innings = Array.from({ length: Math.max(9, state.inning) }, (_, i) => i + 1);
 
     const handlePlayerHover = (player: PlayerSlot, e: React.MouseEvent) => {
@@ -57,6 +59,14 @@ export default function GameBoard({ state, myRole, isMyTurn, onRoll, homeName, a
         if (hoverTimer.current) clearTimeout(hoverTimer.current);
         setHoveredPlayer(null);
     };
+
+    // Pitcher fatigue display
+    const pitcherIp = pitcher.ip || 0;
+    const pitcherInnings = fieldingTeam.inningsPitched || 0;
+    const fatigueActive = pitcherInnings > pitcherIp;
+
+    // Has runners (for sac bunt option)
+    const hasRunners = !!(state.bases.first || state.bases.second || state.bases.third);
 
     return (
         <div className="game-board-wrap">
@@ -73,6 +83,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onRoll, homeName, a
                             <div className="tooltip-stats">
                                 <span>OB: {hoveredPlayer.onBase}</span>
                                 <span>Spd: {hoveredPlayer.speed}</span>
+                                {hoveredPlayer.fielding ? <span>Fld: +{hoveredPlayer.fielding}</span> : null}
                             </div>
                         ) : (
                             <div className="tooltip-stats">
@@ -80,7 +91,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onRoll, homeName, a
                                 <span>IP: {hoveredPlayer.ip}</span>
                             </div>
                         )}
-                        {hoveredPlayer.icons.length > 0 && (
+                        {hoveredPlayer.icons && hoveredPlayer.icons.length > 0 && (
                             <div className="tooltip-icons">{hoveredPlayer.icons.join(' ')}</div>
                         )}
                         <div className="tooltip-chart">
@@ -173,6 +184,50 @@ export default function GameBoard({ state, myRole, isMyTurn, onRoll, homeName, a
                             <div className="bp-empty">No bullpen or bench players</div>
                         )}
                     </div>
+                </div>
+            )}
+
+            {/* Substitution selection panel (overlay) */}
+            {showSubPanel && isMyTurn && (
+                <div className="bullpen-panel" style={{ left: '50%', bottom: '80px', transform: 'translateX(-50%)', zIndex: 600 }}>
+                    {state.phase === 'pre_atbat' && iAmBatting && (
+                        <>
+                            <div className="bp-header" onClick={() => setShowSubPanel(false)}>SELECT PINCH HITTER ▲</div>
+                            <div className="bp-cards">
+                                {battingTeam.bench.map((p, i) => (
+                                    <div key={`ph-${i}`} className="bp-card" onClick={() => {
+                                        onAction({ type: 'PINCH_HIT', benchCardId: p.cardId, lineupIndex: battingTeam.currentBatterIndex });
+                                        setShowSubPanel(false);
+                                    }}>
+                                        <img src={p.imagePath} alt="" />
+                                        <div className="bp-card-info">
+                                            <span className="bp-card-name">{p.name}</span>
+                                            <span className="bp-card-stats">OB:{p.onBase} Spd:{p.speed} {p.icons?.join(' ')}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    )}
+                    {state.phase === 'defense_sub' && !iAmBatting && (
+                        <>
+                            <div className="bp-header" onClick={() => setShowSubPanel(false)}>SELECT RELIEVER ▲</div>
+                            <div className="bp-cards">
+                                {fieldingTeam.bullpen.map((p, i) => (
+                                    <div key={`pc-${i}`} className="bp-card" onClick={() => {
+                                        onAction({ type: 'PITCHING_CHANGE', bullpenCardId: p.cardId });
+                                        setShowSubPanel(false);
+                                    }}>
+                                        <img src={p.imagePath} alt="" />
+                                        <div className="bp-card-info">
+                                            <span className="bp-card-name">{p.name}</span>
+                                            <span className="bp-card-stats">Ctrl:{p.control} IP:{p.ip} {p.role} {p.icons?.join(' ')}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    )}
                 </div>
             )}
 
@@ -269,7 +324,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onRoll, homeName, a
                     return (
                         <g key={`away-${inn}`}>
                             <rect x={140 + i * 74} y="101" width="74" height="32" fill={i % 2 === 0 ? '#0a1830' : '#071024'} stroke="#1a3060" strokeWidth="0.5"/>
-                            <text x={177 + i * 74} y="123" textAnchor="middle" fontSize="16" fill={runs !== undefined ? '#c8d8f8' : '#1e3a7a'} fontWeight="bold" fontFamily="Arial">{runs ?? '—'}</text>
+                            <text x={177 + i * 74} y="123" textAnchor="middle" fontSize="16" fill={runs !== undefined ? '#c8d8f8' : '#1e3a7a'} fontWeight="bold" fontFamily="Arial">{runs ?? '\u2014'}</text>
                         </g>
                     );
                 })}
@@ -288,7 +343,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onRoll, homeName, a
                     return (
                         <g key={`home-${inn}`}>
                             <rect x={140 + i * 74} y="134" width="74" height="32" fill={i % 2 === 0 ? '#0a1830' : '#071024'} stroke="#1a3060" strokeWidth="0.5"/>
-                            <text x={177 + i * 74} y="156" textAnchor="middle" fontSize="16" fill={runs !== undefined ? '#c8d8f8' : '#1e3a7a'} fontWeight="bold" fontFamily="Arial">{runs ?? '—'}</text>
+                            <text x={177 + i * 74} y="156" textAnchor="middle" fontSize="16" fill={runs !== undefined ? '#c8d8f8' : '#1e3a7a'} fontWeight="bold" fontFamily="Arial">{runs ?? '\u2014'}</text>
                         </g>
                     );
                 })}
@@ -338,15 +393,18 @@ export default function GameBoard({ state, myRole, isMyTurn, onRoll, homeName, a
                             <rect x="14" y={y} width="192" height="48" rx="3" fill={isAtBat ? '#1a2858' : '#081428'} stroke={isAtBat ? '#e94560' : '#1a3040'} strokeWidth={isAtBat ? 2 : 0.5}/>
                             <text x="27" y={y + 30} fontSize="13" fill={isAtBat ? '#e94560' : '#1e3a6a'} fontWeight="bold" fontFamily="Arial">{i + 1}.</text>
                             {player.imagePath && <image href={player.imagePath} x="42" y={y + 2} width="30" height="42" preserveAspectRatio="xMidYMid slice"/>}
-                            <text x="78" y={y + 22} fontSize="10" fill={isAtBat ? 'white' : '#6a8aba'} fontWeight="bold" fontFamily="Arial">{player.name.length > 16 ? player.name.slice(0, 15) + '…' : player.name}</text>
-                            <text x="78" y={y + 36} fontSize="9" fill="#4a6a90" fontFamily="Arial">OB:{player.onBase} Spd:{player.speed}</text>
+                            <text x="78" y={y + 18} fontSize="10" fill={isAtBat ? 'white' : '#6a8aba'} fontWeight="bold" fontFamily="Arial">{player.name.length > 16 ? player.name.slice(0, 15) + '\u2026' : player.name}</text>
+                            <text x="78" y={y + 30} fontSize="9" fill="#4a6a90" fontFamily="Arial">OB:{player.onBase} Spd:{player.speed}{player.fielding ? ` +${player.fielding}` : ''}</text>
+                            {player.icons && player.icons.length > 0 && (
+                                <text x="78" y={y + 42} fontSize="8" fill="#d4a018" fontFamily="Arial" fontWeight="600">{player.icons.join(' ')}</text>
+                            )}
                         </g>
                     );
                 })}
                 {/* Away expand button */}
                 <g cursor="pointer" onClick={() => setShowAwayBullpen(!showAwayBullpen)}>
                     <rect x="14" y="755" width="192" height="28" rx="3" fill="#0a1830" stroke="#d4a01840" strokeWidth="1"/>
-                    <text x="110" y="774" textAnchor="middle" fontSize="10" fill="#d4a018" fontWeight="bold" fontFamily="Arial">{showAwayBullpen ? '▲ BULLPEN / BENCH' : '▼ BULLPEN / BENCH'}</text>
+                    <text x="110" y="774" textAnchor="middle" fontSize="10" fill="#d4a018" fontWeight="bold" fontFamily="Arial">{showAwayBullpen ? '\u25B2 BULLPEN / BENCH' : '\u25BC BULLPEN / BENCH'}</text>
                 </g>
 
                 {/* ====== RIGHT PANEL — HOME ====== */}
@@ -366,15 +424,18 @@ export default function GameBoard({ state, myRole, isMyTurn, onRoll, homeName, a
                             <rect x="1194" y={y} width="192" height="48" rx="3" fill={isAtBat ? '#1a2858' : '#081428'} stroke={isAtBat ? '#e94560' : '#1a3040'} strokeWidth={isAtBat ? 2 : 0.5}/>
                             <text x="1207" y={y + 30} fontSize="13" fill={isAtBat ? '#e94560' : '#1e3a6a'} fontWeight="bold" fontFamily="Arial">{i + 1}.</text>
                             {player.imagePath && <image href={player.imagePath} x="1222" y={y + 2} width="30" height="42" preserveAspectRatio="xMidYMid slice"/>}
-                            <text x="1258" y={y + 22} fontSize="10" fill={isAtBat ? 'white' : '#6a8aba'} fontWeight="bold" fontFamily="Arial">{player.name.length > 16 ? player.name.slice(0, 15) + '…' : player.name}</text>
-                            <text x="1258" y={y + 36} fontSize="9" fill="#4a6a90" fontFamily="Arial">OB:{player.onBase} Spd:{player.speed}</text>
+                            <text x="1258" y={y + 18} fontSize="10" fill={isAtBat ? 'white' : '#6a8aba'} fontWeight="bold" fontFamily="Arial">{player.name.length > 16 ? player.name.slice(0, 15) + '\u2026' : player.name}</text>
+                            <text x="1258" y={y + 30} fontSize="9" fill="#4a6a90" fontFamily="Arial">OB:{player.onBase} Spd:{player.speed}{player.fielding ? ` +${player.fielding}` : ''}</text>
+                            {player.icons && player.icons.length > 0 && (
+                                <text x="1258" y={y + 42} fontSize="8" fill="#d4a018" fontFamily="Arial" fontWeight="600">{player.icons.join(' ')}</text>
+                            )}
                         </g>
                     );
                 })}
                 {/* Home expand button */}
                 <g cursor="pointer" onClick={() => setShowHomeBullpen(!showHomeBullpen)}>
                     <rect x="1194" y="755" width="192" height="28" rx="3" fill="#0a1830" stroke="#d4a01840" strokeWidth="1"/>
-                    <text x="1290" y="774" textAnchor="middle" fontSize="10" fill="#d4a018" fontWeight="bold" fontFamily="Arial">{showHomeBullpen ? '▲ BULLPEN / BENCH' : '▼ BULLPEN / BENCH'}</text>
+                    <text x="1290" y="774" textAnchor="middle" fontSize="10" fill="#d4a018" fontWeight="bold" fontFamily="Arial">{showHomeBullpen ? '\u25B2 BULLPEN / BENCH' : '\u25BC BULLPEN / BENCH'}</text>
                 </g>
 
                 {/* ====== CENTER FIELD ====== */}
@@ -385,7 +446,6 @@ export default function GameBoard({ state, myRole, isMyTurn, onRoll, homeName, a
                 {/* Diamond dirt + base paths */}
                 <path d="M 700,985 L 1120,565 L 700,145 L 280,565 Z M 700,891 L 374,565 L 700,239 L 1026,565 Z" fill="url(#dirtGrad)" fillRule="evenodd" clipPath="url(#centerClip)"/>
                 <polygon points="700,891 1026,565 700,239 374,565" fill="url(#grassStripe)" opacity="0.55"/>
-                {/* Base path lines */}
                 <line x1="700" y1="905" x2="1040" y2="565" stroke="#e8e8e0" strokeWidth="3.5" opacity="0.55"/>
                 <line x1="1040" y1="565" x2="700" y2="225" stroke="#e8e8e0" strokeWidth="3.5" opacity="0.55"/>
                 <line x1="700" y1="225" x2="360" y2="565" stroke="#e8e8e0" strokeWidth="3.5" opacity="0.55"/>
@@ -406,24 +466,20 @@ export default function GameBoard({ state, myRole, isMyTurn, onRoll, homeName, a
                 <rect x="349" y="554" width="22" height="22" rx="3" fill={runner3 ? '#4ade80' : 'white'} stroke={runner3 ? '#22c55e' : '#cccccc'} strokeWidth="1.5" transform="rotate(45,360,565)" filter="url(#dropShadow)"/>
 
                 {/* ====== CARD SLOTS ====== */}
-
-                {/* 2nd Base card slot */}
                 <CardSlot x={662} y={178} label="2B" card={runner2} labelBelow={true}/>
-
-                {/* 1st Base card slot */}
                 <CardSlot x={1006} y={512} label="1B" card={runner1}/>
-
-                {/* 3rd Base card slot */}
                 <CardSlot x={318} y={512} label="3B" card={runner3}/>
-
-                {/* Pitcher card slot (on mound) */}
                 <CardSlot x={662} y={512} label="P" card={pitcher} labelBelow={true} labelText="PITCHER"/>
-
-                {/* Hitter card slot (home plate) */}
                 <CardSlot x={662} y={783} label="H" card={batter} labelAbove={true} labelText="HITTER"/>
 
+                {/* ====== PITCHER IP / FATIGUE ====== */}
+                <rect x="745" y="620" width="90" height="22" rx="4" fill="rgba(0,0,0,0.7)"/>
+                <text x="790" y="636" textAnchor="middle" fontSize="10" fill={fatigueActive ? '#ff6060' : '#8aade0'} fontWeight="bold" fontFamily="monospace">
+                    IP: {pitcherInnings}/{pitcherIp}{fatigueActive ? ` (-${pitcherInnings - pitcherIp})` : ''}
+                </text>
+
                 {/* ====== RESULT OVERLAY ====== */}
-                {state.lastOutcome && (
+                {state.lastOutcome && state.phase !== 'result_icons' && (
                     <g>
                         <rect x="580" y="670" width="240" height="50" rx="8" fill={
                             ['SO','GB','FB','PU'].includes(state.lastOutcome) ? 'rgba(200,30,30,0.9)' :
@@ -435,15 +491,41 @@ export default function GameBoard({ state, myRole, isMyTurn, onRoll, homeName, a
                     </g>
                 )}
 
+                {/* ====== DP RESULT OVERLAY ====== */}
+                {state.pendingDpResult && (
+                    <g>
+                        <rect x="440" y="340" width="220" height="50" rx="6" fill={state.pendingDpResult.isDP ? 'rgba(200,30,30,0.9)' : 'rgba(34,180,80,0.9)'}/>
+                        <text x="550" y="362" textAnchor="middle" fontSize="14" fill="white" fontWeight="bold" fontFamily="Impact">
+                            {state.pendingDpResult.isDP ? 'DOUBLE PLAY!' : 'DP AVOIDED'}
+                        </text>
+                        <text x="550" y="382" textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.8)" fontFamily="monospace">
+                            d20({state.pendingDpResult.roll})+IF({state.pendingDpResult.defenseTotal - state.pendingDpResult.roll})={state.pendingDpResult.defenseTotal} vs Spd {state.pendingDpResult.offenseSpeed}
+                        </text>
+                    </g>
+                )}
+
+                {/* ====== EXTRA BASE RESULT OVERLAY ====== */}
+                {state.pendingExtraBaseResult && (
+                    <g>
+                        <rect x="440" y="340" width="260" height="50" rx="6" fill={state.pendingExtraBaseResult.safe ? 'rgba(34,180,80,0.9)' : 'rgba(200,30,30,0.9)'}/>
+                        <text x="570" y="362" textAnchor="middle" fontSize="14" fill="white" fontWeight="bold" fontFamily="Impact">
+                            {state.pendingExtraBaseResult.safe ? `${state.pendingExtraBaseResult.runnerName} SAFE!` : `${state.pendingExtraBaseResult.runnerName} OUT!`}
+                        </text>
+                        <text x="570" y="382" textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.8)" fontFamily="monospace">
+                            Spd {state.pendingExtraBaseResult.runnerSpeed} vs d20({state.pendingExtraBaseResult.roll})+OF={state.pendingExtraBaseResult.defenseTotal}
+                        </text>
+                    </g>
+                )}
+
                 {/* ====== PITCH INFO ====== */}
                 {state.lastPitchRoll > 0 && (
                     <g>
                         <rect x="440" y="440" width="180" height="60" rx="6" fill="rgba(0,0,0,0.75)"/>
                         <text x="530" y="460" textAnchor="middle" fontSize="11" fill="#aaa" fontFamily="monospace">
-                            Pitch: {state.lastPitchRoll}+{pitcher.control || 0}={state.lastPitchTotal} vs OB {batter.onBase}
+                            Pitch: {state.lastPitchRoll}+{pitcher.control || 0}{state.fatiguePenalty ? `-${state.fatiguePenalty}` : ''}{state.controlModifier ? `+${state.controlModifier}` : ''}={state.lastPitchTotal} vs OB {batter.onBase}
                         </text>
                         <text x="530" y="478" textAnchor="middle" fontSize="11" fill={state.usedPitcherChart ? '#60a5fa' : '#4ade80'} fontFamily="monospace" fontWeight="bold">
-                            → {state.usedPitcherChart ? "Pitcher's chart" : "Batter's chart"}
+                            {'\u2192'} {state.usedPitcherChart ? "Pitcher's chart" : "Batter's chart"}
                         </text>
                         {state.lastSwingRoll > 0 && (
                             <text x="530" y="494" textAnchor="middle" fontSize="11" fill="#ddd" fontFamily="monospace">
@@ -453,30 +535,117 @@ export default function GameBoard({ state, myRole, isMyTurn, onRoll, homeName, a
                     </g>
                 )}
 
-                {/* ====== ACTION BUTTON ====== */}
+                {/* ====== ACTION BUTTONS ====== */}
+
+                {/* Pre-atbat phase: offense can pinch hit, sac bunt, or skip */}
+                {!state.isOver && isMyTurn && state.phase === 'pre_atbat' && (
+                    <g>
+                        {battingTeam.bench.length > 0 && (
+                            <g className="roll-button" onClick={() => setShowSubPanel(true)} cursor="pointer">
+                                <rect x="500" y="730" width="160" height="38" rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
+                                <text x="580" y="755" textAnchor="middle" fontSize="14" fill="#002" fontWeight="900" fontFamily="Impact">PINCH HIT</text>
+                            </g>
+                        )}
+                        {hasRunners && (
+                            <g className="roll-button" onClick={() => onAction({ type: 'SAC_BUNT' })} cursor="pointer">
+                                <rect x="670" y="730" width="120" height="38" rx="6" fill="#8b5cf6" stroke="#a78bfa" strokeWidth="1.5"/>
+                                <text x="730" y="755" textAnchor="middle" fontSize="14" fill="white" fontWeight="900" fontFamily="Impact">SAC BUNT</text>
+                            </g>
+                        )}
+                        <g className="roll-button" onClick={() => onAction({ type: 'SKIP_SUB' })} cursor="pointer">
+                            <rect x="800" y="730" width="100" height="38" rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
+                            <text x="850" y="755" textAnchor="middle" fontSize="14" fill="#ccc" fontWeight="900" fontFamily="Impact">SKIP</text>
+                        </g>
+                    </g>
+                )}
+
+                {/* Defense sub phase: defense can change pitcher or skip */}
+                {!state.isOver && isMyTurn && state.phase === 'defense_sub' && (
+                    <g>
+                        {fieldingTeam.bullpen.length > 0 && (
+                            <g className="roll-button" onClick={() => setShowSubPanel(true)} cursor="pointer">
+                                <rect x="520" y="730" width="200" height="38" rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
+                                <text x="620" y="755" textAnchor="middle" fontSize="14" fill="#002" fontWeight="900" fontFamily="Impact">CHANGE PITCHER</text>
+                            </g>
+                        )}
+                        <g className="roll-button" onClick={() => onAction({ type: 'SKIP_SUB' })} cursor="pointer">
+                            <rect x="730" y="730" width="100" height="38" rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
+                            <text x="780" y="755" textAnchor="middle" fontSize="14" fill="#ccc" fontWeight="900" fontFamily="Impact">SKIP</text>
+                        </g>
+                    </g>
+                )}
+
+                {/* Pitch phase */}
                 {!state.isOver && isMyTurn && state.phase === 'pitch' && (
-                    <g className="roll-button" onClick={() => onRoll({ type: 'ROLL_PITCH' })} cursor="pointer">
+                    <g className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH' })} cursor="pointer">
                         <rect x="600" y="730" width="200" height="45" rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
                         <text x="700" y="760" textAnchor="middle" fontSize="20" fill="white" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="2">ROLL PITCH</text>
                     </g>
                 )}
+
+                {/* Swing phase */}
                 {!state.isOver && isMyTurn && state.phase === 'swing' && (
-                    <g className="roll-button" onClick={() => onRoll({ type: 'ROLL_SWING' })} cursor="pointer">
+                    <g className="roll-button" onClick={() => onAction({ type: 'ROLL_SWING' })} cursor="pointer">
                         <rect x="600" y="730" width="200" height="45" rx="8" fill="#4ade80" stroke="#6bff9a" strokeWidth="2"/>
                         <text x="700" y="760" textAnchor="middle" fontSize="20" fill="#002" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="2">ROLL SWING</text>
                     </g>
                 )}
+
+                {/* Result icons phase: show icon buttons */}
+                {!state.isOver && isMyTurn && state.phase === 'result_icons' && state.iconPrompt && (
+                    <g>
+                        <rect x="480" y="670" width="440" height="40" rx="6" fill="rgba(0,0,0,0.8)"/>
+                        <text x="700" y="696" textAnchor="middle" fontSize="13" fill="#d4a018" fontWeight="bold" fontFamily="Arial">
+                            {state.lastOutcome ? `Result: ${outcomeNames[state.lastOutcome] || state.lastOutcome}` : 'Icon Decision'}
+                        </text>
+                        {state.iconPrompt.availableIcons.map((ic, i) => (
+                            <g key={`icon-${i}`} className="roll-button" onClick={() => onAction({ type: 'USE_ICON', cardId: ic.cardId, icon: ic.icon })} cursor="pointer">
+                                <rect x={500 + i * 150} y="720" width="140" height="38" rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
+                                <text x={570 + i * 150} y="744" textAnchor="middle" fontSize="12" fill="#002" fontWeight="bold" fontFamily="Arial">{ic.description.split(':')[0]}</text>
+                            </g>
+                        ))}
+                        <g className="roll-button" onClick={() => onAction({ type: 'SKIP_ICONS' })} cursor="pointer">
+                            <rect x={500 + state.iconPrompt.availableIcons.length * 150} y="720" width="100" height="38" rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
+                            <text x={550 + state.iconPrompt.availableIcons.length * 150} y="744" textAnchor="middle" fontSize="12" fill="#ccc" fontWeight="bold" fontFamily="Arial">DECLINE</text>
+                        </g>
+                    </g>
+                )}
+
+                {/* Extra base phase: defense chooses who to throw at */}
+                {!state.isOver && isMyTurn && state.phase === 'extra_base' && state.extraBaseEligible && (
+                    <g>
+                        <rect x="440" y="670" width="520" height="40" rx="6" fill="rgba(0,0,0,0.8)"/>
+                        <text x="700" y="696" textAnchor="middle" fontSize="13" fill="#d4a018" fontWeight="bold" fontFamily="Arial">
+                            Extra Base Attempt — Choose runner to throw at:
+                        </text>
+                        {state.extraBaseEligible.map((runner, i) => (
+                            <g key={`eb-${i}`} className="roll-button" onClick={() => onAction({ type: 'EXTRA_BASE_THROW', runnerId: runner.runnerId })} cursor="pointer">
+                                <rect x={480 + i * 170} y="720" width="160" height="38" rx="6" fill="#e94560" stroke="#ff6b8a" strokeWidth="1.5"/>
+                                <text x={560 + i * 170} y="738" textAnchor="middle" fontSize="11" fill="white" fontWeight="bold" fontFamily="Arial">THROW: {runner.runnerName}</text>
+                                <text x={560 + i * 170} y="752" textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.7)" fontFamily="monospace">{runner.fromBase}{'\u2192'}{runner.toBase} Spd:{runner.runnerSpeed}</text>
+                            </g>
+                        ))}
+                        <g className="roll-button" onClick={() => onAction({ type: 'SKIP_EXTRA_BASE' })} cursor="pointer">
+                            <rect x={480 + state.extraBaseEligible.length * 170} y="720" width="120" height="38" rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
+                            <text x={540 + state.extraBaseEligible.length * 170} y="744" textAnchor="middle" fontSize="12" fill="#ccc" fontWeight="bold" fontFamily="Arial">NO THROW</text>
+                        </g>
+                    </g>
+                )}
+
+                {/* Waiting for opponent */}
                 {!state.isOver && !isMyTurn && (
                     <g>
                         <rect x="580" y="730" width="240" height="40" rx="6" fill="rgba(0,0,0,0.6)"/>
                         <text x="700" y="757" textAnchor="middle" fontSize="14" fill="#888" fontStyle="italic" fontFamily="Arial">Waiting for opponent...</text>
                     </g>
                 )}
+
+                {/* Game over */}
                 {state.isOver && (
                     <g>
                         <rect x="520" y="700" width="360" height="60" rx="10" fill="rgba(0,0,0,0.85)"/>
                         <text x="700" y="740" textAnchor="middle" fontSize="28" fill="white" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="3">
-                            GAME OVER  {state.score.away}–{state.score.home}
+                            GAME OVER  {state.score.away}{'\u2013'}{state.score.home}
                         </text>
                     </g>
                 )}
@@ -493,27 +662,18 @@ function CardSlot({ x, y, label, card, labelBelow, labelAbove, labelText }: {
     const w = 76, h = 106;
     return (
         <g>
-            {/* Shadow */}
             <rect x={x + 3} y={y + 3} width={w} height={h} rx="6" fill="rgba(0,0,0,0.55)"/>
-            {/* Slot border */}
             <rect x={x} y={y} width={w} height={h} rx="6" fill="rgba(0,0,0,0.30)" stroke="#f0e8c0" strokeWidth="2.2" strokeDasharray="6,4" opacity="0.88" filter="url(#cardGlow)"/>
-            {/* Corner brackets */}
             <path d={`M ${x} ${y} l 10 0 M ${x} ${y} l 0 10`} stroke="#f0e8c0" strokeWidth="2.5" opacity="0.7"/>
             <path d={`M ${x+w} ${y} l -10 0 M ${x+w} ${y} l 0 10`} stroke="#f0e8c0" strokeWidth="2.5" opacity="0.7"/>
             <path d={`M ${x} ${y+h} l 10 0 M ${x} ${y+h} l 0 -10`} stroke="#f0e8c0" strokeWidth="2.5" opacity="0.7"/>
             <path d={`M ${x+w} ${y+h} l -10 0 M ${x+w} ${y+h} l 0 -10`} stroke="#f0e8c0" strokeWidth="2.5" opacity="0.7"/>
-
-            {/* Position label inside slot (ghosted) */}
             {!card && (
                 <text x={x + w/2} y={y + h/2 + 5} textAnchor="middle" fontSize="14" fill="#f0e8c038" fontWeight="bold" fontFamily="Arial Black">{label}</text>
             )}
-
-            {/* Card image */}
             {card && card.imagePath && (
                 <image href={card.imagePath} x={x + 3} y={y + 3} width={w - 6} height={h - 6} preserveAspectRatio="xMidYMid slice"/>
             )}
-
-            {/* Label below/above */}
             {labelText && labelBelow && (
                 <text x={x + w/2} y={y + h + 18} textAnchor="middle" fontSize="11" fill="#ffffffaa" fontWeight="bold" fontFamily="Arial Black">{labelText}</text>
             )}

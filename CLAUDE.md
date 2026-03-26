@@ -59,49 +59,60 @@ Starters use: `Starter-1` through `Starter-4`.
 Bullpen cards use: `Reliever` or `Closer` (not unique — multiple allowed).
 Bench uses: `bench`.
 
-### Game Engine (`game/src/engine/`)
-Pure state machine: `processAction(state: GameState, action: GameAction) => GameState`
+### Game Engine Architecture
+- **Server (`server/engine.js`)** — Single source of truth. All game logic lives here.
+- **Client (`game/src/engine/gameEngine.ts`)** — Types-only file. No game logic, only interfaces and two pure read-only helpers (`getCurrentBatter`, `getCurrentPitcher`).
+- **Server (`server/index.js`)** — Express + WebSocket. Validates turns, validates actions per phase, broadcasts state.
 
-**Modules:**
-- `gameEngine.ts` — Main dispatcher + all action handlers. Manages full at-bat sequence, half-inning transitions, extra innings, walk-offs.
-- `charts.ts` — Chart resolution ported from sim.js. `parseRange()`, `resolveHitterChart()`, `resolvePitcherChart()`, `resolvePitch()`.
-- `baserunning.ts` — `advanceRunners()` handles all outcomes (W, S, SPlus, DB, TR, HR, SO, GB, FB, PU). `resolveDoublePlay()`, `resolveExtraBase()`.
-- `icons.ts` — `getOffensiveIcons()`, `getDefensiveIcons()`, `getPrePitchOffenseIcons()`, `getDefensePrePitchIcons()`, `getPitchModifiers()`.
-- `fatigue.ts` — `getFatiguePenalty()`, `canRemoveStarter()`.
-- `substitutions.ts` — `getAvailablePinchHitters()`, `getAvailableRelievers()`, `applyPinchHit()`, `applyPitchingChange()`, `getTotalInfieldFielding()`, `getTotalOutfieldFielding()`.
-- `dice.ts` — `rollD20()`.
+**Server engine implements full MLB Showdown Advanced rules:**
+- Chart resolution (`parseRange`, `resolveChart`)
+- Fielding data extracted from card positions via `getFieldingFromSlot()`
+- Ground Ball Double Play: d20 + IF fielding vs batter Speed
+- Extra Base Attempts: d20 + OF fielding vs runner Speed (+5 home, +5 two outs)
+- S+ (Single Plus): runners advance one extra base
+- Pitcher Fatigue: -1 control per inning past IP rating
+- Substitutions: pinch hitting, pitching changes, offense→defense→offense ordering
+- Icons: K, G, HR, V, SB, 20, CY, RP, S with proper usage limits
+- Sac Bunt: rolls on pitcher chart, PU = runners hold, else = runners advance
 
 **Phase flow:**
 ```
-pre_atbat → defense_sub → [offense_pre if runners] → pitch → swing → result_pending
-  ↓ (if icons)              ↓ (if no icons, auto-apply result)
-  icon decisions → apply result → baserunning → [fielding_check] → [extra_base_decision] → next batter
+pre_atbat (offense: pinch hit / sac bunt / SB icon / skip)
+  → defense_sub (defense: change pitcher / 20/RP icon / skip)
+    → [offense_re if defense changed pitcher]
+      → pitch (defense rolls)
+        → swing (offense rolls)
+          → [result_icons if icons available]
+            → applyResult (baserunning + DP auto-resolution)
+              → [extra_base if eligible runners]
+                → next batter (back to pre_atbat)
   ↓ (3 outs)
   endHalfInning → switch sides or end game
 ```
 
-**Key implementation details:**
-- `shouldShowOffensePre()` — skips offense_pre when no runners (no bunt/steal options)
-- After swing, auto-applies result if no icons available (no "Apply Result" button)
-- After using S/HR/K icons, re-checks remaining icons before applying
-- K icon only offered on hits (not walks or existing outs)
-- `whoseTurn()` for result_pending checks which team has icons
-- `endHalfInning()` advances batting team's batter index before switching sides
-- `goldGloveBonus` stored on GameState, applied to DP and extra base rolls, reset per at-bat
-- Sac bunt: `SAC_BUNT_ROLL` rolls on pitcher chart, PU = out + runners stay, else = out + runners advance 1
+**`whoseTurn()` by phase:**
+- `pre_atbat` → offense, `defense_sub` → defense, `pitch` → defense, `swing` → offense
+- `result_icons` → from `iconPrompt.team`, `extra_base` → defense
 
-**Multiplayer sync (`gameSync.ts`):**
-- Home team is "host" — runs engine locally, writes state to Supabase.
-- Away team reads state via polling (3s) + Realtime subscription.
-- Away submits actions via `pending_action` JSONB column. Host reads, processes, clears.
-- Both lineups stored as `homeLineup`/`awayLineup` in `state` JSONB during lineup selection (avoids cross-user RLS issues).
+**Key implementation details:**
+- `enterPreAtBat()` auto-skips sub phases if no bench/bullpen available
+- DP auto-resolves during `applyResult()` — stores result in `pendingDpResult` for UI display
+- G (Gold Glove) icon auto-applies during DP/extra base rolls (+10 fielding)
+- CY icon passively checked at `endHalfInning()` — reduces `inningsPitched` by 1 for 1-2-3 innings
+- V (Veteran) icon re-enters swing phase for a reroll
+- Starter can't be removed before inning 5 unless 10+ runs scored
+- `icon20UsedThisInning` and `rpActiveInning` track per-inning icon state
+
+**Multiplayer sync:**
+- WebSocket server on Railway (`wss://showdownsim-production.up.railway.app`)
+- Server rolls all dice, validates turns via `whoseTurn()`, validates actions per phase via `VALID_ACTIONS` map
+- Both players receive identical `game_state` broadcasts
+- State persisted to Supabase on phase transitions and game over
 
 ### Game UI Components
-- `Diamond.tsx` — SVG baseball diamond with colored bases, runner names, outs display.
-- `Scoreboard.tsx` — Line score table by inning with R totals.
-- `AtBatPanel.tsx` — Pitcher and batter card images, stats, roll results, outcome display.
-- `ActionBar.tsx` — Context-sensitive buttons based on current phase and whose turn.
-- `GameLog.tsx` — Scrolling play-by-play with inning breaks and color coding.
+- `GameBoard.tsx` — Primary SVG game board (1400x950). Shows scoreboard, lineup panels (away/home), diamond with card slots, base runners, action buttons for all phases (pitch, swing, subs, icons, extra bases), DP/extra base result overlays, pitcher IP/fatigue display, player icon indicators. Handles all Advanced rule UI interactions.
+- `GamePage.tsx` — WebSocket connection handler. Sends typed `GameAction` to server, receives `GameState` broadcasts.
+- Unused but available: `Diamond.tsx`, `Scoreboard.tsx`, `AtBatPanel.tsx`, `ActionBar.tsx`, `GameLog.tsx`, `SidePanel.tsx`, `LineupStrip.tsx`.
 
 ## Card Images (`cards/`)
 
@@ -122,10 +133,11 @@ Images are 251x350px JPEGs from TCDB. Referenced via `imagePath` field on each c
 
 ## Known Issues / TODO
 
-- Game multiplayer is "Under Construction" — engine works but needs more testing and polish
-- Strategy cards have data + images but are not used in the game yet (Advanced rules don't use them — Expert rules do)
-- Host rolls all dice (away player can't verify) — fine for casual play
-- Polling-based sync (3s interval) — Realtime subscription exists as primary but polling is fallback
+- Strategy cards have data + images but are not used in the game yet (Expert rules use them)
+- Server rolls all dice (away player can't verify) — fine for casual play
 - No reconnection handling if a player disconnects mid-game
+- R and RY icons exist on some cards but are not implemented (informational only — Rookie/Rookie Year)
+- Icons `K` on hitters — K icon is currently only checked on the pitcher; if hitters can also have K, that needs review
+- GameLog component exists but is not currently rendered in GameBoard (could be added as overlay)
 - Position parsing uses regex that handles: `1B+1`, `LF-RF+2`, `OF+0`, `IF+1`, `C+9, 1B+0`, `DH`, etc.
 - `parseRange()` handles bad data like `"3-0"` (high < low) by treating as single number
