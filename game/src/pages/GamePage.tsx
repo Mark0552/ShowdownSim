@@ -4,11 +4,7 @@ import { getGame, getMyRole } from '../lib/games';
 import { getLineups } from '../lib/lineups';
 import { supabase } from '../lib/supabase';
 import type { PlayerRole } from '../types/game';
-import Scoreboard from '../components/game/Scoreboard';
-import Diamond from '../components/game/Diamond';
-import LineupStrip from '../components/game/LineupStrip';
-import SidePanel from '../components/game/SidePanel';
-import GameLog from '../components/game/GameLog';
+import GameBoard from '../components/game/GameBoard';
 import './GamePage.css';
 
 const WS_URL = 'wss://showdownsim-production.up.railway.app';
@@ -126,64 +122,19 @@ export default function GamePage({ gameId, onBack }: Props) {
     }
 
     const isMyTurn = myTurn === myRole;
-    const myTeam = myRole === 'home' ? gameState.homeTeam : gameState.awayTeam;
-    const oppTeam = myRole === 'home' ? gameState.awayTeam : gameState.homeTeam;
-    const myName = myRole === 'home' ? homeName : awayName;
-    const oppName = myRole === 'home' ? awayName : homeName;
-
-    const iAmBatting = (gameState.halfInning === 'top' && myRole === 'away') ||
-                       (gameState.halfInning === 'bottom' && myRole === 'home');
-    const oppIsBatting = !iAmBatting;
 
     return (
         <div className="game-page">
-            {/* Scoreboard + controls */}
-            <div className="game-header">
-                <button className="game-back-btn" onClick={onBack}>&larr;</button>
-                <Scoreboard state={gameState} homeName={homeName} awayName={awayName} />
-                <div className="inning-display">
-                    {gameState.halfInning === 'top' ? '▲' : '▼'} {gameState.inning}
-                </div>
-            </div>
-
-            {/* Opponent lineup (top) */}
-            <div className="board-row opponent-row">
-                <SidePanel team={oppTeam} type="bullpen" />
-                <LineupStrip
-                    team={oppTeam}
-                    label={oppName}
-                    isOpponent={true}
-                    currentBatterIndex={oppTeam.currentBatterIndex}
-                    isBatting={oppIsBatting}
-                />
-                <SidePanel team={oppTeam} type="bench" />
-            </div>
-
-            {/* Diamond (center) + Game Log (side) */}
-            <div className="board-center">
-                <Diamond
-                    state={gameState}
-                    myRole={myRole}
-                    isMyTurn={isMyTurn}
-                    onRoll={handleAction}
-                />
-                <div className="board-log">
-                    <GameLog state={gameState} />
-                </div>
-            </div>
-
-            {/* My lineup (bottom) */}
-            <div className="board-row my-row">
-                <SidePanel team={myTeam} type="bullpen" />
-                <LineupStrip
-                    team={myTeam}
-                    label={myName}
-                    isOpponent={false}
-                    currentBatterIndex={myTeam.currentBatterIndex}
-                    isBatting={iAmBatting}
-                />
-                <SidePanel team={myTeam} type="bench" />
-            </div>
+            <GameBoard
+                state={gameState}
+                myRole={myRole}
+                isMyTurn={isMyTurn}
+                onRoll={handleAction}
+                homeName={homeName}
+                awayName={awayName}
+            />
+            {/* Back button overlay */}
+            <button className="game-leave-btn" onClick={onBack}>&larr; Leave</button>
         </div>
     );
 }

@@ -1,12 +1,14 @@
 .game-page {
-    display: flex;
-    flex-direction: column;
+    width: 100vw;
     height: 100vh;
     overflow: hidden;
-    background: var(--bg-primary);
+    background: #030810;
+    position: relative;
 }
 
 .game-page.loading {
+    display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     gap: 16px;
@@ -23,68 +25,24 @@
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    margin-top: 16px;
 }
 
-/* Header: back button + scoreboard + inning */
-.game-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 6px 12px;
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-}
-
-.game-back-btn {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    color: var(--text-dim);
-    padding: 4px 10px;
+.game-leave-btn {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(0,0,0,0.6);
+    color: #aaa;
+    border: 1px solid #444;
+    padding: 6px 14px;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 16px;
-    flex-shrink: 0;
+    font-size: 14px;
+    z-index: 100;
 }
 
-.game-back-btn:hover { border-color: var(--accent); color: var(--text); }
-
-.inning-display {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--accent);
-    flex-shrink: 0;
-}
-
-/* Board rows: opponent lineup top, my lineup bottom */
-.board-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 12px;
-    flex-shrink: 0;
-}
-
-/* Center: diamond + game log side by side */
-.board-center {
-    display: flex;
-    flex: 1;
-    gap: 12px;
-    padding: 4px 12px;
-    overflow: hidden;
-    min-height: 0;
-}
-
-.board-log {
-    width: 260px;
-    flex-shrink: 0;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.board-log .game-log {
-    flex: 1;
-    overflow: hidden;
+.game-leave-btn:hover {
+    background: rgba(0,0,0,0.8);
+    color: white;
+    border-color: #888;
 }
