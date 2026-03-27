@@ -1,0 +1,161 @@
+.stats-page {
+    min-height: 100vh;
+    background: var(--bg-primary);
+    padding: 24px;
+}
+
+.stats-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.stats-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.stats-header h1 {
+    font-size: 24px;
+    color: var(--accent);
+}
+
+.stats-back {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.stats-back:hover {
+    border-color: var(--accent);
+    color: var(--text);
+}
+
+.stats-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 24px;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0;
+}
+
+.stats-tab {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px 20px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.stats-tab:hover {
+    color: var(--text);
+}
+
+.stats-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+.stats-loading, .stats-empty {
+    color: var(--text-muted);
+    font-size: 14px;
+    text-align: center;
+    padding: 40px 0;
+}
+
+.stats-table-wrap {
+    overflow-x: auto;
+}
+
+.stats-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.stats-table th {
+    text-align: left;
+    padding: 10px 12px;
+    color: var(--text-dim);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+.stats-table th.sortable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.stats-table th.sortable:hover {
+    color: var(--accent);
+}
+
+.stats-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    white-space: nowrap;
+}
+
+.stats-table tbody tr:hover {
+    background: var(--bg-secondary);
+}
+
+.stats-player-name {
+    font-weight: 600;
+    color: var(--text);
+}
+
+.stats-result {
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.stats-result.win {
+    color: var(--success);
+}
+
+.stats-result.loss {
+    color: var(--error);
+}
+
+/* Career sub-tabs */
+.stats-career-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+}
+
+.stats-career-tab {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+}
+
+.stats-career-tab:hover {
+    border-color: var(--accent-dim);
+    color: var(--text);
+}
+
+.stats-career-tab.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(212, 160, 24, 0.1);
+}

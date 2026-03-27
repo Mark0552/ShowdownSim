@@ -35,6 +35,14 @@ export default function MainMenu({ userEmail, onNavigate, onLogout }: Props) {
                             <span className="menu-btn-desc">Create or join a game</span>
                         </span>
                     </button>
+
+                    <button className="menu-btn" onClick={() => onNavigate('stats')}>
+                        <span className="menu-btn-icon">&#9733;</span>
+                        <span className="menu-btn-text">
+                            <span className="menu-btn-title">Stats</span>
+                            <span className="menu-btn-desc">View game history and career statistics</span>
+                        </span>
+                    </button>
                 </div>
 
                 <button className="menu-logout" onClick={handleLogout}>Sign Out</button>

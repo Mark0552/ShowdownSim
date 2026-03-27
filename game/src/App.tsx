@@ -11,9 +11,10 @@ import MainMenu from './pages/MainMenu';
 import LineupsPage from './pages/LineupsPage';
 import LobbyPage from './pages/LobbyPage';
 import GamePage from './pages/GamePage';
+import StatsPage from './pages/StatsPage';
 import TeamBuilder from './pages/TeamBuilder';
 
-type Page = 'login' | 'menu' | 'lineups' | 'builder' | 'lobby' | 'game';
+type Page = 'login' | 'menu' | 'lineups' | 'builder' | 'lobby' | 'game' | 'stats';
 
 /** Read page + gameId from URL hash */
 function readHash(): { page: Page | null; gameId: string | null } {
@@ -22,7 +23,7 @@ function readHash(): { page: Page | null; gameId: string | null } {
     if (hash.startsWith('game/')) {
         return { page: 'game', gameId: hash.slice(5) };
     }
-    const validPages: Page[] = ['menu', 'lineups', 'builder', 'lobby'];
+    const validPages: Page[] = ['menu', 'lineups', 'builder', 'lobby', 'stats'];
     if (validPages.includes(hash as Page)) {
         return { page: hash as Page, gameId: null };
     }
@@ -172,6 +173,12 @@ export default function App() {
                 <LobbyPage
                     onBack={() => setPage('menu')}
                     onGameStart={handleGameStart}
+                />
+            );
+        case 'stats':
+            return (
+                <StatsPage
+                    onBack={() => setPage('menu')}
                 />
             );
         case 'game':

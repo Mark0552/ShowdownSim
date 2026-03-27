@@ -17,6 +17,7 @@ export interface GameRow {
     away_ready: boolean;
     state: any;
     pending_action: any;
+    password: string | null;
     winner_user_id: string | null;
     series_id: string | null;
     game_number: number;

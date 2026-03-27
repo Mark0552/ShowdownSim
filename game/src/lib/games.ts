@@ -3,17 +3,20 @@ import { getUsername } from './auth';
 import type { GameRow, SeriesRow, PlayerRole } from '../types/game';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
-export async function createGame(): Promise<GameRow> {
+export async function createGame(password?: string): Promise<GameRow> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not logged in');
 
+    const insert: any = {
+        home_user_id: user.id,
+        home_user_email: getUsername(user),
+        status: 'waiting',
+    };
+    if (password) insert.password = password;
+
     const { data, error } = await supabase
         .from('games')
-        .insert({
-            home_user_id: user.id,
-            home_user_email: getUsername(user),
-            status: 'waiting',
-        })
+        .insert(insert)
         .select()
         .single();
     if (error) throw error;
@@ -181,7 +184,7 @@ export function subscribeToLobby(callback: (games: GameRow[]) => void): Realtime
 // SERIES
 // ============================================================================
 
-export async function createSeries(bestOf: number): Promise<{ series: SeriesRow; game: GameRow }> {
+export async function createSeries(bestOf: number, password?: string): Promise<{ series: SeriesRow; game: GameRow }> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not logged in');
 
@@ -199,15 +202,18 @@ export async function createSeries(bestOf: number): Promise<{ series: SeriesRow;
     if (seriesError) throw seriesError;
 
     // Create first game in series
+    const gameInsert: any = {
+        home_user_id: user.id,
+        home_user_email: getUsername(user),
+        status: 'waiting',
+        series_id: series.id,
+        game_number: 1,
+    };
+    if (password) gameInsert.password = password;
+
     const { data: game, error: gameError } = await supabase
         .from('games')
-        .insert({
-            home_user_id: user.id,
-            home_user_email: getUsername(user),
-            status: 'waiting',
-            series_id: series.id,
-            game_number: 1,
-        })
+        .insert(gameInsert)
         .select()
         .single();
     if (gameError) throw gameError;

@@ -85,16 +85,21 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
         };
     }, [activeGame?.id]);
 
-    const [showCreateMenu, setShowCreateMenu] = useState(false);
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [createBestOf, setCreateBestOf] = useState(1);
+    const [createPassword, setCreatePassword] = useState('');
 
-    const handleCreate = async (bestOf: number = 1) => {
+    const handleCreate = async (bestOf: number, password?: string) => {
         try {
-            setShowCreateMenu(false);
+            setShowCreateModal(false);
+            setCreateBestOf(1);
+            setCreatePassword('');
+            const pw = password && password.trim() ? password.trim() : undefined;
             if (bestOf === 1) {
-                const game = await createGame();
+                const game = await createGame(pw);
                 setActiveGame(game);
             } else {
-                const { game } = await createSeries(bestOf);
+                const { game } = await createSeries(bestOf, pw);
                 setActiveGame(game);
             }
         } catch (err: any) {
@@ -104,6 +109,14 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
 
     const handleJoin = async (game: GameRow) => {
         try {
+            if (game.password) {
+                const entered = window.prompt('This game is password-protected. Enter password:');
+                if (entered === null) return; // cancelled
+                if (entered !== game.password) {
+                    setError('Incorrect password');
+                    return;
+                }
+            }
             const updated = await joinGame(game.id);
             setActiveGame(updated);
         } catch (err: any) {
@@ -250,22 +263,57 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
                 <div className="lobby-header">
                     <button className="lobby-back" onClick={onBack}>&larr; Back</button>
                     <h1>Game Lobby</h1>
-                    <div style={{ position: 'relative' }}>
-                        <button className="lobby-create" onClick={() => setShowCreateMenu(!showCreateMenu)}>Create Game</button>
-                        {showCreateMenu && (
-                            <div style={{
-                                position: 'absolute', top: '100%', right: 0, marginTop: 4,
-                                background: '#0a1628', border: '1px solid #d4a018', borderRadius: 8,
-                                padding: 8, zIndex: 100, display: 'flex', flexDirection: 'column', gap: 4, minWidth: 160,
-                            }}>
-                                <button className="lobby-create" style={{ fontSize: 12 }} onClick={() => handleCreate(1)}>Single Game</button>
-                                <button className="lobby-create" style={{ fontSize: 12 }} onClick={() => handleCreate(3)}>3-Game Series</button>
-                                <button className="lobby-create" style={{ fontSize: 12 }} onClick={() => handleCreate(5)}>5-Game Series</button>
-                                <button className="lobby-create" style={{ fontSize: 12 }} onClick={() => handleCreate(7)}>7-Game Series</button>
-                            </div>
-                        )}
-                    </div>
+                    <button className="lobby-create" onClick={() => setShowCreateModal(true)}>Create Game</button>
                 </div>
+
+                {showCreateModal && (
+                    <div className="create-modal-overlay" onClick={() => setShowCreateModal(false)}>
+                        <div className="create-modal" onClick={e => e.stopPropagation()}>
+                            <h2 className="create-modal-title">CREATE GAME</h2>
+
+                            <div className="create-modal-section">
+                                <label className="create-modal-label">Series Type</label>
+                                <div className="create-modal-series-row">
+                                    {[{ v: 1, l: 'Single Game' }, { v: 3, l: 'Best of 3' }, { v: 5, l: 'Best of 5' }, { v: 7, l: 'Best of 7' }].map(opt => (
+                                        <button
+                                            key={opt.v}
+                                            className={`create-modal-series-btn ${createBestOf === opt.v ? 'active' : ''}`}
+                                            onClick={() => setCreateBestOf(opt.v)}
+                                        >{opt.l}</button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="create-modal-section">
+                                <label className="create-modal-label">Password (optional)</label>
+                                <input
+                                    type="text"
+                                    className="create-modal-input"
+                                    placeholder="Leave empty for public game"
+                                    value={createPassword}
+                                    onChange={e => setCreatePassword(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="create-modal-section create-modal-disabled">
+                                <div className="create-modal-future-row">
+                                    <span className="create-modal-label">Card Year Restrictions</span>
+                                    <span className="create-modal-badge">Coming Soon</span>
+                                </div>
+                                <div className="create-modal-future-row">
+                                    <span className="create-modal-label">Ruleset</span>
+                                    <span className="create-modal-ruleset">Advanced</span>
+                                    <span className="create-modal-badge">Coming Soon</span>
+                                </div>
+                            </div>
+
+                            <div className="create-modal-actions">
+                                <button className="create-modal-create-btn" onClick={() => handleCreate(createBestOf, createPassword)}>CREATE</button>
+                                <button className="create-modal-cancel" onClick={() => setShowCreateModal(false)}>Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {error && <div className="lobby-error">{error}</div>}
 
@@ -319,7 +367,10 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
                         {openGames.map(game => (
                             <div key={game.id} className="game-row">
                                 <div className="game-info">
-                                    <span className="game-host">{game.home_user_email}</span>
+                                    <span className="game-host">
+                                        {game.password && <span className="game-lock" title="Password protected">&#x1F512; </span>}
+                                        {game.home_user_email}
+                                    </span>
                                     <span className="game-time">{formatTime(game.created_at)}</span>
                                 </div>
                                 <button className="game-join" onClick={() => handleJoin(game)}>Join</button>

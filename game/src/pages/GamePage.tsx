@@ -2,8 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import type { GameState, GameAction } from '../engine/gameEngine';
 import { getGame, getMyRole, getSeries, getSeriesGames } from '../lib/games';
 import { getLineups } from '../lib/lineups';
+import { saveGameStats } from '../lib/stats';
 import { supabase } from '../lib/supabase';
-import type { PlayerRole } from '../types/game';
+import type { GameRow, PlayerRole } from '../types/game';
 import GameBoard from '../components/game/GameBoard';
 import './GamePage.css';
 
@@ -24,6 +25,8 @@ export default function GamePage({ gameId, onBack }: Props) {
     const [loading, setLoading] = useState(true);
     const [status, setStatus] = useState('Connecting...');
     const wsRef = useRef<WebSocket | null>(null);
+    const [gameRow, setGameRow] = useState<GameRow | null>(null);
+    const statsSavedRef = useRef(false);
 
     useEffect(() => {
         let mounted = true;
@@ -34,12 +37,15 @@ export default function GamePage({ gameId, onBack }: Props) {
                 if (!user) throw new Error('Not logged in');
 
                 const game = await getGame(gameId);
+                setGameRow(game);
                 const role = getMyRole(game, user.id);
                 if (!role) throw new Error('Not a participant');
 
                 setMyRole(role);
-                setHomeName(game.home_user_email || 'Home');
-                setAwayName(game.away_user_email || 'Away');
+                const homeUser = game.home_user_email || 'Home';
+                const awayUser = game.away_user_email || 'Away';
+                setHomeName(game.home_lineup_name ? `${homeUser} - ${game.home_lineup_name}` : homeUser);
+                setAwayName(game.away_lineup_name ? `${awayUser} - ${game.away_lineup_name}` : awayUser);
 
                 const lineupId = role === 'home' ? game.home_lineup_id : game.away_lineup_id;
                 let lineupData = null;
@@ -111,6 +117,14 @@ export default function GamePage({ gameId, onBack }: Props) {
         connect();
         return () => { mounted = false; wsRef.current?.close(); };
     }, [gameId]);
+
+    // Save stats when game ends
+    useEffect(() => {
+        if (gameState?.isOver && !statsSavedRef.current) {
+            statsSavedRef.current = true;
+            saveGameStats(gameId, gameRow?.series_id || null, gameState).catch(console.error);
+        }
+    }, [gameState?.isOver, gameId, gameRow?.series_id]);
 
     const handleAction = useCallback((action: GameAction) => {
         if (wsRef.current?.readyState === WebSocket.OPEN) {

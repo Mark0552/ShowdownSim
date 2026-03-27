@@ -179,3 +179,169 @@
 .lineup-pick-btn:hover { border-color: var(--accent); }
 .pick-name { font-weight: 600; font-size: 15px; }
 .pick-meta { font-size: 12px; color: var(--text-dim); }
+
+/* Lock icon for password games */
+.game-lock { font-size: 13px; }
+
+/* Create Game Modal */
+.create-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.create-modal {
+    background: var(--bg-secondary);
+    border: 2px solid var(--accent);
+    border-radius: 12px;
+    padding: 28px 32px;
+    width: 480px;
+    max-width: 95vw;
+}
+
+.create-modal-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent);
+    text-align: center;
+    margin-bottom: 24px;
+    letter-spacing: 1px;
+}
+
+.create-modal-section {
+    margin-bottom: 20px;
+}
+
+.create-modal-label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.create-modal-series-row {
+    display: flex;
+    gap: 6px;
+}
+
+.create-modal-series-btn {
+    flex: 1;
+    padding: 10px 6px;
+    background: var(--bg-card);
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-dim);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.create-modal-series-btn:hover {
+    border-color: var(--accent-dim);
+    color: var(--text);
+}
+
+.create-modal-series-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(212, 160, 24, 0.1);
+}
+
+.create-modal-input {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.create-modal-input::placeholder {
+    color: var(--text-muted);
+}
+
+.create-modal-input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.create-modal-disabled {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+.create-modal-future-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.create-modal-future-row .create-modal-label {
+    margin-bottom: 0;
+    display: inline;
+}
+
+.create-modal-badge {
+    font-size: 10px;
+    background: var(--border);
+    color: var(--text-muted);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.create-modal-ruleset {
+    font-size: 13px;
+    color: var(--text-dim);
+    font-weight: 600;
+}
+
+.create-modal-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.create-modal-create-btn {
+    width: 100%;
+    padding: 12px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    cursor: pointer;
+}
+
+.create-modal-create-btn:hover {
+    background: var(--accent-dim);
+}
+
+.create-modal-cancel {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.create-modal-cancel:hover {
+    color: var(--text);
+}
