@@ -426,7 +426,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     const isAtBat = state.halfInning === 'top' && i === state.awayTeam.currentBatterIndex;
                     const isOnDeck = state.halfInning === 'bottom' && i === state.awayTeam.currentBatterIndex;
                     const posDisplay = player.assignedPosition ? player.assignedPosition.replace(/-\d+$/, '') : '';
-                    const fldDisplay = player.assignedPosition === 'C' ? (player.arm != null ? `Arm ${player.arm}` : `+${player.fielding ?? 0}`) : `+${player.fielding ?? 0}`;
+                    const fldDisplay = `+${player.assignedPosition === 'C' ? (player.arm ?? 0) : (player.fielding ?? 0)}`;
                     return (
                         <g key={`away-slot-${i}`} cursor="pointer" onMouseEnter={(e) => handlePlayerHover(player, e.nativeEvent as any)} onMouseLeave={handlePlayerLeave}>
                             <rect x="14" y={y} width="266" height="48" rx="3" fill={isAtBat ? '#1a2858' : isOnDeck ? '#0e1a30' : '#081428'} stroke={isAtBat ? '#e94560' : isOnDeck ? '#60a5fa' : '#1a3040'} strokeWidth={isAtBat ? 2 : isOnDeck ? 1.5 : 0.5}/>
@@ -467,7 +467,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     const isAtBat = state.halfInning === 'bottom' && i === state.homeTeam.currentBatterIndex;
                     const isOnDeck = state.halfInning === 'top' && i === state.homeTeam.currentBatterIndex;
                     const posDisplay = player.assignedPosition ? player.assignedPosition.replace(/-\d+$/, '') : '';
-                    const fldDisplay = player.assignedPosition === 'C' ? (player.arm != null ? `Arm ${player.arm}` : `+${player.fielding ?? 0}`) : `+${player.fielding ?? 0}`;
+                    const fldDisplay = `+${player.assignedPosition === 'C' ? (player.arm ?? 0) : (player.fielding ?? 0)}`;
                     return (
                         <g key={`home-slot-${i}`} cursor="pointer" onMouseEnter={(e) => handlePlayerHover(player, e.nativeEvent as any)} onMouseLeave={handlePlayerLeave}>
                             <rect x="1120" y={y} width="266" height="48" rx="3" fill={isAtBat ? '#1a2858' : isOnDeck ? '#0e1a30' : '#081428'} stroke={isAtBat ? '#e94560' : isOnDeck ? '#60a5fa' : '#1a3040'} strokeWidth={isAtBat ? 2 : isOnDeck ? 1.5 : 0.5}/>
