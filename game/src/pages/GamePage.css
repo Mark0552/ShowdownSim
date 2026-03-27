@@ -27,22 +27,25 @@
     cursor: pointer;
 }
 
-.game-leave-btn {
+.game-exit-btn {
     position: absolute;
-    top: 10px;
+    top: 6px;
     left: 10px;
-    background: rgba(0,0,0,0.6);
-    color: #aaa;
-    border: 1px solid #444;
-    padding: 6px 14px;
+    background: rgba(0,0,0,0.5);
+    color: #002868;
+    border: 1px solid #a07808;
+    padding: 4px 12px;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    font-family: Arial, sans-serif;
     z-index: 100;
 }
 
-.game-leave-btn:hover {
-    background: rgba(0,0,0,0.8);
-    color: white;
-    border-color: #888;
+.game-exit-btn:hover {
+    background: rgba(0,0,0,0.7);
+    color: #d4a018;
+    border-color: #d4a018;
 }

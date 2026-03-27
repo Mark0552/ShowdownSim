@@ -147,8 +147,8 @@ export default function GamePage({ gameId, onBack }: Props) {
                 homeName={homeName}
                 awayName={awayName}
             />
-            {/* Back button overlay */}
-            <button className="game-leave-btn" onClick={onBack}>&larr; Leave</button>
+            {/* Exit Game button in gold header */}
+            <button className="game-exit-btn" onClick={onBack}>EXIT GAME</button>
         </div>
     );
 }

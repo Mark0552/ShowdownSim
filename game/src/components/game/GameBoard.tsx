@@ -133,7 +133,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             <div className="tooltip-stats">
                                 <span>OB: {hoveredPlayer.onBase}</span>
                                 <span>Spd: {hoveredPlayer.speed}</span>
-                                {hoveredPlayer.fielding ? <span>Fld: +{hoveredPlayer.fielding}</span> : null}
+                                {hoveredPlayer.assignedPosition ? <span>{hoveredPlayer.assignedPosition.replace(/-\d+$/, '')} +{hoveredPlayer.fielding ?? 0}</span> : null}
                             </div>
                         ) : (
                             <div className="tooltip-stats">
@@ -304,7 +304,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                         <feDropShadow dx="0" dy="0" stdDeviation="7" floodColor="rgba(255,255,210,0.5)"/>
                     </filter>
                     <clipPath id="centerClip">
-                        <rect x="215" y="173" width="970" height="769"/>
+                        <rect x="290" y="173" width="820" height="769"/>
                     </clipPath>
                 </defs>
 
@@ -391,40 +391,55 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 <text x="1160" y="90" fontSize="8" fill="#d4a018" fontWeight="bold" letterSpacing="2" fontFamily="Arial Black">OUTS</text>
                 {[0, 1, 2].map(i => (
                     <g key={`out-${i}`}>
-                        <circle cx={1214 + i * 59} cy="128" r="22" fill={state.outs > i ? '#cc2020' : '#140608'} stroke="#d4a018" strokeWidth="2"/>
-                        <circle cx={1214 + i * 59} cy="128" r="14" fill={state.outs > i ? '#ff3030' : '#0e0408'} stroke={state.outs > i ? '#ff6060' : '#3a1020'} strokeWidth="0.8"/>
-                        <text x={1214 + i * 59} y="133" textAnchor="middle" fontSize="10" fill={state.outs > i ? 'white' : '#4a1830'} fontWeight="bold" fontFamily="Arial Black">{i + 1}</text>
+                        <circle cx={1200 + i * 45} cy="128" r="22" fill={state.outs > i ? '#cc2020' : '#140608'} stroke="#d4a018" strokeWidth="2"/>
+                        <circle cx={1200 + i * 45} cy="128" r="14" fill={state.outs > i ? '#ff3030' : '#0e0408'} stroke={state.outs > i ? '#ff6060' : '#3a1020'} strokeWidth="0.8"/>
+                        <text x={1200 + i * 45} y="133" textAnchor="middle" fontSize="10" fill={state.outs > i ? 'white' : '#4a1830'} fontWeight="bold" fontFamily="Arial Black">{i + 1}</text>
                     </g>
                 ))}
 
+                {/* Game Log / Box Score buttons (SVG) */}
+                <g cursor="pointer" onClick={() => { setShowGameLog(!showGameLog); setShowStats(false); }}>
+                    <rect x="1340" y="84" width="48" height="36" rx="4" fill="#0a1428" stroke="#d4a018" strokeWidth="1"/>
+                    <text x="1364" y="98" textAnchor="middle" fontSize="7" fill="#d4a018" fontWeight="bold" fontFamily="Arial" letterSpacing="0.5">{showGameLog ? 'CLOSE' : 'GAME'}</text>
+                    <text x="1364" y="110" textAnchor="middle" fontSize="7" fill="#d4a018" fontWeight="bold" fontFamily="Arial" letterSpacing="0.5">{showGameLog ? 'LOG' : 'LOG'}</text>
+                </g>
+                <g cursor="pointer" onClick={() => { setShowStats(!showStats); setShowGameLog(false); }}>
+                    <rect x="1340" y="126" width="48" height="36" rx="4" fill="#0a1428" stroke="#d4a018" strokeWidth="1"/>
+                    <text x="1364" y="140" textAnchor="middle" fontSize="7" fill="#d4a018" fontWeight="bold" fontFamily="Arial" letterSpacing="0.5">{showStats ? 'CLOSE' : 'BOX'}</text>
+                    <text x="1364" y="152" textAnchor="middle" fontSize="7" fill="#d4a018" fontWeight="bold" fontFamily="Arial" letterSpacing="0.5">{showStats ? 'STATS' : 'SCORE'}</text>
+                </g>
+
                 {/* ====== LEFT PANEL — AWAY ====== */}
                 <line x1="7" y1="172" x2="1393" y2="172" stroke="#d4a018" strokeWidth="2"/>
-                <rect x="7" y="173" width="206" height="767" rx="4" fill="url(#panelBg)" stroke="#d4a01840" strokeWidth="1"/>
-                <rect x="10" y="176" width="200" height="40" rx="3" fill="url(#navyGrad)"/>
-                <text x="110" y="201" textAnchor="middle" fontSize="16" fill="white" fontWeight="900" letterSpacing="5" fontFamily="Impact,sans-serif">AWAY</text>
-                <rect x="10" y="223" width="200" height="34" rx="3" fill="#0a1428" stroke="#d4a01840" strokeWidth="1"/>
-                <text x="110" y="245" textAnchor="middle" fontSize="11" fill="#8aade0" letterSpacing="1" fontFamily="Arial" fontWeight="bold">{awayName.toUpperCase()}</text>
-                <text x="110" y="275" textAnchor="middle" fontSize="10" fill="#d4a018" fontWeight="bold" letterSpacing="2" fontFamily="Arial Black">BATTING ORDER</text>
+                <rect x="7" y="173" width="280" height="767" rx="4" fill="url(#panelBg)" stroke="#d4a01840" strokeWidth="1"/>
+                <rect x="10" y="176" width="274" height="40" rx="3" fill="url(#navyGrad)"/>
+                <text x="147" y="201" textAnchor="middle" fontSize="16" fill="white" fontWeight="900" letterSpacing="5" fontFamily="Impact,sans-serif">AWAY</text>
+                <rect x="10" y="223" width="274" height="34" rx="3" fill="#0a1428" stroke="#d4a01840" strokeWidth="1"/>
+                <text x="147" y="245" textAnchor="middle" fontSize="11" fill="#8aade0" letterSpacing="1" fontFamily="Arial" fontWeight="bold">{awayName.toUpperCase()}</text>
+                <text x="147" y="275" textAnchor="middle" fontSize="10" fill="#d4a018" fontWeight="bold" letterSpacing="2" fontFamily="Arial Black">BATTING ORDER</text>
 
                 {/* Away lineup slots */}
                 {state.awayTeam.lineup.map((player, i) => {
                     const y = 285 + i * 52;
                     const isAtBat = state.halfInning === 'top' && i === state.awayTeam.currentBatterIndex;
                     const isOnDeck = state.halfInning === 'bottom' && i === state.awayTeam.currentBatterIndex;
+                    const posDisplay = player.assignedPosition ? player.assignedPosition.replace(/-\d+$/, '') : '';
+                    const fldDisplay = player.assignedPosition === 'C' ? (player.arm != null ? `Arm ${player.arm}` : `+${player.fielding ?? 0}`) : `+${player.fielding ?? 0}`;
                     return (
                         <g key={`away-slot-${i}`} cursor="pointer" onMouseEnter={(e) => handlePlayerHover(player, e.nativeEvent as any)} onMouseLeave={handlePlayerLeave}>
-                            <rect x="14" y={y} width="192" height="48" rx="3" fill={isAtBat ? '#1a2858' : isOnDeck ? '#0e1a30' : '#081428'} stroke={isAtBat ? '#e94560' : isOnDeck ? '#60a5fa' : '#1a3040'} strokeWidth={isAtBat ? 2 : isOnDeck ? 1.5 : 0.5}/>
+                            <rect x="14" y={y} width="266" height="48" rx="3" fill={isAtBat ? '#1a2858' : isOnDeck ? '#0e1a30' : '#081428'} stroke={isAtBat ? '#e94560' : isOnDeck ? '#60a5fa' : '#1a3040'} strokeWidth={isAtBat ? 2 : isOnDeck ? 1.5 : 0.5}/>
                             <text x="27" y={y + 30} fontSize="13" fill={isAtBat ? '#e94560' : isOnDeck ? '#60a5fa' : '#1e3a6a'} fontWeight="bold" fontFamily="Arial">{i + 1}.</text>
                             {player.imagePath && <image href={player.imagePath} x="42" y={y + 2} width="30" height="42" preserveAspectRatio="xMidYMid slice"/>}
                             <text x="78" y={y + 18} fontSize="10" fill={isAtBat ? 'white' : '#6a8aba'} fontWeight="bold" fontFamily="Arial">{player.name.length > 16 ? player.name.slice(0, 15) + '\u2026' : player.name}</text>
-                            <text x="78" y={y + 30} fontSize="9" fill="#4a6a90" fontFamily="Arial">OB:{player.onBase} Spd:{player.speed}{player.fielding ? ` +${player.fielding}` : ''}</text>
+                            <text x="78" y={y + 30} fontSize="9" fill="#4a6a90" fontFamily="Arial">OB:{player.onBase} Spd:{player.speed}</text>
+                            {posDisplay && <text x="274" y={y + 18} textAnchor="end" fontSize="9" fill="#8aade0" fontWeight="bold" fontFamily="Arial">{posDisplay} {fldDisplay}</text>}
                             {player.icons && player.icons.length > 0 && renderIcons(player, state.awayTeam, 78, y + 42)}
                         </g>
                     );
                 })}
                 {/* Away pitcher */}
                 <g cursor="pointer" onMouseEnter={(e) => handlePlayerHover(state.awayTeam.pitcher, e.nativeEvent as any)} onMouseLeave={handlePlayerLeave}>
-                    <rect x="14" y="754" width="192" height="36" rx="3" fill="#0c1a40" stroke="#1a3060" strokeWidth="0.5"/>
+                    <rect x="14" y="754" width="266" height="36" rx="3" fill="#0c1a40" stroke="#1a3060" strokeWidth="0.5"/>
                     <text x="20" y="768" fontSize="8" fill="#d4a018" fontWeight="bold" fontFamily="Arial">P</text>
                     {state.awayTeam.pitcher.imagePath && <image href={state.awayTeam.pitcher.imagePath} x="30" y="756" width="22" height="30" preserveAspectRatio="xMidYMid slice"/>}
                     <text x="58" y="770" fontSize="9" fill="#8aade0" fontWeight="bold" fontFamily="Arial">{state.awayTeam.pitcher.name.length > 14 ? state.awayTeam.pitcher.name.slice(0, 13) + '\u2026' : state.awayTeam.pitcher.name}</text>
@@ -432,52 +447,55 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 </g>
                 {/* Away expand button */}
                 <g cursor="pointer" onClick={() => setShowAwayBullpen(!showAwayBullpen)}>
-                    <rect x="14" y="793" width="192" height="24" rx="3" fill="#0a1830" stroke="#d4a01840" strokeWidth="1"/>
-                    <text x="110" y="809" textAnchor="middle" fontSize="9" fill="#d4a018" fontWeight="bold" fontFamily="Arial">{showAwayBullpen ? '\u25B2 BULLPEN / BENCH' : '\u25BC BULLPEN / BENCH'}</text>
+                    <rect x="14" y="793" width="266" height="24" rx="3" fill="#0a1830" stroke="#d4a01840" strokeWidth="1"/>
+                    <text x="147" y="809" textAnchor="middle" fontSize="9" fill="#d4a018" fontWeight="bold" fontFamily="Arial">{showAwayBullpen ? '\u25B2 BULLPEN / BENCH' : '\u25BC BULLPEN / BENCH'}</text>
                 </g>
 
                 {/* ====== RIGHT PANEL — HOME ====== */}
-                <rect x="1187" y="173" width="206" height="767" rx="4" fill="url(#panelBg)" stroke="#d4a01840" strokeWidth="1"/>
-                <rect x="1190" y="176" width="200" height="40" rx="3" fill="url(#redGrad)"/>
-                <text x="1290" y="201" textAnchor="middle" fontSize="16" fill="white" fontWeight="900" letterSpacing="5" fontFamily="Impact,sans-serif">HOME</text>
-                <rect x="1190" y="223" width="200" height="34" rx="3" fill="#0a1428" stroke="#d4a01840" strokeWidth="1"/>
-                <text x="1290" y="245" textAnchor="middle" fontSize="11" fill="#8aade0" letterSpacing="1" fontFamily="Arial" fontWeight="bold">{homeName.toUpperCase()}</text>
-                <text x="1290" y="275" textAnchor="middle" fontSize="10" fill="#d4a018" fontWeight="bold" letterSpacing="2" fontFamily="Arial Black">BATTING ORDER</text>
+                <rect x="1113" y="173" width="280" height="767" rx="4" fill="url(#panelBg)" stroke="#d4a01840" strokeWidth="1"/>
+                <rect x="1116" y="176" width="274" height="40" rx="3" fill="url(#redGrad)"/>
+                <text x="1253" y="201" textAnchor="middle" fontSize="16" fill="white" fontWeight="900" letterSpacing="5" fontFamily="Impact,sans-serif">HOME</text>
+                <rect x="1116" y="223" width="274" height="34" rx="3" fill="#0a1428" stroke="#d4a01840" strokeWidth="1"/>
+                <text x="1253" y="245" textAnchor="middle" fontSize="11" fill="#8aade0" letterSpacing="1" fontFamily="Arial" fontWeight="bold">{homeName.toUpperCase()}</text>
+                <text x="1253" y="275" textAnchor="middle" fontSize="10" fill="#d4a018" fontWeight="bold" letterSpacing="2" fontFamily="Arial Black">BATTING ORDER</text>
 
                 {/* Home lineup slots */}
                 {state.homeTeam.lineup.map((player, i) => {
                     const y = 285 + i * 52;
                     const isAtBat = state.halfInning === 'bottom' && i === state.homeTeam.currentBatterIndex;
                     const isOnDeck = state.halfInning === 'top' && i === state.homeTeam.currentBatterIndex;
+                    const posDisplay = player.assignedPosition ? player.assignedPosition.replace(/-\d+$/, '') : '';
+                    const fldDisplay = player.assignedPosition === 'C' ? (player.arm != null ? `Arm ${player.arm}` : `+${player.fielding ?? 0}`) : `+${player.fielding ?? 0}`;
                     return (
                         <g key={`home-slot-${i}`} cursor="pointer" onMouseEnter={(e) => handlePlayerHover(player, e.nativeEvent as any)} onMouseLeave={handlePlayerLeave}>
-                            <rect x="1194" y={y} width="192" height="48" rx="3" fill={isAtBat ? '#1a2858' : isOnDeck ? '#0e1a30' : '#081428'} stroke={isAtBat ? '#e94560' : isOnDeck ? '#60a5fa' : '#1a3040'} strokeWidth={isAtBat ? 2 : isOnDeck ? 1.5 : 0.5}/>
-                            <text x="1207" y={y + 30} fontSize="13" fill={isAtBat ? '#e94560' : isOnDeck ? '#60a5fa' : '#1e3a6a'} fontWeight="bold" fontFamily="Arial">{i + 1}.</text>
-                            {player.imagePath && <image href={player.imagePath} x="1222" y={y + 2} width="30" height="42" preserveAspectRatio="xMidYMid slice"/>}
-                            <text x="1258" y={y + 18} fontSize="10" fill={isAtBat ? 'white' : '#6a8aba'} fontWeight="bold" fontFamily="Arial">{player.name.length > 16 ? player.name.slice(0, 15) + '\u2026' : player.name}</text>
-                            <text x="1258" y={y + 30} fontSize="9" fill="#4a6a90" fontFamily="Arial">OB:{player.onBase} Spd:{player.speed}{player.fielding ? ` +${player.fielding}` : ''}</text>
-                            {player.icons && player.icons.length > 0 && renderIcons(player, state.homeTeam, 1258, y + 42)}
+                            <rect x="1120" y={y} width="266" height="48" rx="3" fill={isAtBat ? '#1a2858' : isOnDeck ? '#0e1a30' : '#081428'} stroke={isAtBat ? '#e94560' : isOnDeck ? '#60a5fa' : '#1a3040'} strokeWidth={isAtBat ? 2 : isOnDeck ? 1.5 : 0.5}/>
+                            <text x="1133" y={y + 30} fontSize="13" fill={isAtBat ? '#e94560' : isOnDeck ? '#60a5fa' : '#1e3a6a'} fontWeight="bold" fontFamily="Arial">{i + 1}.</text>
+                            {player.imagePath && <image href={player.imagePath} x="1148" y={y + 2} width="30" height="42" preserveAspectRatio="xMidYMid slice"/>}
+                            <text x="1184" y={y + 18} fontSize="10" fill={isAtBat ? 'white' : '#6a8aba'} fontWeight="bold" fontFamily="Arial">{player.name.length > 16 ? player.name.slice(0, 15) + '\u2026' : player.name}</text>
+                            <text x="1184" y={y + 30} fontSize="9" fill="#4a6a90" fontFamily="Arial">OB:{player.onBase} Spd:{player.speed}</text>
+                            {posDisplay && <text x="1380" y={y + 18} textAnchor="end" fontSize="9" fill="#8aade0" fontWeight="bold" fontFamily="Arial">{posDisplay} {fldDisplay}</text>}
+                            {player.icons && player.icons.length > 0 && renderIcons(player, state.homeTeam, 1184, y + 42)}
                         </g>
                     );
                 })}
                 {/* Home pitcher */}
                 <g cursor="pointer" onMouseEnter={(e) => handlePlayerHover(state.homeTeam.pitcher, e.nativeEvent as any)} onMouseLeave={handlePlayerLeave}>
-                    <rect x="1194" y="754" width="192" height="36" rx="3" fill="#0c1a40" stroke="#1a3060" strokeWidth="0.5"/>
-                    <text x="1200" y="768" fontSize="8" fill="#d4a018" fontWeight="bold" fontFamily="Arial">P</text>
-                    {state.homeTeam.pitcher.imagePath && <image href={state.homeTeam.pitcher.imagePath} x="1210" y="756" width="22" height="30" preserveAspectRatio="xMidYMid slice"/>}
-                    <text x="1238" y="770" fontSize="9" fill="#8aade0" fontWeight="bold" fontFamily="Arial">{state.homeTeam.pitcher.name.length > 14 ? state.homeTeam.pitcher.name.slice(0, 13) + '\u2026' : state.homeTeam.pitcher.name}</text>
-                    <text x="1238" y="782" fontSize="8" fill="#4a6a90" fontFamily="monospace">Ctrl:{state.homeTeam.pitcher.control} IP:{state.homeTeam.inningsPitched}/{state.homeTeam.pitcher.ip}</text>
+                    <rect x="1120" y="754" width="266" height="36" rx="3" fill="#0c1a40" stroke="#1a3060" strokeWidth="0.5"/>
+                    <text x="1126" y="768" fontSize="8" fill="#d4a018" fontWeight="bold" fontFamily="Arial">P</text>
+                    {state.homeTeam.pitcher.imagePath && <image href={state.homeTeam.pitcher.imagePath} x="1136" y="756" width="22" height="30" preserveAspectRatio="xMidYMid slice"/>}
+                    <text x="1164" y="770" fontSize="9" fill="#8aade0" fontWeight="bold" fontFamily="Arial">{state.homeTeam.pitcher.name.length > 14 ? state.homeTeam.pitcher.name.slice(0, 13) + '\u2026' : state.homeTeam.pitcher.name}</text>
+                    <text x="1164" y="782" fontSize="8" fill="#4a6a90" fontFamily="monospace">Ctrl:{state.homeTeam.pitcher.control} IP:{state.homeTeam.inningsPitched}/{state.homeTeam.pitcher.ip}</text>
                 </g>
                 {/* Home expand button */}
                 <g cursor="pointer" onClick={() => setShowHomeBullpen(!showHomeBullpen)}>
-                    <rect x="1194" y="793" width="192" height="24" rx="3" fill="#0a1830" stroke="#d4a01840" strokeWidth="1"/>
-                    <text x="1290" y="809" textAnchor="middle" fontSize="9" fill="#d4a018" fontWeight="bold" fontFamily="Arial">{showHomeBullpen ? '\u25B2 BULLPEN / BENCH' : '\u25BC BULLPEN / BENCH'}</text>
+                    <rect x="1120" y="793" width="266" height="24" rx="3" fill="#0a1830" stroke="#d4a01840" strokeWidth="1"/>
+                    <text x="1253" y="809" textAnchor="middle" fontSize="9" fill="#d4a018" fontWeight="bold" fontFamily="Arial">{showHomeBullpen ? '\u25B2 BULLPEN / BENCH' : '\u25BC BULLPEN / BENCH'}</text>
                 </g>
 
                 {/* ====== CENTER FIELD ====== */}
-                <rect x="213" y="173" width="974" height="767" fill="url(#grassStripe)"/>
-                <line x1="213" y1="173" x2="213" y2="940" stroke="#d4a018" strokeWidth="2"/>
-                <line x1="1187" y1="173" x2="1187" y2="940" stroke="#d4a018" strokeWidth="2"/>
+                <rect x="287" y="173" width="826" height="767" fill="url(#grassStripe)"/>
+                <line x1="287" y1="173" x2="287" y2="940" stroke="#d4a018" strokeWidth="2"/>
+                <line x1="1113" y1="173" x2="1113" y2="940" stroke="#d4a018" strokeWidth="2"/>
 
                 {/* Diamond dirt + base paths */}
                 <path d="M 700,985 L 1120,565 L 700,145 L 280,565 Z M 700,891 L 374,565 L 700,239 L 1026,565 Z" fill="url(#dirtGrad)" fillRule="evenodd" clipPath="url(#centerClip)"/>
@@ -523,9 +541,9 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 )}
 
                 {/* ====== CARD SLOTS (hoverable) ====== */}
-                <CardSlot x={662} y={178} label="2B" card={runner2} labelBelow={true} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
-                <CardSlot x={1006} y={512} label="1B" card={runner1} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
-                <CardSlot x={318} y={512} label="3B" card={runner3} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
+                <CardSlot x={662} y={178} label="2B" card={runner2} labelBelow={true} labelText="2ND BASE" onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
+                <CardSlot x={1006} y={512} label="1B" card={runner1} labelBelow={true} labelText="1ST BASE" onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
+                <CardSlot x={318} y={512} label="3B" card={runner3} labelBelow={true} labelText="3RD BASE" onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                 <CardSlot x={662} y={512} label="P" card={pitcher} labelBelow={true} labelText="PITCHER" onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                 <CardSlot x={662} y={783} label="H" card={batter} labelAbove={true} labelText="HITTER" onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
 
@@ -628,13 +646,6 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 onAnimationComplete={handleDiceComplete}
             />
 
-            {/* Toggle buttons — positioned in gold header area */}
-            <button className="overlay-toggle" style={{ position: 'absolute', top: '8px', right: '120px', zIndex: 800 }} onClick={() => { setShowGameLog(!showGameLog); setShowStats(false); }}>
-                {showGameLog ? 'CLOSE LOG' : 'GAME LOG'}
-            </button>
-            <button className="overlay-toggle" style={{ position: 'absolute', top: '8px', right: '16px', zIndex: 800 }} onClick={() => { setShowStats(!showStats); setShowGameLog(false); }}>
-                {showStats ? 'CLOSE STATS' : 'BOX SCORE'}
-            </button>
 
             {/* Game Log Overlay */}
             {showGameLog && (
