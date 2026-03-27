@@ -4,6 +4,7 @@
 
 import { rollD20 } from './dice.js';
 import { getFieldingFromSlot, computeFieldingTotals } from './fielding.js';
+import { enterPreAtBat } from './phases/substitutions.js';
 
 /**
  * @param seriesContext Optional: { gameNumber, homeStarterOffset, awayStarterOffset, relieverHistory }
@@ -100,17 +101,18 @@ export function handleRollStarters(state) {
         'Play ball!',
     ];
 
-    return {
+    const postRollState = {
         ...state,
         homeTeam,
         awayTeam,
-        phase: 'pre_atbat',
-        subPhaseStep: 'offense_first',
         gameLog: logs,
         spRoll: spRoll,
         lastRoll: spRoll,
         lastRollType: 'sp',
     };
+
+    // Use enterPreAtBat to properly auto-skip phases with no options
+    return enterPreAtBat(postRollState);
 }
 
 /**

@@ -85,6 +85,7 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
         };
     }, [activeGame?.id]);
 
+    const [selectedLineup, setSelectedLineup] = useState<SavedLineup | null>(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [createBestOf, setCreateBestOf] = useState(1);
     const [createPassword, setCreatePassword] = useState('');
@@ -219,17 +220,22 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
                                         {myLineups.map(lineup => {
                                             const count = lineup.data?.slots?.length || 0;
                                             const validation = lineup.data?.slots ? validateTeam(lineup.data) : { valid: false, errors: [], totalPoints: 0, playerCount: 0 };
+                                            const isSelected = selectedLineup?.id === lineup.id;
                                             return (
                                                 <button
                                                     key={lineup.id}
-                                                    className="lineup-pick-btn"
-                                                    onClick={() => validation.valid ? handleSelectLineup(lineup) : undefined}
+                                                    className={`lineup-pick-btn ${isSelected ? 'selected' : ''}`}
+                                                    onClick={() => validation.valid ? setSelectedLineup(isSelected ? null : lineup) : undefined}
                                                     disabled={!validation.valid}
-                                                    style={{ opacity: validation.valid ? 1 : 0.4, cursor: validation.valid ? 'pointer' : 'not-allowed' }}
+                                                    style={{
+                                                        opacity: validation.valid ? 1 : 0.4,
+                                                        cursor: validation.valid ? 'pointer' : 'not-allowed',
+                                                        border: isSelected ? '2px solid #4ade80' : undefined,
+                                                    }}
                                                 >
                                                     <span className="pick-name">
-                                                        <span style={{ color: validation.valid ? '#4ade80' : '#e94560', marginRight: 6 }}>
-                                                            {validation.valid ? '\u2713' : '\u2717'}
+                                                        <span style={{ color: isSelected ? '#4ade80' : validation.valid ? '#8aade0' : '#e94560', marginRight: 6 }}>
+                                                            {isSelected ? '\u2713' : validation.valid ? '\u25CB' : '\u2717'}
                                                         </span>
                                                         {lineup.name}
                                                     </span>
@@ -241,6 +247,19 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
                                             );
                                         })}
                                     </div>
+                                    {selectedLineup && (
+                                        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 16 }}>
+                                            <button
+                                                className="lobby-create"
+                                                style={{ padding: '10px 32px', fontSize: 16 }}
+                                                onClick={() => handleSelectLineup(selectedLineup)}
+                                            >READY</button>
+                                            <button
+                                                className="lobby-back"
+                                                onClick={() => setSelectedLineup(null)}
+                                            >Deselect</button>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 

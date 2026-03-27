@@ -74,8 +74,10 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
 
     // Pitcher fatigue display
     const pitcherIp = pitcher.ip || 0;
-    const pitcherInnings = fieldingTeam.inningsPitched || 0;
-    const fatigueActive = pitcherInnings > pitcherIp;
+    // IP display: show innings entered (current inning counts), not completed
+    const pitcherInningsCompleted = fieldingTeam.inningsPitched || 0;
+    const pitcherInningsDisplay = pitcherInningsCompleted + 1; // current inning counts
+    const fatigueActive = pitcherInningsDisplay > pitcherIp;
 
     // Has runners (for sac bunt option)
     const hasRunners = !!(state.bases.first || state.bases.second || state.bases.third);
@@ -443,7 +445,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     <text x="20" y="768" fontSize="8" fill="#d4a018" fontWeight="bold" fontFamily="Arial">P</text>
                     {state.awayTeam.pitcher.imagePath && <image href={state.awayTeam.pitcher.imagePath} x="30" y="756" width="22" height="30" preserveAspectRatio="xMidYMid slice"/>}
                     <text x="58" y="770" fontSize="9" fill="#8aade0" fontWeight="bold" fontFamily="Arial">{state.awayTeam.pitcher.name.length > 14 ? state.awayTeam.pitcher.name.slice(0, 13) + '\u2026' : state.awayTeam.pitcher.name}</text>
-                    <text x="58" y="782" fontSize="8" fill="#4a6a90" fontFamily="monospace">Ctrl:{state.awayTeam.pitcher.control} IP:{state.awayTeam.inningsPitched}/{state.awayTeam.pitcher.ip}</text>
+                    <text x="58" y="782" fontSize="8" fill="#4a6a90" fontFamily="monospace">Ctrl:{state.awayTeam.pitcher.control} IP:{(state.awayTeam.inningsPitched || 0) + 1}/{state.awayTeam.pitcher.ip}</text>
                 </g>
                 {/* Away expand button */}
                 <g cursor="pointer" onClick={() => setShowAwayBullpen(!showAwayBullpen)}>
@@ -484,7 +486,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     <text x="1126" y="768" fontSize="8" fill="#d4a018" fontWeight="bold" fontFamily="Arial">P</text>
                     {state.homeTeam.pitcher.imagePath && <image href={state.homeTeam.pitcher.imagePath} x="1136" y="756" width="22" height="30" preserveAspectRatio="xMidYMid slice"/>}
                     <text x="1164" y="770" fontSize="9" fill="#8aade0" fontWeight="bold" fontFamily="Arial">{state.homeTeam.pitcher.name.length > 14 ? state.homeTeam.pitcher.name.slice(0, 13) + '\u2026' : state.homeTeam.pitcher.name}</text>
-                    <text x="1164" y="782" fontSize="8" fill="#4a6a90" fontFamily="monospace">Ctrl:{state.homeTeam.pitcher.control} IP:{state.homeTeam.inningsPitched}/{state.homeTeam.pitcher.ip}</text>
+                    <text x="1164" y="782" fontSize="8" fill="#4a6a90" fontFamily="monospace">Ctrl:{state.homeTeam.pitcher.control} IP:{(state.homeTeam.inningsPitched || 0) + 1}/{state.homeTeam.pitcher.ip}</text>
                 </g>
                 {/* Home expand button */}
                 <g cursor="pointer" onClick={() => setShowHomeBullpen(!showHomeBullpen)}>
@@ -544,13 +546,13 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 <CardSlot x={662} y={178} label="2B" card={runner2} labelBelow={true} labelText="2ND BASE" onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                 <CardSlot x={1006} y={512} label="1B" card={runner1} labelBelow={true} labelText="1ST BASE" onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                 <CardSlot x={318} y={512} label="3B" card={runner3} labelBelow={true} labelText="3RD BASE" onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
-                <CardSlot x={662} y={512} label="P" card={pitcher} labelBelow={true} labelText="PITCHER" onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
+                <CardSlot x={662} y={512} label="P" card={pitcher} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                 <CardSlot x={662} y={783} label="H" card={batter} labelAbove={true} labelText="HITTER" onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
 
                 {/* ====== PITCHER IP / FATIGUE ====== */}
                 <rect x="745" y="620" width="90" height="22" rx="4" fill="rgba(0,0,0,0.7)"/>
                 <text x="790" y="636" textAnchor="middle" fontSize="10" fill={fatigueActive ? '#ff6060' : '#8aade0'} fontWeight="bold" fontFamily="monospace">
-                    IP: {pitcherInnings}/{pitcherIp}{fatigueActive ? ` (-${pitcherInnings - pitcherIp})` : ''}
+                    IP: {pitcherInningsDisplay}/{pitcherIp}{fatigueActive ? ` (-${pitcherInningsDisplay - pitcherIp})` : ''}
                 </text>
 
                 {/* ====== RESULT OVERLAY ====== */}
