@@ -4,8 +4,13 @@
  * Handles all Advanced rule phases: subs, icons, extra bases, DP.
  */
 import { useState, useRef } from 'react';
-import type { GameState, GameAction, PlayerSlot, TeamState } from '../../engine/gameEngine';
+import type { GameState, GameAction, PlayerSlot } from '../../engine/gameEngine';
 import { getCurrentBatter, getCurrentPitcher } from '../../engine/gameEngine';
+import CardSlot from './CardSlot';
+import BullpenPanel from './BullpenPanel';
+import BoxScore from './BoxScore';
+import GameLogOverlay from './GameLogOverlay';
+import ActionButtons from './ActionButtons';
 import './GameBoard.css';
 
 interface Props {
@@ -23,6 +28,8 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const [showAwayBullpen, setShowAwayBullpen] = useState(false);
     const [showHomeBullpen, setShowHomeBullpen] = useState(false);
     const [showSubPanel, setShowSubPanel] = useState(false);
+    const [showGameLog, setShowGameLog] = useState(false);
+    const [showStats, setShowStats] = useState(false);
     const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const batter = getCurrentBatter(state);
     const pitcher = getCurrentPitcher(state);
@@ -105,86 +112,24 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
 
             {/* Away Bullpen/Bench expand panel */}
             {showAwayBullpen && (
-                <div className="bullpen-panel away-panel">
-                    <div className="bp-header" onClick={() => setShowAwayBullpen(false)}>
-                        AWAY BULLPEN & BENCH ▲
-                    </div>
-                    <div className="bp-cards">
-                        {(state.awayTeam.bullpen?.length > 0) && (
-                            <>
-                                <div className="bp-section-label">Bullpen</div>
-                                {state.awayTeam.bullpen.map((p, i) => (
-                                    <div key={`aw-bp-${i}`} className="bp-card" onMouseEnter={(e) => handlePlayerHover(p, e)} onMouseLeave={handlePlayerLeave}>
-                                        <img src={p.imagePath} alt="" />
-                                        <div className="bp-card-info">
-                                            <span className="bp-card-name">{p.name}</span>
-                                            <span className="bp-card-stats">Ctrl:{p.control} IP:{p.ip} {p.role}</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </>
-                        )}
-                        {(state.awayTeam.bench?.length > 0) && (
-                            <>
-                                <div className="bp-section-label">Bench</div>
-                                {state.awayTeam.bench.map((p, i) => (
-                                    <div key={`aw-bn-${i}`} className="bp-card" onMouseEnter={(e) => handlePlayerHover(p, e)} onMouseLeave={handlePlayerLeave}>
-                                        <img src={p.imagePath} alt="" />
-                                        <div className="bp-card-info">
-                                            <span className="bp-card-name">{p.name}</span>
-                                            <span className="bp-card-stats">OB:{p.onBase} Spd:{p.speed}</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </>
-                        )}
-                        {(!state.awayTeam.bullpen?.length && !state.awayTeam.bench?.length) && (
-                            <div className="bp-empty">No bullpen or bench players</div>
-                        )}
-                    </div>
-                </div>
+                <BullpenPanel
+                    team={state.awayTeam}
+                    side="away"
+                    onClose={() => setShowAwayBullpen(false)}
+                    onHover={handlePlayerHover}
+                    onLeave={handlePlayerLeave}
+                />
             )}
 
             {/* Home Bullpen/Bench expand panel */}
             {showHomeBullpen && (
-                <div className="bullpen-panel home-panel">
-                    <div className="bp-header" onClick={() => setShowHomeBullpen(false)}>
-                        HOME BULLPEN & BENCH ▲
-                    </div>
-                    <div className="bp-cards">
-                        {(state.homeTeam.bullpen?.length > 0) && (
-                            <>
-                                <div className="bp-section-label">Bullpen</div>
-                                {state.homeTeam.bullpen.map((p, i) => (
-                                    <div key={`hm-bp-${i}`} className="bp-card" onMouseEnter={(e) => handlePlayerHover(p, e)} onMouseLeave={handlePlayerLeave}>
-                                        <img src={p.imagePath} alt="" />
-                                        <div className="bp-card-info">
-                                            <span className="bp-card-name">{p.name}</span>
-                                            <span className="bp-card-stats">Ctrl:{p.control} IP:{p.ip} {p.role}</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </>
-                        )}
-                        {(state.homeTeam.bench?.length > 0) && (
-                            <>
-                                <div className="bp-section-label">Bench</div>
-                                {state.homeTeam.bench.map((p, i) => (
-                                    <div key={`hm-bn-${i}`} className="bp-card" onMouseEnter={(e) => handlePlayerHover(p, e)} onMouseLeave={handlePlayerLeave}>
-                                        <img src={p.imagePath} alt="" />
-                                        <div className="bp-card-info">
-                                            <span className="bp-card-name">{p.name}</span>
-                                            <span className="bp-card-stats">OB:{p.onBase} Spd:{p.speed}</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </>
-                        )}
-                        {(!state.homeTeam.bullpen?.length && !state.homeTeam.bench?.length) && (
-                            <div className="bp-empty">No bullpen or bench players</div>
-                        )}
-                    </div>
-                </div>
+                <BullpenPanel
+                    team={state.homeTeam}
+                    side="home"
+                    onClose={() => setShowHomeBullpen(false)}
+                    onHover={handlePlayerHover}
+                    onLeave={handlePlayerLeave}
+                />
             )}
 
             {/* Substitution selection panel (overlay) */}
@@ -460,10 +405,31 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 <ellipse cx="700" cy="895" rx="70" ry="42" fill="url(#homeDirtGrad)" clipPath="url(#centerClip)"/>
                 <polygon points="683,883 717,883 722,896 700,911 678,896" fill="white" stroke="#d0d0d0" strokeWidth="2" filter="url(#dropShadow)"/>
 
-                {/* Base markers */}
+                {/* Base markers with runner info */}
                 <rect x="1029" y="554" width="22" height="22" rx="3" fill={runner1 ? '#4ade80' : 'white'} stroke={runner1 ? '#22c55e' : '#cccccc'} strokeWidth="1.5" transform="rotate(45,1040,565)" filter="url(#dropShadow)"/>
+                {runner1 && (
+                    <g>
+                        <rect x="1060" y="545" width="110" height="30" rx="4" fill="rgba(0,0,0,0.8)" stroke="#22c55e" strokeWidth="1"/>
+                        <text x="1115" y="558" textAnchor="middle" fontSize="9" fill="#4ade80" fontWeight="bold" fontFamily="Arial">{runner1.name.length > 14 ? runner1.name.slice(0, 13) + '\u2026' : runner1.name}</text>
+                        <text x="1115" y="571" textAnchor="middle" fontSize="9" fill="#8aade0" fontWeight="bold" fontFamily="monospace">Spd: {runner1.speed}</text>
+                    </g>
+                )}
                 <rect x="689" y="214" width="22" height="22" rx="3" fill={runner2 ? '#4ade80' : 'white'} stroke={runner2 ? '#22c55e' : '#cccccc'} strokeWidth="1.5" transform="rotate(45,700,225)" filter="url(#dropShadow)"/>
+                {runner2 && (
+                    <g>
+                        <rect x="725" y="205" width="110" height="30" rx="4" fill="rgba(0,0,0,0.8)" stroke="#22c55e" strokeWidth="1"/>
+                        <text x="780" y="218" textAnchor="middle" fontSize="9" fill="#4ade80" fontWeight="bold" fontFamily="Arial">{runner2.name.length > 14 ? runner2.name.slice(0, 13) + '\u2026' : runner2.name}</text>
+                        <text x="780" y="231" textAnchor="middle" fontSize="9" fill="#8aade0" fontWeight="bold" fontFamily="monospace">Spd: {runner2.speed}</text>
+                    </g>
+                )}
                 <rect x="349" y="554" width="22" height="22" rx="3" fill={runner3 ? '#4ade80' : 'white'} stroke={runner3 ? '#22c55e' : '#cccccc'} strokeWidth="1.5" transform="rotate(45,360,565)" filter="url(#dropShadow)"/>
+                {runner3 && (
+                    <g>
+                        <rect x="230" y="545" width="110" height="30" rx="4" fill="rgba(0,0,0,0.8)" stroke="#22c55e" strokeWidth="1"/>
+                        <text x="285" y="558" textAnchor="middle" fontSize="9" fill="#4ade80" fontWeight="bold" fontFamily="Arial">{runner3.name.length > 14 ? runner3.name.slice(0, 13) + '\u2026' : runner3.name}</text>
+                        <text x="285" y="571" textAnchor="middle" fontSize="9" fill="#8aade0" fontWeight="bold" fontFamily="monospace">Spd: {runner3.speed}</text>
+                    </g>
+                )}
 
                 {/* ====== CARD SLOTS ====== */}
                 <CardSlot x={662} y={178} label="2B" card={runner2} labelBelow={true}/>
@@ -535,151 +501,57 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     </g>
                 )}
 
+                {/* ====== STEAL RESULT OVERLAY ====== */}
+                {state.pendingStealResult && (
+                    <g>
+                        <rect x="440" y="340" width="260" height="50" rx="6" fill={state.pendingStealResult.safe ? 'rgba(34,180,80,0.9)' : 'rgba(200,30,30,0.9)'}/>
+                        <text x="570" y="362" textAnchor="middle" fontSize="14" fill="white" fontWeight="bold" fontFamily="Impact">
+                            {state.pendingStealResult.safe ? `${state.pendingStealResult.runnerName} SAFE!` : `${state.pendingStealResult.runnerName} CAUGHT STEALING!`}
+                        </text>
+                        <text x="570" y="382" textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.8)" fontFamily="monospace">
+                            Spd {state.pendingStealResult.runnerSpeed} vs d20({state.pendingStealResult.roll})+Arm={state.pendingStealResult.defenseTotal}
+                        </text>
+                    </g>
+                )}
+
                 {/* ====== ACTION BUTTONS ====== */}
-
-                {/* Pre-atbat phase: offense can pinch hit, sac bunt, or skip */}
-                {!state.isOver && isMyTurn && state.phase === 'pre_atbat' && (
-                    <g>
-                        {battingTeam.bench.length > 0 && (
-                            <g className="roll-button" onClick={() => setShowSubPanel(true)} cursor="pointer">
-                                <rect x="500" y="730" width="160" height="38" rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
-                                <text x="580" y="755" textAnchor="middle" fontSize="14" fill="#002" fontWeight="900" fontFamily="Impact">PINCH HIT</text>
-                            </g>
-                        )}
-                        {hasRunners && (
-                            <g className="roll-button" onClick={() => onAction({ type: 'SAC_BUNT' })} cursor="pointer">
-                                <rect x="670" y="730" width="120" height="38" rx="6" fill="#8b5cf6" stroke="#a78bfa" strokeWidth="1.5"/>
-                                <text x="730" y="755" textAnchor="middle" fontSize="14" fill="white" fontWeight="900" fontFamily="Impact">SAC BUNT</text>
-                            </g>
-                        )}
-                        <g className="roll-button" onClick={() => onAction({ type: 'SKIP_SUB' })} cursor="pointer">
-                            <rect x="800" y="730" width="100" height="38" rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
-                            <text x="850" y="755" textAnchor="middle" fontSize="14" fill="#ccc" fontWeight="900" fontFamily="Impact">SKIP</text>
-                        </g>
-                    </g>
-                )}
-
-                {/* Defense sub phase: defense can change pitcher or skip */}
-                {!state.isOver && isMyTurn && state.phase === 'defense_sub' && (
-                    <g>
-                        {fieldingTeam.bullpen.length > 0 && (
-                            <g className="roll-button" onClick={() => setShowSubPanel(true)} cursor="pointer">
-                                <rect x="520" y="730" width="200" height="38" rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
-                                <text x="620" y="755" textAnchor="middle" fontSize="14" fill="#002" fontWeight="900" fontFamily="Impact">CHANGE PITCHER</text>
-                            </g>
-                        )}
-                        <g className="roll-button" onClick={() => onAction({ type: 'SKIP_SUB' })} cursor="pointer">
-                            <rect x="730" y="730" width="100" height="38" rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
-                            <text x="780" y="755" textAnchor="middle" fontSize="14" fill="#ccc" fontWeight="900" fontFamily="Impact">SKIP</text>
-                        </g>
-                    </g>
-                )}
-
-                {/* Pitch phase */}
-                {!state.isOver && isMyTurn && state.phase === 'pitch' && (
-                    <g className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH' })} cursor="pointer">
-                        <rect x="600" y="730" width="200" height="45" rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
-                        <text x="700" y="760" textAnchor="middle" fontSize="20" fill="white" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="2">ROLL PITCH</text>
-                    </g>
-                )}
-
-                {/* Swing phase */}
-                {!state.isOver && isMyTurn && state.phase === 'swing' && (
-                    <g className="roll-button" onClick={() => onAction({ type: 'ROLL_SWING' })} cursor="pointer">
-                        <rect x="600" y="730" width="200" height="45" rx="8" fill="#4ade80" stroke="#6bff9a" strokeWidth="2"/>
-                        <text x="700" y="760" textAnchor="middle" fontSize="20" fill="#002" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="2">ROLL SWING</text>
-                    </g>
-                )}
-
-                {/* Result icons phase: show icon buttons */}
-                {!state.isOver && isMyTurn && state.phase === 'result_icons' && state.iconPrompt && (
-                    <g>
-                        <rect x="480" y="670" width="440" height="40" rx="6" fill="rgba(0,0,0,0.8)"/>
-                        <text x="700" y="696" textAnchor="middle" fontSize="13" fill="#d4a018" fontWeight="bold" fontFamily="Arial">
-                            {state.lastOutcome ? `Result: ${outcomeNames[state.lastOutcome] || state.lastOutcome}` : 'Icon Decision'}
-                        </text>
-                        {state.iconPrompt.availableIcons.map((ic, i) => (
-                            <g key={`icon-${i}`} className="roll-button" onClick={() => onAction({ type: 'USE_ICON', cardId: ic.cardId, icon: ic.icon })} cursor="pointer">
-                                <rect x={500 + i * 150} y="720" width="140" height="38" rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
-                                <text x={570 + i * 150} y="744" textAnchor="middle" fontSize="12" fill="#002" fontWeight="bold" fontFamily="Arial">{ic.description.split(':')[0]}</text>
-                            </g>
-                        ))}
-                        <g className="roll-button" onClick={() => onAction({ type: 'SKIP_ICONS' })} cursor="pointer">
-                            <rect x={500 + state.iconPrompt.availableIcons.length * 150} y="720" width="100" height="38" rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
-                            <text x={550 + state.iconPrompt.availableIcons.length * 150} y="744" textAnchor="middle" fontSize="12" fill="#ccc" fontWeight="bold" fontFamily="Arial">DECLINE</text>
-                        </g>
-                    </g>
-                )}
-
-                {/* Extra base phase: defense chooses who to throw at */}
-                {!state.isOver && isMyTurn && state.phase === 'extra_base' && state.extraBaseEligible && (
-                    <g>
-                        <rect x="440" y="670" width="520" height="40" rx="6" fill="rgba(0,0,0,0.8)"/>
-                        <text x="700" y="696" textAnchor="middle" fontSize="13" fill="#d4a018" fontWeight="bold" fontFamily="Arial">
-                            Extra Base Attempt — Choose runner to throw at:
-                        </text>
-                        {state.extraBaseEligible.map((runner, i) => (
-                            <g key={`eb-${i}`} className="roll-button" onClick={() => onAction({ type: 'EXTRA_BASE_THROW', runnerId: runner.runnerId })} cursor="pointer">
-                                <rect x={480 + i * 170} y="720" width="160" height="38" rx="6" fill="#e94560" stroke="#ff6b8a" strokeWidth="1.5"/>
-                                <text x={560 + i * 170} y="738" textAnchor="middle" fontSize="11" fill="white" fontWeight="bold" fontFamily="Arial">THROW: {runner.runnerName}</text>
-                                <text x={560 + i * 170} y="752" textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.7)" fontFamily="monospace">{runner.fromBase}{'\u2192'}{runner.toBase} Spd:{runner.runnerSpeed}</text>
-                            </g>
-                        ))}
-                        <g className="roll-button" onClick={() => onAction({ type: 'SKIP_EXTRA_BASE' })} cursor="pointer">
-                            <rect x={480 + state.extraBaseEligible.length * 170} y="720" width="120" height="38" rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
-                            <text x={540 + state.extraBaseEligible.length * 170} y="744" textAnchor="middle" fontSize="12" fill="#ccc" fontWeight="bold" fontFamily="Arial">NO THROW</text>
-                        </g>
-                    </g>
-                )}
-
-                {/* Waiting for opponent */}
-                {!state.isOver && !isMyTurn && (
-                    <g>
-                        <rect x="580" y="730" width="240" height="40" rx="6" fill="rgba(0,0,0,0.6)"/>
-                        <text x="700" y="757" textAnchor="middle" fontSize="14" fill="#888" fontStyle="italic" fontFamily="Arial">Waiting for opponent...</text>
-                    </g>
-                )}
-
-                {/* Game over */}
-                {state.isOver && (
-                    <g>
-                        <rect x="520" y="700" width="360" height="60" rx="10" fill="rgba(0,0,0,0.85)"/>
-                        <text x="700" y="740" textAnchor="middle" fontSize="28" fill="white" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="3">
-                            GAME OVER  {state.score.away}{'\u2013'}{state.score.home}
-                        </text>
-                    </g>
-                )}
+                <ActionButtons
+                    state={state}
+                    myRole={myRole}
+                    isMyTurn={isMyTurn}
+                    iAmBatting={iAmBatting}
+                    onAction={onAction}
+                    battingTeam={battingTeam}
+                    fieldingTeam={fieldingTeam}
+                    hasRunners={hasRunners}
+                    outcomeNames={outcomeNames}
+                    onShowSubPanel={() => setShowSubPanel(true)}
+                />
             </svg>
-        </div>
-    );
-}
 
-/** Card slot with corner brackets and glow — shows card image if occupied */
-function CardSlot({ x, y, label, card, labelBelow, labelAbove, labelText }: {
-    x: number; y: number; label: string; card: PlayerSlot | null;
-    labelBelow?: boolean; labelAbove?: boolean; labelText?: string;
-}) {
-    const w = 76, h = 106;
-    return (
-        <g>
-            <rect x={x + 3} y={y + 3} width={w} height={h} rx="6" fill="rgba(0,0,0,0.55)"/>
-            <rect x={x} y={y} width={w} height={h} rx="6" fill="rgba(0,0,0,0.30)" stroke="#f0e8c0" strokeWidth="2.2" strokeDasharray="6,4" opacity="0.88" filter="url(#cardGlow)"/>
-            <path d={`M ${x} ${y} l 10 0 M ${x} ${y} l 0 10`} stroke="#f0e8c0" strokeWidth="2.5" opacity="0.7"/>
-            <path d={`M ${x+w} ${y} l -10 0 M ${x+w} ${y} l 0 10`} stroke="#f0e8c0" strokeWidth="2.5" opacity="0.7"/>
-            <path d={`M ${x} ${y+h} l 10 0 M ${x} ${y+h} l 0 -10`} stroke="#f0e8c0" strokeWidth="2.5" opacity="0.7"/>
-            <path d={`M ${x+w} ${y+h} l -10 0 M ${x+w} ${y+h} l 0 -10`} stroke="#f0e8c0" strokeWidth="2.5" opacity="0.7"/>
-            {!card && (
-                <text x={x + w/2} y={y + h/2 + 5} textAnchor="middle" fontSize="14" fill="#f0e8c038" fontWeight="bold" fontFamily="Arial Black">{label}</text>
+            {/* Toggle buttons */}
+            <button className="overlay-toggle overlay-toggle-log" onClick={() => { setShowGameLog(!showGameLog); setShowStats(false); }}>
+                {showGameLog ? 'CLOSE LOG' : 'GAME LOG'}
+            </button>
+            <button className="overlay-toggle overlay-toggle-stats" onClick={() => { setShowStats(!showStats); setShowGameLog(false); }}>
+                {showStats ? 'CLOSE STATS' : 'BOX SCORE'}
+            </button>
+
+            {/* Game Log Overlay */}
+            {showGameLog && (
+                <GameLogOverlay gameLog={state.gameLog} onClose={() => setShowGameLog(false)} />
             )}
-            {card && card.imagePath && (
-                <image href={card.imagePath} x={x + 3} y={y + 3} width={w - 6} height={h - 6} preserveAspectRatio="xMidYMid slice"/>
+
+            {/* Box Score / Stats Overlay */}
+            {showStats && (
+                <div className="overlay-panel" style={{ minWidth: 650 }}>
+                    <div className="overlay-panel-header">
+                        <span className="overlay-panel-title">BOX SCORE</span>
+                        <button className="overlay-close" onClick={() => setShowStats(false)}>CLOSE</button>
+                    </div>
+                    <BoxScore awayTeam={state.awayTeam} homeTeam={state.homeTeam} awayName={awayName} homeName={homeName} />
+                </div>
             )}
-            {labelText && labelBelow && (
-                <text x={x + w/2} y={y + h + 18} textAnchor="middle" fontSize="11" fill="#ffffffaa" fontWeight="bold" fontFamily="Arial Black">{labelText}</text>
-            )}
-            {labelText && labelAbove && (
-                <text x={x + w/2} y={y - 8} textAnchor="middle" fontSize="11" fill="#ffffffaa" fontWeight="bold" fontFamily="Arial Black">{labelText}</text>
-            )}
-        </g>
+        </div>
     );
 }

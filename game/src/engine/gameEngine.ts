@@ -12,12 +12,15 @@
 export type Outcome = 'SO' | 'GB' | 'FB' | 'PU' | 'W' | 'S' | 'SPlus' | 'DB' | 'TR' | 'HR';
 
 export type Phase =
-    | 'pre_atbat'       // offense can pinch hit, use SB icon
-    | 'defense_sub'     // defense can change pitcher, use 20/RP icons
+    | 'pre_atbat'        // offense can pinch hit, steal, use SB icon
+    | 'defense_sub'      // defense can change pitcher, use 20/RP icons
     | 'pitch'
     | 'swing'
-    | 'result_icons'    // post-result icon decisions (K, HR, V, S, G)
-    | 'extra_base'      // defense chooses which runner to throw at
+    | 'result_icons'     // post-result icon decisions (K, HR, V, S)
+    | 'gb_decision'      // defense chooses GB handling (DP, hold, force home)
+    | 'steal_resolve'    // defense decides whether to use G on steal throw
+    | 'extra_base_offer' // offense decides whether to send runners
+    | 'extra_base'       // defense chooses which runner to throw at
     | 'game_over';
 
 // ============================================================================
@@ -61,7 +64,30 @@ export interface PlayerSlot {
     role?: string;
     assignedPosition?: string;  // "SS", "CF", "LF-RF-1", "DH", etc.
     fielding?: number;          // fielding value at assigned position
-    arm?: number;               // catcher arm value
+    arm?: number;               // catcher Arm value (used for steal defense)
+    isBackup?: boolean;         // bench player at 1/5 cost (timing restrictions)
+}
+
+export interface BatterStats {
+    ab: number;     // at bats
+    h: number;      // hits
+    r: number;      // runs scored
+    rbi: number;    // runs batted in
+    bb: number;     // walks
+    so: number;     // strikeouts
+    hr: number;     // home runs
+    sb: number;     // stolen bases
+    cs: number;     // caught stealing
+}
+
+export interface PitcherStats {
+    ip: number;     // innings pitched (in thirds: 3 = 1 full inning)
+    h: number;      // hits allowed
+    r: number;      // runs allowed
+    bb: number;     // walks allowed
+    so: number;     // strikeouts
+    hr: number;     // home runs allowed
+    bf: number;     // batters faced
 }
 
 export interface TeamState {
@@ -78,8 +104,54 @@ export interface TeamState {
     iconUsage: IconUsage;             // track icon uses per player per game
     inningsPitched: number;           // IP accumulated by current pitcher
     pitcherEntryInning: number;       // inning when current pitcher entered
-    totalInfieldFielding: number;     // sum of C+1B+2B+3B+SS fielding
+    totalInfieldFielding: number;     // sum of 1B+2B+3B+SS fielding (catchers have 0 fielding)
     totalOutfieldFielding: number;    // sum of LF+CF+RF fielding
+    catcherArm: number;              // catcher's Arm value for steal defense
+    // Per-player stats
+    batterStats: { [cardId: string]: BatterStats };
+    pitcherStats: { [cardId: string]: PitcherStats };
+}
+
+// ============================================================================
+// GB DECISION
+// ============================================================================
+
+export interface GbOptions {
+    hasRunnerFirst: boolean;
+    hasRunnerSecond: boolean;
+    hasRunnerThird: boolean;
+    canDP: boolean;           // runner on 1st exists
+    canForceHome: boolean;    // bases loaded
+    canHoldThird: boolean;    // runner on 1st and 3rd (hold 3rd, skip DP)
+    canHoldRunners: boolean;  // runners on 2nd/3rd only (no runner on 1st)
+    gAvailable: boolean;      // any infielder has unused G icon
+    gPlayerName?: string;     // name of G player for UI display
+}
+
+// ============================================================================
+// STEAL
+// ============================================================================
+
+export interface StealAttempt {
+    runnerId: string;
+    runnerName: string;
+    runnerSpeed: number;
+    fromBase: string;
+    toBase: string;
+    catcherArm: number;
+    stealThirdBonus: number;  // +5 if stealing 3rd
+    catcherGAvailable: boolean;
+    catcherGPlayerName?: string;
+}
+
+export interface StealResult {
+    runnerId: string;
+    runnerName: string;
+    roll: number;
+    defenseTotal: number;
+    runnerSpeed: number;
+    safe: boolean;
+    goldGloveUsed: boolean;
 }
 
 // ============================================================================
@@ -92,6 +164,7 @@ export interface DpResult {
     offenseSpeed: number;
     isDP: boolean;
     goldGloveUsed?: boolean;
+    choice?: string;          // 'dp' | 'hold' | 'force_home'
 }
 
 export interface ExtraBaseCandidate {
@@ -100,6 +173,7 @@ export interface ExtraBaseCandidate {
     fromBase: string;
     toBase: string;
     runnerSpeed: number;
+    targetWithBonuses: number; // speed + home bonus + 2-out bonus
 }
 
 export interface ExtraBaseResult {
@@ -150,6 +224,11 @@ export interface GameState {
     halfInningClean: boolean;           // for CY icon: true if no runners reached base
     icon20UsedThisInning: boolean;      // 20 icon: once per inning
     rpActiveInning: number | null;      // RP icon: which inning it's active for
+    // GB and steal state
+    gbOptions: GbOptions | null;
+    pendingSteal: StealAttempt | null;
+    pendingStealResult: StealResult | null;
+    outsBeforeSwing: number;            // track outs before swing for +5 bonus on extra base
 }
 
 // ============================================================================
@@ -162,7 +241,12 @@ export type GameAction =
     | { type: 'PINCH_HIT'; benchCardId: string; lineupIndex: number }
     | { type: 'PITCHING_CHANGE'; bullpenCardId: string }
     | { type: 'USE_ICON'; cardId: string; icon: string; targetId?: string }
-    | { type: 'EXTRA_BASE_THROW'; runnerId: string }
+    | { type: 'SEND_RUNNERS'; runnerIds: string[] }
+    | { type: 'HOLD_RUNNERS' }
+    | { type: 'EXTRA_BASE_THROW'; runnerId: string; useGoldGlove?: boolean }
+    | { type: 'GB_DECISION'; choice: 'dp' | 'hold' | 'force_home'; useGoldGlove?: boolean }
+    | { type: 'STEAL'; runnerId: string }
+    | { type: 'STEAL_G_DECISION'; useGoldGlove: boolean }
     | { type: 'SKIP_SUB' }
     | { type: 'SKIP_ICONS' }
     | { type: 'SKIP_EXTRA_BASE' }

@@ -14,7 +14,7 @@ import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import cors from 'cors';
 import { createClient } from '@supabase/supabase-js';
-import { initializeGame, processAction, whoseTurn } from './engine.js';
+import { initializeGame, processAction, whoseTurn } from './engine/index.js';
 
 const PORT = process.env.PORT || 3001;
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://jdvgjiklswargnqrqiet.supabase.co';
@@ -198,12 +198,15 @@ async function handleJoinGame(ws, msg, setContext) {
 
 // Valid actions per game phase
 const VALID_ACTIONS = {
-    'pre_atbat':    ['PINCH_HIT', 'SKIP_SUB', 'USE_ICON', 'SAC_BUNT'],
-    'defense_sub':  ['PITCHING_CHANGE', 'SKIP_SUB', 'USE_ICON'],
-    'pitch':        ['ROLL_PITCH'],
-    'swing':        ['ROLL_SWING'],
-    'result_icons': ['USE_ICON', 'SKIP_ICONS'],
-    'extra_base':   ['EXTRA_BASE_THROW', 'SKIP_EXTRA_BASE'],
+    'pre_atbat':         ['PINCH_HIT', 'SKIP_SUB', 'USE_ICON', 'SAC_BUNT', 'STEAL'],
+    'defense_sub':       ['PITCHING_CHANGE', 'SKIP_SUB', 'USE_ICON'],
+    'pitch':             ['ROLL_PITCH'],
+    'swing':             ['ROLL_SWING'],
+    'result_icons':      ['USE_ICON', 'SKIP_ICONS'],
+    'gb_decision':       ['GB_DECISION'],
+    'steal_resolve':     ['STEAL_G_DECISION'],
+    'extra_base_offer':  ['SEND_RUNNERS', 'HOLD_RUNNERS'],
+    'extra_base':        ['EXTRA_BASE_THROW', 'SKIP_EXTRA_BASE'],
 };
 
 function handleAction(ws, msg, userId, room) {
