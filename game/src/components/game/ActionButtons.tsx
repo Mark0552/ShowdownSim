@@ -27,8 +27,8 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                             <text x="525" y="742" textAnchor="middle" fontSize="12" fill="#002" fontWeight="900" fontFamily="Impact">PINCH HIT</text>
                         </g>
                     )}
-                    {/* Sac bunt: only with runners on 1st/2nd, no runner on 3rd */}
-                    {hasRunners && !state.bases.third && (
+                    {/* Sac bunt: runners on 1st/2nd, no runner on 3rd, less than 2 outs */}
+                    {hasRunners && !state.bases.third && state.outs < 2 && (
                         <g className="roll-button" onClick={() => onAction({ type: 'SAC_BUNT' })} cursor="pointer">
                             <rect x="600" y="720" width="110" height="34" rx="6" fill="#8b5cf6" stroke="#a78bfa" strokeWidth="1.5"/>
                             <text x="655" y="742" textAnchor="middle" fontSize="12" fill="white" fontWeight="900" fontFamily="Impact">SAC BUNT</text>

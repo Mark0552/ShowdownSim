@@ -2,17 +2,36 @@
  * Game state initialization.
  */
 
+import { rollD20 } from './dice.js';
 import { getFieldingFromSlot, computeFieldingTotals } from './fielding.js';
 
 export function initializeGame(homeLineupData, awayLineupData, homeUserId, awayUserId) {
+    const homeTeam = buildTeam(homeLineupData, homeUserId);
+    const awayTeam = buildTeam(awayLineupData, awayUserId);
+
+    // Roll for starting pitchers: 1-5=SP1, 6-10=SP2, 11-15=SP3, 16-20=SP4
+    const homeSpRoll = rollD20();
+    const awaySpRoll = rollD20();
+    const homeSpNum = Math.min(4, Math.ceil(homeSpRoll / 5));
+    const awaySpNum = Math.min(4, Math.ceil(awaySpRoll / 5));
+
+    selectStarter(homeTeam, homeSpNum);
+    selectStarter(awayTeam, awaySpNum);
+
+    const logs = [
+        `Starting pitcher roll: Home d20(${homeSpRoll}) = SP${homeSpNum} ${homeTeam.pitcher.name}`,
+        `Starting pitcher roll: Away d20(${awaySpRoll}) = SP${awaySpNum} ${awayTeam.pitcher.name}`,
+        'Play ball!',
+    ];
+
     return {
         inning: 1,
         halfInning: 'top',
         outs: 0,
         bases: { first: null, second: null, third: null },
         score: { home: 0, away: 0 },
-        homeTeam: buildTeam(homeLineupData, homeUserId),
-        awayTeam: buildTeam(awayLineupData, awayUserId),
+        homeTeam,
+        awayTeam,
         phase: 'pre_atbat',
         subPhaseStep: 'offense_first',
         lastPitchRoll: 0,
@@ -20,7 +39,7 @@ export function initializeGame(homeLineupData, awayLineupData, homeUserId, awayU
         lastSwingRoll: 0,
         lastOutcome: null,
         usedPitcherChart: false,
-        gameLog: ['Play ball!'],
+        gameLog: logs,
         isOver: false,
         winnerId: null,
         fatiguePenalty: 0,
@@ -39,6 +58,43 @@ export function initializeGame(homeLineupData, awayLineupData, homeUserId, awayU
     };
 }
 
+/**
+ * Select the Nth starter (1-4) as the active pitcher.
+ * Remaining starters stay in bullpen (but can't be used as relievers).
+ */
+function selectStarter(team, spNum) {
+    // Find all starters sorted by their slot number
+    const starters = [];
+    const nonStarters = [];
+    for (const p of [team.pitcher, ...team.bullpen]) {
+        if (p.assignedPosition?.startsWith('Starter')) {
+            starters.push(p);
+        } else {
+            nonStarters.push(p);
+        }
+    }
+
+    // Sort starters by their number (Starter-1, Starter-2, etc.)
+    starters.sort((a, b) => {
+        const numA = parseInt(a.assignedPosition?.split('-')[1] || '1');
+        const numB = parseInt(b.assignedPosition?.split('-')[1] || '1');
+        return numA - numB;
+    });
+
+    // Pick the selected starter (1-indexed, clamped to available)
+    const idx = Math.min(spNum - 1, starters.length - 1);
+    const selected = starters[idx] || team.pitcher;
+
+    // Set as active pitcher
+    team.pitcher = selected;
+
+    // All other pitchers (starters + relievers/closers) go to bullpen
+    team.bullpen = [...starters.filter(s => s !== selected), ...nonStarters];
+
+    // Re-init pitcher stats
+    team.pitcherStats[selected.cardId] = team.pitcherStats[selected.cardId] || { ip: 0, h: 0, r: 0, bb: 0, so: 0, hr: 0, bf: 0 };
+}
+
 function buildTeam(data, userId) {
     const slots = data.slots || [];
 
@@ -52,6 +108,7 @@ function buildTeam(data, userId) {
             .forEach(s => batters.push(toPlayer(s)));
     }
 
+    // Initially pick Starter-1 (will be overridden by selectStarter)
     const starterSlot = slots.find(s => s.card.type === 'pitcher' && s.assignedPosition === 'Starter-1')
         || slots.find(s => s.card.type === 'pitcher' && s.assignedPosition?.startsWith('Starter'))
         || slots.find(s => s.card.type === 'pitcher');
@@ -109,7 +166,6 @@ function toPlayer(slot) {
     const assignedPos = slot.assignedPosition || '';
     const rawFielding = getFieldingFromSlot(c.positions || [], assignedPos);
     const normalizedPos = assignedPos.replace(/-\d+$/, '');
-    // Catchers: the +N value is Arm, not Fielding. Catchers have 0 fielding.
     const isCatcher = normalizedPos === 'C';
     return {
         cardId: c.id || c.name, name: c.name, onBase: c.onBase || 0, speed: c.speed || 8,

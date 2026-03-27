@@ -11,6 +11,7 @@ import BullpenPanel from './BullpenPanel';
 import BoxScore from './BoxScore';
 import GameLogOverlay from './GameLogOverlay';
 import ActionButtons from './ActionButtons';
+import DiceRoll from './DiceRoll';
 import './GameBoard.css';
 
 interface Props {
@@ -75,6 +76,10 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
 
     // Has runners (for sac bunt option)
     const hasRunners = !!(state.bases.first || state.bases.second || state.bases.third);
+
+    // Dice roll tracking — generate unique keys when rolls change
+    const pitchKey = `pitch-${state.lastPitchRoll}-${state.inning}-${state.halfInning}-${state.outs}-${battingTeam.currentBatterIndex}`;
+    const swingKey = `swing-${state.lastSwingRoll}-${state.inning}-${state.halfInning}-${state.outs}-${battingTeam.currentBatterIndex}`;
 
     // Render icons with usage tracking (crossed out when used)
     const renderIcons = (player: PlayerSlot, team: typeof state.homeTeam, xPos: number, yPos: number) => {
@@ -381,10 +386,11 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 {state.awayTeam.lineup.map((player, i) => {
                     const y = 285 + i * 52;
                     const isAtBat = state.halfInning === 'top' && i === state.awayTeam.currentBatterIndex;
+                    const isOnDeck = state.halfInning === 'bottom' && i === state.awayTeam.currentBatterIndex;
                     return (
                         <g key={`away-slot-${i}`} cursor="pointer" onMouseEnter={(e) => handlePlayerHover(player, e.nativeEvent as any)} onMouseLeave={handlePlayerLeave}>
-                            <rect x="14" y={y} width="192" height="48" rx="3" fill={isAtBat ? '#1a2858' : '#081428'} stroke={isAtBat ? '#e94560' : '#1a3040'} strokeWidth={isAtBat ? 2 : 0.5}/>
-                            <text x="27" y={y + 30} fontSize="13" fill={isAtBat ? '#e94560' : '#1e3a6a'} fontWeight="bold" fontFamily="Arial">{i + 1}.</text>
+                            <rect x="14" y={y} width="192" height="48" rx="3" fill={isAtBat ? '#1a2858' : isOnDeck ? '#0e1a30' : '#081428'} stroke={isAtBat ? '#e94560' : isOnDeck ? '#60a5fa' : '#1a3040'} strokeWidth={isAtBat ? 2 : isOnDeck ? 1.5 : 0.5}/>
+                            <text x="27" y={y + 30} fontSize="13" fill={isAtBat ? '#e94560' : isOnDeck ? '#60a5fa' : '#1e3a6a'} fontWeight="bold" fontFamily="Arial">{i + 1}.</text>
                             {player.imagePath && <image href={player.imagePath} x="42" y={y + 2} width="30" height="42" preserveAspectRatio="xMidYMid slice"/>}
                             <text x="78" y={y + 18} fontSize="10" fill={isAtBat ? 'white' : '#6a8aba'} fontWeight="bold" fontFamily="Arial">{player.name.length > 16 ? player.name.slice(0, 15) + '\u2026' : player.name}</text>
                             <text x="78" y={y + 30} fontSize="9" fill="#4a6a90" fontFamily="Arial">OB:{player.onBase} Spd:{player.speed}{player.fielding ? ` +${player.fielding}` : ''}</text>
@@ -418,10 +424,11 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 {state.homeTeam.lineup.map((player, i) => {
                     const y = 285 + i * 52;
                     const isAtBat = state.halfInning === 'bottom' && i === state.homeTeam.currentBatterIndex;
+                    const isOnDeck = state.halfInning === 'top' && i === state.homeTeam.currentBatterIndex;
                     return (
                         <g key={`home-slot-${i}`} cursor="pointer" onMouseEnter={(e) => handlePlayerHover(player, e.nativeEvent as any)} onMouseLeave={handlePlayerLeave}>
-                            <rect x="1194" y={y} width="192" height="48" rx="3" fill={isAtBat ? '#1a2858' : '#081428'} stroke={isAtBat ? '#e94560' : '#1a3040'} strokeWidth={isAtBat ? 2 : 0.5}/>
-                            <text x="1207" y={y + 30} fontSize="13" fill={isAtBat ? '#e94560' : '#1e3a6a'} fontWeight="bold" fontFamily="Arial">{i + 1}.</text>
+                            <rect x="1194" y={y} width="192" height="48" rx="3" fill={isAtBat ? '#1a2858' : isOnDeck ? '#0e1a30' : '#081428'} stroke={isAtBat ? '#e94560' : isOnDeck ? '#60a5fa' : '#1a3040'} strokeWidth={isAtBat ? 2 : isOnDeck ? 1.5 : 0.5}/>
+                            <text x="1207" y={y + 30} fontSize="13" fill={isAtBat ? '#e94560' : isOnDeck ? '#60a5fa' : '#1e3a6a'} fontWeight="bold" fontFamily="Arial">{i + 1}.</text>
                             {player.imagePath && <image href={player.imagePath} x="1222" y={y + 2} width="30" height="42" preserveAspectRatio="xMidYMid slice"/>}
                             <text x="1258" y={y + 18} fontSize="10" fill={isAtBat ? 'white' : '#6a8aba'} fontWeight="bold" fontFamily="Arial">{player.name.length > 16 ? player.name.slice(0, 15) + '\u2026' : player.name}</text>
                             <text x="1258" y={y + 30} fontSize="9" fill="#4a6a90" fontFamily="Arial">OB:{player.onBase} Spd:{player.speed}{player.fielding ? ` +${player.fielding}` : ''}</text>
@@ -589,11 +596,19 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 />
             </svg>
 
-            {/* Toggle buttons */}
-            <button className="overlay-toggle overlay-toggle-log" onClick={() => { setShowGameLog(!showGameLog); setShowStats(false); }}>
+            {/* Dice roll animations */}
+            {state.lastPitchRoll > 0 && state.phase !== 'pitch' && (
+                <DiceRoll roll={state.lastPitchRoll} triggerKey={pitchKey} label="PITCH" color="#e94560" />
+            )}
+            {state.lastSwingRoll > 0 && (
+                <DiceRoll roll={state.lastSwingRoll} triggerKey={swingKey} label="SWING" color="#4ade80" />
+            )}
+
+            {/* Toggle buttons — positioned in gold header area */}
+            <button className="overlay-toggle" style={{ position: 'absolute', top: '8px', right: '120px', zIndex: 800 }} onClick={() => { setShowGameLog(!showGameLog); setShowStats(false); }}>
                 {showGameLog ? 'CLOSE LOG' : 'GAME LOG'}
             </button>
-            <button className="overlay-toggle overlay-toggle-stats" onClick={() => { setShowStats(!showStats); setShowGameLog(false); }}>
+            <button className="overlay-toggle" style={{ position: 'absolute', top: '8px', right: '16px', zIndex: 800 }} onClick={() => { setShowStats(!showStats); setShowGameLog(false); }}>
                 {showStats ? 'CLOSE STATS' : 'BOX SCORE'}
             </button>
 

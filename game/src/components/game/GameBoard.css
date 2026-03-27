@@ -192,8 +192,7 @@
 }
 .overlay-toggle:hover { background: #102040; }
 
-.overlay-toggle-log { top: 180px; right: 24px; }
-.overlay-toggle-stats { top: 215px; right: 24px; }
+/* overlay-toggle positioning is done inline on the elements */
 
 .overlay-panel {
     position: absolute;
