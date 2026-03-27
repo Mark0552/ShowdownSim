@@ -11,6 +11,7 @@ import { handleGbDecision } from './phases/groundball.js';
 import { handleSteal, handleStealGDecision } from './phases/steal.js';
 import { handleSendRunners, handleHoldRunners, handleExtraBaseThrow, handleSkipExtraBase } from './phases/extrabase.js';
 import { handleSacBunt } from './phases/bunt.js';
+import { handleIntentionalWalk, handleSkipIBB, handleSkipBunt } from './phases/ibb.js';
 
 export { initializeGame };
 
@@ -21,6 +22,8 @@ export function whoseTurn(state) {
     switch (state.phase) {
         case 'pre_atbat':         return offense;
         case 'defense_sub':       return defense;
+        case 'ibb_decision':      return defense;
+        case 'bunt_decision':     return offense;
         case 'pitch':             return defense;
         case 'swing':             return offense;
         case 'result_icons':      return state.iconPrompt?.team || offense;
@@ -49,7 +52,10 @@ export function processAction(state, action) {
         case 'SKIP_SUB':           return handleSkipSub(state);
         case 'SKIP_ICONS':         return handleSkipIcons(state);
         case 'SKIP_EXTRA_BASE':    return handleSkipExtraBase(state);
+        case 'INTENTIONAL_WALK':   return handleIntentionalWalk(state);
+        case 'SKIP_IBB':           return handleSkipIBB(state);
         case 'SAC_BUNT':           return handleSacBunt(state);
+        case 'SKIP_BUNT':          return handleSkipBunt(state);
         default: return state;
     }
 }

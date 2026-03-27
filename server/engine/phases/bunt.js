@@ -9,7 +9,7 @@ import { addBatterStat, addPitcherStat } from '../stats.js';
 import { advanceBatter, endHalfInning } from './baserunning.js';
 
 export function handleSacBunt(state) {
-    if (state.phase !== 'pre_atbat') return state;
+    if (state.phase !== 'bunt_decision') return state;
 
     // Can't bunt with 2 outs or runner on 3rd
     if (state.outs >= 2) return state;

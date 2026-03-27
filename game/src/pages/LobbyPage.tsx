@@ -3,6 +3,7 @@ import type { GameRow } from '../types/game';
 import type { SavedLineup } from '../lib/lineups';
 import { createGame, getOpenGames, getMyGames, joinGame, selectLineup, deleteGame, subscribeToGame, subscribeToLobby, getMyRole } from '../lib/games';
 import { getLineups } from '../lib/lineups';
+import { validateTeam } from '../logic/teamRules';
 import { supabase } from '../lib/supabase';
 import './LobbyPage.css';
 
@@ -196,10 +197,25 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
                                     <div className="lineup-picker-grid">
                                         {myLineups.map(lineup => {
                                             const count = lineup.data?.slots?.length || 0;
+                                            const validation = lineup.data?.slots ? validateTeam(lineup.data.slots) : { valid: false, errors: [], totalPoints: 0, playerCount: 0 };
                                             return (
-                                                <button key={lineup.id} className="lineup-pick-btn" onClick={() => handleSelectLineup(lineup)}>
-                                                    <span className="pick-name">{lineup.name}</span>
-                                                    <span className="pick-meta">{count} players</span>
+                                                <button
+                                                    key={lineup.id}
+                                                    className="lineup-pick-btn"
+                                                    onClick={() => validation.valid ? handleSelectLineup(lineup) : undefined}
+                                                    disabled={!validation.valid}
+                                                    style={{ opacity: validation.valid ? 1 : 0.4, cursor: validation.valid ? 'pointer' : 'not-allowed' }}
+                                                >
+                                                    <span className="pick-name">
+                                                        <span style={{ color: validation.valid ? '#4ade80' : '#e94560', marginRight: 6 }}>
+                                                            {validation.valid ? '\u2713' : '\u2717'}
+                                                        </span>
+                                                        {lineup.name}
+                                                    </span>
+                                                    <span className="pick-meta">{count} players {'\u2022'} {validation.totalPoints.toLocaleString()} pts</span>
+                                                    {!validation.valid && (
+                                                        <span className="pick-meta" style={{ color: '#e94560', fontSize: 10 }}>Invalid</span>
+                                                    )}
                                                 </button>
                                             );
                                         })}

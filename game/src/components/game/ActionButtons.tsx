@@ -32,13 +32,6 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                             <text x="525" y="742" textAnchor="middle" fontSize="12" fill="#002" fontWeight="900" fontFamily="Impact">PINCH HIT</text>
                         </g>
                     )}
-                    {/* Sac bunt: runners on 1st/2nd, no runner on 3rd, less than 2 outs */}
-                    {hasRunners && !state.bases.third && state.outs < 2 && (
-                        <g className="roll-button" onClick={() => onAction({ type: 'SAC_BUNT' })} cursor="pointer">
-                            <rect x="600" y="720" width="110" height="34" rx="6" fill="#8b5cf6" stroke="#a78bfa" strokeWidth="1.5"/>
-                            <text x="655" y="742" textAnchor="middle" fontSize="12" fill="white" fontWeight="900" fontFamily="Impact">SAC BUNT</text>
-                        </g>
-                    )}
                     {/* Steal buttons for eligible runners */}
                     {state.bases.first && !state.bases.second && (
                         <g className="roll-button" onClick={() => onAction({ type: 'STEAL', runnerId: state.bases.first! })} cursor="pointer">
@@ -98,6 +91,34 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 </g>
                 );
             })()}
+
+            {/* IBB decision phase: defense can intentionally walk */}
+            {!state.isOver && isMyTurn && state.phase === 'ibb_decision' && (
+                <g>
+                    <g className="roll-button" onClick={() => onAction({ type: 'INTENTIONAL_WALK' })} cursor="pointer">
+                        <rect x="500" y="720" width="180" height="34" rx="6" fill="#f59e0b" stroke="#fbbf24" strokeWidth="1.5"/>
+                        <text x="590" y="742" textAnchor="middle" fontSize="12" fill="#002" fontWeight="900" fontFamily="Impact">INTENTIONAL WALK</text>
+                    </g>
+                    <g className="roll-button" onClick={() => onAction({ type: 'SKIP_IBB' })} cursor="pointer">
+                        <rect x="700" y="720" width="80" height="34" rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
+                        <text x="740" y="742" textAnchor="middle" fontSize="12" fill="#ccc" fontWeight="900" fontFamily="Impact">PITCH</text>
+                    </g>
+                </g>
+            )}
+
+            {/* Bunt decision phase: offense can sac bunt */}
+            {!state.isOver && isMyTurn && state.phase === 'bunt_decision' && (
+                <g>
+                    <g className="roll-button" onClick={() => onAction({ type: 'SAC_BUNT' })} cursor="pointer">
+                        <rect x="500" y="720" width="150" height="34" rx="6" fill="#8b5cf6" stroke="#a78bfa" strokeWidth="1.5"/>
+                        <text x="575" y="742" textAnchor="middle" fontSize="12" fill="white" fontWeight="900" fontFamily="Impact">SAC BUNT</text>
+                    </g>
+                    <g className="roll-button" onClick={() => onAction({ type: 'SKIP_BUNT' })} cursor="pointer">
+                        <rect x="670" y="720" width="80" height="34" rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
+                        <text x="710" y="742" textAnchor="middle" fontSize="12" fill="#ccc" fontWeight="900" fontFamily="Impact">SKIP</text>
+                    </g>
+                </g>
+            )}
 
             {/* Pitch phase */}
             {!state.isOver && isMyTurn && state.phase === 'pitch' && (

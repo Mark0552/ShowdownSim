@@ -52,6 +52,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         SO: 'STRIKEOUT', GB: 'GROUND OUT', FB: 'FLY OUT', PU: 'POPUP',
         W: 'WALK', S: 'SINGLE', SPlus: 'SINGLE+', DB: 'DOUBLE', TR: 'TRIPLE', HR: 'HOME RUN!',
         SAC: 'SAC BUNT',
+        IBB: 'INTENTIONAL WALK',
     };
 
     const innings = Array.from({ length: Math.max(9, state.inning) }, (_, i) => i + 1);

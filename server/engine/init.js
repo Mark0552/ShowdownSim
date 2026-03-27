@@ -92,7 +92,7 @@ function selectStarter(team, spNum) {
     team.bullpen = [...starters.filter(s => s !== selected), ...nonStarters];
 
     // Re-init pitcher stats
-    team.pitcherStats[selected.cardId] = team.pitcherStats[selected.cardId] || { ip: 0, h: 0, r: 0, bb: 0, so: 0, hr: 0, bf: 0 };
+    team.pitcherStats[selected.cardId] = team.pitcherStats[selected.cardId] || { ip: 0, h: 0, r: 0, bb: 0, ibb: 0, so: 0, hr: 0, bf: 0 };
 }
 
 function buildTeam(data, userId) {
@@ -143,12 +143,12 @@ function buildTeam(data, userId) {
     // Initialize per-player stats
     const batterStats = {};
     for (const b of lineup) {
-        batterStats[b.cardId] = { ab: 0, h: 0, r: 0, rbi: 0, bb: 0, so: 0, hr: 0, sb: 0, cs: 0 };
+        batterStats[b.cardId] = { ab: 0, h: 0, r: 0, rbi: 0, bb: 0, ibb: 0, so: 0, hr: 0, sb: 0, cs: 0 };
     }
     const pitcherStats = {};
-    pitcherStats[pitcher.cardId] = { ip: 0, h: 0, r: 0, bb: 0, so: 0, hr: 0, bf: 0 };
+    pitcherStats[pitcher.cardId] = { ip: 0, h: 0, r: 0, bb: 0, ibb: 0, so: 0, hr: 0, bf: 0 };
     for (const p of bullpen) {
-        pitcherStats[p.cardId] = { ip: 0, h: 0, r: 0, bb: 0, so: 0, hr: 0, bf: 0 };
+        pitcherStats[p.cardId] = { ip: 0, h: 0, r: 0, bb: 0, ibb: 0, so: 0, hr: 0, bf: 0 };
     }
 
     return {

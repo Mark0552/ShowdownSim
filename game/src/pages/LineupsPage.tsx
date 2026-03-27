@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { SavedLineup } from '../lib/lineups';
 import { getLineups, createLineup, deleteLineup } from '../lib/lineups';
+import { validateTeam } from '../logic/teamRules';
 import './LineupsPage.css';
 
 interface Props {
@@ -68,21 +69,28 @@ export default function LineupsPage({ onBack, onEditLineup }: Props) {
                     {lineups.map(lineup => {
                         const data = lineup.data;
                         const playerCount = data?.slots?.length || 0;
-                        const totalPoints = data?.slots?.reduce((sum: number, s: any) => {
-                            if (s.assignedPosition === 'bench') return sum + Math.ceil(s.card.points / 5);
-                            return sum + s.card.points;
-                        }, 0) || 0;
+                        const validation = data?.slots ? validateTeam(data.slots) : { valid: false, errors: ['No players'], totalPoints: 0, playerCount: 0 };
 
                         return (
-                            <div key={lineup.id} className="lineup-item">
+                            <div key={lineup.id} className="lineup-item" style={{ borderLeft: `4px solid ${validation.valid ? '#4ade80' : '#e94560'}` }}>
                                 <div className="lineup-item-info">
-                                    <h3>{lineup.name}</h3>
+                                    <h3>
+                                        <span style={{ color: validation.valid ? '#4ade80' : '#e94560', marginRight: 8 }}>
+                                            {validation.valid ? '\u2713' : '\u2717'}
+                                        </span>
+                                        {lineup.name}
+                                    </h3>
                                     <div className="lineup-item-meta">
                                         <span>{playerCount} players</span>
-                                        <span>{totalPoints.toLocaleString()} pts</span>
+                                        <span>{validation.totalPoints.toLocaleString()} / 5,000 pts</span>
                                         <span>Updated {formatDate(lineup.updated_at)}</span>
                                     </div>
-                                    {/* Preview: show first few player names */}
+                                    {!validation.valid && (
+                                        <div style={{ fontSize: 11, color: '#e94560', marginTop: 4 }}>
+                                            {validation.errors.slice(0, 3).map((e, i) => <div key={i}>{e}</div>)}
+                                            {validation.errors.length > 3 && <div>+{validation.errors.length - 3} more issues</div>}
+                                        </div>
+                                    )}
                                     <div className="lineup-item-preview">
                                         {data?.slots?.slice(0, 5).map((s: any, i: number) => (
                                             <span key={i} className="preview-player">{s.card.name}</span>

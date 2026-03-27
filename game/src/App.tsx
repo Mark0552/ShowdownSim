@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Card } from './types/cards';
 import type { SavedLineup } from './lib/lineups';
 import { loadCards } from './data/cardData';
@@ -15,15 +15,41 @@ import TeamBuilder from './pages/TeamBuilder';
 
 type Page = 'login' | 'menu' | 'lineups' | 'builder' | 'lobby' | 'game';
 
+/** Read page + gameId from URL hash */
+function readHash(): { page: Page | null; gameId: string | null } {
+    const hash = window.location.hash.replace('#', '');
+    if (!hash) return { page: null, gameId: null };
+    if (hash.startsWith('game/')) {
+        return { page: 'game', gameId: hash.slice(5) };
+    }
+    const validPages: Page[] = ['menu', 'lineups', 'builder', 'lobby'];
+    if (validPages.includes(hash as Page)) {
+        return { page: hash as Page, gameId: null };
+    }
+    return { page: null, gameId: null };
+}
+
 export default function App() {
     const [cards, setCards] = useState<Card[]>([]);
     const [cardsLoading, setCardsLoading] = useState(true);
-    const [page, setPage] = useState<Page>('login');
+    const [page, setPageState] = useState<Page>('login');
     const [userEmail, setUserEmail] = useState('');
     const [editingLineup, setEditingLineup] = useState<SavedLineup | null>(null);
     const [activeGameId, setActiveGameId] = useState<string | null>(null);
     const teamStore = useTeamStore();
     const dragStore = useDragStore();
+
+    // Navigate and update hash
+    const setPage = useCallback((p: Page, gameId?: string | null) => {
+        setPageState(p);
+        if (p === 'game' && gameId) {
+            window.location.hash = `game/${gameId}`;
+        } else if (p === 'login') {
+            window.location.hash = '';
+        } else {
+            window.location.hash = p;
+        }
+    }, []);
 
     useEffect(() => {
         loadCards().then(({ all }) => {
@@ -36,7 +62,16 @@ export default function App() {
         supabase.auth.getUser().then(({ data: { user } }) => {
             if (user) {
                 setUserEmail(getUsername(user));
-                setPage('menu');
+                // Restore page from hash if user is logged in
+                const { page: hashPage, gameId } = readHash();
+                if (hashPage === 'game' && gameId) {
+                    setActiveGameId(gameId);
+                    setPageState('game');
+                } else if (hashPage) {
+                    setPageState(hashPage);
+                } else {
+                    setPage('menu');
+                }
             }
         });
 
@@ -48,6 +83,21 @@ export default function App() {
         });
 
         return () => subscription.unsubscribe();
+    }, [setPage]);
+
+    // Listen for browser back/forward
+    useEffect(() => {
+        const onHashChange = () => {
+            const { page: hashPage, gameId } = readHash();
+            if (hashPage === 'game' && gameId) {
+                setActiveGameId(gameId);
+                setPageState('game');
+            } else if (hashPage) {
+                setPageState(hashPage);
+            }
+        };
+        window.addEventListener('hashchange', onHashChange);
+        return () => window.removeEventListener('hashchange', onHashChange);
     }, []);
 
     const handleLogin = async () => {
@@ -78,7 +128,7 @@ export default function App() {
 
     const handleGameStart = (gameId: string) => {
         setActiveGameId(gameId);
-        setPage('game');
+        setPage('game', gameId);
     };
 
     if (cardsLoading) {

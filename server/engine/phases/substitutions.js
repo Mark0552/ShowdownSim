@@ -96,7 +96,7 @@ export function handlePitchingChange(state, action) {
         // (pinch hit, steal, sac bunt) since the pitcher changed
         return { ...newState, phase: 'pre_atbat', subPhaseStep: 'offense_re', controlModifier: 0 };
     }
-    return { ...newState, phase: 'pitch', subPhaseStep: null, controlModifier: 0 };
+    return { ...newState, phase: 'ibb_decision', subPhaseStep: null };
 }
 
 export function handleSkipSub(state) {
@@ -173,5 +173,5 @@ export function enterPreAtBat(state) {
         return { ...state, phase: 'defense_sub', subPhaseStep: 'defense' };
     }
 
-    return { ...state, phase: 'pitch', subPhaseStep: null, controlModifier: 0 };
+    return { ...state, phase: 'ibb_decision', subPhaseStep: null };
 }

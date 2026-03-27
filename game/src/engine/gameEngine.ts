@@ -9,11 +9,13 @@
 // OUTCOME & PHASE
 // ============================================================================
 
-export type Outcome = 'SO' | 'GB' | 'FB' | 'PU' | 'W' | 'S' | 'SPlus' | 'DB' | 'TR' | 'HR' | 'SAC';
+export type Outcome = 'SO' | 'GB' | 'FB' | 'PU' | 'W' | 'S' | 'SPlus' | 'DB' | 'TR' | 'HR' | 'SAC' | 'IBB';
 
 export type Phase =
     | 'pre_atbat'        // offense can pinch hit, steal, use SB icon
     | 'defense_sub'      // defense can change pitcher, use 20/RP icons
+    | 'ibb_decision'     // defense decides whether to intentional walk
+    | 'bunt_decision'    // offense decides whether to sacrifice bunt
     | 'pitch'
     | 'swing'
     | 'result_icons'     // post-result icon decisions (K, HR, V, S)
@@ -74,6 +76,7 @@ export interface BatterStats {
     r: number;      // runs scored
     rbi: number;    // runs batted in
     bb: number;     // walks
+    ibb: number;    // intentional walks
     so: number;     // strikeouts
     hr: number;     // home runs
     sb: number;     // stolen bases
@@ -85,6 +88,7 @@ export interface PitcherStats {
     h: number;      // hits allowed
     r: number;      // runs allowed
     bb: number;     // walks allowed
+    ibb: number;    // intentional walks
     so: number;     // strikeouts
     hr: number;     // home runs allowed
     bf: number;     // batters faced
@@ -250,7 +254,10 @@ export type GameAction =
     | { type: 'SKIP_SUB' }
     | { type: 'SKIP_ICONS' }
     | { type: 'SKIP_EXTRA_BASE' }
-    | { type: 'SAC_BUNT' };
+    | { type: 'INTENTIONAL_WALK' }
+    | { type: 'SKIP_IBB' }
+    | { type: 'SAC_BUNT' }
+    | { type: 'SKIP_BUNT' };
 
 // ============================================================================
 // PURE READ-ONLY HELPERS (used by UI)
