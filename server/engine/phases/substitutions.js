@@ -92,10 +92,9 @@ export function handlePitchingChange(state, action) {
     newState.gameLog = [...state.gameLog, `${newPitcher.name} replaces ${oldPitcher.name} on the mound`];
 
     if (state.subPhaseStep === 'defense') {
-        const offSide = state.halfInning === 'top' ? 'awayTeam' : 'homeTeam';
-        if (newState[offSide].bench.length > 0) {
-            return { ...newState, phase: 'pre_atbat', subPhaseStep: 'offense_re' };
-        }
+        // Pitching change resets to pre_atbat — offense gets full options again
+        // (pinch hit, steal, sac bunt) since the pitcher changed
+        return { ...newState, phase: 'pre_atbat', subPhaseStep: 'offense_re', controlModifier: 0 };
     }
     return { ...newState, phase: 'pitch', subPhaseStep: null, controlModifier: 0 };
 }

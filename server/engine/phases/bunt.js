@@ -11,9 +11,6 @@ import { advanceBatter, endHalfInning } from './baserunning.js';
 export function handleSacBunt(state) {
     if (state.phase !== 'pre_atbat') return state;
 
-    // Can't bunt with 2 outs
-    if (state.outs >= 2) return state;
-
     // Can't bunt with runner on 3rd
     if (state.bases.third) return state;
 
