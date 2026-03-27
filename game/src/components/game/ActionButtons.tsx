@@ -17,7 +17,21 @@ interface ActionButtonsProps {
 export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onAction, battingTeam, fieldingTeam, hasRunners, outcomeNames, onShowSubPanel }: ActionButtonsProps) {
     return (
         <g>
-            {/* Pre-atbat phase: offense can pinch hit, steal, sac bunt, or skip */}
+            {/* SP Roll phase: home team rolls for starting pitchers */}
+            {!state.isOver && isMyTurn && state.phase === 'sp_roll' && (
+                <g className="roll-button" onClick={() => onAction({ type: 'ROLL_STARTERS' })} cursor="pointer">
+                    <rect x="550" y="720" width="300" height="50" rx="10" fill="#d4a018" stroke="#f0c840" strokeWidth="2"/>
+                    <text x="700" y="752" textAnchor="middle" fontSize="22" fill="#002" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="3">ROLL FOR PITCHERS</text>
+                </g>
+            )}
+            {!state.isOver && !isMyTurn && state.phase === 'sp_roll' && (
+                <g>
+                    <rect x="550" y="730" width="300" height="40" rx="6" fill="rgba(0,0,0,0.6)"/>
+                    <text x="700" y="757" textAnchor="middle" fontSize="14" fill="#888" fontStyle="italic" fontFamily="Arial">Waiting for home team to roll...</text>
+                </g>
+            )}
+
+            {/* Pre-atbat phase: offense can pinch hit, steal, or skip */}
             {!state.isOver && isMyTurn && state.phase === 'pre_atbat' && (() => {
                 // Filter bench: backups can't PH before 7th (home exception: bottom of 6th)
                 // With DH, backups can never PH for pitcher, so they just can't PH at all before 7th

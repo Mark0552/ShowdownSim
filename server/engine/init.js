@@ -16,39 +16,30 @@ export function initializeGame(homeLineupData, awayLineupData, homeUserId, awayU
     const awayTeam = buildTeam(awayLineupData, awayUserId);
 
     const logs = [];
-    let homeSpNum, awaySpNum;
+    let startPhase = 'sp_roll'; // default: wait for SP roll button
+    let spRollResult = null;
 
     if (seriesContext && seriesContext.gameNumber > 1) {
-        // Series game 2+: cycle starters based on offset
-        // Game 1 determined SP via roll. Game 2 = next in rotation, etc.
-        homeSpNum = ((seriesContext.homeStarterOffset + seriesContext.gameNumber - 2) % 4) + 1;
-        awaySpNum = ((seriesContext.awayStarterOffset + seriesContext.gameNumber - 2) % 4) + 1;
-        logs.push(`Series Game ${seriesContext.gameNumber}: Home SP${homeSpNum}, Away SP${awaySpNum}`);
+        // Series game 2+: auto-select starters based on rotation
+        const homeSpNum = ((seriesContext.homeStarterOffset + seriesContext.gameNumber - 2) % 4) + 1;
+        const awaySpNum = ((seriesContext.awayStarterOffset + seriesContext.gameNumber - 2) % 4) + 1;
+        selectStarter(homeTeam, homeSpNum);
+        selectStarter(awayTeam, awaySpNum);
+        logs.push(`Series Game ${seriesContext.gameNumber}`);
+        logs.push(`Home: ${homeTeam.pitcher.name} (SP${homeSpNum})`);
+        logs.push(`Away: ${awayTeam.pitcher.name} (SP${awaySpNum})`);
+        logs.push('Play ball!');
+        startPhase = 'pre_atbat';
 
-        // Apply reliever fatigue: if a reliever pitched last 2 consecutive games, IP starts at 0
+        // Apply reliever fatigue
         if (seriesContext.relieverHistory) {
             applyRelieverFatigue(homeTeam, seriesContext.relieverHistory.home, seriesContext.gameNumber);
             applyRelieverFatigue(awayTeam, seriesContext.relieverHistory.away, seriesContext.gameNumber);
         }
     } else {
-        // Game 1 or single game: roll for starters
-        const homeSpRoll = rollD20();
-        const awaySpRoll = rollD20();
-        homeSpNum = Math.min(4, Math.ceil(homeSpRoll / 5));
-        awaySpNum = Math.min(4, Math.ceil(awaySpRoll / 5));
-        logs.push(`Starting pitcher roll: Home d20(${homeSpRoll}) = SP${homeSpNum} ${homeTeam.pitcher.name}`);
-        logs.push(`Starting pitcher roll: Away d20(${awaySpRoll}) = SP${awaySpNum} ${awayTeam.pitcher.name}`);
+        // Game 1 or single game: wait for ROLL_STARTERS button
+        logs.push('Roll for starting pitchers!');
     }
-
-    selectStarter(homeTeam, homeSpNum);
-    selectStarter(awayTeam, awaySpNum);
-
-    // Update logs with actual pitcher names after selection
-    if (seriesContext && seriesContext.gameNumber > 1) {
-        logs.push(`Home: ${homeTeam.pitcher.name} (SP${homeSpNum})`);
-        logs.push(`Away: ${awayTeam.pitcher.name} (SP${awaySpNum})`);
-    }
-    logs.push('Play ball!');
 
     return {
         inning: 1,
@@ -58,8 +49,8 @@ export function initializeGame(homeLineupData, awayLineupData, homeUserId, awayU
         score: { home: 0, away: 0 },
         homeTeam,
         awayTeam,
-        phase: 'pre_atbat',
-        subPhaseStep: 'offense_first',
+        phase: startPhase,
+        subPhaseStep: startPhase === 'pre_atbat' ? 'offense_first' : null,
         lastPitchRoll: 0,
         lastPitchTotal: 0,
         lastSwingRoll: 0,
@@ -81,6 +72,44 @@ export function initializeGame(homeLineupData, awayLineupData, homeUserId, awayU
         pendingSteal: null,
         pendingStealResult: null,
         outsBeforeSwing: 0,
+        spRoll: spRollResult,
+        lastRoll: null,
+        lastRollType: null,
+    };
+}
+
+/**
+ * Handle ROLL_STARTERS action: roll d20 for starting pitchers.
+ */
+export function handleRollStarters(state) {
+    if (state.phase !== 'sp_roll') return state;
+
+    const spRoll = rollD20();
+    const spNum = Math.min(4, Math.ceil(spRoll / 5));
+
+    const homeTeam = { ...state.homeTeam };
+    const awayTeam = { ...state.awayTeam };
+    selectStarter(homeTeam, spNum);
+    selectStarter(awayTeam, spNum);
+
+    const logs = [
+        ...state.gameLog,
+        `Starting pitcher roll: d20(${spRoll}) = SP${spNum}`,
+        `Home: ${homeTeam.pitcher.name}`,
+        `Away: ${awayTeam.pitcher.name}`,
+        'Play ball!',
+    ];
+
+    return {
+        ...state,
+        homeTeam,
+        awayTeam,
+        phase: 'pre_atbat',
+        subPhaseStep: 'offense_first',
+        gameLog: logs,
+        spRoll: spRoll,
+        lastRoll: spRoll,
+        lastRollType: 'sp',
     };
 }
 

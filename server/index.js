@@ -201,6 +201,7 @@ async function handleJoinGame(ws, msg, setContext) {
 
 // Valid actions per game phase
 const VALID_ACTIONS = {
+    'sp_roll':           ['ROLL_STARTERS'],
     'pre_atbat':         ['PINCH_HIT', 'SKIP_SUB', 'USE_ICON', 'STEAL'],
     'defense_sub':       ['PITCHING_CHANGE', 'SKIP_SUB', 'USE_ICON'],
     'ibb_decision':      ['INTENTIONAL_WALK', 'SKIP_IBB'],

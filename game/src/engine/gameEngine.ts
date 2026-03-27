@@ -12,6 +12,7 @@
 export type Outcome = 'SO' | 'GB' | 'FB' | 'PU' | 'W' | 'S' | 'SPlus' | 'DB' | 'TR' | 'HR' | 'SAC' | 'IBB';
 
 export type Phase =
+    | 'sp_roll'          // home team rolls for starting pitchers
     | 'pre_atbat'        // offense can pinch hit, steal, use SB icon
     | 'defense_sub'      // defense can change pitcher, use 20/RP icons
     | 'ibb_decision'     // defense decides whether to intentional walk
@@ -233,6 +234,9 @@ export interface GameState {
     pendingSteal: StealAttempt | null;
     pendingStealResult: StealResult | null;
     outsBeforeSwing: number;            // track outs before swing for +5 bonus on extra base
+    spRoll: number | null;              // starting pitcher d20 roll result (for animation)
+    lastRoll: number | null;            // most recent d20 roll (for dice animation)
+    lastRollType: string | null;        // 'sp' | 'pitch' | 'swing' | 'dp' | 'steal' | 'extra_base'
 }
 
 // ============================================================================
@@ -254,6 +258,7 @@ export type GameAction =
     | { type: 'SKIP_SUB' }
     | { type: 'SKIP_ICONS' }
     | { type: 'SKIP_EXTRA_BASE' }
+    | { type: 'ROLL_STARTERS' }
     | { type: 'INTENTIONAL_WALK' }
     | { type: 'SKIP_IBB' }
     | { type: 'SAC_BUNT' }

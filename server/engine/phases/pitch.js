@@ -53,6 +53,8 @@ export function handlePitch(state) {
         pendingStealResult: null,
         gbOptions: null,
         outsBeforeSwing: state.outs,
+        lastRoll: roll,
+        lastRollType: 'pitch',
         gameLog: [...state.gameLog, ...logs],
     };
 }
@@ -78,6 +80,8 @@ export function handleSwing(state) {
         ...state,
         lastSwingRoll: roll,
         lastOutcome: outcome,
+        lastRoll: roll,
+        lastRollType: 'swing',
         gameLog: [...state.gameLog, `Swing: ${roll} -> ${names[outcome] || outcome}`],
     };
 

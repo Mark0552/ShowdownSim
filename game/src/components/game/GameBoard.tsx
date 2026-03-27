@@ -3,7 +3,7 @@
  * Card slots hold actual card images during gameplay.
  * Handles all Advanced rule phases: subs, icons, extra bases, DP.
  */
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import type { GameState, GameAction, PlayerSlot } from '../../engine/gameEngine';
 import { getCurrentBatter, getCurrentPitcher } from '../../engine/gameEngine';
 import CardSlot from './CardSlot';
@@ -31,7 +31,9 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const [showSubPanel, setShowSubPanel] = useState(false);
     const [showGameLog, setShowGameLog] = useState(false);
     const [showStats, setShowStats] = useState(false);
+    const [diceAnimating, setDiceAnimating] = useState(false);
     const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const prevRollKeyRef = useRef('');
     const batter = getCurrentBatter(state);
     const pitcher = getCurrentPitcher(state);
     const battingTeam = state.halfInning === 'top' ? state.awayTeam : state.homeTeam;
@@ -78,9 +80,19 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     // Has runners (for sac bunt option)
     const hasRunners = !!(state.bases.first || state.bases.second || state.bases.third);
 
-    // Dice roll tracking — generate unique keys when rolls change
-    const pitchKey = `pitch-${state.lastPitchRoll}-${state.inning}-${state.halfInning}-${state.outs}-${battingTeam.currentBatterIndex}`;
-    const swingKey = `swing-${state.lastSwingRoll}-${state.inning}-${state.halfInning}-${state.outs}-${battingTeam.currentBatterIndex}`;
+    // Dice roll tracking — single key based on server's lastRoll
+    const rollKey = `${state.lastRollType}-${state.lastRoll}-${state.inning}-${state.halfInning}-${state.outs}-${battingTeam.currentBatterIndex}`;
+
+    // Auto-trigger dice animation when a new roll comes in
+    const handleDiceComplete = useCallback(() => {
+        setDiceAnimating(false);
+    }, []);
+
+    // Detect new rolls and start animation
+    if (state.lastRoll && rollKey !== prevRollKeyRef.current) {
+        prevRollKeyRef.current = rollKey;
+        if (!diceAnimating) setDiceAnimating(true);
+    }
 
     // Render icons with usage tracking (crossed out when used)
     const renderIcons = (player: PlayerSlot, team: typeof state.homeTeam, xPos: number, yPos: number) => {
@@ -597,7 +609,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 <ActionButtons
                     state={state}
                     myRole={myRole}
-                    isMyTurn={isMyTurn}
+                    isMyTurn={isMyTurn && !diceAnimating}
                     iAmBatting={iAmBatting}
                     onAction={onAction}
                     battingTeam={battingTeam}
@@ -608,13 +620,13 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 />
             </svg>
 
-            {/* Dice roll animations */}
-            {state.lastPitchRoll > 0 && state.phase !== 'pitch' && (
-                <DiceRoll roll={state.lastPitchRoll} triggerKey={pitchKey} label="PITCH" color="#e94560" />
-            )}
-            {state.lastSwingRoll > 0 && (
-                <DiceRoll roll={state.lastSwingRoll} triggerKey={swingKey} label="SWING" color="#4ade80" />
-            )}
+            {/* Dice roll animation — blocks interaction during roll */}
+            <DiceRoll
+                roll={state.lastRoll}
+                rollType={state.lastRollType}
+                triggerKey={rollKey}
+                onAnimationComplete={handleDiceComplete}
+            />
 
             {/* Toggle buttons — positioned in gold header area */}
             <button className="overlay-toggle" style={{ position: 'absolute', top: '8px', right: '120px', zIndex: 800 }} onClick={() => { setShowGameLog(!showGameLog); setShowStats(false); }}>
