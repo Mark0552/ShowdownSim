@@ -121,16 +121,21 @@ export interface TeamState {
 // GB DECISION
 // ============================================================================
 
+export interface GPlayerOption {
+    cardId: string;
+    name: string;
+    position: string;
+}
+
 export interface GbOptions {
     hasRunnerFirst: boolean;
     hasRunnerSecond: boolean;
     hasRunnerThird: boolean;
-    canDP: boolean;           // runner on 1st exists
-    canForceHome: boolean;    // bases loaded
-    canHoldThird: boolean;    // runner on 1st and 3rd (hold 3rd, skip DP)
-    canHoldRunners: boolean;  // runners on 2nd/3rd only (no runner on 1st)
-    gAvailable: boolean;      // any infielder has unused G icon
-    gPlayerName?: string;     // name of G player for UI display
+    canDP: boolean;
+    canForceHome: boolean;
+    canHoldThird: boolean;
+    canHoldRunners: boolean;
+    gPlayers: GPlayerOption[];  // all infielders with unused G icon
 }
 
 // ============================================================================
@@ -145,8 +150,7 @@ export interface StealAttempt {
     toBase: string;
     catcherArm: number;
     stealThirdBonus: number;  // +5 if stealing 3rd
-    catcherGAvailable: boolean;
-    catcherGPlayerName?: string;
+    catcherGPlayers: GPlayerOption[];  // catchers with unused G icon
 }
 
 export interface StealResult {
@@ -251,10 +255,10 @@ export type GameAction =
     | { type: 'USE_ICON'; cardId: string; icon: string; targetId?: string }
     | { type: 'SEND_RUNNERS'; runnerIds: string[] }
     | { type: 'HOLD_RUNNERS' }
-    | { type: 'EXTRA_BASE_THROW'; runnerId: string; useGoldGlove?: boolean }
-    | { type: 'GB_DECISION'; choice: 'dp' | 'hold' | 'force_home'; useGoldGlove?: boolean }
+    | { type: 'EXTRA_BASE_THROW'; runnerId: string; goldGloveCardId?: string }
+    | { type: 'GB_DECISION'; choice: 'dp' | 'hold' | 'force_home'; goldGloveCardId?: string }
     | { type: 'STEAL'; runnerId: string }
-    | { type: 'STEAL_G_DECISION'; useGoldGlove: boolean }
+    | { type: 'STEAL_G_DECISION'; goldGloveCardId?: string }
     | { type: 'SKIP_SUB' }
     | { type: 'SKIP_ICONS' }
     | { type: 'SKIP_EXTRA_BASE' }

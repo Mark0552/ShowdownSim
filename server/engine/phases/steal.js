@@ -39,22 +39,23 @@ export function handleSteal(state, action) {
     const catcherArmVal = fieldingTeam.catcherArm || 0;
     const stealThirdBonus = toBase === 'third' ? 5 : 0;
 
-    // Check if catcher has G icon available
+    // Check for G icon available on catcher (for steal defense)
     const catcher = fieldingTeam.lineup.find(p => (p.assignedPosition || '').replace(/-\d+$/, '') === 'C');
-    const catcherGAvailable = catcher && playerHasIcon(catcher, 'G') && canUseIcon(fieldingTeam, catcher.cardId, 'G');
+    const catcherGPlayers = [];
+    if (catcher && playerHasIcon(catcher, 'G') && canUseIcon(fieldingTeam, catcher.cardId, 'G')) {
+        catcherGPlayers.push({ cardId: catcher.cardId, name: catcher.name, position: 'C' });
+    }
 
     const pendingSteal = {
         runnerId, runnerName: runner.name, runnerSpeed: runner.speed,
         fromBase, toBase, catcherArm: catcherArmVal, stealThirdBonus,
-        catcherGAvailable: !!catcherGAvailable,
-        catcherGPlayerName: catcher?.name,
-        autoAdvanceFirst: !!(fromBase === 'second' && bases.first), // runner on 1st auto-advances
+        catcherGPlayers,
+        autoAdvanceFirst: !!(fromBase === 'second' && bases.first),
     };
 
     const logs = [`${runner.name} attempts to steal ${toBase}!`];
 
-    if (catcherGAvailable) {
-        // Defense gets to decide whether to use G
+    if (catcherGPlayers.length > 0) {
         return {
             ...state,
             phase: 'steal_resolve',
@@ -64,15 +65,15 @@ export function handleSteal(state, action) {
     }
 
     // No G available — auto-resolve
-    return resolveSteal({ ...state, pendingSteal, gameLog: [...state.gameLog, ...logs] }, false);
+    return resolveSteal({ ...state, pendingSteal, gameLog: [...state.gameLog, ...logs] }, null);
 }
 
 export function handleStealGDecision(state, action) {
     if (state.phase !== 'steal_resolve' || !state.pendingSteal) return state;
-    return resolveSteal(state, !!action.useGoldGlove);
+    return resolveSteal(state, action.goldGloveCardId || null);
 }
 
-export function resolveSteal(state, useGoldGlove) {
+export function resolveSteal(state, goldGloveCardId) {
     const steal = state.pendingSteal;
     if (!steal) return state;
 
@@ -84,11 +85,13 @@ export function resolveSteal(state, useGoldGlove) {
     let armTotal = steal.catcherArm + steal.stealThirdBonus;
     let goldGloveUsed = false;
 
-    if (useGoldGlove && steal.catcherGAvailable) {
-        armTotal += 10;
-        goldGloveUsed = true;
-        const catcher = fieldingTeam.lineup.find(p => (p.assignedPosition || '').replace(/-\d+$/, '') === 'C');
-        if (catcher) fieldingTeam = recordIconUse(fieldingTeam, catcher.cardId, 'G');
+    if (goldGloveCardId) {
+        const gPlayer = fieldingTeam.lineup.find(p => p.cardId === goldGloveCardId);
+        if (gPlayer && playerHasIcon(gPlayer, 'G') && canUseIcon(fieldingTeam, gPlayer.cardId, 'G')) {
+            armTotal += 10;
+            goldGloveUsed = true;
+            fieldingTeam = recordIconUse(fieldingTeam, gPlayer.cardId, 'G');
+        }
     }
 
     const defenseTotal = roll + armTotal;

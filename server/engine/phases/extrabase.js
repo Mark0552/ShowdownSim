@@ -3,7 +3,7 @@
  */
 
 import { rollD20 } from '../dice.js';
-import { findGPlayer, recordIconUse } from '../icons.js';
+import { playerHasIcon, canUseIcon, recordIconUse } from '../icons.js';
 import { advanceBatter, endHalfInning } from './baserunning.js';
 
 export function checkExtraBaseEligible(state, outcome) {
@@ -100,10 +100,10 @@ export function handleExtraBaseThrow(state, action) {
     let ofFielding = fieldingTeam.totalOutfieldFielding;
     let goldGloveUsed = false;
 
-    // G icon is now a defense CHOICE
-    if (action.useGoldGlove) {
-        const gPlayer = findGPlayer(fieldingTeam);
-        if (gPlayer) {
+    // G icon — defense chooses which player's G to use
+    if (action.goldGloveCardId) {
+        const gPlayer = fieldingTeam.lineup.find(p => p.cardId === action.goldGloveCardId);
+        if (gPlayer && playerHasIcon(gPlayer, 'G') && canUseIcon(fieldingTeam, gPlayer.cardId, 'G')) {
             ofFielding += 10;
             goldGloveUsed = true;
             fieldingTeam = recordIconUse(fieldingTeam, gPlayer.cardId, 'G');

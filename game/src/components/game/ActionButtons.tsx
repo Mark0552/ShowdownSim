@@ -202,33 +202,33 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 <g>
                     <rect x="350" y="650" width="700" height="40" rx="6" fill="rgba(0,0,0,0.85)"/>
                     <text x="700" y="676" textAnchor="middle" fontSize="13" fill="#e94560" fontWeight="bold" fontFamily="Arial">
-                        Ground Ball — Choose defensive play:{state.gbOptions.gAvailable ? ` (G: ${state.gbOptions.gPlayerName})` : ''}
+                        Ground Ball — Choose defensive play:
                     </text>
                     {(() => {
                         const buttons: { label: string; sub: string; choice: string; color: string }[] = [];
-                        if (state.gbOptions.canDP) buttons.push({ label: 'DOUBLE PLAY', sub: 'Runner on 1st out + roll for batter', choice: 'dp', color: '#e94560' });
-                        if (state.gbOptions.canForceHome) buttons.push({ label: 'FORCE AT HOME', sub: 'Out at home, no run scores', choice: 'force_home', color: '#8b5cf6' });
-                        if (state.gbOptions.canHoldThird) buttons.push({ label: 'HOLD 3RD', sub: 'No DP, roll for out at 1st', choice: 'hold', color: '#d4a018' });
-                        if (state.gbOptions.canHoldRunners) buttons.push({ label: 'HOLD RUNNERS', sub: 'Roll for out at 1st', choice: 'hold', color: '#d4a018' });
+                        if (state.gbOptions.canDP) buttons.push({ label: 'DOUBLE PLAY', sub: 'Runner on 1st out + roll', choice: 'dp', color: '#e94560' });
+                        if (state.gbOptions.canForceHome) buttons.push({ label: 'FORCE HOME', sub: 'Out at home, no run', choice: 'force_home', color: '#8b5cf6' });
+                        if (state.gbOptions.canHoldThird) buttons.push({ label: 'HOLD 3RD', sub: 'No DP, roll at 1st', choice: 'hold', color: '#d4a018' });
+                        if (state.gbOptions.canHoldRunners) buttons.push({ label: 'HOLD', sub: 'Roll for out at 1st', choice: 'hold', color: '#d4a018' });
                         if (!state.gbOptions.canDP && !state.gbOptions.canHoldRunners && !state.gbOptions.canHoldThird) {
-                            buttons.push({ label: 'LET ADVANCE', sub: 'Runners advance, batter out', choice: 'dp', color: '#334155' });
+                            buttons.push({ label: 'LET ADVANCE', sub: 'Runners advance', choice: 'dp', color: '#334155' });
                         }
-                        const bw = 160, gap = 10;
-                        const totalW = buttons.length * (bw + gap) + (state.gbOptions.gAvailable ? bw + gap : 0);
-                        const startX = 700 - totalW / 2;
+                        const gPlayers = state.gbOptions.gPlayers || [];
+                        const bw = 140, gap = 8;
+                        const startX = 700 - (buttons.length * (bw + gap)) / 2;
                         return buttons.map((btn, i) => (
                             <g key={`gb-${i}`}>
-                                <g className="roll-button" onClick={() => onAction({ type: 'GB_DECISION', choice: btn.choice as any, useGoldGlove: false })} cursor="pointer">
-                                    <rect x={startX + i * (bw + gap)} y="700" width={bw} height="42" rx="6" fill={btn.color} stroke="rgba(255,255,255,0.3)" strokeWidth="1"/>
-                                    <text x={startX + i * (bw + gap) + bw/2} y="718" textAnchor="middle" fontSize="11" fill="white" fontWeight="bold" fontFamily="Arial">{btn.label}</text>
-                                    <text x={startX + i * (bw + gap) + bw/2} y="734" textAnchor="middle" fontSize="8" fill="rgba(255,255,255,0.6)" fontFamily="Arial">{btn.sub}</text>
+                                <g className="roll-button" onClick={() => onAction({ type: 'GB_DECISION', choice: btn.choice as any })} cursor="pointer">
+                                    <rect x={startX + i * (bw + gap)} y="700" width={bw} height="38" rx="6" fill={btn.color} stroke="rgba(255,255,255,0.3)" strokeWidth="1"/>
+                                    <text x={startX + i * (bw + gap) + bw/2} y="716" textAnchor="middle" fontSize="10" fill="white" fontWeight="bold" fontFamily="Arial">{btn.label}</text>
+                                    <text x={startX + i * (bw + gap) + bw/2} y="730" textAnchor="middle" fontSize="8" fill="rgba(255,255,255,0.6)" fontFamily="Arial">{btn.sub}</text>
                                 </g>
-                                {state.gbOptions!.gAvailable && btn.choice !== 'force_home' && (
-                                    <g className="roll-button" onClick={() => onAction({ type: 'GB_DECISION', choice: btn.choice as any, useGoldGlove: true })} cursor="pointer">
-                                        <rect x={startX + i * (bw + gap)} y="746" width={bw} height="20" rx="3" fill="#d4a018" stroke="#f0c840" strokeWidth="1"/>
-                                        <text x={startX + i * (bw + gap) + bw/2} y="760" textAnchor="middle" fontSize="9" fill="#002" fontWeight="bold" fontFamily="Arial">+ USE G (+10)</text>
+                                {btn.choice !== 'force_home' && gPlayers.map((gp, gi) => (
+                                    <g key={`gb-g-${i}-${gi}`} className="roll-button" onClick={() => onAction({ type: 'GB_DECISION', choice: btn.choice as any, goldGloveCardId: gp.cardId })} cursor="pointer">
+                                        <rect x={startX + i * (bw + gap)} y={742 + gi * 18} width={bw} height="16" rx="3" fill="#d4a018" stroke="#f0c840" strokeWidth="1"/>
+                                        <text x={startX + i * (bw + gap) + bw/2} y={754 + gi * 18} textAnchor="middle" fontSize="8" fill="#002" fontWeight="bold" fontFamily="Arial">+ G: {gp.name} ({gp.position})</text>
                                     </g>
-                                )}
+                                ))}
                             </g>
                         ));
                     })()}
@@ -238,17 +238,19 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
             {/* Steal resolve phase: defense decides whether to use G */}
             {!state.isOver && isMyTurn && state.phase === 'steal_resolve' && state.pendingSteal && (
                 <g>
-                    <rect x="440" y="660" width="520" height="40" rx="6" fill="rgba(0,0,0,0.85)"/>
+                    <rect x="380" y="660" width="640" height="40" rx="6" fill="rgba(0,0,0,0.85)"/>
                     <text x="700" y="686" textAnchor="middle" fontSize="13" fill="#e94560" fontWeight="bold" fontFamily="Arial">
                         {state.pendingSteal.runnerName} stealing {state.pendingSteal.toBase} — Use Gold Glove?
                     </text>
-                    <g className="roll-button" onClick={() => onAction({ type: 'STEAL_G_DECISION', useGoldGlove: true })} cursor="pointer">
-                        <rect x="530" y="710" width="150" height="38" rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
-                        <text x="605" y="734" textAnchor="middle" fontSize="12" fill="#002" fontWeight="bold" fontFamily="Arial">USE G (+10 Arm)</text>
-                    </g>
-                    <g className="roll-button" onClick={() => onAction({ type: 'STEAL_G_DECISION', useGoldGlove: false })} cursor="pointer">
-                        <rect x="700" y="710" width="150" height="38" rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
-                        <text x="775" y="734" textAnchor="middle" fontSize="12" fill="#ccc" fontWeight="bold" fontFamily="Arial">NO G</text>
+                    {(state.pendingSteal.catcherGPlayers || []).map((gp: any, i: number) => (
+                        <g key={`sg-${i}`} className="roll-button" onClick={() => onAction({ type: 'STEAL_G_DECISION', goldGloveCardId: gp.cardId })} cursor="pointer">
+                            <rect x={480 + i * 160} y="710" width="150" height="38" rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
+                            <text x={555 + i * 160} y="734" textAnchor="middle" fontSize="11" fill="#002" fontWeight="bold" fontFamily="Arial">G: {gp.name} (+10)</text>
+                        </g>
+                    ))}
+                    <g className="roll-button" onClick={() => onAction({ type: 'STEAL_G_DECISION' })} cursor="pointer">
+                        <rect x={480 + (state.pendingSteal.catcherGPlayers || []).length * 160} y="710" width="120" height="38" rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
+                        <text x={540 + (state.pendingSteal.catcherGPlayers || []).length * 160} y="734" textAnchor="middle" fontSize="12" fill="#ccc" fontWeight="bold" fontFamily="Arial">NO G</text>
                     </g>
                 </g>
             )}
@@ -260,21 +262,27 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                     <text x="700" y="676" textAnchor="middle" fontSize="13" fill="#e94560" fontWeight="bold" fontFamily="Arial">
                         Runners advancing — Choose who to throw at:
                     </text>
-                    {state.extraBaseEligible.map((runner, i) => {
-                        return (
+                    {(() => {
+                        // Find all outfielders with G available
+                        const gPlayers = fieldingTeam.lineup
+                            .filter((p: any) => p.icons?.includes('G') && !fieldingTeam.iconUsage?.[p.cardId]?.['G'])
+                            .map((p: any) => ({ cardId: p.cardId, name: p.name, position: (p.assignedPosition || '').replace(/-\d+$/, '') }));
+                        return state.extraBaseEligible!.map((runner, i) => (
                             <g key={`eb-${i}`}>
-                                <g className="roll-button" onClick={() => onAction({ type: 'EXTRA_BASE_THROW', runnerId: runner.runnerId, useGoldGlove: false })} cursor="pointer">
-                                    <rect x={420 + i * 200} y="700" width="180" height="38" rx="6" fill="#e94560" stroke="#ff6b8a" strokeWidth="1.5"/>
-                                    <text x={510 + i * 200} y="718" textAnchor="middle" fontSize="11" fill="white" fontWeight="bold" fontFamily="Arial">THROW: {runner.runnerName}</text>
-                                    <text x={510 + i * 200} y="732" textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.7)" fontFamily="monospace">{runner.fromBase}{'\u2192'}{runner.toBase} Target:{(runner as any).targetWithBonuses || runner.runnerSpeed}</text>
+                                <g className="roll-button" onClick={() => onAction({ type: 'EXTRA_BASE_THROW', runnerId: runner.runnerId })} cursor="pointer">
+                                    <rect x={420 + i * 200} y="700" width="180" height="34" rx="6" fill="#e94560" stroke="#ff6b8a" strokeWidth="1.5"/>
+                                    <text x={510 + i * 200} y="716" textAnchor="middle" fontSize="11" fill="white" fontWeight="bold" fontFamily="Arial">THROW: {runner.runnerName}</text>
+                                    <text x={510 + i * 200} y="729" textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.7)" fontFamily="monospace">{runner.fromBase}{'\u2192'}{runner.toBase} Tgt:{(runner as any).targetWithBonuses || runner.runnerSpeed}</text>
                                 </g>
-                                <g className="roll-button" onClick={() => onAction({ type: 'EXTRA_BASE_THROW', runnerId: runner.runnerId, useGoldGlove: true })} cursor="pointer">
-                                    <rect x={420 + i * 200} y="742" width="180" height="20" rx="3" fill="#d4a018" stroke="#f0c840" strokeWidth="1"/>
-                                    <text x={510 + i * 200} y="756" textAnchor="middle" fontSize="9" fill="#002" fontWeight="bold" fontFamily="Arial">THROW + G (+10 OF)</text>
-                                </g>
+                                {gPlayers.map((gp: any, gi: number) => (
+                                    <g key={`eb-g-${i}-${gi}`} className="roll-button" onClick={() => onAction({ type: 'EXTRA_BASE_THROW', runnerId: runner.runnerId, goldGloveCardId: gp.cardId })} cursor="pointer">
+                                        <rect x={420 + i * 200} y={738 + gi * 18} width="180" height="16" rx="3" fill="#d4a018" stroke="#f0c840" strokeWidth="1"/>
+                                        <text x={510 + i * 200} y={750 + gi * 18} textAnchor="middle" fontSize="8" fill="#002" fontWeight="bold" fontFamily="Arial">+ G: {gp.name} ({gp.position})</text>
+                                    </g>
+                                ))}
                             </g>
-                        );
-                    })}
+                        ));
+                    })()}
                     <g className="roll-button" onClick={() => onAction({ type: 'SKIP_EXTRA_BASE' })} cursor="pointer">
                         <rect x={420 + state.extraBaseEligible.length * 200} y="700" width="120" height="38" rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
                         <text x={480 + state.extraBaseEligible.length * 200} y="724" textAnchor="middle" fontSize="12" fill="#ccc" fontWeight="bold" fontFamily="Arial">NO THROW</text>

@@ -3,31 +3,30 @@
  */
 
 import { rollD20 } from '../dice.js';
-import { findGPlayer, recordIconUse } from '../icons.js';
+import { findAllGPlayers, recordIconUse, canUseIcon, playerHasIcon } from '../icons.js';
 import { advanceBatter, endHalfInning } from './baserunning.js';
 
 export function buildGbOptions(state, bases) {
     const fieldingSide = state.halfInning === 'top' ? 'homeTeam' : 'awayTeam';
     const fieldingTeam = state[fieldingSide];
-    const gPlayer = findGPlayer(fieldingTeam);
+    const gPlayers = findAllGPlayers(fieldingTeam);
 
     return {
         hasRunnerFirst: !!bases.first,
         hasRunnerSecond: !!bases.second,
         hasRunnerThird: !!bases.third,
-        canDP: !!bases.first,                                        // standard DP
-        canForceHome: !!(bases.first && bases.second && bases.third), // bases loaded
-        canHoldThird: !!(bases.first && bases.third),                 // hold 3rd, no DP
-        canHoldRunners: !!(!bases.first && (bases.second || bases.third)), // hold, fielding play at 1st
-        gAvailable: !!gPlayer,
-        gPlayerName: gPlayer?.name,
+        canDP: !!bases.first,
+        canForceHome: !!(bases.first && bases.second && bases.third),
+        canHoldThird: !!(bases.first && bases.third),
+        canHoldRunners: !!(!bases.first && (bases.second || bases.third)),
+        gPlayers,
     };
 }
 
 export function handleGbDecision(state, action) {
     if (state.phase !== 'gb_decision' || !state.gbOptions) return state;
 
-    const { choice, useGoldGlove } = action;
+    const { choice, goldGloveCardId } = action;
     const fieldingSide = state.halfInning === 'top' ? 'homeTeam' : 'awayTeam';
     const battingSide = state.halfInning === 'top' ? 'awayTeam' : 'homeTeam';
     let fieldingTeam = { ...state[fieldingSide] };
@@ -41,13 +40,14 @@ export function handleGbDecision(state, action) {
     let ifFielding = fieldingTeam.totalInfieldFielding;
     let goldGloveUsed = false;
 
-    if (useGoldGlove && state.gbOptions.gAvailable) {
-        const gPlayer = findGPlayer(fieldingTeam);
-        if (gPlayer) {
+    if (goldGloveCardId) {
+        // Verify the specific player can use G
+        const gPlayer = fieldingTeam.lineup.find(p => p.cardId === goldGloveCardId);
+        if (gPlayer && playerHasIcon(gPlayer, 'G') && canUseIcon(fieldingTeam, gPlayer.cardId, 'G')) {
             ifFielding += 10;
             goldGloveUsed = true;
             fieldingTeam = recordIconUse(fieldingTeam, gPlayer.cardId, 'G');
-            logs.push(`G (Gold Glove) icon: +10 to infield fielding!`);
+            logs.push(`G (Gold Glove) from ${gPlayer.name}: +10 to infield fielding!`);
         }
     }
 
