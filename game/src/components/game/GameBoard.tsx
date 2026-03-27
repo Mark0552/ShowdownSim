@@ -155,9 +155,16 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             </div>
                         )}
                         <div className="tooltip-chart">
-                            {Object.entries(hoveredPlayer.chart).filter(([,v]) => v).map(([k, v]) => (
-                                <span key={k}>{k}: {String(v)}</span>
-                            ))}
+                            {(() => {
+                                const pitcherOrder = [['PU','PU'],['SO','SO'],['GB','GB'],['FB','FB'],['W','BB'],['S','1B'],['DB','2B'],['HR','HR']];
+                                const hitterOrder = [['SO','SO'],['GB','GB'],['FB','FB'],['W','BB'],['S','1B'],['SPlus','1B+'],['DB','2B'],['TR','3B'],['HR','HR']];
+                                const order = hoveredPlayer!.type === 'pitcher' ? pitcherOrder : hitterOrder;
+                                return order
+                                    .filter(([field]) => hoveredPlayer!.chart[field])
+                                    .map(([field, label]) => (
+                                        <span key={field}>{label}: {String(hoveredPlayer!.chart[field])}</span>
+                                    ));
+                            })()}
                         </div>
                     </div>
                 </div>
