@@ -148,7 +148,7 @@ wss.on('connection', (ws) => {
 // ============================================================================
 
 async function handleJoinGame(ws, msg, setContext) {
-    const { gameId, userId, role, lineupData } = msg;
+    const { gameId, userId, role, lineupData, seriesContext } = msg;
 
     if (!gameId || !userId || !role) {
         ws.send(JSON.stringify({ type: 'error', message: 'Missing gameId, userId, or role' }));
@@ -173,9 +173,12 @@ async function handleJoinGame(ws, msg, setContext) {
 
     ws.send(JSON.stringify({ type: 'joined', gameId, role, players: room.players.size }));
 
+    // Store series context if provided
+    if (seriesContext) room.seriesContext = seriesContext;
+
     // If both players are in and we have lineups, start the game
     if (room.homeUserId && room.awayUserId && room.homeLineup && room.awayLineup && !room.state) {
-        room.state = initializeGame(room.homeLineup, room.awayLineup, room.homeUserId, room.awayUserId);
+        room.state = initializeGame(room.homeLineup, room.awayLineup, room.homeUserId, room.awayUserId, room.seriesContext);
         room.broadcast({
             type: 'game_state',
             state: room.state,

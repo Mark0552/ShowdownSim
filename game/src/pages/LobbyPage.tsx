@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { GameRow } from '../types/game';
 import type { SavedLineup } from '../lib/lineups';
-import { createGame, getOpenGames, getMyGames, joinGame, selectLineup, deleteGame, subscribeToGame, subscribeToLobby, getMyRole } from '../lib/games';
+import { createGame, getOpenGames, getMyGames, joinGame, selectLineup, deleteGame, subscribeToGame, subscribeToLobby, getMyRole, createSeries } from '../lib/games';
 import { getLineups } from '../lib/lineups';
 import { validateTeam } from '../logic/teamRules';
 import { supabase } from '../lib/supabase';
@@ -85,10 +85,18 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
         };
     }, [activeGame?.id]);
 
-    const handleCreate = async () => {
+    const [showCreateMenu, setShowCreateMenu] = useState(false);
+
+    const handleCreate = async (bestOf: number = 1) => {
         try {
-            const game = await createGame();
-            setActiveGame(game);
+            setShowCreateMenu(false);
+            if (bestOf === 1) {
+                const game = await createGame();
+                setActiveGame(game);
+            } else {
+                const { game } = await createSeries(bestOf);
+                setActiveGame(game);
+            }
         } catch (err: any) {
             setError(err.message);
         }
@@ -242,7 +250,21 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
                 <div className="lobby-header">
                     <button className="lobby-back" onClick={onBack}>&larr; Back</button>
                     <h1>Game Lobby</h1>
-                    <button className="lobby-create" onClick={handleCreate}>Create Game</button>
+                    <div style={{ position: 'relative' }}>
+                        <button className="lobby-create" onClick={() => setShowCreateMenu(!showCreateMenu)}>Create Game</button>
+                        {showCreateMenu && (
+                            <div style={{
+                                position: 'absolute', top: '100%', right: 0, marginTop: 4,
+                                background: '#0a1628', border: '1px solid #d4a018', borderRadius: 8,
+                                padding: 8, zIndex: 100, display: 'flex', flexDirection: 'column', gap: 4, minWidth: 160,
+                            }}>
+                                <button className="lobby-create" style={{ fontSize: 12 }} onClick={() => handleCreate(1)}>Single Game</button>
+                                <button className="lobby-create" style={{ fontSize: 12 }} onClick={() => handleCreate(3)}>3-Game Series</button>
+                                <button className="lobby-create" style={{ fontSize: 12 }} onClick={() => handleCreate(5)}>5-Game Series</button>
+                                <button className="lobby-create" style={{ fontSize: 12 }} onClick={() => handleCreate(7)}>7-Game Series</button>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {error && <div className="lobby-error">{error}</div>}

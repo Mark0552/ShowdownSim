@@ -18,7 +18,7 @@ export function handlePitch(state) {
 
     const roll = rollD20();
     const baseControl = pitcher.control || 0;
-    const ipRating = pitcher.ip || 0;
+    const ipRating = pitcher.fatigued ? 0 : (pitcher.ip || 0); // fatigued relievers start at IP 0
     const fatiguePenalty = Math.max(0, fieldingTeam.inningsPitched - ipRating);
     let controlMod = state.controlModifier || 0;
     const effectiveControl = Math.max(0, baseControl - fatiguePenalty + controlMod);

@@ -5,24 +5,50 @@
 import { rollD20 } from './dice.js';
 import { getFieldingFromSlot, computeFieldingTotals } from './fielding.js';
 
-export function initializeGame(homeLineupData, awayLineupData, homeUserId, awayUserId) {
+/**
+ * @param seriesContext Optional: { gameNumber, homeStarterOffset, awayStarterOffset, relieverHistory }
+ *   - gameNumber: which game in the series (1-indexed)
+ *   - homeStarterOffset / awayStarterOffset: SP number from game 1 roll (1-4)
+ *   - relieverHistory: { home: { cardId: [gameNums...] }, away: { ... } }
+ */
+export function initializeGame(homeLineupData, awayLineupData, homeUserId, awayUserId, seriesContext) {
     const homeTeam = buildTeam(homeLineupData, homeUserId);
     const awayTeam = buildTeam(awayLineupData, awayUserId);
 
-    // Roll for starting pitchers: 1-5=SP1, 6-10=SP2, 11-15=SP3, 16-20=SP4
-    const homeSpRoll = rollD20();
-    const awaySpRoll = rollD20();
-    const homeSpNum = Math.min(4, Math.ceil(homeSpRoll / 5));
-    const awaySpNum = Math.min(4, Math.ceil(awaySpRoll / 5));
+    const logs = [];
+    let homeSpNum, awaySpNum;
+
+    if (seriesContext && seriesContext.gameNumber > 1) {
+        // Series game 2+: cycle starters based on offset
+        // Game 1 determined SP via roll. Game 2 = next in rotation, etc.
+        homeSpNum = ((seriesContext.homeStarterOffset + seriesContext.gameNumber - 2) % 4) + 1;
+        awaySpNum = ((seriesContext.awayStarterOffset + seriesContext.gameNumber - 2) % 4) + 1;
+        logs.push(`Series Game ${seriesContext.gameNumber}: Home SP${homeSpNum}, Away SP${awaySpNum}`);
+
+        // Apply reliever fatigue: if a reliever pitched last 2 consecutive games, IP starts at 0
+        if (seriesContext.relieverHistory) {
+            applyRelieverFatigue(homeTeam, seriesContext.relieverHistory.home, seriesContext.gameNumber);
+            applyRelieverFatigue(awayTeam, seriesContext.relieverHistory.away, seriesContext.gameNumber);
+        }
+    } else {
+        // Game 1 or single game: roll for starters
+        const homeSpRoll = rollD20();
+        const awaySpRoll = rollD20();
+        homeSpNum = Math.min(4, Math.ceil(homeSpRoll / 5));
+        awaySpNum = Math.min(4, Math.ceil(awaySpRoll / 5));
+        logs.push(`Starting pitcher roll: Home d20(${homeSpRoll}) = SP${homeSpNum} ${homeTeam.pitcher.name}`);
+        logs.push(`Starting pitcher roll: Away d20(${awaySpRoll}) = SP${awaySpNum} ${awayTeam.pitcher.name}`);
+    }
 
     selectStarter(homeTeam, homeSpNum);
     selectStarter(awayTeam, awaySpNum);
 
-    const logs = [
-        `Starting pitcher roll: Home d20(${homeSpRoll}) = SP${homeSpNum} ${homeTeam.pitcher.name}`,
-        `Starting pitcher roll: Away d20(${awaySpRoll}) = SP${awaySpNum} ${awayTeam.pitcher.name}`,
-        'Play ball!',
-    ];
+    // Update logs with actual pitcher names after selection
+    if (seriesContext && seriesContext.gameNumber > 1) {
+        logs.push(`Home: ${homeTeam.pitcher.name} (SP${homeSpNum})`);
+        logs.push(`Away: ${awayTeam.pitcher.name} (SP${awaySpNum})`);
+    }
+    logs.push('Play ball!');
 
     return {
         inning: 1,
@@ -93,6 +119,26 @@ function selectStarter(team, spNum) {
 
     // Re-init pitcher stats
     team.pitcherStats[selected.cardId] = team.pitcherStats[selected.cardId] || { ip: 0, h: 0, r: 0, bb: 0, ibb: 0, so: 0, hr: 0, bf: 0 };
+}
+
+/**
+ * Apply reliever fatigue for series games.
+ * If a reliever/closer pitched in the last 2 consecutive games, their IP starts at 0.
+ */
+function applyRelieverFatigue(team, history, currentGameNum) {
+    if (!history) return;
+    for (const p of team.bullpen) {
+        if (p.role === 'Starter') continue; // starters don't get fatigued this way
+        const gamesPlayed = history[p.cardId] || [];
+        // Check if pitched in both of the last 2 games
+        const pitchedLastGame = gamesPlayed.includes(currentGameNum - 1);
+        const pitchedTwoGamesAgo = gamesPlayed.includes(currentGameNum - 2);
+        if (pitchedLastGame && pitchedTwoGamesAgo) {
+            // IP starts at 0 — set inningsPitched to equal their IP rating so fatigue kicks in immediately
+            // We mark this on the player so the engine knows
+            p.fatigued = true;
+        }
+    }
 }
 
 function buildTeam(data, userId) {

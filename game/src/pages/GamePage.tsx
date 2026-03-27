@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { GameState, GameAction } from '../engine/gameEngine';
-import { getGame, getMyRole } from '../lib/games';
+import { getGame, getMyRole, getSeries, getSeriesGames } from '../lib/games';
 import { getLineups } from '../lib/lineups';
 import { supabase } from '../lib/supabase';
 import type { PlayerRole } from '../types/game';
@@ -51,13 +51,27 @@ export default function GamePage({ gameId, onBack }: Props) {
                     if (lineup) lineupData = lineup.data;
                 }
 
+                // Build series context if this is a series game
+                let seriesContext = undefined;
+                if (game.series_id && game.game_number > 1) {
+                    try {
+                        const series = await getSeries(game.series_id);
+                        seriesContext = {
+                            gameNumber: game.game_number,
+                            homeStarterOffset: series.starter_offset || 1,
+                            awayStarterOffset: series.starter_offset || 1,
+                            relieverHistory: series.reliever_history || { home: {}, away: {} },
+                        };
+                    } catch (e) { /* series context optional */ }
+                }
+
                 const ws = new WebSocket(WS_URL);
                 wsRef.current = ws;
 
                 ws.onopen = () => {
                     if (!mounted) return;
                     setStatus('Connected. Joining game...');
-                    ws.send(JSON.stringify({ type: 'join_game', gameId, userId: user.id, role, lineupData }));
+                    ws.send(JSON.stringify({ type: 'join_game', gameId, userId: user.id, role, lineupData, seriesContext }));
                 };
 
                 ws.onmessage = (event) => {

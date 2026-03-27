@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 import { getUsername } from './auth';
-import type { GameRow, PlayerRole } from '../types/game';
+import type { GameRow, SeriesRow, PlayerRole } from '../types/game';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 export async function createGame(): Promise<GameRow> {
@@ -175,4 +175,88 @@ export function subscribeToLobby(callback: (games: GameRow[]) => void): Realtime
             getOpenGames().then(callback);
         })
         .subscribe();
+}
+
+// ============================================================================
+// SERIES
+// ============================================================================
+
+export async function createSeries(bestOf: number): Promise<{ series: SeriesRow; game: GameRow }> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not logged in');
+
+    // Create series
+    const { data: series, error: seriesError } = await supabase
+        .from('series')
+        .insert({
+            home_user_id: user.id,
+            home_user_email: getUsername(user),
+            best_of: bestOf,
+            status: 'waiting',
+        })
+        .select()
+        .single();
+    if (seriesError) throw seriesError;
+
+    // Create first game in series
+    const { data: game, error: gameError } = await supabase
+        .from('games')
+        .insert({
+            home_user_id: user.id,
+            home_user_email: getUsername(user),
+            status: 'waiting',
+            series_id: series.id,
+            game_number: 1,
+        })
+        .select()
+        .single();
+    if (gameError) throw gameError;
+
+    return { series, game };
+}
+
+export async function getSeries(seriesId: string): Promise<SeriesRow> {
+    const { data, error } = await supabase
+        .from('series')
+        .select('*')
+        .eq('id', seriesId)
+        .single();
+    if (error) throw error;
+    return data;
+}
+
+export async function getSeriesGames(seriesId: string): Promise<GameRow[]> {
+    const { data, error } = await supabase
+        .from('games')
+        .select('*')
+        .eq('series_id', seriesId)
+        .order('game_number', { ascending: true });
+    if (error) throw error;
+    return data || [];
+}
+
+export async function updateSeries(seriesId: string, updates: Partial<SeriesRow>): Promise<void> {
+    const { error } = await supabase
+        .from('series')
+        .update(updates)
+        .eq('id', seriesId);
+    if (error) throw error;
+}
+
+export async function createNextSeriesGame(seriesId: string, gameNumber: number, homeUserId: string, awayUserId: string, homeEmail: string, awayEmail: string): Promise<GameRow> {
+    const { data, error } = await supabase
+        .from('games')
+        .insert({
+            home_user_id: homeUserId,
+            away_user_id: awayUserId,
+            home_user_email: homeEmail,
+            away_user_email: awayEmail,
+            status: 'lineup_select',
+            series_id: seriesId,
+            game_number: gameNumber,
+        })
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
 }
