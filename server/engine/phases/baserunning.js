@@ -28,13 +28,17 @@ export function applyResult(state, outcome, batterId) {
         case 'GB': {
             // GB enters gb_decision phase for defense choices
             outs++; // batter is always at least out
+
+            // With 3 outs (had 2 before), no decisions — inning over
+            if (outs >= 3) break;
+
             const gbOptions = buildGbOptions(state, bases);
 
             if (!gbOptions.canDP && !gbOptions.canHoldRunners && !gbOptions.canHoldThird && !gbOptions.canForceHome) {
                 // No runners or no special options — simple GB out
                 // Runners on 2nd/3rd advance freely
-                if (bases.third && outs < 3) { runs++; logs.push('Runner scores from 3rd on groundout'); }
-                if (bases.second && outs < 3) { bases.third = bases.second; bases.second = null; }
+                if (bases.third) { runs++; logs.push('Runner scores from 3rd on groundout'); }
+                if (bases.second) { bases.third = bases.second; bases.second = null; }
                 break;
             }
 

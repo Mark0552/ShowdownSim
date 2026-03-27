@@ -50,6 +50,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const outcomeNames: Record<string, string> = {
         SO: 'STRIKEOUT', GB: 'GROUND OUT', FB: 'FLY OUT', PU: 'POPUP',
         W: 'WALK', S: 'SINGLE', SPlus: 'SINGLE+', DB: 'DOUBLE', TR: 'TRIPLE', HR: 'HOME RUN!',
+        SAC: 'SAC BUNT',
     };
 
     const innings = Array.from({ length: Math.max(9, state.inning) }, (_, i) => i + 1);
@@ -75,6 +76,30 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     // Has runners (for sac bunt option)
     const hasRunners = !!(state.bases.first || state.bases.second || state.bases.third);
 
+    // Render icons with usage tracking (crossed out when used)
+    const renderIcons = (player: PlayerSlot, team: typeof state.homeTeam, xPos: number, yPos: number) => {
+        if (!player.icons || player.icons.length === 0) return null;
+        const usage = team.iconUsage?.[player.cardId] || {};
+        const maxUses: Record<string, number> = { V: 2 };
+        const items: { icon: string; used: boolean }[] = [];
+        for (const icon of player.icons) {
+            const max = maxUses[icon] || 1;
+            const used = usage[icon] || 0;
+            for (let i = 0; i < max; i++) {
+                items.push({ icon, used: i < used });
+            }
+        }
+        return (
+            <text x={xPos} y={yPos} fontSize="8" fontFamily="Arial" fontWeight="600">
+                {items.map((item, i) => (
+                    <tspan key={i} fill={item.used ? '#4a3030' : '#d4a018'} textDecoration={item.used ? 'line-through' : 'none'}>
+                        {item.icon}{i < items.length - 1 ? ' ' : ''}
+                    </tspan>
+                ))}
+            </text>
+        );
+    };
+
     return (
         <div className="game-board-wrap">
             {/* Player card tooltip overlay */}
@@ -99,7 +124,30 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             </div>
                         )}
                         {hoveredPlayer.icons && hoveredPlayer.icons.length > 0 && (
-                            <div className="tooltip-icons">{hoveredPlayer.icons.join(' ')}</div>
+                            <div className="tooltip-icons">
+                                {(() => {
+                                    const team = [state.awayTeam, state.homeTeam].find(t =>
+                                        t.lineup.some(p => p.cardId === hoveredPlayer!.cardId) || t.pitcher.cardId === hoveredPlayer!.cardId
+                                    );
+                                    const usage = team?.iconUsage?.[hoveredPlayer!.cardId] || {};
+                                    const maxUses: Record<string, number> = { V: 2 };
+                                    return hoveredPlayer!.icons.map((icon, i) => {
+                                        const max = maxUses[icon] || 1;
+                                        const used = usage[icon] || 0;
+                                        const parts = [];
+                                        for (let j = 0; j < max; j++) {
+                                            parts.push(
+                                                <span key={`${i}-${j}`} style={{ textDecoration: j < used ? 'line-through' : 'none', color: j < used ? '#4a3030' : '#d4a018' }}>
+                                                    {icon}
+                                                </span>
+                                            );
+                                            if (j < max - 1) parts.push(<span key={`${i}-${j}-sep`}> </span>);
+                                        }
+                                        if (i < hoveredPlayer!.icons.length - 1) parts.push(<span key={`${i}-gap`}> </span>);
+                                        return parts;
+                                    });
+                                })()}
+                            </div>
                         )}
                         <div className="tooltip-chart">
                             {Object.entries(hoveredPlayer.chart).filter(([,v]) => v).map(([k, v]) => (
@@ -158,7 +206,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                         <>
                             <div className="bp-header" onClick={() => setShowSubPanel(false)}>SELECT RELIEVER ▲</div>
                             <div className="bp-cards">
-                                {fieldingTeam.bullpen.map((p, i) => (
+                                {fieldingTeam.bullpen.filter(p => p.role !== 'Starter').map((p, i) => (
                                     <div key={`pc-${i}`} className="bp-card" onClick={() => {
                                         onAction({ type: 'PITCHING_CHANGE', bullpenCardId: p.cardId });
                                         setShowSubPanel(false);
@@ -340,16 +388,22 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             {player.imagePath && <image href={player.imagePath} x="42" y={y + 2} width="30" height="42" preserveAspectRatio="xMidYMid slice"/>}
                             <text x="78" y={y + 18} fontSize="10" fill={isAtBat ? 'white' : '#6a8aba'} fontWeight="bold" fontFamily="Arial">{player.name.length > 16 ? player.name.slice(0, 15) + '\u2026' : player.name}</text>
                             <text x="78" y={y + 30} fontSize="9" fill="#4a6a90" fontFamily="Arial">OB:{player.onBase} Spd:{player.speed}{player.fielding ? ` +${player.fielding}` : ''}</text>
-                            {player.icons && player.icons.length > 0 && (
-                                <text x="78" y={y + 42} fontSize="8" fill="#d4a018" fontFamily="Arial" fontWeight="600">{player.icons.join(' ')}</text>
-                            )}
+                            {player.icons && player.icons.length > 0 && renderIcons(player, state.awayTeam, 78, y + 42)}
                         </g>
                     );
                 })}
+                {/* Away pitcher */}
+                <g cursor="pointer" onMouseEnter={(e) => handlePlayerHover(state.awayTeam.pitcher, e.nativeEvent as any)} onMouseLeave={handlePlayerLeave}>
+                    <rect x="14" y="754" width="192" height="36" rx="3" fill="#0c1a40" stroke="#1a3060" strokeWidth="0.5"/>
+                    <text x="20" y="768" fontSize="8" fill="#d4a018" fontWeight="bold" fontFamily="Arial">P</text>
+                    {state.awayTeam.pitcher.imagePath && <image href={state.awayTeam.pitcher.imagePath} x="30" y="756" width="22" height="30" preserveAspectRatio="xMidYMid slice"/>}
+                    <text x="58" y="770" fontSize="9" fill="#8aade0" fontWeight="bold" fontFamily="Arial">{state.awayTeam.pitcher.name.length > 14 ? state.awayTeam.pitcher.name.slice(0, 13) + '\u2026' : state.awayTeam.pitcher.name}</text>
+                    <text x="58" y="782" fontSize="8" fill="#4a6a90" fontFamily="monospace">Ctrl:{state.awayTeam.pitcher.control} IP:{state.awayTeam.inningsPitched}/{state.awayTeam.pitcher.ip}</text>
+                </g>
                 {/* Away expand button */}
                 <g cursor="pointer" onClick={() => setShowAwayBullpen(!showAwayBullpen)}>
-                    <rect x="14" y="755" width="192" height="28" rx="3" fill="#0a1830" stroke="#d4a01840" strokeWidth="1"/>
-                    <text x="110" y="774" textAnchor="middle" fontSize="10" fill="#d4a018" fontWeight="bold" fontFamily="Arial">{showAwayBullpen ? '\u25B2 BULLPEN / BENCH' : '\u25BC BULLPEN / BENCH'}</text>
+                    <rect x="14" y="793" width="192" height="24" rx="3" fill="#0a1830" stroke="#d4a01840" strokeWidth="1"/>
+                    <text x="110" y="809" textAnchor="middle" fontSize="9" fill="#d4a018" fontWeight="bold" fontFamily="Arial">{showAwayBullpen ? '\u25B2 BULLPEN / BENCH' : '\u25BC BULLPEN / BENCH'}</text>
                 </g>
 
                 {/* ====== RIGHT PANEL — HOME ====== */}
@@ -371,16 +425,22 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             {player.imagePath && <image href={player.imagePath} x="1222" y={y + 2} width="30" height="42" preserveAspectRatio="xMidYMid slice"/>}
                             <text x="1258" y={y + 18} fontSize="10" fill={isAtBat ? 'white' : '#6a8aba'} fontWeight="bold" fontFamily="Arial">{player.name.length > 16 ? player.name.slice(0, 15) + '\u2026' : player.name}</text>
                             <text x="1258" y={y + 30} fontSize="9" fill="#4a6a90" fontFamily="Arial">OB:{player.onBase} Spd:{player.speed}{player.fielding ? ` +${player.fielding}` : ''}</text>
-                            {player.icons && player.icons.length > 0 && (
-                                <text x="1258" y={y + 42} fontSize="8" fill="#d4a018" fontFamily="Arial" fontWeight="600">{player.icons.join(' ')}</text>
-                            )}
+                            {player.icons && player.icons.length > 0 && renderIcons(player, state.homeTeam, 1258, y + 42)}
                         </g>
                     );
                 })}
+                {/* Home pitcher */}
+                <g cursor="pointer" onMouseEnter={(e) => handlePlayerHover(state.homeTeam.pitcher, e.nativeEvent as any)} onMouseLeave={handlePlayerLeave}>
+                    <rect x="1194" y="754" width="192" height="36" rx="3" fill="#0c1a40" stroke="#1a3060" strokeWidth="0.5"/>
+                    <text x="1200" y="768" fontSize="8" fill="#d4a018" fontWeight="bold" fontFamily="Arial">P</text>
+                    {state.homeTeam.pitcher.imagePath && <image href={state.homeTeam.pitcher.imagePath} x="1210" y="756" width="22" height="30" preserveAspectRatio="xMidYMid slice"/>}
+                    <text x="1238" y="770" fontSize="9" fill="#8aade0" fontWeight="bold" fontFamily="Arial">{state.homeTeam.pitcher.name.length > 14 ? state.homeTeam.pitcher.name.slice(0, 13) + '\u2026' : state.homeTeam.pitcher.name}</text>
+                    <text x="1238" y="782" fontSize="8" fill="#4a6a90" fontFamily="monospace">Ctrl:{state.homeTeam.pitcher.control} IP:{state.homeTeam.inningsPitched}/{state.homeTeam.pitcher.ip}</text>
+                </g>
                 {/* Home expand button */}
                 <g cursor="pointer" onClick={() => setShowHomeBullpen(!showHomeBullpen)}>
-                    <rect x="1194" y="755" width="192" height="28" rx="3" fill="#0a1830" stroke="#d4a01840" strokeWidth="1"/>
-                    <text x="1290" y="774" textAnchor="middle" fontSize="10" fill="#d4a018" fontWeight="bold" fontFamily="Arial">{showHomeBullpen ? '\u25B2 BULLPEN / BENCH' : '\u25BC BULLPEN / BENCH'}</text>
+                    <rect x="1194" y="793" width="192" height="24" rx="3" fill="#0a1830" stroke="#d4a01840" strokeWidth="1"/>
+                    <text x="1290" y="809" textAnchor="middle" fontSize="9" fill="#d4a018" fontWeight="bold" fontFamily="Arial">{showHomeBullpen ? '\u25B2 BULLPEN / BENCH' : '\u25BC BULLPEN / BENCH'}</text>
                 </g>
 
                 {/* ====== CENTER FIELD ====== */}
@@ -431,12 +491,12 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     </g>
                 )}
 
-                {/* ====== CARD SLOTS ====== */}
-                <CardSlot x={662} y={178} label="2B" card={runner2} labelBelow={true}/>
-                <CardSlot x={1006} y={512} label="1B" card={runner1}/>
-                <CardSlot x={318} y={512} label="3B" card={runner3}/>
-                <CardSlot x={662} y={512} label="P" card={pitcher} labelBelow={true} labelText="PITCHER"/>
-                <CardSlot x={662} y={783} label="H" card={batter} labelAbove={true} labelText="HITTER"/>
+                {/* ====== CARD SLOTS (hoverable) ====== */}
+                <CardSlot x={662} y={178} label="2B" card={runner2} labelBelow={true} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
+                <CardSlot x={1006} y={512} label="1B" card={runner1} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
+                <CardSlot x={318} y={512} label="3B" card={runner3} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
+                <CardSlot x={662} y={512} label="P" card={pitcher} labelBelow={true} labelText="PITCHER" onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
+                <CardSlot x={662} y={783} label="H" card={batter} labelAbove={true} labelText="HITTER" onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
 
                 {/* ====== PITCHER IP / FATIGUE ====== */}
                 <rect x="745" y="620" width="90" height="22" rx="4" fill="rgba(0,0,0,0.7)"/>

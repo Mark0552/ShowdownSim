@@ -27,7 +27,8 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                             <text x="525" y="742" textAnchor="middle" fontSize="12" fill="#002" fontWeight="900" fontFamily="Impact">PINCH HIT</text>
                         </g>
                     )}
-                    {hasRunners && (
+                    {/* Sac bunt: only with runners on 1st/2nd, no runner on 3rd, less than 2 outs */}
+                    {hasRunners && !state.bases.third && state.outs < 2 && (
                         <g className="roll-button" onClick={() => onAction({ type: 'SAC_BUNT' })} cursor="pointer">
                             <rect x="600" y="720" width="110" height="34" rx="6" fill="#8b5cf6" stroke="#a78bfa" strokeWidth="1.5"/>
                             <text x="655" y="742" textAnchor="middle" fontSize="12" fill="white" fontWeight="900" fontFamily="Impact">SAC BUNT</text>
@@ -56,15 +57,29 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
             {/* Defense sub phase: defense can change pitcher or skip */}
             {!state.isOver && isMyTurn && state.phase === 'defense_sub' && (
                 <g>
-                    {fieldingTeam.bullpen.length > 0 && (
+                    {fieldingTeam.bullpen.filter(p => p.role !== 'Starter').length > 0 && (
                         <g className="roll-button" onClick={() => onShowSubPanel()} cursor="pointer">
-                            <rect x="520" y="730" width="200" height="38" rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
-                            <text x="620" y="755" textAnchor="middle" fontSize="14" fill="#002" fontWeight="900" fontFamily="Impact">CHANGE PITCHER</text>
+                            <rect x="420" y="720" width="160" height="34" rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
+                            <text x="500" y="742" textAnchor="middle" fontSize="12" fill="#002" fontWeight="900" fontFamily="Impact">CHANGE PITCHER</text>
+                        </g>
+                    )}
+                    {/* 20 icon: +3 control for one pitch this inning */}
+                    {!state.icon20UsedThisInning && fieldingTeam.pitcher.icons?.includes('20') && (
+                        <g className="roll-button" onClick={() => onAction({ type: 'USE_ICON', cardId: fieldingTeam.pitcher.cardId, icon: '20' })} cursor="pointer">
+                            <rect x="590" y="720" width="130" height="34" rx="6" fill="#60a5fa" stroke="#93c5fd" strokeWidth="1.5"/>
+                            <text x="655" y="742" textAnchor="middle" fontSize="12" fill="#002" fontWeight="900" fontFamily="Impact">USE 20 (+3)</text>
+                        </g>
+                    )}
+                    {/* RP icon: +3 control for full inning after 6th */}
+                    {state.inning > 6 && !state.rpActiveInning && fieldingTeam.pitcher.icons?.includes('RP') && (
+                        <g className="roll-button" onClick={() => onAction({ type: 'USE_ICON', cardId: fieldingTeam.pitcher.cardId, icon: 'RP' })} cursor="pointer">
+                            <rect x="730" y="720" width="130" height="34" rx="6" fill="#60a5fa" stroke="#93c5fd" strokeWidth="1.5"/>
+                            <text x="795" y="742" textAnchor="middle" fontSize="12" fill="#002" fontWeight="900" fontFamily="Impact">USE RP (+3)</text>
                         </g>
                     )}
                     <g className="roll-button" onClick={() => onAction({ type: 'SKIP_SUB' })} cursor="pointer">
-                        <rect x="730" y="730" width="100" height="38" rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
-                        <text x="780" y="755" textAnchor="middle" fontSize="14" fill="#ccc" fontWeight="900" fontFamily="Impact">SKIP</text>
+                        <rect x="870" y="720" width="80" height="34" rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
+                        <text x="910" y="742" textAnchor="middle" fontSize="12" fill="#ccc" fontWeight="900" fontFamily="Impact">SKIP</text>
                     </g>
                 </g>
             )}

@@ -1,13 +1,24 @@
 /**
  * Sacrifice bunt handler.
+ * Rules: Can't bunt with 2 outs. Can't bunt with runner on 3rd.
+ * Roll on pitcher's chart: PU = out + runners hold, anything else = out + runners advance 1.
  */
 
 import { rollD20, resolveChart } from '../dice.js';
+import { addBatterStat, addPitcherStat } from '../stats.js';
 import { advanceBatter, endHalfInning } from './baserunning.js';
 
 export function handleSacBunt(state) {
     if (state.phase !== 'pre_atbat') return state;
-    if (!state.bases.first && !state.bases.second && !state.bases.third) return state;
+
+    // Can't bunt with 2 outs
+    if (state.outs >= 2) return state;
+
+    // Can't bunt with runner on 3rd
+    if (state.bases.third) return state;
+
+    // Must have at least one runner
+    if (!state.bases.first && !state.bases.second) return state;
 
     const fieldingSide = state.halfInning === 'top' ? 'homeTeam' : 'awayTeam';
     const battingSide = state.halfInning === 'top' ? 'awayTeam' : 'homeTeam';
@@ -18,30 +29,38 @@ export function handleSacBunt(state) {
     const chartResult = resolveChart(pitcher.chart, roll, false);
 
     const bases = { ...state.bases };
-    let outs = state.outs + 1;
+    let outs = state.outs + 1; // batter always out
     let runs = 0;
     const logs = [`${batter.name} lays down a sacrifice bunt (roll: ${roll})`];
     const side = state.halfInning === 'top' ? 'away' : 'home';
 
     if (chartResult === 'PU') {
-        logs.push('Popup! Runners hold.');
+        logs.push('Bunt popped up — runners hold.');
     } else {
-        if (bases.third) { runs++; logs.push('Runner scores from 3rd on sac bunt'); }
-        bases.third = bases.second || null;
-        bases.second = bases.first || null;
-        bases.first = null;
+        // Runners advance 1 base
+        if (bases.second) { bases.third = bases.second; bases.second = null; }
+        if (bases.first) { bases.second = bases.first; bases.first = null; }
+        logs.push('Sacrifice successful — runners advance.');
     }
 
     const newScore = { ...state.score };
     newScore[side] += runs;
 
-    const battingTeam = { ...state[battingSide] };
+    let battingTeam = { ...state[battingSide] };
     const rpi = [...battingTeam.runsPerInning];
     while (rpi.length < state.inning) rpi.push(0);
     rpi[state.inning - 1] = (rpi[state.inning - 1] || 0) + runs;
     battingTeam.runsPerInning = rpi;
 
-    let newState = { ...state, bases, outs, score: newScore, lastOutcome: 'PU', [battingSide]: battingTeam, gameLog: [...state.gameLog, ...logs] };
+    // Sac bunts don't count as at-bats
+    let fieldingTeamUpdated = { ...state[fieldingSide] };
+    fieldingTeamUpdated = addPitcherStat(fieldingTeamUpdated, pitcher.cardId, 'bf');
+
+    let newState = {
+        ...state, bases, outs, score: newScore, lastOutcome: 'SAC',
+        [battingSide]: battingTeam, [fieldingSide]: fieldingTeamUpdated,
+        gameLog: [...state.gameLog, ...logs],
+    };
 
     if (outs >= 3) return endHalfInning(newState);
     if (state.inning >= 9 && state.halfInning === 'bottom' && newScore.home > newScore.away) {

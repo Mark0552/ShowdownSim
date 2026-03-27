@@ -9,7 +9,7 @@
 // OUTCOME & PHASE
 // ============================================================================
 
-export type Outcome = 'SO' | 'GB' | 'FB' | 'PU' | 'W' | 'S' | 'SPlus' | 'DB' | 'TR' | 'HR';
+export type Outcome = 'SO' | 'GB' | 'FB' | 'PU' | 'W' | 'S' | 'SPlus' | 'DB' | 'TR' | 'HR' | 'SAC';
 
 export type Phase =
     | 'pre_atbat'        // offense can pinch hit, steal, use SB icon

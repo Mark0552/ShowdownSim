@@ -8,13 +8,19 @@ interface CardSlotProps {
     labelBelow?: boolean;
     labelAbove?: boolean;
     labelText?: string;
+    onHover?: (player: PlayerSlot, e: React.MouseEvent<SVGGElement>) => void;
+    onLeave?: () => void;
 }
 
 /** Card slot with corner brackets and glow — shows card image if occupied */
-export default function CardSlot({ x, y, label, card, labelBelow, labelAbove, labelText }: CardSlotProps) {
+export default function CardSlot({ x, y, label, card, labelBelow, labelAbove, labelText, onHover, onLeave }: CardSlotProps) {
     const w = 76, h = 106;
     return (
-        <g>
+        <g
+            cursor={card ? 'pointer' : undefined}
+            onMouseEnter={card && onHover ? (e) => onHover(card, e as any) : undefined}
+            onMouseLeave={card && onLeave ? onLeave : undefined}
+        >
             <rect x={x + 3} y={y + 3} width={w} height={h} rx="6" fill="rgba(0,0,0,0.55)"/>
             <rect x={x} y={y} width={w} height={h} rx="6" fill="rgba(0,0,0,0.30)" stroke="#f0e8c0" strokeWidth="2.2" strokeDasharray="6,4" opacity="0.88" filter="url(#cardGlow)"/>
             <path d={`M ${x} ${y} l 10 0 M ${x} ${y} l 0 10`} stroke="#f0e8c0" strokeWidth="2.5" opacity="0.7"/>
