@@ -205,7 +205,7 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
                                     <div className="lineup-picker-grid">
                                         {myLineups.map(lineup => {
                                             const count = lineup.data?.slots?.length || 0;
-                                            const validation = lineup.data?.slots ? validateTeam(lineup.data.slots) : { valid: false, errors: [], totalPoints: 0, playerCount: 0 };
+                                            const validation = lineup.data?.slots ? validateTeam(lineup.data) : { valid: false, errors: [], totalPoints: 0, playerCount: 0 };
                                             return (
                                                 <button
                                                     key={lineup.id}

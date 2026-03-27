@@ -69,7 +69,7 @@ export default function LineupsPage({ onBack, onEditLineup }: Props) {
                     {lineups.map(lineup => {
                         const data = lineup.data;
                         const playerCount = data?.slots?.length || 0;
-                        const validation = data?.slots ? validateTeam(data.slots) : { valid: false, errors: ['No players'], totalPoints: 0, playerCount: 0 };
+                        const validation = data?.slots ? validateTeam(data) : { valid: false, errors: ['No players'], totalPoints: 0, playerCount: 0 };
 
                         return (
                             <div key={lineup.id} className="lineup-item" style={{ borderLeft: `4px solid ${validation.valid ? '#4ade80' : '#e94560'}` }}>
