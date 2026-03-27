@@ -192,7 +192,11 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                         <>
                             <div className="bp-header" onClick={() => setShowSubPanel(false)}>SELECT PINCH HITTER ▲</div>
                             <div className="bp-cards">
-                                {battingTeam.bench.map((p, i) => (
+                                {battingTeam.bench.filter(p => {
+                                    if (!p.isBackup) return true;
+                                    const isHomeBatting = state.halfInning === 'bottom';
+                                    return isHomeBatting ? state.inning >= 6 : state.inning >= 7;
+                                }).map((p, i) => (
                                     <div key={`ph-${i}`} className="bp-card" onClick={() => {
                                         onAction({ type: 'PINCH_HIT', benchCardId: p.cardId, lineupIndex: battingTeam.currentBatterIndex });
                                         setShowSubPanel(false);

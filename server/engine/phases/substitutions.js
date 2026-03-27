@@ -129,8 +129,21 @@ export function handleSkipSub(state) {
 export function enterPreAtBat(state) {
     const offSide = state.halfInning === 'top' ? 'awayTeam' : 'homeTeam';
     const defSide = state.halfInning === 'top' ? 'homeTeam' : 'awayTeam';
-    const hasBench = state[offSide].bench.length > 0;
-    const hasRelievers = state[defSide].bullpen.some(p => p.role !== 'Starter');
+
+    // Filter bench: backups can't PH before 7th (home bottom of 6th exception)
+    // With DH, backups can never PH for pitcher, so they can't PH at all before 7th
+    const isHomeBatting = offSide === 'homeTeam';
+    const backupAllowed = isHomeBatting ? state.inning >= 6 : state.inning >= 7;
+    const eligibleBench = state[offSide].bench.filter(p => !p.isBackup || backupAllowed);
+    const hasBench = eligibleBench.length > 0;
+
+    // Relievers only (not starters) — and only if starter can be removed
+    const fieldingTeam = state[defSide];
+    const hasRelieversInBullpen = fieldingTeam.bullpen.some(p => p.role !== 'Starter');
+    const isStarter = fieldingTeam.pitcher.role === 'Starter' && fieldingTeam.pitcherEntryInning === 1;
+    const battingSideKey = state.halfInning === 'top' ? 'away' : 'home';
+    const canRemoveStarter = !isStarter || state.inning >= 5 || state.score[battingSideKey] >= 10;
+    const hasRelievers = hasRelieversInBullpen && canRemoveStarter;
     const bases = state.bases;
 
     // Check steal eligibility (runner on 1st with 2nd open, or runner on 2nd with 3rd open)
@@ -148,8 +161,7 @@ export function enterPreAtBat(state) {
         return { ...state, phase: 'pre_atbat', subPhaseStep: 'offense_first' };
     }
 
-    // Check defense options: bullpen (relievers only) or pitcher icons (20, RP)
-    const fieldingTeam = state[defSide];
+    // Check defense options: pitcher icons (20, RP)
     const has20 = !state.icon20UsedThisInning &&
         playerHasIcon(fieldingTeam.pitcher, '20') &&
         canUseIcon(fieldingTeam, fieldingTeam.pitcher.cardId, '20');

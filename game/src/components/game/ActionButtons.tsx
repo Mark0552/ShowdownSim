@@ -18,10 +18,15 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
     return (
         <g>
             {/* Pre-atbat phase: offense can pinch hit, steal, sac bunt, or skip */}
-            {!state.isOver && isMyTurn && state.phase === 'pre_atbat' && (
+            {!state.isOver && isMyTurn && state.phase === 'pre_atbat' && (() => {
+                // Filter bench: backups can't PH before 7th (home exception: bottom of 6th)
+                // With DH, backups can never PH for pitcher, so they just can't PH at all before 7th
+                const isHomeBatting = state.halfInning === 'bottom';
+                const backupAllowed = isHomeBatting ? state.inning >= 6 : state.inning >= 7;
+                const eligibleBench = battingTeam.bench.filter(p => !p.isBackup || backupAllowed);
+                return (
                 <g>
-                    {/* Row 1: Pinch Hit, Sac Bunt, Skip */}
-                    {battingTeam.bench.length > 0 && (
+                    {eligibleBench.length > 0 && (
                         <g className="roll-button" onClick={() => onShowSubPanel()} cursor="pointer">
                             <rect x="460" y="720" width="130" height="34" rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
                             <text x="525" y="742" textAnchor="middle" fontSize="12" fill="#002" fontWeight="900" fontFamily="Impact">PINCH HIT</text>
@@ -52,12 +57,21 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                         <text x="900" y="742" textAnchor="middle" fontSize="12" fill="#ccc" fontWeight="900" fontFamily="Impact">SKIP</text>
                     </g>
                 </g>
-            )}
+                );
+            })()}
 
             {/* Defense sub phase: defense can change pitcher or skip */}
-            {!state.isOver && isMyTurn && state.phase === 'defense_sub' && (
+            {!state.isOver && isMyTurn && state.phase === 'defense_sub' && (() => {
+                const hasRelievers = fieldingTeam.bullpen.filter(p => p.role !== 'Starter').length > 0;
+                const isStarter = fieldingTeam.pitcher.role === 'Starter' && fieldingTeam.pitcherEntryInning === 1;
+                // Determine runs scored against fielding team's pitcher
+                const battingSideKey = state.halfInning === 'top' ? 'away' : 'home';
+                const runsAgainst = state.score[battingSideKey];
+                // Starter can only be removed if: inning >= 5 OR 10+ runs scored
+                const canChangePitcher = hasRelievers && (!isStarter || state.inning >= 5 || runsAgainst >= 10);
+                return (
                 <g>
-                    {fieldingTeam.bullpen.filter(p => p.role !== 'Starter').length > 0 && (
+                    {canChangePitcher && (
                         <g className="roll-button" onClick={() => onShowSubPanel()} cursor="pointer">
                             <rect x="420" y="720" width="160" height="34" rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
                             <text x="500" y="742" textAnchor="middle" fontSize="12" fill="#002" fontWeight="900" fontFamily="Impact">CHANGE PITCHER</text>
@@ -82,7 +96,8 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                         <text x="910" y="742" textAnchor="middle" fontSize="12" fill="#ccc" fontWeight="900" fontFamily="Impact">SKIP</text>
                     </g>
                 </g>
-            )}
+                );
+            })()}
 
             {/* Pitch phase */}
             {!state.isOver && isMyTurn && state.phase === 'pitch' && (
