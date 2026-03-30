@@ -27,8 +27,15 @@ export function findGPlayer(team) {
 }
 
 // Find ALL players on team with unused G icon (for player choice)
-export function findAllGPlayers(team) {
+export function findAllGPlayers(team, positionFilter) {
     return team.lineup
-        .filter(p => playerHasIcon(p, 'G') && canUseIcon(team, p.cardId, 'G'))
+        .filter(p => {
+            if (!playerHasIcon(p, 'G') || !canUseIcon(team, p.cardId, 'G')) return false;
+            if (positionFilter) {
+                const pos = (p.assignedPosition || '').replace(/-\d+$/, '');
+                return positionFilter.includes(pos);
+            }
+            return true;
+        })
         .map(p => ({ cardId: p.cardId, name: p.name, position: (p.assignedPosition || '').replace(/-\d+$/, '') }));
 }

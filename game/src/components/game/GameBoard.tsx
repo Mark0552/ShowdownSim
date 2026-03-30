@@ -125,7 +125,9 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             {/* Player card tooltip overlay */}
             {hoveredPlayer && (
                 <div className="player-tooltip" style={{
-                    left: Math.min(hoverPos.x + 15, window.innerWidth - 280),
+                    left: hoverPos.x > window.innerWidth * 0.6
+                        ? Math.max(0, hoverPos.x - 420)
+                        : Math.min(hoverPos.x + 15, window.innerWidth - 420),
                     top: Math.min(hoverPos.y - 100, window.innerHeight - 400),
                 }}>
                     <img src={hoveredPlayer.imagePath} alt="" className="tooltip-card-img" />
@@ -135,7 +137,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             <div className="tooltip-stats">
                                 <span>OB: {hoveredPlayer.onBase}</span>
                                 <span>Spd: {hoveredPlayer.speed}</span>
-                                {hoveredPlayer.assignedPosition ? <span>{hoveredPlayer.assignedPosition.replace(/-\d+$/, '')} +{hoveredPlayer.fielding ?? 0}</span> : null}
+                                {hoveredPlayer.assignedPosition ? <span>{hoveredPlayer.assignedPosition.replace(/-\d+$/, '')} +{hoveredPlayer.assignedPosition.replace(/-\d+$/, '') === 'C' ? (hoveredPlayer.arm ?? 0) : (hoveredPlayer.fielding ?? 0)}</span> : null}
                             </div>
                         ) : (
                             <div className="tooltip-stats">

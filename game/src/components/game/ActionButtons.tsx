@@ -263,9 +263,13 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                         Runners advancing — Choose who to throw at:
                     </text>
                     {(() => {
-                        // Find all outfielders with G available
+                        // Only outfielders with G are relevant for extra base throws (OF fielding)
+                        const OF_POSITIONS = ['LF', 'CF', 'RF', 'LF-RF'];
                         const gPlayers = fieldingTeam.lineup
-                            .filter((p: any) => p.icons?.includes('G') && !fieldingTeam.iconUsage?.[p.cardId]?.['G'])
+                            .filter((p: any) => {
+                                const pos = (p.assignedPosition || '').replace(/-\d+$/, '');
+                                return p.icons?.includes('G') && !fieldingTeam.iconUsage?.[p.cardId]?.['G'] && OF_POSITIONS.includes(pos);
+                            })
                             .map((p: any) => ({ cardId: p.cardId, name: p.name, position: (p.assignedPosition || '').replace(/-\d+$/, '') }));
                         return state.extraBaseEligible!.map((runner, i) => (
                             <g key={`eb-${i}`}>

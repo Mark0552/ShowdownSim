@@ -4,12 +4,14 @@
 
 import { rollD20 } from '../dice.js';
 import { playerHasIcon, canUseIcon, recordIconUse } from '../icons.js';
+import { OUTFIELD_POSITIONS } from '../fielding.js';
 import { advanceBatter, endHalfInning } from './baserunning.js';
 
 export function checkExtraBaseEligible(state, outcome) {
     const bases = state.bases;
     const battingSide = state.halfInning === 'top' ? 'awayTeam' : 'homeTeam';
     const battingTeam = state[battingSide];
+    const batterId = battingTeam.lineup[battingTeam.currentBatterIndex]?.cardId;
     const eligible = [];
     const outsBeforeSwing = state.outsBeforeSwing || 0;
 
@@ -23,7 +25,8 @@ export function checkExtraBaseEligible(state, outcome) {
             }
         }
         // Runner on 2nd (was on 1st) can try for 3rd
-        if (bases.second) {
+        // But NOT the batter who auto-advanced to 2nd on S+ (that advance IS the S+ bonus)
+        if (bases.second && !(outcome === 'SPlus' && bases.second === batterId)) {
             const runner = battingTeam.lineup.find(p => p.cardId === bases.second);
             if (runner) {
                 const target = runner.speed + (outsBeforeSwing >= 2 ? 5 : 0); // no home bonus
@@ -100,10 +103,11 @@ export function handleExtraBaseThrow(state, action) {
     let ofFielding = fieldingTeam.totalOutfieldFielding;
     let goldGloveUsed = false;
 
-    // G icon — defense chooses which player's G to use
+    // G icon — defense chooses which player's G to use (must be an outfielder for extra base throws)
     if (action.goldGloveCardId) {
         const gPlayer = fieldingTeam.lineup.find(p => p.cardId === action.goldGloveCardId);
-        if (gPlayer && playerHasIcon(gPlayer, 'G') && canUseIcon(fieldingTeam, gPlayer.cardId, 'G')) {
+        const gPos = gPlayer ? (gPlayer.assignedPosition || '').replace(/-\d+$/, '') : '';
+        if (gPlayer && playerHasIcon(gPlayer, 'G') && canUseIcon(fieldingTeam, gPlayer.cardId, 'G') && OUTFIELD_POSITIONS.includes(gPos)) {
             ofFielding += 10;
             goldGloveUsed = true;
             fieldingTeam = recordIconUse(fieldingTeam, gPlayer.cardId, 'G');

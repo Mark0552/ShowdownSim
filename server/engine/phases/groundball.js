@@ -4,12 +4,13 @@
 
 import { rollD20 } from '../dice.js';
 import { findAllGPlayers, recordIconUse, canUseIcon, playerHasIcon } from '../icons.js';
+import { INFIELD_POSITIONS } from '../fielding.js';
 import { advanceBatter, endHalfInning } from './baserunning.js';
 
 export function buildGbOptions(state, bases) {
     const fieldingSide = state.halfInning === 'top' ? 'homeTeam' : 'awayTeam';
     const fieldingTeam = state[fieldingSide];
-    const gPlayers = findAllGPlayers(fieldingTeam);
+    const gPlayers = findAllGPlayers(fieldingTeam, INFIELD_POSITIONS);
 
     return {
         hasRunnerFirst: !!bases.first,

@@ -19,6 +19,7 @@ export default function DiceRoll({ roll, rollType, triggerKey, onAnimationComple
     const [fallback, setFallback] = useState(false);
     const [fallbackNum, setFallbackNum] = useState(0);
     const [showFallback, setShowFallback] = useState(false);
+    const [showLabel, setShowLabel] = useState(false);
     const prevKeyRef = useRef('');
     const initRef = useRef(false);
 
@@ -56,12 +57,15 @@ export default function DiceRoll({ roll, rollType, triggerKey, onAnimationComple
         if (!roll || triggerKey === prevKeyRef.current) return;
         prevKeyRef.current = triggerKey;
 
+        setShowLabel(true);
+
         if (diceBoxRef.current && !fallback) {
             // 3D dice roll
             diceBoxRef.current.roll(`1d20@${roll}`).then(() => {
                 // Wait a moment to show result, then clear
                 setTimeout(() => {
                     diceBoxRef.current?.clear();
+                    setShowLabel(false);
                     onAnimationComplete?.();
                 }, 800);
             });
@@ -78,6 +82,7 @@ export default function DiceRoll({ roll, rollType, triggerKey, onAnimationComple
                     setFallbackNum(roll);
                     setTimeout(() => {
                         setShowFallback(false);
+                        setShowLabel(false);
                         onAnimationComplete?.();
                     }, 800);
                 }
@@ -146,7 +151,7 @@ export default function DiceRoll({ roll, rollType, triggerKey, onAnimationComple
             )}
 
             {/* Label shown during 3D roll */}
-            {!fallback && roll && triggerKey === prevKeyRef.current && (
+            {!fallback && showLabel && (
                 <div style={{
                     position: 'absolute',
                     top: 'calc(30% + 280px)',

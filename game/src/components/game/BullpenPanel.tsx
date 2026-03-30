@@ -21,8 +21,12 @@ export default function BullpenPanel({ team, side, onClose, onHover, onLeave }: 
     // Available bench: hitters from bench
     const availableBench = (team.bench || []);
 
-    // Starting rotation: starters from bullpen (SP2-SP4, inactive starters)
-    const startingRotation = (team.bullpen || []).filter(p => p.role === 'Starter' && p.cardId !== activePitcherId);
+    // Starting rotation: all starters (including active pitcher if they're a starter)
+    const inactiveStarters = (team.bullpen || []).filter(p => p.role === 'Starter');
+    const activeIsStarter = team.pitcher.role === 'Starter';
+    const startingRotation = activeIsStarter
+        ? [team.pitcher, ...inactiveStarters]
+        : inactiveStarters;
 
     // Used players — try to find names by searching lineup, bullpen, bench
     const allKnownPlayers = [
@@ -92,15 +96,25 @@ export default function BullpenPanel({ team, side, onClose, onHover, onLeave }: 
                 {startingRotation.length > 0 && (
                     <>
                         <div className="bp-section-label" style={{ color: '#4a7a9a' }}>STARTING ROTATION ({startingRotation.length})</div>
-                        {startingRotation.map((p, i) => (
-                            <div key={`sp-${i}`} className="bp-card" style={{ opacity: 0.6 }} onMouseEnter={(e) => onHover(p, e)} onMouseLeave={onLeave}>
-                                <img src={p.imagePath} alt="" />
-                                <div className="bp-card-info">
-                                    <span className="bp-card-name" style={{ color: '#4a7a9a' }}>{p.name}</span>
-                                    <span className="bp-card-stats">Ctrl:{p.control} IP:{p.ip} Starter</span>
+                        {startingRotation.map((p, i) => {
+                            const isActive = p.cardId === activePitcherId;
+                            return (
+                                <div key={`sp-${i}`} className="bp-card" style={{
+                                    opacity: isActive ? 1 : 0.6,
+                                    border: isActive ? '1px solid #4ade80' : 'none',
+                                    borderRadius: isActive ? '4px' : undefined,
+                                    background: isActive ? 'rgba(74, 222, 128, 0.08)' : undefined,
+                                }} onMouseEnter={(e) => onHover(p, e)} onMouseLeave={onLeave}>
+                                    <img src={p.imagePath} alt="" />
+                                    <div className="bp-card-info">
+                                        <span className="bp-card-name" style={{ color: isActive ? '#4ade80' : '#4a7a9a' }}>
+                                            {p.name}{isActive ? ' ★' : ''}
+                                        </span>
+                                        <span className="bp-card-stats">Ctrl:{p.control} IP:{p.ip} Starter</span>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </>
                 )}
 
