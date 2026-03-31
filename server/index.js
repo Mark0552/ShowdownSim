@@ -176,17 +176,32 @@ async function handleJoinGame(ws, msg, setContext) {
     // Store series context if provided
     if (seriesContext) room.seriesContext = seriesContext;
 
-    // If both players are in and we have lineups, start the game
+    // If both players are in and we have lineups, start or resume the game
     if (room.homeUserId && room.awayUserId && room.homeLineup && room.awayLineup && !room.state) {
-        room.state = initializeGame(room.homeLineup, room.awayLineup, room.homeUserId, room.awayUserId, room.seriesContext);
+        // Try to load existing state from Supabase first (reconnection after room expired)
+        let loadedState = null;
+        if (supabase) {
+            try {
+                const { data } = await supabase.from('games').select('state, status').eq('id', gameId).single();
+                if (data?.state && data.status !== 'finished') {
+                    loadedState = data.state;
+                }
+            } catch (e) { /* no saved state, start fresh */ }
+        }
+
+        if (loadedState) {
+            room.state = loadedState;
+            console.log(`Restored game ${gameId} from Supabase`);
+        } else {
+            room.state = initializeGame(room.homeLineup, room.awayLineup, room.homeUserId, room.awayUserId, room.seriesContext);
+            saveState(gameId, room.state);
+        }
+
         room.broadcast({
             type: 'game_state',
             state: room.state,
             turn: whoseTurn(room.state),
         });
-
-        // Save initial state to Supabase
-        saveState(gameId, room.state);
     } else if (room.state) {
         // Game already in progress — send current state to reconnecting player
         ws.send(JSON.stringify({

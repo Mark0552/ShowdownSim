@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { GameState, GameAction } from '../engine/gameEngine';
-import { getGame, getMyRole, getSeries, getSeriesGames } from '../lib/games';
+import { getGame, getMyRole, getSeries } from '../lib/games';
 import { getLineups } from '../lib/lineups';
 import { saveGameStats } from '../lib/stats';
 import { supabase } from '../lib/supabase';
@@ -9,6 +9,8 @@ import GameBoard from '../components/game/GameBoard';
 import './GamePage.css';
 
 const WS_URL = 'wss://showdownsim-production.up.railway.app';
+const MAX_RECONNECT_ATTEMPTS = 10;
+const RECONNECT_BASE_DELAY = 1000; // 1 second
 
 interface Props {
     gameId: string;
@@ -24,14 +26,97 @@ export default function GamePage({ gameId, onBack }: Props) {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(true);
     const [status, setStatus] = useState('Connecting...');
+    const [opponentDisconnected, setOpponentDisconnected] = useState(false);
     const wsRef = useRef<WebSocket | null>(null);
     const [gameRow, setGameRow] = useState<GameRow | null>(null);
     const statsSavedRef = useRef(false);
+    const mountedRef = useRef(true);
+    const reconnectAttemptRef = useRef(0);
+    const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Cached connection data for reconnects
+    const connDataRef = useRef<{
+        userId: string;
+        role: PlayerRole;
+        lineupData: any;
+        seriesContext: any;
+    } | null>(null);
+
+    const connectWs = useCallback(() => {
+        if (!connDataRef.current || !mountedRef.current) return;
+        const { userId, role, lineupData, seriesContext } = connDataRef.current;
+
+        // Close existing connection if any
+        if (wsRef.current) {
+            wsRef.current.onclose = null; // prevent reconnect loop
+            wsRef.current.close();
+        }
+
+        const ws = new WebSocket(WS_URL);
+        wsRef.current = ws;
+
+        ws.onopen = () => {
+            if (!mountedRef.current) return;
+            reconnectAttemptRef.current = 0;
+            setStatus('Connected. Joining game...');
+            ws.send(JSON.stringify({ type: 'join_game', gameId, userId, role, lineupData, seriesContext }));
+        };
+
+        ws.onmessage = (event) => {
+            if (!mountedRef.current) return;
+            const msg = JSON.parse(event.data);
+            switch (msg.type) {
+                case 'game_state':
+                    setGameState(msg.state);
+                    setMyTurn(msg.turn);
+                    setLoading(false);
+                    setStatus('');
+                    setOpponentDisconnected(false);
+                    break;
+                case 'joined':
+                    setMyRole(msg.role as PlayerRole);
+                    setStatus(`Joined as ${msg.role}. ${msg.players < 2 ? 'Waiting for opponent...' : 'Starting...'}`);
+                    if (msg.players >= 2) setOpponentDisconnected(false);
+                    break;
+                case 'waiting':
+                    setStatus(msg.message);
+                    break;
+                case 'player_left':
+                    setOpponentDisconnected(true);
+                    setStatus('Opponent disconnected — waiting for them to reconnect...');
+                    break;
+                case 'error':
+                    setError(msg.message);
+                    break;
+            }
+        };
+
+        ws.onclose = () => {
+            if (!mountedRef.current) return;
+            const attempt = reconnectAttemptRef.current;
+            if (attempt < MAX_RECONNECT_ATTEMPTS && !gameState?.isOver) {
+                const delay = Math.min(RECONNECT_BASE_DELAY * Math.pow(2, attempt), 15000);
+                reconnectAttemptRef.current = attempt + 1;
+                setStatus(`Connection lost. Reconnecting in ${Math.round(delay / 1000)}s... (attempt ${attempt + 1}/${MAX_RECONNECT_ATTEMPTS})`);
+                reconnectTimerRef.current = setTimeout(() => {
+                    if (mountedRef.current) connectWs();
+                }, delay);
+            } else if (gameState?.isOver) {
+                setStatus('Game over. Connection closed.');
+            } else {
+                setStatus('Unable to reconnect. Please refresh the page.');
+            }
+        };
+
+        ws.onerror = () => {
+            // onclose will fire after onerror, which handles reconnection
+        };
+    }, [gameId, gameState?.isOver]);
 
     useEffect(() => {
-        let mounted = true;
+        mountedRef.current = true;
 
-        async function connect() {
+        async function init() {
             try {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) throw new Error('Not logged in');
@@ -55,7 +140,6 @@ export default function GamePage({ gameId, onBack }: Props) {
                     if (lineup) lineupData = lineup.data;
                 }
 
-                // Build series context if this is a series game
                 let seriesContext = undefined;
                 if (game.series_id && game.game_number > 1) {
                     try {
@@ -69,52 +153,26 @@ export default function GamePage({ gameId, onBack }: Props) {
                     } catch (e) { /* series context optional */ }
                 }
 
-                const ws = new WebSocket(WS_URL);
-                wsRef.current = ws;
-
-                ws.onopen = () => {
-                    if (!mounted) return;
-                    setStatus('Connected. Joining game...');
-                    ws.send(JSON.stringify({ type: 'join_game', gameId, userId: user.id, role, lineupData, seriesContext }));
-                };
-
-                ws.onmessage = (event) => {
-                    if (!mounted) return;
-                    const msg = JSON.parse(event.data);
-                    switch (msg.type) {
-                        case 'game_state':
-                            setGameState(msg.state);
-                            setMyTurn(msg.turn);
-                            setLoading(false);
-                            setStatus('');
-                            break;
-                        case 'joined':
-                            setMyRole(msg.role as PlayerRole);
-                            setStatus(`Joined as ${msg.role}. ${msg.players < 2 ? 'Waiting for opponent...' : 'Starting...'}`);
-                            break;
-                        case 'waiting':
-                            setStatus(msg.message);
-                            break;
-                        case 'player_left':
-                            setStatus('Opponent disconnected');
-                            break;
-                        case 'error':
-                            setError(msg.message);
-                            break;
-                    }
-                };
-
-                ws.onclose = () => { if (mounted) setStatus('Disconnected. Refresh to reconnect.'); };
-                ws.onerror = () => { if (mounted) setError('Connection error'); };
+                // Cache connection data for reconnects
+                connDataRef.current = { userId: user.id, role, lineupData, seriesContext };
+                connectWs();
 
             } catch (err: any) {
-                if (mounted) { setError(err.message); setLoading(false); }
+                if (mountedRef.current) { setError(err.message); setLoading(false); }
             }
         }
 
-        connect();
-        return () => { mounted = false; wsRef.current?.close(); };
-    }, [gameId]);
+        init();
+
+        return () => {
+            mountedRef.current = false;
+            if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+            if (wsRef.current) {
+                wsRef.current.onclose = null;
+                wsRef.current.close();
+            }
+        };
+    }, [gameId, connectWs]);
 
     // Save stats when game ends
     useEffect(() => {
@@ -159,8 +217,17 @@ export default function GamePage({ gameId, onBack }: Props) {
                 homeName={homeName}
                 awayName={awayName}
             />
-            {/* Exit Game button in gold header */}
-            <button className="game-exit-btn" onClick={onBack}>EXIT GAME</button>
+            {opponentDisconnected && !gameState.isOver && (
+                <div style={{
+                    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                    background: 'rgba(10,20,40,0.95)', border: '2px solid #d4a018', borderRadius: '10px',
+                    padding: '20px 30px', zIndex: 2000, textAlign: 'center',
+                }}>
+                    <div style={{ color: '#d4a018', fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>Opponent Disconnected</div>
+                    <div style={{ color: '#8aade0', fontSize: '13px' }}>Waiting for them to reconnect...</div>
+                    <div style={{ color: '#4a6a90', fontSize: '11px', marginTop: '8px' }}>The game will resume when they return.</div>
+                </div>
+            )}
         </div>
     );
 }
