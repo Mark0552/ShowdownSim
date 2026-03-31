@@ -158,12 +158,17 @@ export function applyResult(state, outcome, batterId) {
     if (isHit) battingTeam.hits = (battingTeam.hits || 0) + 1;
 
     // Record batter stats
-    const isAB = outcome !== 'W'; // walks don't count as AB
+    // PA = every plate appearance; AB excludes walks, sac bunts, sac flies
+    battingTeam = addBatterStat(battingTeam, batterId, 'pa');
+    const isAB = !['W', 'SAC'].includes(outcome); // walks and sac bunts don't count as AB
     if (isAB) battingTeam = addBatterStat(battingTeam, batterId, 'ab');
     if (isHit) battingTeam = addBatterStat(battingTeam, batterId, 'h');
     if (outcome === 'W') battingTeam = addBatterStat(battingTeam, batterId, 'bb');
     if (outcome === 'SO') battingTeam = addBatterStat(battingTeam, batterId, 'so');
-    if (outcome === 'HR') battingTeam = addBatterStat(battingTeam, batterId, 'hr');
+    if (outcome === 'HR') { battingTeam = addBatterStat(battingTeam, batterId, 'hr'); battingTeam = addBatterStat(battingTeam, batterId, 'tb', 4); }
+    if (outcome === 'TR') { battingTeam = addBatterStat(battingTeam, batterId, 'tr'); battingTeam = addBatterStat(battingTeam, batterId, 'tb', 3); }
+    if (outcome === 'DB') { battingTeam = addBatterStat(battingTeam, batterId, 'db'); battingTeam = addBatterStat(battingTeam, batterId, 'tb', 2); }
+    if (outcome === 'S' || outcome === 'SPlus') battingTeam = addBatterStat(battingTeam, batterId, 'tb', 1);
     if (runs > 0) battingTeam = addBatterStat(battingTeam, batterId, 'rbi', runs);
     for (const runnerId of runnersScored) {
         battingTeam = addBatterStat(battingTeam, runnerId, 'r');

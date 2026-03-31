@@ -55,6 +55,7 @@ export function handleGbDecision(state, action) {
 
     let pendingDpResult = null;
     const runnersScored = [];
+    let dpSucceeded = false;
 
     switch (choice) {
         case 'dp': {
@@ -73,6 +74,7 @@ export function handleGbDecision(state, action) {
 
             if (defenseTotal > batter.speed) {
                 outs++;
+                dpSucceeded = true;
                 logs.push(`Double Play! d20(${dpRoll}) + IF(${ifFielding}) = ${defenseTotal} > Speed ${batter.speed}`);
                 pendingDpResult = { roll: dpRoll, defenseTotal, offenseSpeed: batter.speed, isDP: true, goldGloveUsed, choice: 'dp' };
             } else {
@@ -146,6 +148,10 @@ export function handleGbDecision(state, action) {
         for (const runnerId of runnersScored) {
             battingTeam = addBatterStat(battingTeam, runnerId, 'r');
         }
+    }
+    // GIDP stat for batter when double play succeeds
+    if (dpSucceeded) {
+        battingTeam = addBatterStat(battingTeam, batter.cardId, 'gidp');
     }
 
     // Track outs recorded by current pitcher for IP credit

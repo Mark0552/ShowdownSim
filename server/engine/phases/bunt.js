@@ -50,7 +50,12 @@ export function handleSacBunt(state) {
     rpi[state.inning - 1] = (rpi[state.inning - 1] || 0) + runs;
     battingTeam.runsPerInning = rpi;
 
-    // Sac bunts don't count as at-bats
+    // Sac bunts count as PA and SH but not AB
+    battingTeam = addBatterStat(battingTeam, batter.cardId, 'pa');
+    if (chartResult !== 'PU') {
+        battingTeam = addBatterStat(battingTeam, batter.cardId, 'sh');
+    }
+
     let fieldingTeamUpdated = { ...state[fieldingSide] };
     fieldingTeamUpdated = addPitcherStat(fieldingTeamUpdated, pitcher.cardId, 'bf');
     // Track out for IP credit (sac bunt is always 1 out)

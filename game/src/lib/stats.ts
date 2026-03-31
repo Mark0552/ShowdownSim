@@ -18,9 +18,11 @@ export async function saveGameStats(gameId: string, seriesId: string | null, gam
         rows.push({
             game_id: gameId, series_id: seriesId, user_id: user.id,
             card_id: player.cardId, card_name: player.name, card_type: 'hitter',
-            ab: bs.ab || 0, h: bs.h || 0, r: bs.r || 0, rbi: bs.rbi || 0,
+            pa: bs.pa || 0, ab: bs.ab || 0, h: bs.h || 0, r: bs.r || 0, rbi: bs.rbi || 0,
             bb: bs.bb || 0, ibb: bs.ibb || 0, so: bs.so || 0, hr: bs.hr || 0,
+            db: bs.db || 0, tr: bs.tr || 0, tb: bs.tb || 0,
             sb: bs.sb || 0, cs: bs.cs || 0,
+            gidp: bs.gidp || 0, sh: bs.sh || 0, sf: bs.sf || 0,
             win: won,
         });
     }

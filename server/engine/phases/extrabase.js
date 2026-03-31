@@ -161,6 +161,14 @@ export function handleExtraBaseThrow(state, action) {
         rpi[state.inning - 1] = (rpi[state.inning - 1] || 0) + 1;
         battingTeam.runsPerInning = rpi;
         battingTeam = addBatterStat(battingTeam, target.runnerId, 'r');
+        // SF: runner scores from 3rd on a fly ball tag-up
+        if (state.lastOutcome === 'FB' && target.fromBase === 'third') {
+            const batterId = battingTeam.lineup[battingTeam.currentBatterIndex]?.cardId;
+            if (batterId) {
+                battingTeam = addBatterStat(battingTeam, batterId, 'sf');
+                battingTeam = addBatterStat(battingTeam, batterId, 'rbi');
+            }
+        }
     }
 
     // Track thrown-out-at-3rd scenario where home runner still scores
@@ -229,10 +237,17 @@ export function handleSkipExtraBase(state) {
         battingTeam.runsPerInning = rpi;
     }
 
-    // Record R stat for runners who scored
+    // Record R stat for runners who scored, and SF for fly ball tag-ups
     for (const runner of eligible) {
         if (runner.toBase === 'home') {
             battingTeam = addBatterStat(battingTeam, runner.runnerId, 'r');
+            if (state.lastOutcome === 'FB' && runner.fromBase === 'third') {
+                const batterId = battingTeam.lineup[battingTeam.currentBatterIndex]?.cardId;
+                if (batterId) {
+                    battingTeam = addBatterStat(battingTeam, batterId, 'sf');
+                    battingTeam = addBatterStat(battingTeam, batterId, 'rbi');
+                }
+            }
         }
     }
 
