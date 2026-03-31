@@ -46,14 +46,26 @@ export function handleSteal(state, action) {
         catcherGPlayers.push({ cardId: catcher.cardId, name: catcher.name, position: 'C' });
     }
 
+    const sbAvailable = playerHasIcon(runner, 'SB') && canUseIcon(battingTeam, runnerId, 'SB');
+
     const pendingSteal = {
         runnerId, runnerName: runner.name, runnerSpeed: runner.speed,
         fromBase, toBase, catcherArm: catcherArmVal, stealThirdBonus,
-        catcherGPlayers,
+        catcherGPlayers, sbAvailable,
         autoAdvanceFirst: !!(fromBase === 'second' && bases.first),
     };
 
     const logs = [`${runner.name} attempts to steal ${toBase}!`];
+
+    // If runner has SB icon, prompt offense first
+    if (sbAvailable) {
+        return {
+            ...state,
+            phase: 'steal_sb',
+            pendingSteal,
+            gameLog: [...state.gameLog, ...logs],
+        };
+    }
 
     if (catcherGPlayers.length > 0) {
         return {
@@ -64,8 +76,44 @@ export function handleSteal(state, action) {
         };
     }
 
-    // No G available — auto-resolve
+    // No SB or G available — auto-resolve
     return resolveSteal({ ...state, pendingSteal, gameLog: [...state.gameLog, ...logs] }, null);
+}
+
+export function handleStealSbDecision(state, action) {
+    if (state.phase !== 'steal_sb' || !state.pendingSteal) return state;
+    const steal = state.pendingSteal;
+    const battingSide = state.halfInning === 'top' ? 'awayTeam' : 'homeTeam';
+
+    if (action.useSB) {
+        // SB icon used — automatic safe steal, no roll
+        let battingTeam = { ...state[battingSide] };
+        battingTeam = recordIconUse(battingTeam, steal.runnerId, 'SB');
+        const bases = { ...state.bases };
+        bases[steal.toBase] = bases[steal.fromBase];
+        bases[steal.fromBase] = null;
+        const logs = [`SB icon used! ${steal.runnerName} steals ${steal.toBase} automatically!`];
+        if (steal.autoAdvanceFirst && bases.first) {
+            bases.second = bases.first;
+            bases.first = null;
+            logs.push('Runner on 1st advances to 2nd');
+        }
+        const pendingStealResult = {
+            runnerId: steal.runnerId, runnerName: steal.runnerName,
+            roll: 0, defenseTotal: 0, runnerSpeed: steal.runnerSpeed, safe: true, goldGloveUsed: false,
+        };
+        return enterPreAtBat({
+            ...state, bases, [battingSide]: battingTeam,
+            pendingSteal: null, pendingStealResult,
+            gameLog: [...state.gameLog, ...logs],
+        });
+    }
+
+    // Declined SB — proceed to normal steal flow
+    if (steal.catcherGPlayers && steal.catcherGPlayers.length > 0) {
+        return { ...state, phase: 'steal_resolve' };
+    }
+    return resolveSteal(state, null);
 }
 
 export function handleStealGDecision(state, action) {

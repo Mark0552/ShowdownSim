@@ -235,6 +235,24 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 </g>
             )}
 
+            {/* Steal SB phase: offense decides whether to use SB icon */}
+            {!state.isOver && isMyTurn && state.phase === 'steal_sb' && state.pendingSteal && (
+                <g>
+                    <rect x="380" y="824" width="640" height="24" rx="6" fill="rgba(0,0,0,0.85)"/>
+                    <text x="700" y="841" textAnchor="middle" fontSize="11" fill="#4ade80" fontWeight="bold" fontFamily="Arial">
+                        {state.pendingSteal.runnerName} stealing {state.pendingSteal.toBase} — Use SB icon for automatic safe?
+                    </text>
+                    <g className="roll-button" onClick={() => onAction({ type: 'STEAL_SB_DECISION', useSB: true })} cursor="pointer">
+                        <rect x="480" y="854" width="180" height="34" rx="6" fill="#4ade80" stroke="#6bff9a" strokeWidth="1.5"/>
+                        <text x="570" y="876" textAnchor="middle" fontSize="12" fill="#002" fontWeight="900" fontFamily="Impact">USE SB (AUTO SAFE)</text>
+                    </g>
+                    <g className="roll-button" onClick={() => onAction({ type: 'STEAL_SB_DECISION', useSB: false })} cursor="pointer">
+                        <rect x="680" y="854" width="140" height="34" rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
+                        <text x="750" y="876" textAnchor="middle" fontSize="12" fill="#ccc" fontWeight="900" fontFamily="Impact">NORMAL STEAL</text>
+                    </g>
+                </g>
+            )}
+
             {/* Steal resolve phase: defense decides whether to use G */}
             {!state.isOver && isMyTurn && state.phase === 'steal_resolve' && state.pendingSteal && (
                 <g>

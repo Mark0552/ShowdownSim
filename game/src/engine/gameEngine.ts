@@ -21,6 +21,7 @@ export type Phase =
     | 'swing'
     | 'result_icons'     // post-result icon decisions (K, HR, V, S)
     | 'gb_decision'      // defense chooses GB handling (DP, hold, force home)
+    | 'steal_sb'         // offense decides whether to use SB icon on steal
     | 'steal_resolve'    // defense decides whether to use G on steal throw
     | 'extra_base_offer' // offense decides whether to send runners
     | 'extra_base'       // defense chooses which runner to throw at
@@ -258,6 +259,7 @@ export type GameAction =
     | { type: 'EXTRA_BASE_THROW'; runnerId: string; goldGloveCardId?: string }
     | { type: 'GB_DECISION'; choice: 'dp' | 'hold' | 'force_home'; goldGloveCardId?: string }
     | { type: 'STEAL'; runnerId: string }
+    | { type: 'STEAL_SB_DECISION'; useSB: boolean }
     | { type: 'STEAL_G_DECISION'; goldGloveCardId?: string }
     | { type: 'SKIP_SUB' }
     | { type: 'SKIP_ICONS' }
