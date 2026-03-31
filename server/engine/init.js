@@ -69,6 +69,7 @@ export function initializeGame(homeLineupData, awayLineupData, homeUserId, awayU
         halfInningClean: true,
         icon20UsedThisInning: false,
         rpActiveInning: null,
+        rpActivePitcherId: null,
         gbOptions: null,
         pendingSteal: null,
         pendingStealResult: null,

@@ -165,6 +165,7 @@ export function handlePrePitchIcon(state, action) {
             controlModifier: (state.controlModifier || 0) + 3,
             rpActiveInning: state.inning,
             rpActiveTeam: state.halfInning === 'top' ? 'home' : 'away',
+            rpActivePitcherId: team.pitcher.cardId,
         };
         newState.gameLog = [...state.gameLog, `RP icon: +3 control for this inning`];
         return { ...newState, phase: 'pitch', subPhaseStep: null };

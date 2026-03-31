@@ -19,6 +19,9 @@ export function applyResult(state, outcome, batterId) {
     const batter = state[battingSide].lineup[state[battingSide].currentBatterIndex];
     let halfInningClean = state.halfInningClean;
 
+    // Track which runners score so we can credit them with R stat
+    const runnersScored = [];
+
     switch (outcome) {
         case 'SO':
         case 'PU':
@@ -37,7 +40,7 @@ export function applyResult(state, outcome, batterId) {
             if (!gbOptions.canDP && !gbOptions.canHoldRunners && !gbOptions.canHoldThird && !gbOptions.canForceHome) {
                 // No runners or no special options — simple GB out
                 // Runners on 2nd/3rd advance freely
-                if (bases.third) { runs++; logs.push('Runner scores from 3rd on groundout'); }
+                if (bases.third) { runs++; runnersScored.push(bases.third); logs.push('Runner scores from 3rd on groundout'); }
                 if (bases.second) { bases.third = bases.second; bases.second = null; }
                 break;
             }
@@ -48,6 +51,10 @@ export function applyResult(state, outcome, batterId) {
             while (rpi.length < state.inning) rpi.push(0);
             battingTeam.runsPerInning = rpi;
 
+            // Track the batter out for IP credit before entering gb_decision
+            const fieldingTeamGb = { ...state[fieldingSide] };
+            fieldingTeamGb.outsRecordedByCurrentPitcher = (fieldingTeamGb.outsRecordedByCurrentPitcher || 0) + 1;
+
             return {
                 ...state,
                 outs,
@@ -56,6 +63,7 @@ export function applyResult(state, outcome, batterId) {
                 gbOptions,
                 gameLog: [...state.gameLog, `Ground Ball — defense decides...`],
                 [battingSide]: battingTeam,
+                [fieldingSide]: fieldingTeamGb,
             };
         }
 
@@ -67,7 +75,7 @@ export function applyResult(state, outcome, batterId) {
         case 'W':
             if (bases.first) {
                 if (bases.second) {
-                    if (bases.third) { runs++; logs.push('Runner scores on walk'); }
+                    if (bases.third) { runs++; runnersScored.push(bases.third); logs.push('Runner scores on walk'); }
                     bases.third = bases.second;
                 }
                 bases.second = bases.first;
@@ -77,7 +85,7 @@ export function applyResult(state, outcome, batterId) {
             break;
 
         case 'S': {
-            if (bases.third) { runs++; logs.push('Runner scores from third'); }
+            if (bases.third) { runs++; runnersScored.push(bases.third); logs.push('Runner scores from third'); }
             bases.third = bases.second || null;
             bases.second = bases.first || null;
             bases.first = batterId;
@@ -87,7 +95,7 @@ export function applyResult(state, outcome, batterId) {
 
         case 'SPlus': {
             // S+ = regular single, then batter auto-steals 2nd if open
-            if (bases.third) { runs++; logs.push('Runner scores from third'); }
+            if (bases.third) { runs++; runnersScored.push(bases.third); logs.push('Runner scores from third'); }
             bases.third = bases.second || null;
             bases.second = bases.first || null;
             bases.first = batterId;
@@ -101,8 +109,8 @@ export function applyResult(state, outcome, batterId) {
         }
 
         case 'DB': {
-            if (bases.third) { runs++; }
-            if (bases.second) { runs++; }
+            if (bases.third) { runs++; runnersScored.push(bases.third); }
+            if (bases.second) { runs++; runnersScored.push(bases.second); }
             if (bases.first) { bases.third = bases.first; }
             else { bases.third = null; }
             bases.second = batterId;
@@ -112,9 +120,9 @@ export function applyResult(state, outcome, batterId) {
         }
 
         case 'TR': {
-            if (bases.third) runs++;
-            if (bases.second) runs++;
-            if (bases.first) runs++;
+            if (bases.third) { runs++; runnersScored.push(bases.third); }
+            if (bases.second) { runs++; runnersScored.push(bases.second); }
+            if (bases.first) { runs++; runnersScored.push(bases.first); }
             bases.third = batterId;
             bases.second = null;
             bases.first = null;
@@ -123,10 +131,10 @@ export function applyResult(state, outcome, batterId) {
         }
 
         case 'HR': {
-            if (bases.third) runs++;
-            if (bases.second) runs++;
-            if (bases.first) runs++;
-            runs++;
+            if (bases.third) { runs++; runnersScored.push(bases.third); }
+            if (bases.second) { runs++; runnersScored.push(bases.second); }
+            if (bases.first) { runs++; runnersScored.push(bases.first); }
+            runs++; runnersScored.push(batterId); // batter scores too
             if (runs > 1) logs.push(`${runs}-run homer!`);
             else logs.push('Solo home run!');
             bases.first = null; bases.second = null; bases.third = null;
@@ -157,9 +165,18 @@ export function applyResult(state, outcome, batterId) {
     if (outcome === 'SO') battingTeam = addBatterStat(battingTeam, batterId, 'so');
     if (outcome === 'HR') battingTeam = addBatterStat(battingTeam, batterId, 'hr');
     if (runs > 0) battingTeam = addBatterStat(battingTeam, batterId, 'rbi', runs);
+    for (const runnerId of runnersScored) {
+        battingTeam = addBatterStat(battingTeam, runnerId, 'r');
+    }
+
+    // Track outs recorded by current pitcher for IP credit
+    const outsThisPlay = outs - state.outs;
 
     // Record pitcher stats
     let fieldingTeamUpdated = { ...state[fieldingSide] };
+    if (outsThisPlay > 0) {
+        fieldingTeamUpdated.outsRecordedByCurrentPitcher = (fieldingTeamUpdated.outsRecordedByCurrentPitcher || 0) + outsThisPlay;
+    }
     const pitcherId = fieldingTeamUpdated.pitcher.cardId;
     fieldingTeamUpdated = addPitcherStat(fieldingTeamUpdated, pitcherId, 'bf');
     if (isHit) fieldingTeamUpdated = addPitcherStat(fieldingTeamUpdated, pitcherId, 'h');
@@ -207,9 +224,11 @@ export function endHalfInning(state) {
     let fieldingTeam = { ...state[fieldingSide] };
     fieldingTeam.inningsPitched = (fieldingTeam.inningsPitched || 0) + 1;
 
-    // Record pitcher IP (stored in thirds: 3 = 1 full inning)
+    // Record pitcher IP: credit current pitcher with their outs recorded (not always 3)
     const pitcherId = fieldingTeam.pitcher.cardId;
-    fieldingTeam = addPitcherStat(fieldingTeam, pitcherId, 'ip', 3);
+    const outsForCurrentPitcher = fieldingTeam.outsRecordedByCurrentPitcher || 0;
+    fieldingTeam = addPitcherStat(fieldingTeam, pitcherId, 'ip', outsForCurrentPitcher);
+    fieldingTeam.outsRecordedByCurrentPitcher = 0; // reset for next half-inning
 
     // CY icon check
     if (state.halfInningClean && playerHasIcon(fieldingTeam.pitcher, 'CY')) {
@@ -234,6 +253,7 @@ export function endHalfInning(state) {
             iconPrompt: null, halfInningClean: true, icon20UsedThisInning: false, gbOptions: null,
             pendingSteal: null, pendingStealResult: null,
             controlModifier: (s.rpActiveInning === state.inning && s.rpActiveTeam === 'home') ? s.controlModifier : 0,
+            rpActivePitcherId: (s.rpActiveInning === state.inning && s.rpActiveTeam === 'home') ? s.rpActivePitcherId : null,
             gameLog: [...s.gameLog, `--- Bottom of ${state.inning} ---`],
         };
     }
@@ -248,7 +268,8 @@ export function endHalfInning(state) {
     while (away.runsPerInning.length < state.inning + 1) away.runsPerInning.push(0);
     while (home.runsPerInning.length < state.inning + 1) home.runsPerInning.push(0);
 
-    const newControlMod = (s.rpActiveInning === state.inning + 1 && s.rpActiveTeam === 'away') ? s.controlModifier : 0;
+    const rpCarriesOver = s.rpActiveInning === state.inning + 1 && s.rpActiveTeam === 'away';
+    const newControlMod = rpCarriesOver ? s.controlModifier : 0;
 
     return {
         ...s, awayTeam: away, homeTeam: home,
@@ -257,7 +278,7 @@ export function endHalfInning(state) {
         phase: 'pre_atbat', subPhaseStep: 'offense_first',
         lastOutcome: null, pendingDpResult: null, extraBaseEligible: null, pendingExtraBaseResult: null,
         iconPrompt: null, halfInningClean: true, icon20UsedThisInning: false,
-        controlModifier: newControlMod, gbOptions: null,
+        controlModifier: newControlMod, rpActivePitcherId: rpCarriesOver ? s.rpActivePitcherId : null, gbOptions: null,
         pendingSteal: null, pendingStealResult: null,
         gameLog: [...s.gameLog, `--- Top of ${state.inning + 1} ---`],
     };

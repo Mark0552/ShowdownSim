@@ -170,6 +170,8 @@ export function resolveSteal(state, goldGloveCardId) {
         outs++;
         bases[steal.fromBase] = null;
         logs.push(`${steal.runnerName} caught stealing! Spd ${steal.runnerSpeed} vs d20(${roll})+Arm(${armTotal})=${defenseTotal}`);
+        // Track out for IP credit
+        fieldingTeam = { ...fieldingTeam, outsRecordedByCurrentPitcher: (fieldingTeam.outsRecordedByCurrentPitcher || 0) + 1 };
     }
 
     // Record SB/CS stats

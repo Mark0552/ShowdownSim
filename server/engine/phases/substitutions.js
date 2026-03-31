@@ -4,6 +4,7 @@
 
 import { computeFieldingTotals, getFieldingFromSlot } from '../fielding.js';
 import { playerHasIcon, canUseIcon } from '../icons.js';
+import { addPitcherStat } from '../stats.js';
 
 export function handlePinchHit(state, action) {
     if (state.phase !== 'pre_atbat') return state;
@@ -61,7 +62,7 @@ export function handlePinchHit(state, action) {
 export function handlePitchingChange(state, action) {
     if (state.phase !== 'defense_sub') return state;
     const fieldingSide = state.halfInning === 'top' ? 'homeTeam' : 'awayTeam';
-    const team = { ...state[fieldingSide] };
+    let team = { ...state[fieldingSide] };
     const bullpen = [...team.bullpen];
 
     const bpIdx = bullpen.findIndex(p => p.cardId === action.bullpenCardId);
@@ -86,11 +87,21 @@ export function handlePitchingChange(state, action) {
     const newPitcher = { ...bullpen[bpIdx] };
     bullpen.splice(bpIdx, 1);
 
+    // Credit departing pitcher with their outs recorded this half-inning
+    const outsRecorded = team.outsRecordedByCurrentPitcher || 0;
+    if (outsRecorded > 0) {
+        team = addPitcherStat(team, oldPitcher.cardId, 'ip', outsRecorded);
+    }
+
     team.pitcher = newPitcher;
     team.bullpen = bullpen;
     team.usedPlayers = [...team.usedPlayers, oldPitcher.cardId];
     team.inningsPitched = 0;
     team.pitcherEntryInning = state.inning;
+    team.outsRecordedByCurrentPitcher = 0; // reset for new pitcher
+
+    // Fix 3: If the departing pitcher had RP active, clear it
+    const rpCleared = state.rpActivePitcherId && state.rpActivePitcherId === oldPitcher.cardId;
 
     let newState = { ...state, [fieldingSide]: team };
     newState.gameLog = [...state.gameLog, `${newPitcher.name} replaces ${oldPitcher.name} on the mound`];
@@ -98,9 +109,9 @@ export function handlePitchingChange(state, action) {
     if (state.subPhaseStep === 'defense') {
         // Pitching change resets to pre_atbat — offense gets full options again
         // (pinch hit, steal, sac bunt) since the pitcher changed
-        return { ...newState, phase: 'pre_atbat', subPhaseStep: 'offense_re', controlModifier: 0 };
+        return { ...newState, phase: 'pre_atbat', subPhaseStep: 'offense_re', controlModifier: 0, rpActivePitcherId: rpCleared ? null : state.rpActivePitcherId };
     }
-    return { ...newState, phase: 'ibb_decision', subPhaseStep: null };
+    return { ...newState, phase: 'ibb_decision', subPhaseStep: null, controlModifier: 0, rpActivePitcherId: rpCleared ? null : state.rpActivePitcherId };
 }
 
 export function handleSkipSub(state) {

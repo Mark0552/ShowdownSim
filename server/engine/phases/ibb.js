@@ -24,9 +24,10 @@ export function handleIntentionalWalk(state) {
     const side = state.halfInning === 'top' ? 'away' : 'home';
 
     // Walk baserunning: force advancement
+    let scoringRunnerId = null;
     if (bases.first) {
         if (bases.second) {
-            if (bases.third) { runs++; logs.push('Runner scores on intentional walk (bases loaded)'); }
+            if (bases.third) { runs++; scoringRunnerId = bases.third; logs.push('Runner scores on intentional walk (bases loaded)'); }
             bases.third = bases.second;
         }
         bases.second = bases.first;
@@ -47,6 +48,7 @@ export function handleIntentionalWalk(state) {
     battingTeam = addBatterStat(battingTeam, batter.cardId, 'ibb');
     battingTeam = addBatterStat(battingTeam, batter.cardId, 'bb'); // also counts as total BB
     if (runs > 0) battingTeam = addBatterStat(battingTeam, batter.cardId, 'rbi', runs);
+    if (scoringRunnerId) battingTeam = addBatterStat(battingTeam, scoringRunnerId, 'r');
     fieldingTeamUpdated = addPitcherStat(fieldingTeamUpdated, pitcher.cardId, 'ibb');
     fieldingTeamUpdated = addPitcherStat(fieldingTeamUpdated, pitcher.cardId, 'bb');
     fieldingTeamUpdated = addPitcherStat(fieldingTeamUpdated, pitcher.cardId, 'bf');

@@ -53,6 +53,8 @@ export function handleSacBunt(state) {
     // Sac bunts don't count as at-bats
     let fieldingTeamUpdated = { ...state[fieldingSide] };
     fieldingTeamUpdated = addPitcherStat(fieldingTeamUpdated, pitcher.cardId, 'bf');
+    // Track out for IP credit (sac bunt is always 1 out)
+    fieldingTeamUpdated.outsRecordedByCurrentPitcher = (fieldingTeamUpdated.outsRecordedByCurrentPitcher || 0) + 1;
 
     let newState = {
         ...state, bases, outs, score: newScore, lastOutcome: 'SAC',

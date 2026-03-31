@@ -5,6 +5,7 @@
 import { rollD20 } from '../dice.js';
 import { playerHasIcon, canUseIcon, recordIconUse } from '../icons.js';
 import { OUTFIELD_POSITIONS } from '../fielding.js';
+import { addBatterStat } from '../stats.js';
 import { advanceBatter, endHalfInning } from './baserunning.js';
 
 export function checkExtraBaseEligible(state, outcome) {
@@ -153,12 +154,31 @@ export function handleExtraBaseThrow(state, action) {
         roll, defenseTotal, runnerSpeed: target.targetWithBonuses, safe, goldGloveUsed,
     };
 
-    const battingTeam = { ...state[battingSide] };
+    let battingTeam = { ...state[battingSide] };
     if (safe && target.toBase === 'home') {
         const rpi = [...battingTeam.runsPerInning];
         while (rpi.length < state.inning) rpi.push(0);
         rpi[state.inning - 1] = (rpi[state.inning - 1] || 0) + 1;
         battingTeam.runsPerInning = rpi;
+        battingTeam = addBatterStat(battingTeam, target.runnerId, 'r');
+    }
+
+    // Track thrown-out-at-3rd scenario where home runner still scores
+    if (!safe && target.toBase === 'third') {
+        const otherHomeRunner = eligible.find(e => e.runnerId !== target.runnerId && e.toBase === 'home');
+        if (otherHomeRunner) {
+            battingTeam = addBatterStat(battingTeam, otherHomeRunner.runnerId, 'r');
+            const rpi2 = [...battingTeam.runsPerInning];
+            while (rpi2.length < state.inning) rpi2.push(0);
+            rpi2[state.inning - 1] = (rpi2[state.inning - 1] || 0) + 1;
+            battingTeam.runsPerInning = rpi2;
+        }
+    }
+
+    // Track outs recorded by current pitcher for IP credit
+    const outsThisPlay = outs - state.outs;
+    if (outsThisPlay > 0) {
+        fieldingTeam.outsRecordedByCurrentPitcher = (fieldingTeam.outsRecordedByCurrentPitcher || 0) + outsThisPlay;
     }
 
     let newState = {
@@ -187,7 +207,7 @@ export function handleSkipExtraBase(state) {
     const side = state.halfInning === 'top' ? 'away' : 'home';
     const logs = [];
     const battingSide = state.halfInning === 'top' ? 'awayTeam' : 'homeTeam';
-    const battingTeam = { ...state[battingSide] };
+    let battingTeam = { ...state[battingSide] };
     let extraRuns = 0;
 
     for (const runner of eligible) {
@@ -207,6 +227,13 @@ export function handleSkipExtraBase(state) {
         while (rpi.length < state.inning) rpi.push(0);
         rpi[state.inning - 1] = (rpi[state.inning - 1] || 0) + extraRuns;
         battingTeam.runsPerInning = rpi;
+    }
+
+    // Record R stat for runners who scored
+    for (const runner of eligible) {
+        if (runner.toBase === 'home') {
+            battingTeam = addBatterStat(battingTeam, runner.runnerId, 'r');
+        }
     }
 
     let newState = { ...state, bases, score: newScore, extraBaseEligible: null, [battingSide]: battingTeam, gameLog: [...state.gameLog, ...logs] };

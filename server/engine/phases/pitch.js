@@ -20,7 +20,12 @@ export function handlePitch(state) {
     const baseControl = pitcher.control || 0;
     const ipRating = pitcher.fatigued ? 0 : (pitcher.ip || 0); // fatigued relievers start at IP 0
     const fatiguePenalty = Math.max(0, fieldingTeam.inningsPitched - ipRating);
+    // RP bonus only applies if this pitcher is the one who activated it
     let controlMod = state.controlModifier || 0;
+    if (controlMod > 0 && state.rpActivePitcherId && state.rpActivePitcherId !== pitcher.cardId) {
+        // RP bonus is +3; strip it since this pitcher didn't activate it
+        controlMod = Math.max(0, controlMod - 3);
+    }
     const effectiveControl = Math.max(0, baseControl - fatiguePenalty + controlMod);
     const total = roll + effectiveControl;
     const usePitcherChart = total > batter.onBase;

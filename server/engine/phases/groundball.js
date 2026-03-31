@@ -5,6 +5,7 @@
 import { rollD20 } from '../dice.js';
 import { findAllGPlayers, recordIconUse, canUseIcon, playerHasIcon } from '../icons.js';
 import { INFIELD_POSITIONS } from '../fielding.js';
+import { addBatterStat } from '../stats.js';
 import { advanceBatter, endHalfInning } from './baserunning.js';
 
 export function buildGbOptions(state, bases) {
@@ -53,6 +54,7 @@ export function handleGbDecision(state, action) {
     }
 
     let pendingDpResult = null;
+    const runnersScored = [];
 
     switch (choice) {
         case 'dp': {
@@ -61,7 +63,7 @@ export function handleGbDecision(state, action) {
             outs++; // that's the second out (runner on 1st)
 
             // Runners on 2nd/3rd advance
-            if (bases.third && outs < 3) { runs++; logs.push('Runner scores from 3rd'); }
+            if (bases.third && outs < 3) { runs++; runnersScored.push(bases.third); logs.push('Runner scores from 3rd'); }
             else if (bases.third) { logs.push('Runner on 3rd held — 3rd out'); }
             if (bases.second) { bases.third = bases.second; bases.second = null; }
 
@@ -133,11 +135,26 @@ export function handleGbDecision(state, action) {
     const newScore = { ...state.score };
     newScore[side] += runs;
 
-    const battingTeam = { ...state[battingSide] };
+    let battingTeam = { ...state[battingSide] };
     const rpi = [...battingTeam.runsPerInning];
     while (rpi.length < state.inning) rpi.push(0);
     rpi[state.inning - 1] = (rpi[state.inning - 1] || 0) + runs;
     battingTeam.runsPerInning = rpi;
+
+    // Record R stat for runners who scored (only if runs actually counted)
+    if (runs > 0) {
+        for (const runnerId of runnersScored) {
+            battingTeam = addBatterStat(battingTeam, runnerId, 'r');
+        }
+    }
+
+    // Track outs recorded by current pitcher for IP credit
+    // Note: outs already includes the +1 from batter out in applyResult,
+    // so additional outs here are: outs - state.outs (state.outs already has +1 from GB)
+    const outsThisPlay = outs - state.outs;
+    if (outsThisPlay > 0) {
+        fieldingTeam.outsRecordedByCurrentPitcher = (fieldingTeam.outsRecordedByCurrentPitcher || 0) + outsThisPlay;
+    }
 
     let newState = {
         ...state,
