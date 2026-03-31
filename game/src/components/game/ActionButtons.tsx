@@ -31,37 +31,62 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 </g>
             )}
 
-            {/* Pre-atbat phase: offense can pinch hit, steal, or skip */}
+            {/* Pre-atbat phase: offense can pinch hit, steal, use SB, or skip */}
             {!state.isOver && isMyTurn && state.phase === 'pre_atbat' && (() => {
-                // Filter bench: backups can't PH before 7th (home exception: bottom of 6th)
-                // With DH, backups can never PH for pitcher, so they just can't PH at all before 7th
                 const isHomeBatting = state.halfInning === 'bottom';
                 const backupAllowed = isHomeBatting ? state.inning >= 6 : state.inning >= 7;
                 const eligibleBench = battingTeam.bench.filter(p => !p.isBackup || backupAllowed);
+                // Find runners with unused SB icon
+                const sbRunners: { cardId: string; name: string; fromBase: string; toBase: string }[] = [];
+                if (state.bases.first && !state.bases.second) {
+                    const runner = battingTeam.lineup.find(p => p.cardId === state.bases.first);
+                    if (runner?.icons?.includes('SB') && !battingTeam.iconUsage?.[runner.cardId]?.['SB']) {
+                        sbRunners.push({ cardId: runner.cardId, name: runner.name, fromBase: '1st', toBase: '2nd' });
+                    }
+                }
+                if (state.bases.second && !state.bases.third) {
+                    const runner = battingTeam.lineup.find(p => p.cardId === state.bases.second);
+                    if (runner?.icons?.includes('SB') && !battingTeam.iconUsage?.[runner.cardId]?.['SB']) {
+                        sbRunners.push({ cardId: runner.cardId, name: runner.name, fromBase: '2nd', toBase: '3rd' });
+                    }
+                }
+                let bx = 380;
                 return (
                 <g>
                     {eligibleBench.length > 0 && (
                         <g className="roll-button" onClick={() => onShowSubPanel()} cursor="pointer">
-                            <rect x="460" y="840" width="130" height="34" rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
-                            <text x="525" y="862" textAnchor="middle" fontSize="12" fill="#002" fontWeight="900" fontFamily="Impact">PINCH HIT</text>
+                            <rect x={bx} y="840" width="110" height="34" rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
+                            <text x={bx + 55} y="862" textAnchor="middle" fontSize="11" fill="#002" fontWeight="900" fontFamily="Impact">PINCH HIT</text>
+                            {(() => { bx += 118; return null; })()}
                         </g>
                     )}
+                    {/* SB icon buttons — auto-advance, no roll */}
+                    {sbRunners.map((sb, i) => (
+                        <g key={`sb-${i}`} className="roll-button" onClick={() => onAction({ type: 'USE_ICON', cardId: sb.cardId, icon: 'SB' })} cursor="pointer">
+                            <rect x={bx + i * 148} y="840" width="140" height="34" rx="6" fill="#60a5fa" stroke="#93c5fd" strokeWidth="1.5"/>
+                            <text x={bx + i * 148 + 70} y="855" textAnchor="middle" fontSize="9" fill="#002" fontWeight="bold" fontFamily="Arial">SB: {sb.name}</text>
+                            <text x={bx + i * 148 + 70} y="868" textAnchor="middle" fontSize="8" fill="#002860" fontFamily="Arial">{sb.fromBase}→{sb.toBase} (auto)</text>
+                            {i === sbRunners.length - 1 ? (() => { bx += sbRunners.length * 148; return null; })() : null}
+                        </g>
+                    ))}
                     {/* Steal buttons for eligible runners */}
                     {state.bases.first && !state.bases.second && (
                         <g className="roll-button" onClick={() => onAction({ type: 'STEAL', runnerId: state.bases.first! })} cursor="pointer">
-                            <rect x="720" y="840" width="130" height="34" rx="6" fill="#22c55e" stroke="#4ade80" strokeWidth="1.5"/>
-                            <text x="785" y="862" textAnchor="middle" fontSize="12" fill="#002" fontWeight="900" fontFamily="Impact">STEAL 2ND</text>
+                            <rect x={bx} y="840" width="110" height="34" rx="6" fill="#22c55e" stroke="#4ade80" strokeWidth="1.5"/>
+                            <text x={bx + 55} y="862" textAnchor="middle" fontSize="11" fill="#002" fontWeight="900" fontFamily="Impact">STEAL 2ND</text>
+                            {(() => { bx += 118; return null; })()}
                         </g>
                     )}
                     {state.bases.second && !state.bases.third && (
                         <g className="roll-button" onClick={() => onAction({ type: 'STEAL', runnerId: state.bases.second! })} cursor="pointer">
-                            <rect x={state.bases.first && !state.bases.second ? 860 : 720} y="840" width="130" height="34" rx="6" fill="#22c55e" stroke="#4ade80" strokeWidth="1.5"/>
-                            <text x={state.bases.first && !state.bases.second ? 925 : 785} y="862" textAnchor="middle" fontSize="12" fill="#002" fontWeight="900" fontFamily="Impact">STEAL 3RD</text>
+                            <rect x={bx} y="840" width="110" height="34" rx="6" fill="#22c55e" stroke="#4ade80" strokeWidth="1.5"/>
+                            <text x={bx + 55} y="862" textAnchor="middle" fontSize="11" fill="#002" fontWeight="900" fontFamily="Impact">STEAL 3RD</text>
+                            {(() => { bx += 118; return null; })()}
                         </g>
                     )}
                     <g className="roll-button" onClick={() => onAction({ type: 'SKIP_SUB' })} cursor="pointer">
-                        <rect x="860" y="840" width="80" height="34" rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
-                        <text x="900" y="862" textAnchor="middle" fontSize="12" fill="#ccc" fontWeight="900" fontFamily="Impact">SKIP</text>
+                        <rect x={bx} y="840" width="80" height="34" rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
+                        <text x={bx + 40} y="862" textAnchor="middle" fontSize="12" fill="#ccc" fontWeight="900" fontFamily="Impact">SKIP</text>
                     </g>
                 </g>
                 );
