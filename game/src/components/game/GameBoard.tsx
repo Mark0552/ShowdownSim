@@ -39,6 +39,11 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const fieldingTeam = state.halfInning === 'top' ? state.homeTeam : state.awayTeam;
     const iAmBatting = (state.halfInning === 'top' && myRole === 'away') || (state.halfInning === 'bottom' && myRole === 'home');
 
+    // Guard: if teams aren't loaded yet (e.g. partial state from Supabase), show loading
+    if (!battingTeam?.lineup || !fieldingTeam?.lineup) {
+        return <div className="game-board-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8aade0' }}>Loading game state...</div>;
+    }
+
     const getRunner = (base: 'first' | 'second' | 'third'): PlayerSlot | null => {
         const id = state.bases[base];
         if (!id) return null;
