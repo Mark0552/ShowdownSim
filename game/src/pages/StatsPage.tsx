@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getGameHistory, getCareerBattingStats, getCareerPitchingStats } from '../lib/stats';
 import { supabase } from '../lib/supabase';
+import { getUser } from '../lib/auth';
 import type { GameRow } from '../types/game';
 import './StatsPage.css';
 
@@ -28,7 +29,7 @@ export default function StatsPage({ onBack }: Props) {
     const [sortDir, setSortDir] = useState<SortDir>('desc');
 
     useEffect(() => {
-        supabase.auth.getUser().then(({ data: { user } }) => {
+        getUser().then((user) => {
             if (user) setUserId(user.id);
         });
     }, []);

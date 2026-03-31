@@ -3,7 +3,7 @@ import type { Card } from './types/cards';
 import type { SavedLineup } from './lib/lineups';
 import { loadCards } from './data/cardData';
 import { supabase } from './lib/supabase';
-import { getUsername } from './lib/auth';
+import { getUsername, getUser } from './lib/auth';
 import { useTeamStore } from './store/teamStore';
 import { useDragStore } from './store/dragStore';
 import LoginPage from './pages/LoginPage';
@@ -60,7 +60,7 @@ export default function App() {
     }, []);
 
     useEffect(() => {
-        supabase.auth.getUser().then(({ data: { user } }) => {
+        getUser().then((user) => {
             if (user) {
                 setUserEmail(getUsername(user));
                 // Restore page from hash if user is logged in
@@ -102,7 +102,7 @@ export default function App() {
     }, []);
 
     const handleLogin = async () => {
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await getUser();
         if (user) {
             setUserEmail(getUsername(user));
             setPage('menu');

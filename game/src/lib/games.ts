@@ -1,10 +1,10 @@
 import { supabase } from './supabase';
-import { getUsername } from './auth';
+import { getUsername, getUser } from './auth';
 import type { GameRow, SeriesRow, PlayerRole } from '../types/game';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 export async function createGame(password?: string): Promise<GameRow> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getUser();
     if (!user) throw new Error('Not logged in');
 
     const insert: any = {
@@ -24,7 +24,7 @@ export async function createGame(password?: string): Promise<GameRow> {
 }
 
 export async function getOpenGames(): Promise<GameRow[]> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getUser();
     if (!user) throw new Error('Not logged in');
 
     const { data, error } = await supabase
@@ -38,7 +38,7 @@ export async function getOpenGames(): Promise<GameRow[]> {
 }
 
 export async function getMyGames(): Promise<GameRow[]> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getUser();
     if (!user) throw new Error('Not logged in');
 
     const { data, error } = await supabase
@@ -52,7 +52,7 @@ export async function getMyGames(): Promise<GameRow[]> {
 }
 
 export async function joinGame(gameId: string): Promise<GameRow> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getUser();
     if (!user) throw new Error('Not logged in');
 
     // Update first
@@ -185,7 +185,7 @@ export function subscribeToLobby(callback: (games: GameRow[]) => void): Realtime
 // ============================================================================
 
 export async function createSeries(bestOf: number, password?: string): Promise<{ series: SeriesRow; game: GameRow }> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getUser();
     if (!user) throw new Error('Not logged in');
 
     // Create series

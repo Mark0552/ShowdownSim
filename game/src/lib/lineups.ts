@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { getUser } from './auth';
 
 export interface SavedLineup {
     id: string;
@@ -18,7 +19,7 @@ export async function getLineups(): Promise<SavedLineup[]> {
 }
 
 export async function createLineup(name: string, teamData: any): Promise<SavedLineup> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getUser();
     if (!user) throw new Error('Not logged in');
 
     const { data, error } = await supabase

@@ -36,9 +36,28 @@ export async function signOut() {
     if (error) throw error;
 }
 
+// Deduplicated getUser — concurrent callers share one in-flight request
+let _userPromise: Promise<User | null> | null = null;
+let _userCache: User | null = null;
+let _userCacheTime = 0;
+const USER_CACHE_MS = 5000; // cache for 5 seconds
+
 export async function getUser(): Promise<User | null> {
-    const { data: { user } } = await supabase.auth.getUser();
-    return user;
+    const now = Date.now();
+    if (_userCache && now - _userCacheTime < USER_CACHE_MS) return _userCache;
+    if (_userPromise) return _userPromise;
+    _userPromise = supabase.auth.getUser()
+        .then(({ data: { user } }) => {
+            _userCache = user;
+            _userCacheTime = Date.now();
+            _userPromise = null;
+            return user;
+        })
+        .catch((err) => {
+            _userPromise = null;
+            throw err;
+        });
+    return _userPromise;
 }
 
 export function getUsername(user: User): string {

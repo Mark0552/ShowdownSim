@@ -32,7 +32,7 @@ export default function DiceRoll({ roll, rollType, triggerKey, onAnimationComple
             try {
                 const { default: DiceBox } = await import('@3d-dice/dice-box');
                 const box = new DiceBox('#dice-container', {
-                    assetPath: '/assets/dice-box/',
+                    assetPath: `${import.meta.env.BASE_URL}assets/dice-box/`,
                     theme: 'default',
                     themeColor: '#cc0000',
                     scale: 6,

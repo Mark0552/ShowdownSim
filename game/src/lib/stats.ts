@@ -1,7 +1,8 @@
 import { supabase } from './supabase';
+import { getUser } from './auth';
 
 export async function saveGameStats(gameId: string, seriesId: string | null, gameState: any) {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getUser();
     if (!user) return;
 
     // Determine which team is ours
@@ -46,7 +47,7 @@ export async function saveGameStats(gameId: string, seriesId: string | null, gam
 
 // Get finished games for current user
 export async function getGameHistory() {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getUser();
     if (!user) return [];
 
     const { data, error } = await supabase
@@ -61,7 +62,7 @@ export async function getGameHistory() {
 
 // Get career batting stats aggregated by card
 export async function getCareerBattingStats() {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getUser();
     if (!user) return [];
 
     const { data, error } = await supabase
@@ -88,7 +89,7 @@ export async function getCareerBattingStats() {
 
 // Get career pitching stats aggregated by card
 export async function getCareerPitchingStats() {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getUser();
     if (!user) return [];
 
     const { data, error } = await supabase

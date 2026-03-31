@@ -5,6 +5,7 @@ import { createGame, getOpenGames, getMyGames, joinGame, selectLineup, deleteGam
 import { getLineups } from '../lib/lineups';
 import { validateTeam } from '../logic/teamRules';
 import { supabase } from '../lib/supabase';
+import { getUser } from '../lib/auth';
 import './LobbyPage.css';
 
 interface Props {
@@ -24,7 +25,7 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
     const [activeGame, setActiveGame] = useState<GameRow | null>(null);
 
     useEffect(() => {
-        supabase.auth.getUser().then(({ data: { user } }) => {
+        getUser().then((user) => {
             if (user) setUserId(user.id);
         });
     }, []);

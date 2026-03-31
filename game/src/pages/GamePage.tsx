@@ -3,6 +3,7 @@ import type { GameState, GameAction } from '../engine/gameEngine';
 import { getGame, getMyRole, getSeries } from '../lib/games';
 import { getLineups } from '../lib/lineups';
 import { saveGameStats } from '../lib/stats';
+import { getUser } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import type { GameRow, PlayerRole } from '../types/game';
 import GameBoard from '../components/game/GameBoard';
@@ -118,7 +119,7 @@ export default function GamePage({ gameId, onBack }: Props) {
 
         async function init() {
             try {
-                const { data: { user } } = await supabase.auth.getUser();
+                const user = await getUser();
                 if (!user) throw new Error('Not logged in');
 
                 const game = await getGame(gameId);
