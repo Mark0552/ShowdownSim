@@ -183,7 +183,7 @@ async function handleJoinGame(ws, msg, setContext) {
         if (supabase) {
             try {
                 const { data } = await supabase.from('games').select('state, status').eq('id', gameId).single();
-                if (data?.state && data.status !== 'finished') {
+                if (data?.state && data.status !== 'finished' && data.state.awayTeam?.lineup && data.state.homeTeam?.lineup) {
                     loadedState = data.state;
                 }
             } catch (e) { /* no saved state, start fresh */ }

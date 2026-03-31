@@ -33,16 +33,18 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const [diceAnimating, setDiceAnimating] = useState(false);
     const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const prevRollKeyRef = useRef('');
+    const handleDiceComplete = useCallback(() => { setDiceAnimating(false); }, []);
+
+    // Guard: if teams aren't loaded yet (e.g. partial state from Supabase), show loading
+    if (!state.awayTeam?.lineup || !state.homeTeam?.lineup) {
+        return <div className="game-board-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8aade0' }}>Loading game state...</div>;
+    }
+
     const batter = getCurrentBatter(state);
     const pitcher = getCurrentPitcher(state);
     const battingTeam = state.halfInning === 'top' ? state.awayTeam : state.homeTeam;
     const fieldingTeam = state.halfInning === 'top' ? state.homeTeam : state.awayTeam;
     const iAmBatting = (state.halfInning === 'top' && myRole === 'away') || (state.halfInning === 'bottom' && myRole === 'home');
-
-    // Guard: if teams aren't loaded yet (e.g. partial state from Supabase), show loading
-    if (!battingTeam?.lineup || !fieldingTeam?.lineup) {
-        return <div className="game-board-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8aade0' }}>Loading game state...</div>;
-    }
 
     const getRunner = (base: 'first' | 'second' | 'third'): PlayerSlot | null => {
         const id = state.bases[base];
@@ -82,7 +84,6 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const hasRunners = !!(state.bases.first || state.bases.second || state.bases.third);
 
     const rollKey = `${state.lastRollType}-${state.lastRoll}-${state.inning}-${state.halfInning}-${state.outs}-${battingTeam.currentBatterIndex}`;
-    const handleDiceComplete = useCallback(() => { setDiceAnimating(false); }, []);
     if (state.lastRoll && rollKey !== prevRollKeyRef.current) {
         prevRollKeyRef.current = rollKey;
         if (!diceAnimating) setDiceAnimating(true);
