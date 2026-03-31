@@ -2,7 +2,7 @@
  * Substitution phase handlers: pinch hit, pitching change, skip sub, enter pre-atbat.
  */
 
-import { computeFieldingTotals } from '../fielding.js';
+import { computeFieldingTotals, getFieldingFromSlot } from '../fielding.js';
 import { playerHasIcon, canUseIcon } from '../icons.js';
 
 export function handlePinchHit(state, action) {
@@ -35,8 +35,12 @@ export function handlePinchHit(state, action) {
     }
 
     newPlayer.assignedPosition = oldPlayer.assignedPosition;
-    newPlayer.fielding = oldPlayer.fielding;
-    newPlayer.arm = oldPlayer.arm;
+    // Compute fielding from the NEW player's own card positions for the assigned position
+    const newPos = (oldPlayer.assignedPosition || '').replace(/-\d+$/, '');
+    const isCatcher = newPos === 'C';
+    const rawFielding = getFieldingFromSlot(newPlayer.positions || [], oldPlayer.assignedPosition);
+    newPlayer.fielding = isCatcher ? 0 : rawFielding;
+    newPlayer.arm = isCatcher ? rawFielding : 0;
 
     lineup[idx] = newPlayer;
     bench.splice(benchIdx, 1);

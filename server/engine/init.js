@@ -251,6 +251,7 @@ function toPlayer(slot) {
         assignedPosition: assignedPos,
         fielding: isCatcher ? 0 : rawFielding,
         arm: isCatcher ? rawFielding : 0,
+        positions: c.positions || [],
         isBackup: !!slot.isBackup,
     };
 }

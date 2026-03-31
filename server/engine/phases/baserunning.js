@@ -164,7 +164,7 @@ export function applyResult(state, outcome, batterId) {
     fieldingTeamUpdated = addPitcherStat(fieldingTeamUpdated, pitcherId, 'bf');
     if (isHit) fieldingTeamUpdated = addPitcherStat(fieldingTeamUpdated, pitcherId, 'h');
     if (outcome === 'W') fieldingTeamUpdated = addPitcherStat(fieldingTeamUpdated, pitcherId, 'bb');
-    if (outcome === 'SO' || outcome === 'PU') fieldingTeamUpdated = addPitcherStat(fieldingTeamUpdated, pitcherId, 'so');
+    if (outcome === 'SO') fieldingTeamUpdated = addPitcherStat(fieldingTeamUpdated, pitcherId, 'so');
     if (outcome === 'HR') fieldingTeamUpdated = addPitcherStat(fieldingTeamUpdated, pitcherId, 'hr');
     if (runs > 0) fieldingTeamUpdated = addPitcherStat(fieldingTeamUpdated, pitcherId, 'r', runs);
 
@@ -233,7 +233,7 @@ export function endHalfInning(state) {
             lastOutcome: null, pendingDpResult: null, extraBaseEligible: null, pendingExtraBaseResult: null,
             iconPrompt: null, halfInningClean: true, icon20UsedThisInning: false, gbOptions: null,
             pendingSteal: null, pendingStealResult: null,
-            controlModifier: s.rpActiveInning === state.inning ? s.controlModifier : 0,
+            controlModifier: (s.rpActiveInning === state.inning && s.rpActiveTeam === 'home') ? s.controlModifier : 0,
             gameLog: [...s.gameLog, `--- Bottom of ${state.inning} ---`],
         };
     }
@@ -248,7 +248,7 @@ export function endHalfInning(state) {
     while (away.runsPerInning.length < state.inning + 1) away.runsPerInning.push(0);
     while (home.runsPerInning.length < state.inning + 1) home.runsPerInning.push(0);
 
-    const newControlMod = (s.rpActiveInning === state.inning + 1) ? s.controlModifier : 0;
+    const newControlMod = (s.rpActiveInning === state.inning + 1 && s.rpActiveTeam === 'away') ? s.controlModifier : 0;
 
     return {
         ...s, awayTeam: away, homeTeam: home,

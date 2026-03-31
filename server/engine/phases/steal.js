@@ -4,6 +4,7 @@
 
 import { rollD20 } from '../dice.js';
 import { playerHasIcon, canUseIcon, recordIconUse } from '../icons.js';
+import { addBatterStat } from '../stats.js';
 import { enterPreAtBat } from './substitutions.js';
 import { endHalfInning } from './baserunning.js';
 
@@ -89,6 +90,7 @@ export function handleStealSbDecision(state, action) {
         // SB icon used — automatic safe steal, no roll
         let battingTeam = { ...state[battingSide] };
         battingTeam = recordIconUse(battingTeam, steal.runnerId, 'SB');
+        battingTeam = addBatterStat(battingTeam, steal.runnerId, 'sb');
         const bases = { ...state.bases };
         bases[steal.toBase] = bases[steal.fromBase];
         bases[steal.fromBase] = null;
@@ -170,9 +172,18 @@ export function resolveSteal(state, goldGloveCardId) {
         logs.push(`${steal.runnerName} caught stealing! Spd ${steal.runnerSpeed} vs d20(${roll})+Arm(${armTotal})=${defenseTotal}`);
     }
 
+    // Record SB/CS stats
+    let battingTeam = { ...state[battingSide] };
+    if (safe) {
+        battingTeam = addBatterStat(battingTeam, steal.runnerId, 'sb');
+    } else {
+        battingTeam = addBatterStat(battingTeam, steal.runnerId, 'cs');
+    }
+
     let newState = {
         ...state, bases, outs,
         [fieldingSide]: fieldingTeam,
+        [battingSide]: battingTeam,
         pendingSteal: null, pendingStealResult,
         gameLog: [...state.gameLog, ...logs],
     };
