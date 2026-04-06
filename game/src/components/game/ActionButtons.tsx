@@ -122,7 +122,6 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 // Collect buttons then center
                 const items: { type: string; width: number }[] = [];
                 if (canChangePitcher) items.push({ type: 'change', width: 160 });
-                if (!state.icon20UsedThisInning && fieldingTeam.pitcher.icons?.includes('20')) items.push({ type: '20', width: 150 });
                 if (state.inning > 6 && !state.rpActiveInning && fieldingTeam.pitcher.icons?.includes('RP')) items.push({ type: 'rp', width: 150 });
                 items.push({ type: 'skip', width: 100 });
                 const gap = 8;
@@ -137,12 +136,6 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                             <g key="change" className="roll-button" onClick={() => onShowSubPanel()} cursor="pointer">
                                 <rect x={x} y={ROW1} width={item.width} height={ROW1_H} rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
                                 <text x={x + item.width / 2} y={ROW1 + 27} textAnchor="middle" fontSize="15" fill="#002" fontWeight="900" fontFamily="Impact">CHANGE PITCHER</text>
-                            </g>
-                        );
-                        if (item.type === '20') return (
-                            <g key="20" className="roll-button" onClick={() => onAction({ type: 'USE_ICON', cardId: fieldingTeam.pitcher.cardId, icon: '20' })} cursor="pointer">
-                                <rect x={x} y={ROW1} width={item.width} height={ROW1_H} rx="6" fill="#60a5fa" stroke="#93c5fd" strokeWidth="1.5"/>
-                                <text x={x + item.width / 2} y={ROW1 + 27} textAnchor="middle" fontSize="15" fill="#002" fontWeight="900" fontFamily="Impact">USE 20 (+3)</text>
                             </g>
                         );
                         if (item.type === 'rp') return (
@@ -191,13 +184,30 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 </g>
             )}
 
-            {/* Pitch phase */}
-            {!state.isOver && isMyTurn && state.phase === 'pitch' && (
-                <g className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH' })} cursor="pointer">
-                    <rect x={CX - 100} y={ROW1} width="200" height={ROW1_H} rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
-                    <text x={CX} y={ROW1 + 28} textAnchor="middle" fontSize="22" fill="white" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="2">ROLL PITCH</text>
-                </g>
-            )}
+            {/* Pitch phase — with optional 20 icon */}
+            {!state.isOver && isMyTurn && state.phase === 'pitch' && (() => {
+                const has20 = !state.icon20UsedThisInning && fieldingTeam.pitcher.icons?.includes('20');
+                if (has20) {
+                    return (
+                        <g>
+                            <g className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH' })} cursor="pointer">
+                                <rect x={CX - 210} y={ROW1} width="200" height={ROW1_H} rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
+                                <text x={CX - 110} y={ROW1 + 28} textAnchor="middle" fontSize="20" fill="white" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="2">ROLL PITCH</text>
+                            </g>
+                            <g className="roll-button" onClick={() => { onAction({ type: 'USE_ICON', cardId: fieldingTeam.pitcher.cardId, icon: '20' }); }} cursor="pointer">
+                                <rect x={CX + 10} y={ROW1} width="200" height={ROW1_H} rx="8" fill="#60a5fa" stroke="#93c5fd" strokeWidth="2"/>
+                                <text x={CX + 110} y={ROW1 + 28} textAnchor="middle" fontSize="18" fill="#002" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="1">PITCH + 20 (+3)</text>
+                            </g>
+                        </g>
+                    );
+                }
+                return (
+                    <g className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH' })} cursor="pointer">
+                        <rect x={CX - 100} y={ROW1} width="200" height={ROW1_H} rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
+                        <text x={CX} y={ROW1 + 28} textAnchor="middle" fontSize="22" fill="white" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="2">ROLL PITCH</text>
+                    </g>
+                );
+            })()}
 
             {/* Swing phase */}
             {!state.isOver && isMyTurn && state.phase === 'swing' && (
@@ -302,8 +312,9 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                         if (state.gbOptions.canForceHome) buttons.push({ label: 'FORCE HOME', sub: 'Out at home, no run', choice: 'force_home', color: '#8b5cf6' });
                         if (state.gbOptions.canHoldThird) buttons.push({ label: 'HOLD 3RD', sub: 'No DP, roll at 1st', choice: 'hold', color: '#d4a018' });
                         if (state.gbOptions.canHoldRunners) buttons.push({ label: 'HOLD', sub: 'Roll for out at 1st', choice: 'hold', color: '#d4a018' });
-                        if (!state.gbOptions.canDP && !state.gbOptions.canHoldRunners && !state.gbOptions.canHoldThird) {
-                            buttons.push({ label: 'LET ADVANCE', sub: 'Runners advance', choice: 'dp', color: '#334155' });
+                        if (state.gbOptions.canAdvanceRunners) buttons.push({ label: 'ADVANCE', sub: 'Runners advance freely', choice: 'advance', color: '#334155' });
+                        if (!state.gbOptions.canDP && !state.gbOptions.canHoldRunners && !state.gbOptions.canHoldThird && !state.gbOptions.canAdvanceRunners) {
+                            buttons.push({ label: 'LET ADVANCE', sub: 'Runners advance', choice: 'advance', color: '#334155' });
                         }
                         const gPlayers = state.gbOptions.gPlayers || [];
                         const bw = 150, gap = 8;

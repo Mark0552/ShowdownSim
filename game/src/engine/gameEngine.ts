@@ -136,6 +136,7 @@ export interface GbOptions {
     canForceHome: boolean;
     canHoldThird: boolean;
     canHoldRunners: boolean;
+    canAdvanceRunners: boolean;
     gPlayers: GPlayerOption[];  // all infielders with unused G icon
 }
 

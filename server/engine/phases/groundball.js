@@ -21,6 +21,7 @@ export function buildGbOptions(state, bases) {
         canForceHome: !!(bases.first && bases.second && bases.third),
         canHoldThird: !!(bases.first && bases.third),
         canHoldRunners: !!(!bases.first && (bases.second || bases.third)),
+        canAdvanceRunners: !!(!bases.first && (bases.second || bases.third)),
         gPlayers,
     };
 }
@@ -124,6 +125,14 @@ export function handleGbDecision(state, action) {
                     // batter already placed at first above
                 }
             }
+            break;
+        }
+
+        case 'advance': {
+            // Let runners advance freely, batter is already out (no additional roll)
+            if (bases.third) { runs++; runnersScored.push(bases.third); logs.push('Runner scores from 3rd on groundout'); }
+            if (bases.second) { bases.third = bases.second; bases.second = null; logs.push('Runner on 2nd advances to 3rd'); }
+            pendingDpResult = { roll: 0, defenseTotal: 0, offenseSpeed: 0, isDP: false, goldGloveUsed: false, choice: 'advance' };
             break;
         }
 

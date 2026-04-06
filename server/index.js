@@ -221,7 +221,7 @@ const VALID_ACTIONS = {
     'defense_sub':       ['PITCHING_CHANGE', 'SKIP_SUB', 'USE_ICON'],
     'ibb_decision':      ['INTENTIONAL_WALK', 'SKIP_IBB'],
     'bunt_decision':     ['SAC_BUNT', 'SKIP_BUNT'],
-    'pitch':             ['ROLL_PITCH'],
+    'pitch':             ['ROLL_PITCH', 'USE_ICON'],
     'swing':             ['ROLL_SWING'],
     'result_icons':      ['USE_ICON', 'SKIP_ICONS'],
     'gb_decision':       ['GB_DECISION'],
