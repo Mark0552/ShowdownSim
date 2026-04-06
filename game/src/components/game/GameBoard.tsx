@@ -406,8 +406,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 <text x="875" y={BOT_Y + 14} textAnchor="middle" fontSize="9" fill="#d4a01860" fontWeight="bold" letterSpacing="2" fontFamily="Arial">DICE</text>
                 <text x="1225" y={BOT_Y + 14} textAnchor="middle" fontSize="9" fill="#d4a01860" fontWeight="bold" letterSpacing="2" fontFamily="Arial">RESULT</text>
 
-                {/* ACTION BUTTONS (left 50%, shift x by -350 to center in 0..700) */}
-                <g transform="translate(-350, 0)">
+                {/* ACTION BUTTONS (left 50%) */}
                 <ActionButtons
                     state={state}
                     myRole={myRole}
@@ -420,7 +419,6 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     outcomeNames={outcomeNames}
                     onShowSubPanel={() => setShowSubPanel(true)}
                 />
-                </g>
 
                 {/* DICE SECTION (center 25%: x=700..1050) — roll number display */}
                 {state.lastRoll && state.lastRollType && (
