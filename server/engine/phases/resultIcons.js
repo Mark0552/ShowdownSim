@@ -46,7 +46,7 @@ export function getPostResultIcons(state, outcome) {
 export function handleUseIcon(state, action) {
     const { cardId, icon } = action;
 
-    if (state.phase === 'pre_atbat' || state.phase === 'defense_sub' || state.phase === 'pitch') {
+    if (state.phase === 'pre_atbat' || state.phase === 'defense_sub' || state.phase === 'pitch' || state.phase === 'ibb_decision') {
         return handlePrePitchIcon(state, action);
     }
 

@@ -156,19 +156,56 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 );
             })()}
 
-            {/* IBB decision phase: defense can intentionally walk */}
-            {!state.isOver && isMyTurn && state.phase === 'ibb_decision' && (
-                <g>
-                    <g className="roll-button" onClick={() => onAction({ type: 'INTENTIONAL_WALK' })} cursor="pointer">
-                        <rect x={CX - 84} y={ROW1} width="160" height={ROW1_H} rx="6" fill="#f59e0b" stroke="#fbbf24" strokeWidth="1.5"/>
-                        <text x={CX - 4} y={ROW1 + 27} textAnchor="middle" fontSize="15" fill="#002" fontWeight="900" fontFamily="Impact">INTENTIONAL WALK</text>
+            {/* IBB decision phase — ROLL PITCH directly when bunt isn't available */}
+            {!state.isOver && isMyTurn && state.phase === 'ibb_decision' && (() => {
+                const bases = state.bases;
+                const canBunt = state.outs < 2 && (bases.first || bases.second) && !bases.third;
+                const has20 = !state.icon20UsedThisInning && fieldingTeam.pitcher.icons?.includes('20');
+                if (canBunt) {
+                    return (
+                        <g>
+                            <g className="roll-button" onClick={() => onAction({ type: 'INTENTIONAL_WALK' })} cursor="pointer">
+                                <rect x={CX - 180} y={ROW1} width="170" height={ROW1_H} rx="6" fill="#f59e0b" stroke="#fbbf24" strokeWidth="1.5"/>
+                                <text x={CX - 95} y={ROW1 + 27} textAnchor="middle" fontSize="14" fill="#002" fontWeight="900" fontFamily="Impact">INTENTIONAL WALK</text>
+                            </g>
+                            <g className="roll-button" onClick={() => onAction({ type: 'SKIP_IBB' })} cursor="pointer">
+                                <rect x={CX + 10} y={ROW1} width="140" height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
+                                <text x={CX + 80} y={ROW1 + 27} textAnchor="middle" fontSize="15" fill="#ccc" fontWeight="900" fontFamily="Impact">PITCH</text>
+                            </g>
+                        </g>
+                    );
+                }
+                if (has20) {
+                    return (
+                        <g>
+                            <g className="roll-button" onClick={() => onAction({ type: 'INTENTIONAL_WALK' })} cursor="pointer">
+                                <rect x={CX - 300} y={ROW1} width="160" height={ROW1_H} rx="6" fill="#f59e0b" stroke="#fbbf24" strokeWidth="1.5"/>
+                                <text x={CX - 220} y={ROW1 + 27} textAnchor="middle" fontSize="13" fill="#002" fontWeight="900" fontFamily="Impact">INTENTIONAL WALK</text>
+                            </g>
+                            <g className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH' })} cursor="pointer">
+                                <rect x={CX - 120} y={ROW1} width="160" height={ROW1_H} rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
+                                <text x={CX - 40} y={ROW1 + 28} textAnchor="middle" fontSize="18" fill="white" fontWeight="900" fontFamily="Impact">ROLL PITCH</text>
+                            </g>
+                            <g className="roll-button" onClick={() => { onAction({ type: 'USE_ICON', cardId: fieldingTeam.pitcher.cardId, icon: '20' }); }} cursor="pointer">
+                                <rect x={CX + 60} y={ROW1} width="180" height={ROW1_H} rx="8" fill="#60a5fa" stroke="#93c5fd" strokeWidth="2"/>
+                                <text x={CX + 150} y={ROW1 + 28} textAnchor="middle" fontSize="15" fill="#002" fontWeight="900" fontFamily="Impact">PITCH + 20 (+3)</text>
+                            </g>
+                        </g>
+                    );
+                }
+                return (
+                    <g>
+                        <g className="roll-button" onClick={() => onAction({ type: 'INTENTIONAL_WALK' })} cursor="pointer">
+                            <rect x={CX - 190} y={ROW1} width="170" height={ROW1_H} rx="6" fill="#f59e0b" stroke="#fbbf24" strokeWidth="1.5"/>
+                            <text x={CX - 105} y={ROW1 + 27} textAnchor="middle" fontSize="14" fill="#002" fontWeight="900" fontFamily="Impact">INTENTIONAL WALK</text>
+                        </g>
+                        <g className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH' })} cursor="pointer">
+                            <rect x={CX + 10} y={ROW1} width="180" height={ROW1_H} rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
+                            <text x={CX + 100} y={ROW1 + 28} textAnchor="middle" fontSize="20" fill="white" fontWeight="900" fontFamily="Impact" letterSpacing="2">ROLL PITCH</text>
+                        </g>
                     </g>
-                    <g className="roll-button" onClick={() => onAction({ type: 'SKIP_IBB' })} cursor="pointer">
-                        <rect x={CX + 84} y={ROW1} width="100" height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
-                        <text x={CX + 134} y={ROW1 + 27} textAnchor="middle" fontSize="15" fill="#ccc" fontWeight="900" fontFamily="Impact">PITCH</text>
-                    </g>
-                </g>
-            )}
+                );
+            })()}
 
             {/* Bunt decision phase: offense can sac bunt */}
             {!state.isOver && isMyTurn && state.phase === 'bunt_decision' && (
