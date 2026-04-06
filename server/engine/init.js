@@ -2,7 +2,7 @@
  * Game state initialization.
  */
 
-import { rollD20 } from './dice.js';
+import { rollD20, getRollSequence } from './dice.js';
 import { getFieldingFromSlot, computeFieldingTotals } from './fielding.js';
 import { enterPreAtBat } from './phases/substitutions.js';
 
@@ -77,6 +77,7 @@ export function initializeGame(homeLineupData, awayLineupData, homeUserId, awayU
         spRoll: spRollResult,
         lastRoll: null,
         lastRollType: null,
+        rollSequence: 0,
         // Win/Loss/Save tracking
         wlTracker: {
             homeWP: null, awayWP: null,  // potential winning pitcher for each team
@@ -115,6 +116,7 @@ export function handleRollStarters(state) {
         spRoll: spRoll,
         lastRoll: spRoll,
         lastRollType: 'sp',
+        rollSequence: getRollSequence(),
     };
 
     // Use enterPreAtBat to properly auto-skip phases with no options

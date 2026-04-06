@@ -237,6 +237,7 @@ export interface GameState {
     icon20UsedThisInning: boolean;      // 20 icon: once per inning
     rpActiveInning: number | null;      // RP icon: which inning it's active for
     rpActiveTeam?: string | null;       // RP icon: which team activated it ('home' | 'away')
+    rollSequence?: number;              // server-side counter incremented on each d20 roll
     wlTracker?: { homeWP: string | null; awayWP: string | null; homeLP: string | null; awayLP: string | null };
     // GB and steal state
     gbOptions: GbOptions | null;

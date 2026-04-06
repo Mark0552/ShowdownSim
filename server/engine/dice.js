@@ -2,8 +2,15 @@
  * Dice rolling and chart resolution helpers.
  */
 
+let _rollSequence = 0;
+
 export function rollD20() {
+    _rollSequence++;
     return Math.floor(Math.random() * 20) + 1;
+}
+
+export function getRollSequence() {
+    return _rollSequence;
 }
 
 export function parseRange(range) {

@@ -2,7 +2,7 @@
  * Pitch and swing phase handlers.
  */
 
-import { rollD20, resolveChart } from '../dice.js';
+import { rollD20, resolveChart, getRollSequence } from '../dice.js';
 import { getPostResultIcons } from './resultIcons.js';
 import { applyResult } from './baserunning.js';
 
@@ -75,6 +75,7 @@ export function handlePitch(state) {
         outsBeforeSwing: state.outs,
         lastRoll: roll,
         lastRollType: 'pitch',
+        rollSequence: getRollSequence(),
         gameLog: [...state.gameLog, ...logs],
     };
 }
@@ -102,6 +103,7 @@ export function handleSwing(state) {
         lastOutcome: outcome,
         lastRoll: roll,
         lastRollType: 'swing',
+        rollSequence: getRollSequence(),
         gameLog: [...state.gameLog, `Swing: ${roll} -> ${names[outcome] || outcome}`],
     };
 

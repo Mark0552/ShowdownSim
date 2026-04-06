@@ -107,7 +107,9 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const fatiguePenalty = Math.max(0, inningsPitching - effectiveIp);
     const hasRunners = !!(state.bases.first || state.bases.second || state.bases.third);
 
-    const rollKey = `${state.lastRollType}-${state.lastRoll}-${state.inning}-${state.halfInning}-${state.outs}-${battingTeam.currentBatterIndex}`;
+    // Use rollSequence (server-incremented only on actual d20 rolls) to avoid
+    // animating again when state changes (e.g., declining V icon)
+    const rollKey = `${state.rollSequence ?? 0}`;
     if (state.lastRoll && rollKey !== prevRollKeyRef.current) { prevRollKeyRef.current = rollKey; if (!diceAnimating) setDiceAnimating(true); }
 
     const renderIcons = (player: PlayerSlot, team: typeof state.homeTeam, xPos: number, yPos: number) => {
