@@ -74,10 +74,10 @@ export default function DiceRoll({ roll, rollType, triggerKey, onAnimationComple
             ref={containerRef}
             style={{
                 position: 'absolute',
-                top: '10%',
-                left: '30%',
-                width: 550,
-                height: 500,
+                left: '20.7%',   // matches SVG field x=290 in 1400 viewBox
+                top: '8.6%',     // matches SVG field y=82 in 950 viewBox
+                width: '58.6%',  // matches SVG field width 820/1400
+                height: '72.2%', // matches SVG field height 686/950
                 zIndex: 1200,
                 pointerEvents: 'none',
             }}
