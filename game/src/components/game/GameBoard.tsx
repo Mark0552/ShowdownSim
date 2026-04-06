@@ -325,11 +325,12 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             <rect x={innX + 50} y={sbY + 34} width="36" height="27" rx="3" fill={state.halfInning === 'bottom' ? '#002868' : '#0a1428'} stroke={state.halfInning === 'bottom' ? '#d4a018' : '#d4a01860'} strokeWidth="1"/>
                             <text x={innX + 68} y={sbY + 52} textAnchor="middle" fontSize="11" fill={state.halfInning === 'bottom' ? 'white' : '#2a4a70'} fontWeight="bold" fontFamily="Impact">BOT</text>
 
-                            {/* Outs (below inning) */}
-                            <text x={innX + 43} y={sbY + 74} textAnchor="middle" fontSize="9" fill="#d4a018" fontWeight="bold" letterSpacing="1" fontFamily="Arial Black">OUTS</text>
+                            {/* Outs (right of TOP/BOT) */}
+                            <text x={innX + 100} y={sbY + 12} fontSize="8" fill="#d4a018" fontWeight="bold" letterSpacing="1" fontFamily="Arial Black">OUTS</text>
                             {[0, 1, 2].map(i => (
                                 <g key={`out-${i}`}>
-                                    <circle cx={innX + 10 + i * 30} cy={sbY + 74} r="3" fill={state.outs > i ? '#ff3030' : '#140608'} stroke="#d4a018" strokeWidth="1"/>
+                                    <circle cx={innX + 100 + i * 28} cy={sbY + 36} r="10" fill={state.outs > i ? '#cc2020' : '#140608'} stroke="#d4a018" strokeWidth="1.5"/>
+                                    <circle cx={innX + 100 + i * 28} cy={sbY + 36} r="6" fill={state.outs > i ? '#ff3030' : '#0e0408'}/>
                                 </g>
                             ))}
                         </g>

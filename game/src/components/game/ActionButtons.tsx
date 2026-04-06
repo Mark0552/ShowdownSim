@@ -15,10 +15,12 @@ interface ActionButtonsProps {
 
 // Layout constants for the bottom-left actions section (x=2..700, y=750..948)
 const CX = 350;       // center of actions section
-const ROW1 = 795;     // main button row y
+const BOT_TOP = 770;  // bottom bar top
+const BOT_H = 178;    // bottom bar height
 const ROW1_H = 52;    // button height (taller for 2-line labels)
-const ROW2 = 858;     // secondary row (G icons, runner details, etc.)
-const LABEL_Y = 780;  // context label y
+const ROW1 = BOT_TOP + (BOT_H - ROW1_H) / 2; // vertically centered = 833
+const ROW2 = ROW1 + ROW1_H + 6; // secondary row below buttons
+const LABEL_Y = ROW1 - 16;  // context label above buttons
 
 /** All phase-specific action button groups rendered as an SVG <g> element */
 export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onAction, battingTeam, fieldingTeam, hasRunners, outcomeNames, onShowSubPanel }: ActionButtonsProps) {
@@ -200,10 +202,14 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                     });
                 };
 
+                const totalRows = row1Items.length > 0 ? 2 : 1;
+                const rowGap = 6;
+                const totalH = totalRows * ROW1_H + (totalRows - 1) * rowGap;
+                const startY = BOT_TOP + (BOT_H - totalH) / 2;
                 return (
                     <g>
-                        {row1Items.length > 0 && renderRow(row1Items, ROW1 - 50)}
-                        {renderRow(row2Items, row1Items.length > 0 ? ROW1 : ROW1)}
+                        {row1Items.length > 0 && renderRow(row1Items, startY)}
+                        {renderRow(row2Items, row1Items.length > 0 ? startY + ROW1_H + rowGap : startY)}
                     </g>
                 );
             })()}
