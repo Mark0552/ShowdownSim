@@ -19,7 +19,7 @@ export function buildGbOptions(state, bases) {
         hasRunnerThird: !!bases.third,
         canDP: !!bases.first,
         canForceHome: !!(bases.first && bases.second && bases.third),
-        canHoldThird: !!(bases.first && bases.third),
+        canHoldThird: !!(bases.first && bases.third && !bases.second),
         canHoldRunners: !!(!bases.first && (bases.second || bases.third)),
         canAdvanceRunners: !!(!bases.first && (bases.second || bases.third)),
         gPlayers,
