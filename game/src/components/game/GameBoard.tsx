@@ -30,13 +30,14 @@ const PW = 360;        // panel width
 const DX = PW;         // diamond area starts
 const DW = 1400 - 2 * PW; // diamond area width = 680
 const HX = 1400 - PW; // home panel starts = 1040
-const TOP = 50;        // top bar height
-const MAIN_TOP = 52;
-const MAIN_BOT = 748;
-const BOT_Y = 750;     // bottom bar starts
+const TOP = 80;        // top bar height (taller for 3-row scoreboard)
+const MAIN_TOP = 82;
+const MAIN_BOT = 768;
+const BOT_Y = 770;     // bottom bar starts
 
-// Diamond transform: scale 680-wide center to fit ~681px diamond
-// scale = min(680/1830, (748-52)/1830) = min(0.372, 0.380) = 0.372
+// Diamond transform: scale to fit field area exactly
+// Field: 680 wide x 686 tall. Diamond: 1830x1830.
+// scale = min(680/1830, 686/1830) = min(0.372, 0.375) = 0.372
 const DS = 0.372;
 const D_OFF_X = DX;
 const D_OFF_Y = MAIN_TOP + ((MAIN_BOT - MAIN_TOP) - 1830 * DS) / 2; // vertically centered
@@ -259,7 +260,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
 
                 <rect width="1400" height="950" fill="#050c1a"/>
 
-                {/* ====== TOP BAR (y=0..50) ====== */}
+                {/* ====== TOP BAR (y=0..80) ====== */}
                 <rect x="0" y="0" width="1400" height={TOP} fill="url(#scoreBg)" stroke="#d4a018" strokeWidth="1"/>
 
                 {/* Exit button — left */}
@@ -268,74 +269,81 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     <text x="48" y="30" textAnchor="middle" fontSize="12" fill="#e94560" fontWeight="bold" fontFamily="Arial">EXIT GAME</text>
                 </g>
 
-                {/* Centered scoreboard with BOTH teams */}
+                {/* Centered scoreboard + inning + outs as one unit */}
                 {(() => {
-                    const colW = 36, teamW = 90, totalW = teamW + 9 * colW + 2 * 40; // team + 9 innings + R + H
-                    const sbX = (1400 - totalW) / 2;
-                    const hdrH = 16, rowH = 16;
+                    const colW = 40, teamW = 100, rhW = 44;
+                    const sbTableW = teamW + 9 * colW + 2 * rhW; // scoreboard table width
+                    const innW = 130; // inning + top/bot + outs section
+                    const gapBetween = 16;
+                    const unitW = sbTableW + gapBetween + innW;
+                    const unitX = (1400 - unitW) / 2;
+                    const hdrH = 20, rowH = 22;
+                    const sbY = 6; // top padding
+
                     const renderRow = (team: typeof state.awayTeam, teamName: string, ry: number) => (
                         <g>
-                            <rect x={sbX} y={ry} width={teamW} height={rowH} fill="#0c1a40"/>
-                            <text x={sbX + teamW / 2} y={ry + 12} textAnchor="middle" fontSize="10" fill="#8aade0" fontWeight="bold" fontFamily="Arial">{teamName.slice(0, 8).toUpperCase()}</text>
+                            <rect x={unitX} y={ry} width={teamW} height={rowH} fill="#0c1a40"/>
+                            <text x={unitX + teamW / 2} y={ry + 16} textAnchor="middle" fontSize="12" fill="#8aade0" fontWeight="bold" fontFamily="Arial">{teamName.slice(0, 10).toUpperCase()}</text>
                             {innings.slice(0, 9).map((inn, i) => (
                                 <g key={`r-${ry}-${inn}`}>
-                                    <rect x={sbX + teamW + i * colW} y={ry} width={colW} height={rowH} fill={i % 2 === 0 ? '#0a1830' : '#071024'}/>
-                                    <text x={sbX + teamW + i * colW + colW / 2} y={ry + 12} textAnchor="middle" fontSize="11" fill={team.runsPerInning[i] !== undefined ? '#c8d8f8' : '#1e3a7a'} fontWeight="bold" fontFamily="Arial">{team.runsPerInning[i] ?? '\u2014'}</text>
+                                    <rect x={unitX + teamW + i * colW} y={ry} width={colW} height={rowH} fill={i % 2 === 0 ? '#0a1830' : '#071024'}/>
+                                    <text x={unitX + teamW + i * colW + colW / 2} y={ry + 16} textAnchor="middle" fontSize="14" fill={team.runsPerInning[i] !== undefined ? '#c8d8f8' : '#1e3a7a'} fontWeight="bold" fontFamily="Arial">{team.runsPerInning[i] ?? '\u2014'}</text>
                                 </g>
                             ))}
-                            <rect x={sbX + teamW + 9 * colW} y={ry} width="40" height={rowH} fill="#3a0a0a"/>
-                            <text x={sbX + teamW + 9 * colW + 20} y={ry + 12} textAnchor="middle" fontSize="12" fill="white" fontWeight="bold" fontFamily="Impact">{team === state.awayTeam ? state.score.away : state.score.home}</text>
-                            <rect x={sbX + teamW + 9 * colW + 40} y={ry} width="40" height={rowH} fill="#081222"/>
-                            <text x={sbX + teamW + 9 * colW + 60} y={ry + 12} textAnchor="middle" fontSize="12" fill="#c8d8f8" fontWeight="bold" fontFamily="Impact">{team.hits || 0}</text>
+                            <rect x={unitX + teamW + 9 * colW} y={ry} width={rhW} height={rowH} fill="#3a0a0a"/>
+                            <text x={unitX + teamW + 9 * colW + rhW / 2} y={ry + 16} textAnchor="middle" fontSize="16" fill="white" fontWeight="bold" fontFamily="Impact">{team === state.awayTeam ? state.score.away : state.score.home}</text>
+                            <rect x={unitX + teamW + 9 * colW + rhW} y={ry} width={rhW} height={rowH} fill="#081222"/>
+                            <text x={unitX + teamW + 9 * colW + rhW + rhW / 2} y={ry + 16} textAnchor="middle" fontSize="16" fill="#c8d8f8" fontWeight="bold" fontFamily="Impact">{team.hits || 0}</text>
                         </g>
                     );
+
+                    const innX = unitX + sbTableW + gapBetween; // inning section start
                     return (
                         <g>
-                            {/* Header row */}
-                            <rect x={sbX} y="2" width={teamW} height={hdrH} rx="2" fill="#002868"/>
-                            <text x={sbX + teamW / 2} y="13" textAnchor="middle" fontSize="9" fill="white" fontWeight="bold" fontFamily="Arial">TEAM</text>
+                            {/* Scoreboard header */}
+                            <rect x={unitX} y={sbY} width={teamW} height={hdrH} rx="2" fill="#002868"/>
+                            <text x={unitX + teamW / 2} y={sbY + 14} textAnchor="middle" fontSize="10" fill="white" fontWeight="bold" fontFamily="Arial">TEAM</text>
                             {innings.slice(0, 9).map((inn, i) => (
                                 <g key={`hdr-${inn}`}>
-                                    <rect x={sbX + teamW + i * colW} y="2" width={colW} height={hdrH} fill={i % 2 === 0 ? '#002868' : '#001e50'}/>
-                                    <text x={sbX + teamW + i * colW + colW / 2} y="13" textAnchor="middle" fontSize="9" fill="#c8d8f8" fontWeight="bold" fontFamily="Arial">{inn}</text>
+                                    <rect x={unitX + teamW + i * colW} y={sbY} width={colW} height={hdrH} fill={i % 2 === 0 ? '#002868' : '#001e50'}/>
+                                    <text x={unitX + teamW + i * colW + colW / 2} y={sbY + 14} textAnchor="middle" fontSize="10" fill="#c8d8f8" fontWeight="bold" fontFamily="Arial">{inn}</text>
                                 </g>
                             ))}
-                            <rect x={sbX + teamW + 9 * colW} y="2" width="40" height={hdrH} rx="2" fill="#9a0000"/>
-                            <text x={sbX + teamW + 9 * colW + 20} y="13" textAnchor="middle" fontSize="9" fill="white" fontWeight="bold" fontFamily="Arial">R</text>
-                            <rect x={sbX + teamW + 9 * colW + 40} y="2" width="40" height={hdrH} rx="2" fill="#7a0000"/>
-                            <text x={sbX + teamW + 9 * colW + 60} y="13" textAnchor="middle" fontSize="9" fill="white" fontWeight="bold" fontFamily="Arial">H</text>
-                            {/* Away row */}
-                            {renderRow(state.awayTeam, awayName, 2 + hdrH + 1)}
-                            {/* Home row */}
-                            {renderRow(state.homeTeam, homeName, 2 + hdrH + 1 + rowH + 1)}
+                            <rect x={unitX + teamW + 9 * colW} y={sbY} width={rhW} height={hdrH} rx="2" fill="#9a0000"/>
+                            <text x={unitX + teamW + 9 * colW + rhW / 2} y={sbY + 14} textAnchor="middle" fontSize="10" fill="white" fontWeight="bold" fontFamily="Arial">R</text>
+                            <rect x={unitX + teamW + 9 * colW + rhW} y={sbY} width={rhW} height={hdrH} rx="2" fill="#7a0000"/>
+                            <text x={unitX + teamW + 9 * colW + rhW + rhW / 2} y={sbY + 14} textAnchor="middle" fontSize="10" fill="white" fontWeight="bold" fontFamily="Arial">H</text>
+                            {/* Team rows */}
+                            {renderRow(state.awayTeam, awayName, sbY + hdrH + 1)}
+                            {renderRow(state.homeTeam, homeName, sbY + hdrH + 1 + rowH + 1)}
+
+                            {/* Inning indicator (right of scoreboard table) */}
+                            <rect x={innX} y={sbY + 4} width="46" height="58" rx="5" fill="#040c1a" stroke="#d4a018" strokeWidth="1.5"/>
+                            <text x={innX + 23} y={sbY + 42} textAnchor="middle" fontSize="32" fill="white" fontWeight="900" fontFamily="Impact">{state.inning}</text>
+                            <rect x={innX + 50} y={sbY + 4} width="36" height="27" rx="3" fill={state.halfInning === 'top' ? '#002868' : '#0a1428'} stroke={state.halfInning === 'top' ? '#d4a018' : '#d4a01860'} strokeWidth="1"/>
+                            <text x={innX + 68} y={sbY + 22} textAnchor="middle" fontSize="11" fill={state.halfInning === 'top' ? 'white' : '#2a4a70'} fontWeight="bold" fontFamily="Impact">TOP</text>
+                            <rect x={innX + 50} y={sbY + 34} width="36" height="27" rx="3" fill={state.halfInning === 'bottom' ? '#002868' : '#0a1428'} stroke={state.halfInning === 'bottom' ? '#d4a018' : '#d4a01860'} strokeWidth="1"/>
+                            <text x={innX + 68} y={sbY + 52} textAnchor="middle" fontSize="11" fill={state.halfInning === 'bottom' ? 'white' : '#2a4a70'} fontWeight="bold" fontFamily="Impact">BOT</text>
+
+                            {/* Outs (below inning) */}
+                            <text x={innX + 43} y={sbY + 74} textAnchor="middle" fontSize="9" fill="#d4a018" fontWeight="bold" letterSpacing="1" fontFamily="Arial Black">OUTS</text>
+                            {[0, 1, 2].map(i => (
+                                <g key={`out-${i}`}>
+                                    <circle cx={innX + 10 + i * 30} cy={sbY + 74} r="3" fill={state.outs > i ? '#ff3030' : '#140608'} stroke="#d4a018" strokeWidth="1"/>
+                                </g>
+                            ))}
                         </g>
                     );
                 })()}
 
-                {/* Inning / Outs — right of scoreboard */}
-                <rect x="1100" y="4" width="42" height="42" rx="5" fill="#040c1a" stroke="#d4a018" strokeWidth="1.5"/>
-                <text x="1121" y="33" textAnchor="middle" fontSize="28" fill="white" fontWeight="900" fontFamily="Impact">{state.inning}</text>
-                <rect x="1146" y="4" width="38" height="20" rx="3" fill={state.halfInning === 'top' ? '#002868' : '#0a1428'} stroke={state.halfInning === 'top' ? '#d4a018' : '#d4a01860'} strokeWidth="1"/>
-                <text x="1165" y="18" textAnchor="middle" fontSize="10" fill={state.halfInning === 'top' ? 'white' : '#2a4a70'} fontWeight="bold" fontFamily="Impact">TOP</text>
-                <rect x="1146" y="26" width="38" height="20" rx="3" fill={state.halfInning === 'bottom' ? '#002868' : '#0a1428'} stroke={state.halfInning === 'bottom' ? '#d4a018' : '#d4a01860'} strokeWidth="1"/>
-                <text x="1165" y="40" textAnchor="middle" fontSize="10" fill={state.halfInning === 'bottom' ? 'white' : '#2a4a70'} fontWeight="bold" fontFamily="Impact">BOT</text>
-
-                <text x="1195" y="12" fontSize="9" fill="#d4a018" fontWeight="bold" letterSpacing="1" fontFamily="Arial Black">OUTS</text>
-                {[0, 1, 2].map(i => (
-                    <g key={`out-${i}`}>
-                        <circle cx={1206 + i * 34} cy="34" r="14" fill={state.outs > i ? '#cc2020' : '#140608'} stroke="#d4a018" strokeWidth="1.5"/>
-                        <circle cx={1206 + i * 34} cy="34" r="9" fill={state.outs > i ? '#ff3030' : '#0e0408'}/>
-                    </g>
-                ))}
-
-                {/* Log / Score — right (larger) */}
+                {/* Log / Score — top right */}
                 <g cursor="pointer" onClick={() => { setShowGameLog(!showGameLog); setShowStats(false); }}>
-                    <rect x="1300" y="4" width="44" height="20" rx="4" fill="#0a1428" stroke="#d4a018" strokeWidth="1"/>
-                    <text x="1322" y="18" textAnchor="middle" fontSize="10" fill="#d4a018" fontWeight="bold" fontFamily="Arial">{showGameLog ? 'CLOSE' : 'LOG'}</text>
+                    <rect x="1300" y="8" width="44" height="28" rx="4" fill="#0a1428" stroke="#d4a018" strokeWidth="1"/>
+                    <text x="1322" y="26" textAnchor="middle" fontSize="11" fill="#d4a018" fontWeight="bold" fontFamily="Arial">{showGameLog ? 'CLOSE' : 'LOG'}</text>
                 </g>
                 <g cursor="pointer" onClick={() => { setShowStats(!showStats); setShowGameLog(false); }}>
-                    <rect x="1348" y="4" width="48" height="20" rx="4" fill="#0a1428" stroke="#d4a018" strokeWidth="1"/>
-                    <text x="1372" y="18" textAnchor="middle" fontSize="10" fill="#d4a018" fontWeight="bold" fontFamily="Arial">{showStats ? 'CLOSE' : 'SCORE'}</text>
+                    <rect x="1348" y="8" width="48" height="28" rx="4" fill="#0a1428" stroke="#d4a018" strokeWidth="1"/>
+                    <text x="1372" y="26" textAnchor="middle" fontSize="11" fill="#d4a018" fontWeight="bold" fontFamily="Arial">{showStats ? 'CLOSE' : 'SCORE'}</text>
                 </g>
 
                 <line x1="0" y1={TOP} x2="1400" y2={TOP} stroke="#d4a018" strokeWidth="1.5"/>
@@ -437,21 +445,21 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     onShowSubPanel={() => setShowSubPanel(true)}
                 />
 
-                {/* DICE SECTION (center 25%: x=700..1050) — roll number display */}
+                {/* DICE SECTION (center 25%: x=700..1050) — centered vertically */}
                 {state.lastRoll && state.lastRollType && (
                     <g>
-                        <text x="875" y={BOT_Y + 60} textAnchor="middle" fontSize="14" fill={state.lastRollType === 'pitch' ? '#e94560' : state.lastRollType === 'swing' ? '#4ade80' : '#d4a018'} fontWeight="bold" fontFamily="Impact" letterSpacing="2">
+                        <text x="875" y={BOT_Y + 30} textAnchor="middle" fontSize="16" fill={state.lastRollType === 'pitch' ? '#e94560' : state.lastRollType === 'swing' ? '#4ade80' : '#d4a018'} fontWeight="bold" fontFamily="Impact" letterSpacing="3">
                             {state.lastRollType === 'pitch' ? 'PITCH' : state.lastRollType === 'swing' ? 'SWING' : state.lastRollType?.toUpperCase()}
                         </text>
-                        <rect x="840" y={BOT_Y + 70} width="70" height="50" rx="6" fill="#040c1a" stroke="#d4a018" strokeWidth="2"/>
-                        <text x="875" y={BOT_Y + 106} textAnchor="middle" fontSize="32" fill="white" fontWeight="900" fontFamily="Impact">{state.lastRoll}</text>
-                        {/* Pitch details */}
+                        <rect x="830" y={BOT_Y + 38} width="90" height="64" rx="8" fill="#040c1a" stroke="#d4a018" strokeWidth="2.5"/>
+                        <text x="875" y={BOT_Y + 84} textAnchor="middle" fontSize="42" fill="white" fontWeight="900" fontFamily="Impact">{state.lastRoll}</text>
+                        {/* Pitch details — doubled text size */}
                         {state.lastPitchRoll > 0 && (
                             <g>
-                                <text x="875" y={BOT_Y + 138} textAnchor="middle" fontSize="10" fill="#aaa" fontFamily="monospace">
+                                <text x="875" y={BOT_Y + 124} textAnchor="middle" fontSize="14" fill="#aaa" fontFamily="monospace">
                                     {state.lastPitchRoll}+{pitcher.control || 0}{state.fatiguePenalty ? `-${state.fatiguePenalty}` : ''}{state.controlModifier ? `+${state.controlModifier}` : ''}={state.lastPitchTotal} vs OB {batter.onBase}
                                 </text>
-                                <text x="875" y={BOT_Y + 152} textAnchor="middle" fontSize="10" fill={state.usedPitcherChart ? '#60a5fa' : '#4ade80'} fontFamily="monospace" fontWeight="bold">
+                                <text x="875" y={BOT_Y + 144} textAnchor="middle" fontSize="14" fill={state.usedPitcherChart ? '#60a5fa' : '#4ade80'} fontFamily="monospace" fontWeight="bold">
                                     {'\u2192'} {state.usedPitcherChart ? "Pitcher's chart" : "Batter's chart"}{state.lastSwingRoll > 0 ? `  Swing: ${state.lastSwingRoll}` : ''}
                                 </text>
                             </g>
@@ -459,37 +467,50 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     </g>
                 )}
 
-                {/* RESULT SECTION (right 25%: x=1050..1400) */}
+                {/* RESULT SECTION (right 25%: x=1050..1400) — centered */}
                 {state.lastOutcome && (
                     <g>
-                        <rect x="1070" y={BOT_Y + 40} width="310" height="50" rx="8" fill={
+                        <rect x="1070" y={BOT_Y + 24} width="310" height="54" rx="8" fill={
                             ['SO','GB','FB','PU'].includes(state.lastOutcome) ? 'rgba(200,30,30,0.9)' :
                             state.lastOutcome === 'HR' ? 'rgba(233,69,96,0.95)' : 'rgba(34,180,80,0.9)'
                         }/>
-                        <text x="1225" y={BOT_Y + 73} textAnchor="middle" fontSize="26" fill="white" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="3">
+                        <text x="1225" y={BOT_Y + 60} textAnchor="middle" fontSize="28" fill="white" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="3">
                             {outcomeNames[state.lastOutcome] || state.lastOutcome}
                         </text>
                     </g>
                 )}
                 {state.pendingDpResult && (
                     <g>
-                        <rect x="1070" y={BOT_Y + 96} width="310" height="40" rx="6" fill={state.pendingDpResult.isDP ? 'rgba(200,30,30,0.85)' : 'rgba(34,180,80,0.85)'}/>
-                        <text x="1225" y={BOT_Y + 114} textAnchor="middle" fontSize="13" fill="white" fontWeight="bold" fontFamily="Impact">{state.pendingDpResult.isDP ? 'DOUBLE PLAY!' : 'DP AVOIDED'}</text>
-                        <text x="1225" y={BOT_Y + 130} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.8)" fontFamily="monospace">d20({state.pendingDpResult.roll})+IF({state.pendingDpResult.defenseTotal - state.pendingDpResult.roll})={state.pendingDpResult.defenseTotal} vs Spd {state.pendingDpResult.offenseSpeed}</text>
+                        {(() => {
+                            const dp = state.pendingDpResult;
+                            let label = 'BATTER SAFE';
+                            let color = 'rgba(34,180,80,0.85)';
+                            if (dp.isDP) { label = 'DOUBLE PLAY!'; color = 'rgba(200,30,30,0.85)'; }
+                            else if (dp.choice === 'dp' && !dp.isDP) { label = 'DP AVOIDED — BATTER SAFE'; }
+                            else if (dp.choice === 'hold' && dp.defenseTotal > dp.offenseSpeed) { label = 'OUT AT 1ST — RUNNERS HELD'; color = 'rgba(200,30,30,0.85)'; }
+                            else if (dp.choice === 'hold') { label = 'BATTER SAFE — RUNNERS HELD'; }
+                            else if (dp.choice === 'force_home') { label = 'FORCE OUT AT HOME'; color = 'rgba(200,30,30,0.85)'; }
+                            else if (dp.choice === 'advance') { label = 'RUNNERS ADVANCE'; }
+                            return (<>
+                                <rect x="1070" y={BOT_Y + 84} width="310" height="40" rx="6" fill={color}/>
+                                <text x="1225" y={BOT_Y + 102} textAnchor="middle" fontSize="12" fill="white" fontWeight="bold" fontFamily="Impact">{label}</text>
+                            </>);
+                        })()}
+                        <text x="1225" y={BOT_Y + 118} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.8)" fontFamily="monospace">d20({state.pendingDpResult.roll})+IF({state.pendingDpResult.defenseTotal - state.pendingDpResult.roll})={state.pendingDpResult.defenseTotal} vs Spd {state.pendingDpResult.offenseSpeed}</text>
                     </g>
                 )}
                 {state.pendingExtraBaseResult && (
                     <g>
-                        <rect x="1070" y={BOT_Y + 96} width="310" height="40" rx="6" fill={state.pendingExtraBaseResult.safe ? 'rgba(34,180,80,0.85)' : 'rgba(200,30,30,0.85)'}/>
-                        <text x="1225" y={BOT_Y + 114} textAnchor="middle" fontSize="13" fill="white" fontWeight="bold" fontFamily="Impact">{state.pendingExtraBaseResult.safe ? `${state.pendingExtraBaseResult.runnerName} SAFE!` : `${state.pendingExtraBaseResult.runnerName} OUT!`}</text>
-                        <text x="1225" y={BOT_Y + 130} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.8)" fontFamily="monospace">Spd {state.pendingExtraBaseResult.runnerSpeed} vs d20({state.pendingExtraBaseResult.roll})+OF={state.pendingExtraBaseResult.defenseTotal}</text>
+                        <rect x="1070" y={BOT_Y + 84} width="310" height="40" rx="6" fill={state.pendingExtraBaseResult.safe ? 'rgba(34,180,80,0.85)' : 'rgba(200,30,30,0.85)'}/>
+                        <text x="1225" y={BOT_Y + 102} textAnchor="middle" fontSize="13" fill="white" fontWeight="bold" fontFamily="Impact">{state.pendingExtraBaseResult.safe ? `${state.pendingExtraBaseResult.runnerName} SAFE!` : `${state.pendingExtraBaseResult.runnerName} OUT!`}</text>
+                        <text x="1225" y={BOT_Y + 118} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.8)" fontFamily="monospace">Spd {state.pendingExtraBaseResult.runnerSpeed} vs d20({state.pendingExtraBaseResult.roll})+OF={state.pendingExtraBaseResult.defenseTotal}</text>
                     </g>
                 )}
                 {state.pendingStealResult && (
                     <g>
-                        <rect x="1070" y={BOT_Y + 96} width="310" height="40" rx="6" fill={state.pendingStealResult.safe ? 'rgba(34,180,80,0.85)' : 'rgba(200,30,30,0.85)'}/>
-                        <text x="1225" y={BOT_Y + 114} textAnchor="middle" fontSize="13" fill="white" fontWeight="bold" fontFamily="Impact">{state.pendingStealResult.safe ? `${state.pendingStealResult.runnerName} SAFE!` : `${state.pendingStealResult.runnerName} CAUGHT!`}</text>
-                        <text x="1225" y={BOT_Y + 130} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.8)" fontFamily="monospace">Spd {state.pendingStealResult.runnerSpeed} vs d20({state.pendingStealResult.roll})+Arm={state.pendingStealResult.defenseTotal}</text>
+                        <rect x="1070" y={BOT_Y + 84} width="310" height="40" rx="6" fill={state.pendingStealResult.safe ? 'rgba(34,180,80,0.85)' : 'rgba(200,30,30,0.85)'}/>
+                        <text x="1225" y={BOT_Y + 102} textAnchor="middle" fontSize="13" fill="white" fontWeight="bold" fontFamily="Impact">{state.pendingStealResult.safe ? `${state.pendingStealResult.runnerName} SAFE!` : `${state.pendingStealResult.runnerName} CAUGHT!`}</text>
+                        <text x="1225" y={BOT_Y + 118} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.8)" fontFamily="monospace">Spd {state.pendingStealResult.runnerSpeed} vs d20({state.pendingStealResult.roll})+Arm={state.pendingStealResult.defenseTotal}</text>
                     </g>
                 )}
             </svg>

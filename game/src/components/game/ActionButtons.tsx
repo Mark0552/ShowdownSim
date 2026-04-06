@@ -406,7 +406,7 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                                     <text x={startX + i * (bw + gap) + bw / 2} y={ROW1 + 18} textAnchor="middle" fontSize="14" fill="white" fontWeight="bold" fontFamily="Arial">{btn.label}</text>
                                     <text x={startX + i * (bw + gap) + bw / 2} y={ROW1 + 34} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.6)" fontFamily="Arial">{btn.sub}</text>
                                 </g>
-                                {btn.choice !== 'force_home' && gPlayers.map((gp, gi) => (
+                                {btn.choice !== 'force_home' && btn.choice !== 'advance' && gPlayers.map((gp, gi) => (
                                     <g key={`gb-g-${i}-${gi}`} className="roll-button" onClick={() => onAction({ type: 'GB_DECISION', choice: btn.choice as any, goldGloveCardId: gp.cardId })} cursor="pointer">
                                         <rect x={startX + i * (bw + gap)} y={ROW2 + gi * 22} width={bw} height="18" rx="3" fill="#d4a018" stroke="#f0c840" strokeWidth="1"/>
                                         <text x={startX + i * (bw + gap) + bw / 2} y={ROW2 + 14 + gi * 22} textAnchor="middle" fontSize="11" fill="#002" fontWeight="bold" fontFamily="Arial">+ G: {gp.name} ({gp.position})</text>
