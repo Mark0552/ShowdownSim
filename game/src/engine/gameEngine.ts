@@ -236,6 +236,7 @@ export interface GameState {
     halfInningClean: boolean;           // for CY icon: true if no runners reached base
     icon20UsedThisInning: boolean;      // 20 icon: once per inning
     rpActiveInning: number | null;      // RP icon: which inning it's active for
+    rpActiveTeam?: string | null;       // RP icon: which team activated it ('home' | 'away')
     // GB and steal state
     gbOptions: GbOptions | null;
     pendingSteal: StealAttempt | null;

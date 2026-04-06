@@ -122,44 +122,24 @@ export function handleSkipSub(state) {
         }
     }
     if (state.phase === 'defense_sub') {
-        return enterIBBPhase(state);
+        return enterBuntOrPitch(state);
     }
     return state;
 }
 
-/** Enter defense_sub phase if defense has meaningful options, otherwise auto-skip */
+/** Enter defense_sub phase — defense always gets this phase (IBB is always an option) */
 function enterDefenseSub(state) {
-    const defSide = state.halfInning === 'top' ? 'homeTeam' : 'awayTeam';
-    const fieldingTeam = state[defSide];
-
-    // Check if pitcher change is available
-    const hasRelieversInBullpen = fieldingTeam.bullpen.some(p => p.role !== 'Starter');
-    const isStarter = fieldingTeam.pitcher.role === 'Starter' && fieldingTeam.pitcherEntryInning === 1;
-    const battingSideKey = state.halfInning === 'top' ? 'away' : 'home';
-    const canRemoveStarter = !isStarter || state.inning >= 5 || state.score[battingSideKey] >= 10;
-    const canChangePitcher = hasRelieversInBullpen && canRemoveStarter;
-
-    // Check for 20/RP icons
-    const has20 = !state.icon20UsedThisInning &&
-        playerHasIcon(fieldingTeam.pitcher, '20') &&
-        canUseIcon(fieldingTeam, fieldingTeam.pitcher.cardId, '20');
-    const currentFieldingTeamId = state.halfInning === 'top' ? 'home' : 'away';
-    const rpAlreadyUsedByThisTeam = state.rpActiveInning === state.inning && state.rpActiveTeam === currentFieldingTeamId;
-    const hasRP = state.inning > 6 && !rpAlreadyUsedByThisTeam &&
-        playerHasIcon(fieldingTeam.pitcher, 'RP') &&
-        canUseIcon(fieldingTeam, fieldingTeam.pitcher.cardId, 'RP');
-
-    if (canChangePitcher || has20 || hasRP) {
-        return { ...state, phase: 'defense_sub', subPhaseStep: 'defense' };
-    }
-
-    // No defense options — auto-skip to IBB
-    return enterIBBPhase(state);
+    return { ...state, phase: 'defense_sub', subPhaseStep: 'defense' };
 }
 
-/** Enter IBB phase (always shown — defense can always IBB) then bunt, then pitch */
-function enterIBBPhase(state) {
-    return { ...state, phase: 'ibb_decision', subPhaseStep: null };
+/** After defense skips/finishes, go to bunt decision (if eligible) or pitch */
+function enterBuntOrPitch(state) {
+    const bases = state.bases;
+    const canBunt = state.outs < 2 && (bases.first || bases.second) && !bases.third;
+    if (canBunt) {
+        return { ...state, phase: 'bunt_decision', subPhaseStep: null };
+    }
+    return { ...state, phase: 'pitch', controlModifier: state.controlModifier || 0 };
 }
 
 export function enterPreAtBat(state) {
@@ -196,19 +176,6 @@ export function enterPreAtBat(state) {
         return { ...state, phase: 'pre_atbat', subPhaseStep: 'offense_first' };
     }
 
-    // Check defense options: pitcher icons (20, RP)
-    const has20b = !state.icon20UsedThisInning &&
-        playerHasIcon(fieldingTeam.pitcher, '20') &&
-        canUseIcon(fieldingTeam, fieldingTeam.pitcher.cardId, '20');
-    const fieldTeamId = state.halfInning === 'top' ? 'home' : 'away';
-    const rpUsedByThisTeam = state.rpActiveInning === state.inning && state.rpActiveTeam === fieldTeamId;
-    const hasRP = state.inning > 6 && !rpUsedByThisTeam &&
-        playerHasIcon(fieldingTeam.pitcher, 'RP') &&
-        canUseIcon(fieldingTeam, fieldingTeam.pitcher.cardId, 'RP');
-
-    if (hasRelievers || has20b || hasRP) {
-        return { ...state, phase: 'defense_sub', subPhaseStep: 'defense' };
-    }
-
-    return { ...state, phase: 'ibb_decision', subPhaseStep: null };
+    // Always go to defense_sub — defense always has IBB as an option
+    return enterDefenseSub(state);
 }

@@ -218,7 +218,7 @@ async function handleJoinGame(ws, msg, setContext) {
 const VALID_ACTIONS = {
     'sp_roll':           ['ROLL_STARTERS'],
     'pre_atbat':         ['PINCH_HIT', 'SKIP_SUB', 'USE_ICON', 'STEAL'],
-    'defense_sub':       ['PITCHING_CHANGE', 'SKIP_SUB', 'USE_ICON'],
+    'defense_sub':       ['PITCHING_CHANGE', 'SKIP_SUB', 'USE_ICON', 'INTENTIONAL_WALK', 'ROLL_PITCH'],
     'ibb_decision':      ['INTENTIONAL_WALK', 'SKIP_IBB', 'ROLL_PITCH', 'USE_ICON'],
     'bunt_decision':     ['SAC_BUNT', 'SKIP_BUNT'],
     'pitch':             ['ROLL_PITCH', 'USE_ICON'],

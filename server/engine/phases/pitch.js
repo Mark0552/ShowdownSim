@@ -7,8 +7,8 @@ import { getPostResultIcons } from './resultIcons.js';
 import { applyResult } from './baserunning.js';
 
 export function handlePitch(state) {
-    // Allow rolling pitch directly from ibb_decision (skips bunt if not eligible)
-    if (state.phase === 'ibb_decision') {
+    // Allow rolling pitch directly from defense_sub or ibb_decision (skips bunt if not eligible)
+    if (state.phase === 'defense_sub' || state.phase === 'ibb_decision') {
         const bases = state.bases;
         const canBunt = state.outs < 2 && (bases.first || bases.second) && !bases.third;
         if (canBunt) return state; // must go through bunt decision first

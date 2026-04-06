@@ -112,47 +112,89 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 );
             })()}
 
-            {/* Defense sub phase: defense can change pitcher or skip */}
+            {/* Defense sub phase: change pitcher, RP, IBB, or roll pitch */}
             {!state.isOver && isMyTurn && state.phase === 'defense_sub' && (() => {
                 const hasRelievers = fieldingTeam.bullpen.filter(p => p.role !== 'Starter').length > 0;
                 const isStarter = fieldingTeam.pitcher.role === 'Starter' && fieldingTeam.pitcherEntryInning === 1;
                 const battingSideKey = state.halfInning === 'top' ? 'away' : 'home';
                 const runsAgainst = state.score[battingSideKey];
                 const canChangePitcher = hasRelievers && (!isStarter || state.inning >= 5 || runsAgainst >= 10);
-                // Collect buttons then center
-                const items: { type: string; width: number }[] = [];
-                if (canChangePitcher) items.push({ type: 'change', width: 160 });
-                if (state.inning > 6 && !state.rpActiveInning && fieldingTeam.pitcher.icons?.includes('RP')) items.push({ type: 'rp', width: 150 });
-                items.push({ type: 'skip', width: 100 });
-                const gap = 8;
-                const totalW = items.reduce((s, it) => s + it.width, 0) + (items.length - 1) * gap;
-                let bx = CX - totalW / 2;
-                return (
-                <g>
-                    {items.map((item, idx) => {
+                const currentFieldingTeamId = state.halfInning === 'top' ? 'home' : 'away';
+                const rpAlreadyUsed = state.rpActiveInning === state.inning && state.rpActiveTeam === currentFieldingTeamId;
+                const hasRP = state.inning > 6 && !rpAlreadyUsed && fieldingTeam.pitcher.icons?.includes('RP');
+                const has20 = !state.icon20UsedThisInning && fieldingTeam.pitcher.icons?.includes('20');
+                const bases = state.bases;
+                const canBunt = state.outs < 2 && (bases.first || bases.second) && !bases.third;
+
+                // Row 1: pitcher change options (if any)
+                // Row 2: IBB | ROLL PITCH (+ 20 option) — always shown
+                const row1Items: { type: string; width: number }[] = [];
+                if (canChangePitcher) row1Items.push({ type: 'change', width: 160 });
+                if (hasRP) row1Items.push({ type: 'rp', width: 150 });
+
+                const row2Items: { type: string; width: number }[] = [];
+                row2Items.push({ type: 'ibb', width: 170 });
+                if (canBunt) {
+                    row2Items.push({ type: 'pitch_bunt', width: 160 }); // goes to bunt decision
+                } else {
+                    row2Items.push({ type: 'roll_pitch', width: 170 });
+                    if (has20) row2Items.push({ type: '20', width: 180 });
+                }
+
+                const gap = 10;
+                const renderRow = (items: typeof row1Items, y: number) => {
+                    const totalW = items.reduce((s, it) => s + it.width, 0) + (items.length - 1) * gap;
+                    let bx = CX - totalW / 2;
+                    return items.map((item, idx) => {
                         const x = bx;
                         bx += item.width + gap;
-                        if (item.type === 'change') return (
-                            <g key="change" className="roll-button" onClick={() => onShowSubPanel()} cursor="pointer">
-                                <rect x={x} y={ROW1} width={item.width} height={ROW1_H} rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
-                                <text x={x + item.width / 2} y={ROW1 + 27} textAnchor="middle" fontSize="15" fill="#002" fontWeight="900" fontFamily="Impact">CHANGE PITCHER</text>
-                            </g>
-                        );
-                        if (item.type === 'rp') return (
-                            <g key="rp" className="roll-button" onClick={() => onAction({ type: 'USE_ICON', cardId: fieldingTeam.pitcher.cardId, icon: 'RP' })} cursor="pointer">
-                                <rect x={x} y={ROW1} width={item.width} height={ROW1_H} rx="6" fill="#60a5fa" stroke="#93c5fd" strokeWidth="1.5"/>
-                                <text x={x + item.width / 2} y={ROW1 + 27} textAnchor="middle" fontSize="15" fill="#002" fontWeight="900" fontFamily="Impact">USE RP (+3)</text>
-                            </g>
-                        );
-                        // skip
-                        return (
-                            <g key="skip" className="roll-button" onClick={() => onAction({ type: 'SKIP_SUB' })} cursor="pointer">
-                                <rect x={x} y={ROW1} width={item.width} height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
-                                <text x={x + item.width / 2} y={ROW1 + 27} textAnchor="middle" fontSize="15" fill="#ccc" fontWeight="900" fontFamily="Impact">SKIP</text>
-                            </g>
-                        );
-                    })}
-                </g>
+                        switch (item.type) {
+                            case 'change': return (
+                                <g key="change" className="roll-button" onClick={() => onShowSubPanel()} cursor="pointer">
+                                    <rect x={x} y={y} width={item.width} height={ROW1_H} rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
+                                    <text x={x + item.width / 2} y={y + 27} textAnchor="middle" fontSize="14" fill="#002" fontWeight="900" fontFamily="Impact">CHANGE PITCHER</text>
+                                </g>
+                            );
+                            case 'rp': return (
+                                <g key="rp" className="roll-button" onClick={() => onAction({ type: 'USE_ICON', cardId: fieldingTeam.pitcher.cardId, icon: 'RP' })} cursor="pointer">
+                                    <rect x={x} y={y} width={item.width} height={ROW1_H} rx="6" fill="#60a5fa" stroke="#93c5fd" strokeWidth="1.5"/>
+                                    <text x={x + item.width / 2} y={y + 27} textAnchor="middle" fontSize="14" fill="#002" fontWeight="900" fontFamily="Impact">USE RP (+3)</text>
+                                </g>
+                            );
+                            case 'ibb': return (
+                                <g key="ibb" className="roll-button" onClick={() => onAction({ type: 'INTENTIONAL_WALK' })} cursor="pointer">
+                                    <rect x={x} y={y} width={item.width} height={ROW1_H} rx="6" fill="#f59e0b" stroke="#fbbf24" strokeWidth="1.5"/>
+                                    <text x={x + item.width / 2} y={y + 27} textAnchor="middle" fontSize="13" fill="#002" fontWeight="900" fontFamily="Impact">INTENTIONAL WALK</text>
+                                </g>
+                            );
+                            case 'pitch_bunt': return (
+                                <g key="pitch_bunt" className="roll-button" onClick={() => onAction({ type: 'SKIP_SUB' })} cursor="pointer">
+                                    <rect x={x} y={y} width={item.width} height={ROW1_H} rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
+                                    <text x={x + item.width / 2} y={y + 28} textAnchor="middle" fontSize="18" fill="white" fontWeight="900" fontFamily="Impact" letterSpacing="1">PITCH</text>
+                                </g>
+                            );
+                            case 'roll_pitch': return (
+                                <g key="roll_pitch" className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH' })} cursor="pointer">
+                                    <rect x={x} y={y} width={item.width} height={ROW1_H} rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
+                                    <text x={x + item.width / 2} y={y + 28} textAnchor="middle" fontSize="18" fill="white" fontWeight="900" fontFamily="Impact" letterSpacing="1">ROLL PITCH</text>
+                                </g>
+                            );
+                            case '20': return (
+                                <g key="20" className="roll-button" onClick={() => { onAction({ type: 'USE_ICON', cardId: fieldingTeam.pitcher.cardId, icon: '20' }); }} cursor="pointer">
+                                    <rect x={x} y={y} width={item.width} height={ROW1_H} rx="8" fill="#60a5fa" stroke="#93c5fd" strokeWidth="2"/>
+                                    <text x={x + item.width / 2} y={y + 28} textAnchor="middle" fontSize="15" fill="#002" fontWeight="900" fontFamily="Impact">PITCH + 20 (+3)</text>
+                                </g>
+                            );
+                            default: return null;
+                        }
+                    });
+                };
+
+                return (
+                    <g>
+                        {row1Items.length > 0 && renderRow(row1Items, ROW1 - 50)}
+                        {renderRow(row2Items, row1Items.length > 0 ? ROW1 : ROW1)}
+                    </g>
                 );
             })()}
 

@@ -9,7 +9,7 @@ import { addBatterStat, addPitcherStat } from '../stats.js';
 import { advanceBatter, endHalfInning } from './baserunning.js';
 
 export function handleIntentionalWalk(state) {
-    if (state.phase !== 'ibb_decision') return state;
+    if (state.phase !== 'ibb_decision' && state.phase !== 'defense_sub') return state;
 
     const fieldingSide = state.halfInning === 'top' ? 'homeTeam' : 'awayTeam';
     const battingSide = state.halfInning === 'top' ? 'awayTeam' : 'homeTeam';
