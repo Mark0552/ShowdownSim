@@ -488,16 +488,16 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             let color = 'rgba(34,180,80,0.85)';
                             let showRoll = true;
                             if (dp.isDP) { label = 'DOUBLE PLAY!'; color = 'rgba(200,30,30,0.85)'; }
-                            else if (dp.choice === 'dp' && !dp.isDP) { label = "FIELDER'S CHOICE — BATTER SAFE"; }
-                            else if (dp.choice === 'hold' && dp.defenseTotal > dp.offenseSpeed) { label = 'OUT AT 1ST — RUNNERS HELD'; color = 'rgba(200,30,30,0.85)'; }
-                            else if (dp.choice === 'hold') { label = 'BATTER SAFE — RUNNERS HELD'; }
-                            else if (dp.choice === 'force_home') { label = 'FORCE OUT AT HOME'; color = 'rgba(200,30,30,0.85)'; showRoll = false; }
-                            else if (dp.choice === 'advance') { label = 'RUNNERS ADVANCE — OUT AT 1ST'; color = 'rgba(200,30,30,0.85)'; showRoll = false; }
+                            else if (dp.choice === 'dp' && !dp.isDP) { label = "FIELDER'S CHOICE"; }
+                            else if (dp.choice === 'hold' && dp.defenseTotal > dp.offenseSpeed) { label = 'OUT AT 1ST'; color = 'rgba(200,30,30,0.85)'; }
+                            else if (dp.choice === 'hold') { label = 'BATTER SAFE'; }
+                            else if (dp.choice === 'force_home') { label = 'FORCE AT HOME'; color = 'rgba(200,30,30,0.85)'; showRoll = false; }
+                            else if (dp.choice === 'advance') { label = 'RUNNERS ADVANCE'; showRoll = false; }
                             return (<>
-                                <rect x="1070" y={BOT_Y + 84} width="310" height={showRoll ? 46 : 34} rx="6" fill={color}/>
-                                <text x="1225" y={BOT_Y + 104} textAnchor="middle" fontSize="12" fill="white" fontWeight="bold" fontFamily="Impact">{label}</text>
+                                <rect x="1070" y={BOT_Y + 84} width="310" height={showRoll ? 50 : 38} rx="6" fill={color}/>
+                                <text x="1225" y={BOT_Y + 106} textAnchor="middle" fontSize="18" fill="white" fontWeight="bold" fontFamily="Impact">{label}</text>
                                 {showRoll && (
-                                    <text x="1225" y={BOT_Y + 122} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.8)" fontFamily="monospace">
+                                    <text x="1225" y={BOT_Y + 126} textAnchor="middle" fontSize="12" fill="rgba(255,255,255,0.8)" fontFamily="monospace">
                                         d20({dp.roll})+IF({dp.defenseTotal - dp.roll})={dp.defenseTotal} vs Spd {dp.offenseSpeed}
                                     </text>
                                 )}
@@ -507,12 +507,12 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 )}
                 {state.pendingExtraBaseResult && (() => {
                     const eb = state.pendingExtraBaseResult;
-                    const label = eb.safe ? `${eb.runnerName} SCORES!` : `${eb.runnerName} THROWN OUT!`;
+                    const label = eb.safe ? `${eb.runnerName} SCORES!` : `${eb.runnerName} OUT!`;
                     return (
                         <g>
-                            <rect x="1070" y={BOT_Y + 84} width="310" height="46" rx="6" fill={eb.safe ? 'rgba(34,180,80,0.85)' : 'rgba(200,30,30,0.85)'}/>
-                            <text x="1225" y={BOT_Y + 104} textAnchor="middle" fontSize="13" fill="white" fontWeight="bold" fontFamily="Impact">{label}</text>
-                            <text x="1225" y={BOT_Y + 122} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.8)" fontFamily="monospace">Spd {eb.runnerSpeed} vs d20({eb.roll})+OF={eb.defenseTotal}</text>
+                            <rect x="1070" y={BOT_Y + 84} width="310" height="50" rx="6" fill={eb.safe ? 'rgba(34,180,80,0.85)' : 'rgba(200,30,30,0.85)'}/>
+                            <text x="1225" y={BOT_Y + 106} textAnchor="middle" fontSize="18" fill="white" fontWeight="bold" fontFamily="Impact">{label}</text>
+                            <text x="1225" y={BOT_Y + 126} textAnchor="middle" fontSize="12" fill="rgba(255,255,255,0.8)" fontFamily="monospace">Spd {eb.runnerSpeed} vs d20({eb.roll})+OF={eb.defenseTotal}</text>
                         </g>
                     );
                 })()}
@@ -524,10 +524,10 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                         : `${sr.runnerName} CAUGHT STEALING!`;
                     return (
                         <g>
-                            <rect x="1070" y={BOT_Y + 84} width="310" height={isSbIcon ? 34 : 46} rx="6" fill={sr.safe ? 'rgba(34,180,80,0.85)' : 'rgba(200,30,30,0.85)'}/>
-                            <text x="1225" y={BOT_Y + 104} textAnchor="middle" fontSize="13" fill="white" fontWeight="bold" fontFamily="Impact">{label}</text>
+                            <rect x="1070" y={BOT_Y + 84} width="310" height={isSbIcon ? 38 : 50} rx="6" fill={sr.safe ? 'rgba(34,180,80,0.85)' : 'rgba(200,30,30,0.85)'}/>
+                            <text x="1225" y={BOT_Y + 106} textAnchor="middle" fontSize="18" fill="white" fontWeight="bold" fontFamily="Impact">{label}</text>
                             {!isSbIcon && (
-                                <text x="1225" y={BOT_Y + 122} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.8)" fontFamily="monospace">Spd {sr.runnerSpeed} vs d20({sr.roll})+Arm={sr.defenseTotal}</text>
+                                <text x="1225" y={BOT_Y + 126} textAnchor="middle" fontSize="12" fill="rgba(255,255,255,0.8)" fontFamily="monospace">Spd {sr.runnerSpeed} vs d20({sr.roll})+Arm={sr.defenseTotal}</text>
                             )}
                         </g>
                     );
