@@ -488,7 +488,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             let color = 'rgba(34,180,80,0.85)';
                             let showRoll = true;
                             if (dp.isDP) { label = 'DOUBLE PLAY!'; color = 'rgba(200,30,30,0.85)'; }
-                            else if (dp.choice === 'dp' && !dp.isDP) { label = 'DP AVOIDED — BATTER SAFE'; }
+                            else if (dp.choice === 'dp' && !dp.isDP) { label = "FIELDER'S CHOICE — BATTER SAFE"; }
                             else if (dp.choice === 'hold' && dp.defenseTotal > dp.offenseSpeed) { label = 'OUT AT 1ST — RUNNERS HELD'; color = 'rgba(200,30,30,0.85)'; }
                             else if (dp.choice === 'hold') { label = 'BATTER SAFE — RUNNERS HELD'; }
                             else if (dp.choice === 'force_home') { label = 'FORCE OUT AT HOME'; color = 'rgba(200,30,30,0.85)'; showRoll = false; }
@@ -505,20 +505,33 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                         })()}
                     </g>
                 )}
-                {state.pendingExtraBaseResult && (
-                    <g>
-                        <rect x="1070" y={BOT_Y + 84} width="310" height="40" rx="6" fill={state.pendingExtraBaseResult.safe ? 'rgba(34,180,80,0.85)' : 'rgba(200,30,30,0.85)'}/>
-                        <text x="1225" y={BOT_Y + 102} textAnchor="middle" fontSize="13" fill="white" fontWeight="bold" fontFamily="Impact">{state.pendingExtraBaseResult.safe ? `${state.pendingExtraBaseResult.runnerName} SAFE!` : `${state.pendingExtraBaseResult.runnerName} OUT!`}</text>
-                        <text x="1225" y={BOT_Y + 118} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.8)" fontFamily="monospace">Spd {state.pendingExtraBaseResult.runnerSpeed} vs d20({state.pendingExtraBaseResult.roll})+OF={state.pendingExtraBaseResult.defenseTotal}</text>
-                    </g>
-                )}
-                {state.pendingStealResult && (
-                    <g>
-                        <rect x="1070" y={BOT_Y + 84} width="310" height="40" rx="6" fill={state.pendingStealResult.safe ? 'rgba(34,180,80,0.85)' : 'rgba(200,30,30,0.85)'}/>
-                        <text x="1225" y={BOT_Y + 102} textAnchor="middle" fontSize="13" fill="white" fontWeight="bold" fontFamily="Impact">{state.pendingStealResult.safe ? `${state.pendingStealResult.runnerName} SAFE!` : `${state.pendingStealResult.runnerName} CAUGHT!`}</text>
-                        <text x="1225" y={BOT_Y + 118} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.8)" fontFamily="monospace">Spd {state.pendingStealResult.runnerSpeed} vs d20({state.pendingStealResult.roll})+Arm={state.pendingStealResult.defenseTotal}</text>
-                    </g>
-                )}
+                {state.pendingExtraBaseResult && (() => {
+                    const eb = state.pendingExtraBaseResult;
+                    const label = eb.safe ? `${eb.runnerName} SCORES!` : `${eb.runnerName} THROWN OUT!`;
+                    return (
+                        <g>
+                            <rect x="1070" y={BOT_Y + 84} width="310" height="46" rx="6" fill={eb.safe ? 'rgba(34,180,80,0.85)' : 'rgba(200,30,30,0.85)'}/>
+                            <text x="1225" y={BOT_Y + 104} textAnchor="middle" fontSize="13" fill="white" fontWeight="bold" fontFamily="Impact">{label}</text>
+                            <text x="1225" y={BOT_Y + 122} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.8)" fontFamily="monospace">Spd {eb.runnerSpeed} vs d20({eb.roll})+OF={eb.defenseTotal}</text>
+                        </g>
+                    );
+                })()}
+                {state.pendingStealResult && (() => {
+                    const sr = state.pendingStealResult;
+                    const isSbIcon = sr.roll === 0 && sr.defenseTotal === 0;
+                    const label = sr.safe
+                        ? (isSbIcon ? `${sr.runnerName} STEALS! (SB ICON)` : `${sr.runnerName} STEALS!`)
+                        : `${sr.runnerName} CAUGHT STEALING!`;
+                    return (
+                        <g>
+                            <rect x="1070" y={BOT_Y + 84} width="310" height={isSbIcon ? 34 : 46} rx="6" fill={sr.safe ? 'rgba(34,180,80,0.85)' : 'rgba(200,30,30,0.85)'}/>
+                            <text x="1225" y={BOT_Y + 104} textAnchor="middle" fontSize="13" fill="white" fontWeight="bold" fontFamily="Impact">{label}</text>
+                            {!isSbIcon && (
+                                <text x="1225" y={BOT_Y + 122} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.8)" fontFamily="monospace">Spd {sr.runnerSpeed} vs d20({sr.roll})+Arm={sr.defenseTotal}</text>
+                            )}
+                        </g>
+                    );
+                })()}
             </svg>
 
             {/* 3D Dice overlay — positioned over the dice section of the bottom bar */}
