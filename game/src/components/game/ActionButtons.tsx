@@ -15,10 +15,10 @@ interface ActionButtonsProps {
 
 // Layout constants for the bottom-left actions section (x=2..700, y=750..948)
 const CX = 350;       // center of actions section
-const ROW1 = 800;     // main button row y
-const ROW1_H = 42;    // button height
-const ROW2 = 852;     // secondary row (G icons, runner details, etc.)
-const LABEL_Y = 770;  // context label y
+const ROW1 = 795;     // main button row y
+const ROW1_H = 52;    // button height (taller for 2-line labels)
+const ROW2 = 858;     // secondary row (G icons, runner details, etc.)
+const LABEL_Y = 780;  // context label y
 
 /** All phase-specific action button groups rendered as an SVG <g> element */
 export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onAction, battingTeam, fieldingTeam, hasRunners, outcomeNames, onShowSubPanel }: ActionButtonsProps) {
@@ -75,7 +75,8 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                         if (item.type === 'pinch') return (
                             <g key="pinch" className="roll-button" onClick={() => onShowSubPanel()} cursor="pointer">
                                 <rect x={x} y={ROW1} width={item.width} height={ROW1_H} rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
-                                <text x={x + item.width / 2} y={ROW1 + 27} textAnchor="middle" fontSize="15" fill="#002" fontWeight="900" fontFamily="Impact">PINCH HIT</text>
+                                <text x={x + item.width / 2} y={ROW1 + 20} textAnchor="middle" fontSize="14" fill="#002" fontWeight="900" fontFamily="Impact">PINCH HIT</text>
+                                <text x={x + item.width / 2} y={ROW1 + 36} textAnchor="middle" fontSize="9" fill="rgba(0,0,0,0.5)" fontFamily="Arial">Replace current batter</text>
                             </g>
                         );
                         if (item.type === 'sb') {
@@ -91,20 +92,23 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                         if (item.type === 'steal2') return (
                             <g key="steal2" className="roll-button" onClick={() => onAction({ type: 'STEAL', runnerId: state.bases.first! })} cursor="pointer">
                                 <rect x={x} y={ROW1} width={item.width} height={ROW1_H} rx="6" fill="#22c55e" stroke="#4ade80" strokeWidth="1.5"/>
-                                <text x={x + item.width / 2} y={ROW1 + 27} textAnchor="middle" fontSize="15" fill="#002" fontWeight="900" fontFamily="Impact">STEAL 2ND</text>
+                                <text x={x + item.width / 2} y={ROW1 + 20} textAnchor="middle" fontSize="14" fill="#002" fontWeight="900" fontFamily="Impact">STEAL 2ND</text>
+                                <text x={x + item.width / 2} y={ROW1 + 36} textAnchor="middle" fontSize="9" fill="rgba(0,0,0,0.5)" fontFamily="Arial">Spd vs d20 + Arm</text>
                             </g>
                         );
                         if (item.type === 'steal3') return (
                             <g key="steal3" className="roll-button" onClick={() => onAction({ type: 'STEAL', runnerId: state.bases.second! })} cursor="pointer">
                                 <rect x={x} y={ROW1} width={item.width} height={ROW1_H} rx="6" fill="#22c55e" stroke="#4ade80" strokeWidth="1.5"/>
-                                <text x={x + item.width / 2} y={ROW1 + 27} textAnchor="middle" fontSize="15" fill="#002" fontWeight="900" fontFamily="Impact">STEAL 3RD</text>
+                                <text x={x + item.width / 2} y={ROW1 + 20} textAnchor="middle" fontSize="14" fill="#002" fontWeight="900" fontFamily="Impact">STEAL 3RD</text>
+                                <text x={x + item.width / 2} y={ROW1 + 36} textAnchor="middle" fontSize="9" fill="rgba(0,0,0,0.5)" fontFamily="Arial">Spd vs d20 + Arm + 5</text>
                             </g>
                         );
                         // skip
                         return (
                             <g key="skip" className="roll-button" onClick={() => onAction({ type: 'SKIP_SUB' })} cursor="pointer">
                                 <rect x={x} y={ROW1} width={item.width} height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
-                                <text x={x + item.width / 2} y={ROW1 + 27} textAnchor="middle" fontSize="14" fill="#ccc" fontWeight="900" fontFamily="Impact">NO ACTION</text>
+                                <text x={x + item.width / 2} y={ROW1 + 20} textAnchor="middle" fontSize="13" fill="#ccc" fontWeight="900" fontFamily="Impact">NO ACTION</text>
+                                <text x={x + item.width / 2} y={ROW1 + 36} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.4)" fontFamily="Arial">Skip to defense</text>
                             </g>
                         );
                     })}
@@ -152,37 +156,43 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                             case 'change': return (
                                 <g key="change" className="roll-button" onClick={() => onShowSubPanel()} cursor="pointer">
                                     <rect x={x} y={y} width={item.width} height={ROW1_H} rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
-                                    <text x={x + item.width / 2} y={y + 27} textAnchor="middle" fontSize="14" fill="#002" fontWeight="900" fontFamily="Impact">CHANGE PITCHER</text>
+                                    <text x={x + item.width / 2} y={y + 20} textAnchor="middle" fontSize="14" fill="#002" fontWeight="900" fontFamily="Impact">CHANGE PITCHER</text>
+                                    <text x={x + item.width / 2} y={y + 36} textAnchor="middle" fontSize="9" fill="rgba(0,0,0,0.5)" fontFamily="Arial">Bring in reliever</text>
                                 </g>
                             );
                             case 'rp': return (
                                 <g key="rp" className="roll-button" onClick={() => onAction({ type: 'USE_ICON', cardId: fieldingTeam.pitcher.cardId, icon: 'RP' })} cursor="pointer">
                                     <rect x={x} y={y} width={item.width} height={ROW1_H} rx="6" fill="#60a5fa" stroke="#93c5fd" strokeWidth="1.5"/>
-                                    <text x={x + item.width / 2} y={y + 27} textAnchor="middle" fontSize="14" fill="#002" fontWeight="900" fontFamily="Impact">RP ICON (+3 CTRL)</text>
+                                    <text x={x + item.width / 2} y={y + 20} textAnchor="middle" fontSize="13" fill="#002" fontWeight="900" fontFamily="Impact">RP ICON (+3 CTRL)</text>
+                                    <text x={x + item.width / 2} y={y + 36} textAnchor="middle" fontSize="9" fill="rgba(0,0,0,0.5)" fontFamily="Arial">Rest of inning</text>
                                 </g>
                             );
                             case 'ibb': return (
                                 <g key="ibb" className="roll-button" onClick={() => onAction({ type: 'INTENTIONAL_WALK' })} cursor="pointer">
                                     <rect x={x} y={y} width={item.width} height={ROW1_H} rx="6" fill="#f59e0b" stroke="#fbbf24" strokeWidth="1.5"/>
-                                    <text x={x + item.width / 2} y={y + 27} textAnchor="middle" fontSize="13" fill="#002" fontWeight="900" fontFamily="Impact">INTENTIONAL WALK</text>
+                                    <text x={x + item.width / 2} y={y + 20} textAnchor="middle" fontSize="13" fill="#002" fontWeight="900" fontFamily="Impact">INTENTIONAL WALK</text>
+                                    <text x={x + item.width / 2} y={y + 36} textAnchor="middle" fontSize="9" fill="rgba(0,0,0,0.5)" fontFamily="Arial">Walk batter to 1st</text>
                                 </g>
                             );
                             case 'pitch_bunt': return (
                                 <g key="pitch_bunt" className="roll-button" onClick={() => onAction({ type: 'SKIP_SUB' })} cursor="pointer">
                                     <rect x={x} y={y} width={item.width} height={ROW1_H} rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
-                                    <text x={x + item.width / 2} y={y + 28} textAnchor="middle" fontSize="16" fill="white" fontWeight="900" fontFamily="Impact" letterSpacing="1">READY TO PITCH</text>
+                                    <text x={x + item.width / 2} y={y + 20} textAnchor="middle" fontSize="15" fill="white" fontWeight="900" fontFamily="Impact" letterSpacing="1">READY TO PITCH</text>
+                                    <text x={x + item.width / 2} y={y + 36} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.5)" fontFamily="Arial">Bunt option next</text>
                                 </g>
                             );
                             case 'roll_pitch': return (
                                 <g key="roll_pitch" className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH' })} cursor="pointer">
                                     <rect x={x} y={y} width={item.width} height={ROW1_H} rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
-                                    <text x={x + item.width / 2} y={y + 28} textAnchor="middle" fontSize="18" fill="white" fontWeight="900" fontFamily="Impact" letterSpacing="1">ROLL PITCH</text>
+                                    <text x={x + item.width / 2} y={y + 20} textAnchor="middle" fontSize="16" fill="white" fontWeight="900" fontFamily="Impact" letterSpacing="1">ROLL PITCH</text>
+                                    <text x={x + item.width / 2} y={y + 36} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.5)" fontFamily="Arial">d20 + control vs OB</text>
                                 </g>
                             );
                             case '20': return (
                                 <g key="20" className="roll-button" onClick={() => { onAction({ type: 'USE_ICON', cardId: fieldingTeam.pitcher.cardId, icon: '20' }); }} cursor="pointer">
                                     <rect x={x} y={y} width={item.width} height={ROW1_H} rx="8" fill="#60a5fa" stroke="#93c5fd" strokeWidth="2"/>
-                                    <text x={x + item.width / 2} y={y + 28} textAnchor="middle" fontSize="15" fill="#002" fontWeight="900" fontFamily="Impact">PITCH + 20 (+3)</text>
+                                    <text x={x + item.width / 2} y={y + 20} textAnchor="middle" fontSize="14" fill="#002" fontWeight="900" fontFamily="Impact">PITCH + 20 (+3)</text>
+                                    <text x={x + item.width / 2} y={y + 36} textAnchor="middle" fontSize="9" fill="rgba(0,0,0,0.5)" fontFamily="Arial">+3 control this pitch</text>
                                 </g>
                             );
                             default: return null;
@@ -254,11 +264,13 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 <g>
                     <g className="roll-button" onClick={() => onAction({ type: 'SAC_BUNT' })} cursor="pointer">
                         <rect x={CX - 84} y={ROW1} width="160" height={ROW1_H} rx="6" fill="#8b5cf6" stroke="#a78bfa" strokeWidth="1.5"/>
-                        <text x={CX - 4} y={ROW1 + 27} textAnchor="middle" fontSize="15" fill="white" fontWeight="900" fontFamily="Impact">SAC BUNT</text>
+                        <text x={CX - 4} y={ROW1 + 20} textAnchor="middle" fontSize="14" fill="white" fontWeight="900" fontFamily="Impact">SAC BUNT</text>
+                        <text x={CX - 4} y={ROW1 + 36} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.5)" fontFamily="Arial">Batter out, runners advance</text>
                     </g>
                     <g className="roll-button" onClick={() => onAction({ type: 'SKIP_BUNT' })} cursor="pointer">
                         <rect x={CX + 84} y={ROW1} width="120" height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
-                        <text x={CX + 144} y={ROW1 + 27} textAnchor="middle" fontSize="14" fill="#ccc" fontWeight="900" fontFamily="Impact">NO BUNT</text>
+                        <text x={CX + 144} y={ROW1 + 20} textAnchor="middle" fontSize="13" fill="#ccc" fontWeight="900" fontFamily="Impact">NO BUNT</text>
+                        <text x={CX + 144} y={ROW1 + 36} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.4)" fontFamily="Arial">Proceed to pitch</text>
                     </g>
                 </g>
             )}
@@ -271,11 +283,13 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                         <g>
                             <g className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH' })} cursor="pointer">
                                 <rect x={CX - 210} y={ROW1} width="200" height={ROW1_H} rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
-                                <text x={CX - 110} y={ROW1 + 28} textAnchor="middle" fontSize="20" fill="white" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="2">ROLL PITCH</text>
+                                <text x={CX - 110} y={ROW1 + 20} textAnchor="middle" fontSize="18" fill="white" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="2">ROLL PITCH</text>
+                                <text x={CX - 110} y={ROW1 + 36} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.5)" fontFamily="Arial">d20 + control vs OB</text>
                             </g>
                             <g className="roll-button" onClick={() => { onAction({ type: 'USE_ICON', cardId: fieldingTeam.pitcher.cardId, icon: '20' }); }} cursor="pointer">
                                 <rect x={CX + 10} y={ROW1} width="200" height={ROW1_H} rx="8" fill="#60a5fa" stroke="#93c5fd" strokeWidth="2"/>
-                                <text x={CX + 110} y={ROW1 + 28} textAnchor="middle" fontSize="18" fill="#002" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="1">PITCH + 20 (+3)</text>
+                                <text x={CX + 110} y={ROW1 + 20} textAnchor="middle" fontSize="16" fill="#002" fontWeight="900" fontFamily="Impact,sans-serif">PITCH + 20 (+3)</text>
+                                <text x={CX + 110} y={ROW1 + 36} textAnchor="middle" fontSize="9" fill="rgba(0,0,0,0.5)" fontFamily="Arial">+3 control this pitch</text>
                             </g>
                         </g>
                     );
@@ -283,7 +297,8 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 return (
                     <g className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH' })} cursor="pointer">
                         <rect x={CX - 100} y={ROW1} width="200" height={ROW1_H} rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
-                        <text x={CX} y={ROW1 + 28} textAnchor="middle" fontSize="22" fill="white" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="2">ROLL PITCH</text>
+                        <text x={CX} y={ROW1 + 20} textAnchor="middle" fontSize="20" fill="white" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="2">ROLL PITCH</text>
+                        <text x={CX} y={ROW1 + 36} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.5)" fontFamily="Arial">d20 + control vs OB</text>
                     </g>
                 );
             })()}
@@ -292,7 +307,8 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
             {!state.isOver && isMyTurn && state.phase === 'swing' && (
                 <g className="roll-button" onClick={() => onAction({ type: 'ROLL_SWING' })} cursor="pointer">
                     <rect x={CX - 100} y={ROW1} width="200" height={ROW1_H} rx="8" fill="#4ade80" stroke="#6bff9a" strokeWidth="2"/>
-                    <text x={CX} y={ROW1 + 28} textAnchor="middle" fontSize="22" fill="#002" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="2">ROLL SWING</text>
+                    <text x={CX} y={ROW1 + 20} textAnchor="middle" fontSize="20" fill="#002" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="2">ROLL SWING</text>
+                    <text x={CX} y={ROW1 + 36} textAnchor="middle" fontSize="9" fill="rgba(0,0,0,0.4)" fontFamily="Arial">d20 on {state.usedPitcherChart ? "pitcher's" : "batter's"} chart</text>
                 </g>
             )}
 
