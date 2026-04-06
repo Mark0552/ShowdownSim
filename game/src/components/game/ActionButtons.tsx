@@ -560,14 +560,21 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
             )}
 
             {/* Game over */}
-            {state.isOver && (
-                <g>
-                    <rect x={CX - 160} y={ROW1 - 10} width="320" height="60" rx="10" fill="rgba(0,0,0,0.85)"/>
-                    <text x={CX} y={ROW1 + 20} textAnchor="middle" fontSize="32" fill="white" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="3">
-                        GAME OVER  {state.score.away}{'\u2013'}{state.score.home}
-                    </text>
-                </g>
-            )}
+            {state.isOver && (() => {
+                const iWon = state.winnerId === (myRole === 'home' ? state.homeTeam.userId : state.awayTeam.userId);
+                const winnerName = state.winnerId === state.homeTeam.userId ? 'HOME' : 'AWAY';
+                return (
+                    <g>
+                        <rect x={CX - 200} y={ROW1 - 10} width="400" height="66" rx="10" fill="rgba(0,0,0,0.9)" stroke={iWon ? '#4ade80' : '#e94560'} strokeWidth="2"/>
+                        <text x={CX} y={ROW1 + 16} textAnchor="middle" fontSize="26" fill={iWon ? '#4ade80' : '#e94560'} fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="3">
+                            {iWon ? 'YOU WIN!' : `${winnerName} WINS!`}
+                        </text>
+                        <text x={CX} y={ROW1 + 42} textAnchor="middle" fontSize="20" fill="white" fontWeight="bold" fontFamily="Impact,sans-serif" letterSpacing="2">
+                            {state.score.away} {'\u2013'} {state.score.home}
+                        </text>
+                    </g>
+                );
+            })()}
         </g>
     );
 }

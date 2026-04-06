@@ -27,12 +27,13 @@ export async function saveGameStats(gameId: string, seriesId: string | null, gam
         });
     }
 
-    // Pitcher stats
+    // Pitcher stats — only pitchers who faced at least 1 batter
     for (const [cardId, ps] of Object.entries(myTeam.pitcherStats || {})) {
+        const s = ps as any;
+        if (!s.bf || s.bf === 0) continue; // skip pitchers who never entered the game
         const pitcher = myTeam.pitcher.cardId === cardId ? myTeam.pitcher
             : myTeam.bullpen?.find((p: any) => p.cardId === cardId);
         const name = pitcher?.name || cardId;
-        const s = ps as any;
         rows.push({
             game_id: gameId, series_id: seriesId, user_id: user.id,
             card_id: cardId, card_name: name, card_type: 'pitcher',
