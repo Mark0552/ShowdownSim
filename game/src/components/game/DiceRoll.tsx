@@ -56,7 +56,8 @@ export default function DiceRoll({ roll, rollType, triggerKey, onAnimationComple
         prevKeyRef.current = triggerKey;
 
         if (diceBoxRef.current) {
-            diceBoxRef.current.roll(`1d20@${roll}`).then(() => {
+            // Use object notation with `value` to force the result
+            diceBoxRef.current.roll([{ qty: 1, sides: 20, value: roll }]).then(() => {
                 setTimeout(() => {
                     diceBoxRef.current?.clear();
                     onAnimationComplete?.();

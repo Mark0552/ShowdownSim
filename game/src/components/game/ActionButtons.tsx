@@ -29,14 +29,14 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
             {/* SP Roll phase: home team rolls for starting pitchers */}
             {!state.isOver && isMyTurn && state.phase === 'sp_roll' && (
                 <g className="roll-button" onClick={() => onAction({ type: 'ROLL_STARTERS' })} cursor="pointer">
-                    <rect x={CX - 100} y={ROW1} width="200" height={ROW1_H} rx="8" fill="#d4a018" stroke="#f0c840" strokeWidth="2"/>
-                    <text x={CX} y={ROW1 + 20} textAnchor="middle" fontSize="18" fill="#002" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="3">ROLL FOR PITCHERS</text>
+                    <rect x={CX - 130} y={ROW1} width="260" height={ROW1_H} rx="8" fill="#d4a018" stroke="#f0c840" strokeWidth="2"/>
+                    <text x={CX} y={ROW1 + 34} textAnchor="middle" fontSize="22" fill="#002" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="3">ROLL FOR PITCHERS</text>
                 </g>
             )}
             {!state.isOver && !isMyTurn && state.phase === 'sp_roll' && (
                 <g>
-                    <rect x={CX - 130} y={ROW1} width="260" height={ROW1_H} rx="6" fill="rgba(0,0,0,0.6)"/>
-                    <text x={CX} y={ROW1 + 20} textAnchor="middle" fontSize="14" fill="#888" fontStyle="italic" fontFamily="Arial">Waiting for home team to roll...</text>
+                    <rect x={CX - 160} y={ROW1} width="320" height={ROW1_H} rx="6" fill="rgba(0,0,0,0.6)"/>
+                    <text x={CX} y={ROW1 + 34} textAnchor="middle" fontSize="16" fill="#888" fontStyle="italic" fontFamily="Arial">Waiting for home team to roll...</text>
                 </g>
             )}
 
@@ -551,11 +551,11 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 </g>
             )}
 
-            {/* Waiting for opponent */}
-            {!state.isOver && !isMyTurn && (
+            {/* Waiting for opponent — exclude sp_roll which has its own message */}
+            {!state.isOver && !isMyTurn && state.phase !== 'sp_roll' && (
                 <g>
-                    <rect x={CX - 130} y={ROW1} width="260" height={ROW1_H} rx="6" fill="rgba(0,0,0,0.6)"/>
-                    <text x={CX} y={ROW1 + 20} textAnchor="middle" fontSize="16" fill="#888" fontStyle="italic" fontFamily="Arial">Waiting for opponent...</text>
+                    <rect x={CX - 160} y={ROW1} width="320" height={ROW1_H} rx="6" fill="rgba(0,0,0,0.6)"/>
+                    <text x={CX} y={ROW1 + 34} textAnchor="middle" fontSize="16" fill="#888" fontStyle="italic" fontFamily="Arial">Waiting for opponent...</text>
                 </g>
             )}
 
