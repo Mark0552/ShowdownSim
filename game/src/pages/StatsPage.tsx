@@ -222,6 +222,8 @@ export default function StatsPage({ onBack }: Props) {
                                                 <th>Player</th>
                                                 <th className="sortable" onClick={() => handleSort('games')}>G{sortIndicator('games')}</th>
                                                 <th className="sortable" onClick={() => handleSort('wins')}>W{sortIndicator('wins')}</th>
+                                                <th className="sortable" onClick={() => handleSort('losses')}>L{sortIndicator('losses')}</th>
+                                                <th className="sortable" onClick={() => handleSort('saves')}>SV{sortIndicator('saves')}</th>
                                                 <th className="sortable" onClick={() => handleSort('ip')}>IP{sortIndicator('ip')}</th>
                                                 <th className="sortable" onClick={() => handleSort('h')}>H{sortIndicator('h')}</th>
                                                 <th className="sortable" onClick={() => handleSort('r')}>R{sortIndicator('r')}</th>
@@ -239,6 +241,8 @@ export default function StatsPage({ onBack }: Props) {
                                                     <td className="stats-player-name">{s.card_name}</td>
                                                     <td>{s.games}</td>
                                                     <td>{s.wins}</td>
+                                                    <td>{s.losses}</td>
+                                                    <td>{s.saves}</td>
                                                     <td>{fmtIp(s.ip)}</td>
                                                     <td>{s.h}</td>
                                                     <td>{s.r}</td>

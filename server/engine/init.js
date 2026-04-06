@@ -77,6 +77,11 @@ export function initializeGame(homeLineupData, awayLineupData, homeUserId, awayU
         spRoll: spRollResult,
         lastRoll: null,
         lastRollType: null,
+        // Win/Loss/Save tracking
+        wlTracker: {
+            homeWP: null, awayWP: null,  // potential winning pitcher for each team
+            homeLP: null, awayLP: null,  // potential losing pitcher for each team
+        },
     };
 }
 

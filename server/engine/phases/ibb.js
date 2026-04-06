@@ -5,7 +5,7 @@
  * Tracked as IBB stat (separate from BB).
  */
 
-import { addBatterStat, addPitcherStat } from '../stats.js';
+import { addBatterStat, addPitcherStat, updateWLTracker } from '../stats.js';
 import { advanceBatter, endHalfInning } from './baserunning.js';
 
 export function handleIntentionalWalk(state) {
@@ -64,6 +64,8 @@ export function handleIntentionalWalk(state) {
         [fieldingSide]: fieldingTeamUpdated,
         gameLog: [...state.gameLog, ...logs],
     };
+
+    if (runs > 0) newState = updateWLTracker(newState, state.score.home, state.score.away);
 
     // Walk-off check
     if (state.inning >= 9 && state.halfInning === 'bottom' && newScore.home > newScore.away) {

@@ -5,7 +5,7 @@
 import { rollD20 } from '../dice.js';
 import { findAllGPlayers, recordIconUse, canUseIcon, playerHasIcon } from '../icons.js';
 import { INFIELD_POSITIONS } from '../fielding.js';
-import { addBatterStat } from '../stats.js';
+import { addBatterStat, updateWLTracker } from '../stats.js';
 import { advanceBatter, endHalfInning } from './baserunning.js';
 
 export function buildGbOptions(state, bases) {
@@ -177,6 +177,8 @@ export function handleGbDecision(state, action) {
         [fieldingSide]: fieldingTeam, [battingSide]: battingTeam,
         gameLog: [...state.gameLog, ...logs],
     };
+
+    if (runs > 0) newState = updateWLTracker(newState, state.score.home, state.score.away);
 
     if (outs >= 3) return endHalfInning(newState);
 

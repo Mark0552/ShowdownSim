@@ -5,7 +5,7 @@
 import { rollD20 } from '../dice.js';
 import { playerHasIcon, canUseIcon, recordIconUse } from '../icons.js';
 import { OUTFIELD_POSITIONS } from '../fielding.js';
-import { addBatterStat } from '../stats.js';
+import { addBatterStat, updateWLTracker } from '../stats.js';
 import { advanceBatter, endHalfInning } from './baserunning.js';
 
 export function checkExtraBaseEligible(state, outcome) {
@@ -197,6 +197,10 @@ export function handleExtraBaseThrow(state, action) {
         gameLog: [...state.gameLog, ...logs],
     };
 
+    if (newScore.home !== state.score.home || newScore.away !== state.score.away) {
+        newState = updateWLTracker(newState, state.score.home, state.score.away);
+    }
+
     const remaining = eligible.filter(e => e.runnerId !== target.runnerId);
 
     if (outs >= 3) return endHalfInning(newState);
@@ -254,6 +258,7 @@ export function handleSkipExtraBase(state) {
     }
 
     let newState = { ...state, bases, score: newScore, extraBaseEligible: null, [battingSide]: battingTeam, gameLog: [...state.gameLog, ...logs] };
+    if (extraRuns > 0) newState = updateWLTracker(newState, state.score.home, state.score.away);
     if (state.inning >= 9 && state.halfInning === 'bottom' && newScore.home > newScore.away) {
         return { ...newState, phase: 'game_over', isOver: true, winnerId: state.homeTeam.userId, gameLog: [...newState.gameLog, 'Walk-off! Home team wins!'] };
     }

@@ -9,6 +9,30 @@ export async function saveGameStats(gameId: string, seriesId: string | null, gam
     const myTeam = gameState.homeTeam.userId === user.id ? gameState.homeTeam : gameState.awayTeam;
     const won = gameState.winnerId === user.id;
 
+    // Determine pitcher W/L/SV
+    const homeWon = gameState.score.home > gameState.score.away;
+    const wl = gameState.wlTracker || {};
+    const winPitcherId = homeWon ? (wl.homeWP || gameState.homeTeam.pitcher.cardId) : (wl.awayWP || gameState.awayTeam.pitcher.cardId);
+    const lossPitcherId = homeWon ? (wl.awayLP || gameState.awayTeam.pitcher.cardId) : (wl.homeLP || gameState.homeTeam.pitcher.cardId);
+    // Save: final pitcher on winning team, different from WP, with at least 1 out
+    let savePitcherId: string | null = null;
+    const winningTeam = homeWon ? gameState.homeTeam : gameState.awayTeam;
+    const finalPitcherId = winningTeam.pitcher.cardId;
+    if (finalPitcherId !== winPitcherId) {
+        const finalPitcherStats = winningTeam.pitcherStats?.[finalPitcherId];
+        const outsRecorded = finalPitcherStats?.ip || 0;
+        const leadMargin = Math.abs(gameState.score.home - gameState.score.away);
+        if (outsRecorded > 0 && (leadMargin <= 3 || outsRecorded >= 9)) {
+            savePitcherId = finalPitcherId;
+        }
+    }
+    // Determine if MY team's pitcher gets W/L/SV
+    const myTeamIsHome = myTeam === gameState.homeTeam;
+    const myTeamWon = (myTeamIsHome && homeWon) || (!myTeamIsHome && !homeWon);
+    const myWinPitcher = myTeamWon ? winPitcherId : null;
+    const myLossPitcher = !myTeamWon ? lossPitcherId : null;
+    const mySavePitcher = myTeamWon ? savePitcherId : null;
+
     const rows: any[] = [];
 
     // Batter stats
@@ -34,12 +58,15 @@ export async function saveGameStats(gameId: string, seriesId: string | null, gam
         const pitcher = myTeam.pitcher.cardId === cardId ? myTeam.pitcher
             : myTeam.bullpen?.find((p: any) => p.cardId === cardId);
         const name = pitcher?.name || cardId;
+        const pWin = cardId === myWinPitcher;
+        const pLoss = cardId === myLossPitcher;
+        const pSave = cardId === mySavePitcher;
         rows.push({
             game_id: gameId, series_id: seriesId, user_id: user.id,
             card_id: cardId, card_name: name, card_type: 'pitcher',
             ip: s.ip || 0, p_h: s.h || 0, p_r: s.r || 0, p_bb: s.bb || 0,
             p_ibb: s.ibb || 0, p_so: s.so || 0, p_hr: s.hr || 0, bf: s.bf || 0,
-            win: won,
+            win: pWin, loss: pLoss, save: pSave,
         });
     }
 
@@ -99,7 +126,7 @@ export async function getCareerPitchingStats() {
 
     const { data, error } = await supabase
         .from('game_player_stats')
-        .select('card_id, card_name, ip, p_h, p_r, p_bb, p_ibb, p_so, p_hr, bf, win')
+        .select('card_id, card_name, ip, p_h, p_r, p_bb, p_ibb, p_so, p_hr, bf, win, loss, save')
         .eq('user_id', user.id)
         .eq('card_type', 'pitcher');
     if (error) throw error;
@@ -107,13 +134,15 @@ export async function getCareerPitchingStats() {
     const map = new Map<string, any>();
     for (const row of data || []) {
         if (!map.has(row.card_id)) {
-            map.set(row.card_id, { card_id: row.card_id, card_name: row.card_name, games: 0, ip: 0, h: 0, r: 0, bb: 0, ibb: 0, so: 0, hr: 0, bf: 0, wins: 0 });
+            map.set(row.card_id, { card_id: row.card_id, card_name: row.card_name, games: 0, ip: 0, h: 0, r: 0, bb: 0, ibb: 0, so: 0, hr: 0, bf: 0, wins: 0, losses: 0, saves: 0 });
         }
         const agg = map.get(row.card_id)!;
         agg.games++; agg.ip += row.ip; agg.h += row.p_h; agg.r += row.p_r;
         agg.bb += row.p_bb; agg.ibb += row.p_ibb; agg.so += row.p_so; agg.hr += row.p_hr;
         agg.bf += row.bf;
         if (row.win) agg.wins++;
+        if (row.loss) agg.losses++;
+        if (row.save) agg.saves++;
     }
     return Array.from(map.values());
 }

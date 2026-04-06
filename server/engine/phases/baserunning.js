@@ -2,7 +2,7 @@
  * Core baserunning: applyResult, advanceBatter, endHalfInning.
  */
 
-import { addBatterStat, addPitcherStat } from '../stats.js';
+import { addBatterStat, addPitcherStat, updateWLTracker } from '../stats.js';
 import { playerHasIcon, canUseIcon, recordIconUse } from '../icons.js';
 import { enterPreAtBat } from './substitutions.js';
 import { buildGbOptions } from './groundball.js';
@@ -196,6 +196,11 @@ export function applyResult(state, outcome, batterId) {
         [battingSide]: battingTeam,
         [fieldingSide]: fieldingTeamUpdated,
     };
+
+    // Update W/L tracker if runs scored
+    if (runs > 0) {
+        newState = updateWLTracker(newState, state.score.home, state.score.away);
+    }
 
     if (outs >= 3) return endHalfInning(newState);
 
