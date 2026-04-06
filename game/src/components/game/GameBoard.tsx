@@ -446,8 +446,8 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     onShowSubPanel={() => setShowSubPanel(true)}
                 />
 
-                {/* DICE SECTION (center 25%: x=700..1050) — centered vertically */}
-                {state.lastRoll && state.lastRollType && (
+                {/* DICE SECTION (center 25%: x=700..1050) — only show after animation completes */}
+                {!diceAnimating && state.lastRoll && state.lastRollType && (
                     <g>
                         <text x="875" y={BOT_Y + 30} textAnchor="middle" fontSize="16" fill={state.lastRollType === 'pitch' ? '#e94560' : state.lastRollType === 'swing' ? '#4ade80' : '#d4a018'} fontWeight="bold" fontFamily="Impact" letterSpacing="3">
                             {state.lastRollType === 'pitch' ? 'PITCH' : state.lastRollType === 'swing' ? 'SWING' : state.lastRollType?.toUpperCase()}
@@ -468,8 +468,8 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     </g>
                 )}
 
-                {/* RESULT SECTION (right 25%: x=1050..1400) — centered */}
-                {state.lastOutcome && (
+                {/* RESULT SECTION (right 25%: x=1050..1400) — only show after dice animation */}
+                {!diceAnimating && state.lastOutcome && (
                     <g>
                         <rect x="1070" y={BOT_Y + 24} width="310" height="54" rx="8" fill={
                             ['SO','GB','FB','PU'].includes(state.lastOutcome) ? 'rgba(200,30,30,0.9)' :
@@ -480,7 +480,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                         </text>
                     </g>
                 )}
-                {state.pendingDpResult && (
+                {!diceAnimating && state.pendingDpResult && (
                     <g>
                         {(() => {
                             const dp = state.pendingDpResult;
@@ -505,7 +505,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                         })()}
                     </g>
                 )}
-                {state.pendingExtraBaseResult && (() => {
+                {!diceAnimating && state.pendingExtraBaseResult && (() => {
                     const eb = state.pendingExtraBaseResult;
                     const label = eb.safe ? `${eb.runnerName} SCORES!` : `${eb.runnerName} OUT!`;
                     return (
@@ -516,7 +516,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                         </g>
                     );
                 })()}
-                {state.pendingStealResult && (() => {
+                {!diceAnimating && state.pendingStealResult && (() => {
                     const sr = state.pendingStealResult;
                     const isSbIcon = sr.roll === 0 && sr.defenseTotal === 0;
                     const label = sr.safe
