@@ -2,7 +2,7 @@
  * Icon usage tracking helpers.
  */
 
-export const ICON_MAX_USES = { K: 1, G: 1, HR: 1, SB: 1, '20': 1, CY: Infinity, RP: 1, S: 1, V: 2 };
+export const ICON_MAX_USES = { K: 1, G: 1, HR: 1, SB: 1, '20': Infinity, CY: Infinity, RP: 1, S: 1, V: 2 };
 
 export function canUseIcon(team, cardId, icon) {
     const usage = team.iconUsage?.[cardId]?.[icon] || 0;
