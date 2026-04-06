@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface DiceRollProps {
     roll: number | null;       // the result to show (null = no roll)
@@ -8,9 +8,8 @@ interface DiceRollProps {
 }
 
 /**
- * 3D Dice roll using @3d-dice/dice-box.
- * Shows a white d20 with red numbers, lands on the specified result.
- * Falls back to a simple CSS animation if dice-box fails to load.
+ * 3D Dice roll using @3d-dice/dice-box v1.1+
+ * White d20 with red numbers, rolls on the field area.
  */
 export default function DiceRoll({ roll, rollType, triggerKey, onAnimationComplete }: DiceRollProps) {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -19,7 +18,7 @@ export default function DiceRoll({ roll, rollType, triggerKey, onAnimationComple
     const prevKeyRef = useRef('');
     const initRef = useRef(false);
 
-    // Initialize dice-box once
+    // Initialize dice-box once using v1.1 API
     useEffect(() => {
         if (initRef.current) return;
         initRef.current = true;
@@ -27,15 +26,19 @@ export default function DiceRoll({ roll, rollType, triggerKey, onAnimationComple
         (async () => {
             try {
                 const { default: DiceBox } = await import('@3d-dice/dice-box');
-                const box = new DiceBox('#dice-container', {
+                const box = new (DiceBox as any)({
+                    container: '#dice-container',
                     assetPath: `${import.meta.env.BASE_URL}assets/dice-box/`,
                     theme: 'default',
-                    themeColor: '#e8e8e8',
+                    themeColor: '#ffffff',
                     scale: 9,
                     gravity: 2,
                     throwForce: 5,
                     spinForce: 4,
+                    startingHeight: 10,
                     offscreen: true,
+                    enableShadows: true,
+                    lightIntensity: 1.2,
                 });
                 await box.init();
                 diceBoxRef.current = box;
@@ -60,28 +63,23 @@ export default function DiceRoll({ roll, rollType, triggerKey, onAnimationComple
                 }, 800);
             });
         } else {
-            // Dice-box not loaded — just complete immediately
             onAnimationComplete?.();
         }
     }, [triggerKey, roll, onAnimationComplete]);
 
     return (
-        <>
-            {/* 3D dice container — centered on the field */}
-            <div
-                id="dice-container"
-                ref={containerRef}
-                style={{
-                    position: 'absolute',
-                    top: '15%',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    width: 500,
-                    height: 450,
-                    zIndex: 1200,
-                    pointerEvents: 'none',
-                }}
-            />
-        </>
+        <div
+            id="dice-container"
+            ref={containerRef}
+            style={{
+                position: 'absolute',
+                top: '10%',
+                left: '30%',
+                width: 550,
+                height: 500,
+                zIndex: 1200,
+                pointerEvents: 'none',
+            }}
+        />
     );
 }
