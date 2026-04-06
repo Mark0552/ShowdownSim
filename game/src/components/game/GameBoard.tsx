@@ -273,7 +273,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 {(() => {
                     const colW = 40, teamW = 100, rhW = 44;
                     const sbTableW = teamW + 9 * colW + 2 * rhW; // scoreboard table width
-                    const innW = 130; // inning + top/bot + outs section
+                    const innW = 190; // inning + top/bot + outs section (46 + 36 + 3*28 + gaps)
                     const gapBetween = 16;
                     const unitW = sbTableW + gapBetween + innW;
                     const unitX = (1400 - unitW) / 2;
@@ -486,18 +486,23 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             const dp = state.pendingDpResult;
                             let label = 'BATTER SAFE';
                             let color = 'rgba(34,180,80,0.85)';
+                            let showRoll = true;
                             if (dp.isDP) { label = 'DOUBLE PLAY!'; color = 'rgba(200,30,30,0.85)'; }
                             else if (dp.choice === 'dp' && !dp.isDP) { label = 'DP AVOIDED — BATTER SAFE'; }
                             else if (dp.choice === 'hold' && dp.defenseTotal > dp.offenseSpeed) { label = 'OUT AT 1ST — RUNNERS HELD'; color = 'rgba(200,30,30,0.85)'; }
                             else if (dp.choice === 'hold') { label = 'BATTER SAFE — RUNNERS HELD'; }
-                            else if (dp.choice === 'force_home') { label = 'FORCE OUT AT HOME'; color = 'rgba(200,30,30,0.85)'; }
-                            else if (dp.choice === 'advance') { label = 'RUNNERS ADVANCE'; }
+                            else if (dp.choice === 'force_home') { label = 'FORCE OUT AT HOME'; color = 'rgba(200,30,30,0.85)'; showRoll = false; }
+                            else if (dp.choice === 'advance') { label = 'RUNNERS ADVANCE — OUT AT 1ST'; color = 'rgba(200,30,30,0.85)'; showRoll = false; }
                             return (<>
-                                <rect x="1070" y={BOT_Y + 84} width="310" height="40" rx="6" fill={color}/>
-                                <text x="1225" y={BOT_Y + 102} textAnchor="middle" fontSize="12" fill="white" fontWeight="bold" fontFamily="Impact">{label}</text>
+                                <rect x="1070" y={BOT_Y + 84} width="310" height={showRoll ? 46 : 34} rx="6" fill={color}/>
+                                <text x="1225" y={BOT_Y + 104} textAnchor="middle" fontSize="12" fill="white" fontWeight="bold" fontFamily="Impact">{label}</text>
+                                {showRoll && (
+                                    <text x="1225" y={BOT_Y + 122} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.8)" fontFamily="monospace">
+                                        d20({dp.roll})+IF({dp.defenseTotal - dp.roll})={dp.defenseTotal} vs Spd {dp.offenseSpeed}
+                                    </text>
+                                )}
                             </>);
                         })()}
-                        <text x="1225" y={BOT_Y + 118} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.8)" fontFamily="monospace">d20({state.pendingDpResult.roll})+IF({state.pendingDpResult.defenseTotal - state.pendingDpResult.roll})={state.pendingDpResult.defenseTotal} vs Spd {state.pendingDpResult.offenseSpeed}</text>
                     </g>
                 )}
                 {state.pendingExtraBaseResult && (
