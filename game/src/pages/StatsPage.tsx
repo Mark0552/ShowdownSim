@@ -56,9 +56,16 @@ export default function StatsPage({ onBack }: Props) {
 
     const sortIndicator = (key: string) => sortKey === key ? (sortDir === 'desc' ? ' \u25BC' : ' \u25B2') : '';
 
+    const calcBatVal = (s: any, key: string) => {
+        if (key === 'avg') return s.ab > 0 ? s.h / s.ab : 0;
+        if (key === 'obp') { const d = s.ab + s.bb + (s.ibb || 0) + (s.sf || 0); return d > 0 ? (s.h + s.bb + (s.ibb || 0)) / d : 0; }
+        if (key === 'slg') return s.ab > 0 ? (s.tb || 0) / s.ab : 0;
+        if (key === 'ops') { const d = s.ab + s.bb + (s.ibb || 0) + (s.sf || 0); const obp = d > 0 ? (s.h + s.bb + (s.ibb || 0)) / d : 0; const slg = s.ab > 0 ? (s.tb || 0) / s.ab : 0; return obp + slg; }
+        return s[key] ?? 0;
+    };
     const sortedBatting = [...battingStats].sort((a, b) => {
-        const av = sortKey === 'avg' ? (a.ab > 0 ? a.h / a.ab : 0) : (a[sortKey] ?? 0);
-        const bv = sortKey === 'avg' ? (b.ab > 0 ? b.h / b.ab : 0) : (b[sortKey] ?? 0);
+        const av = calcBatVal(a, sortKey);
+        const bv = calcBatVal(b, sortKey);
         return sortDir === 'desc' ? bv - av : av - bv;
     });
 
@@ -68,8 +75,21 @@ export default function StatsPage({ onBack }: Props) {
         return sortDir === 'desc' ? bv - av : av - bv;
     });
 
-    const fmtAvg = (h: number, ab: number) => ab === 0 ? '.000' : (h / ab).toFixed(3).replace(/^0/, '');
+    const fmt3 = (n: number) => n === 0 ? '.000' : n.toFixed(3).replace(/^0/, '');
+    const fmtAvg = (h: number, ab: number) => ab === 0 ? '.000' : fmt3(h / ab);
+    const fmtObp = (s: any) => {
+        const denom = (s.ab || 0) + (s.bb || 0) + (s.ibb || 0) + (s.sf || 0);
+        return denom === 0 ? '.000' : fmt3(((s.h || 0) + (s.bb || 0) + (s.ibb || 0)) / denom);
+    };
+    const fmtSlg = (s: any) => (s.ab || 0) === 0 ? '.000' : fmt3((s.tb || 0) / s.ab);
+    const fmtOps = (s: any) => {
+        const denom = (s.ab || 0) + (s.bb || 0) + (s.ibb || 0) + (s.sf || 0);
+        const obp = denom === 0 ? 0 : ((s.h || 0) + (s.bb || 0) + (s.ibb || 0)) / denom;
+        const slg = (s.ab || 0) === 0 ? 0 : (s.tb || 0) / s.ab;
+        return fmt3(obp + slg);
+    };
     const fmtEra = (r: number, ip: number) => ip === 0 ? '-' : ((r * 9) / (ip / 3)).toFixed(2);
+    const fmtWhip = (s: any) => s.ip === 0 ? '-' : (((s.h || 0) + (s.bb || 0)) / (s.ip / 3)).toFixed(2);
     const fmtIp = (outs: number) => `${Math.floor(outs / 3)}.${outs % 3}`;
 
     return (
@@ -108,8 +128,8 @@ export default function StatsPage({ onBack }: Props) {
                                             const opponent = isHome ? game.away_user_email : game.home_user_email;
                                             const myLineup = isHome ? game.home_lineup_name : game.away_lineup_name;
                                             const won = game.winner_user_id === userId;
-                                            const homeScore = game.state?.homeTeam?.runs ?? '?';
-                                            const awayScore = game.state?.awayTeam?.runs ?? '?';
+                                            const homeScore = game.state?.score?.home ?? '?';
+                                            const awayScore = game.state?.score?.away ?? '?';
                                             const score = isHome ? `${homeScore}-${awayScore}` : `${awayScore}-${homeScore}`;
                                             return (
                                                 <tr key={game.id}>
@@ -147,15 +167,21 @@ export default function StatsPage({ onBack }: Props) {
                                             <tr>
                                                 <th>Player</th>
                                                 <th className="sortable" onClick={() => handleSort('games')}>G{sortIndicator('games')}</th>
+                                                <th className="sortable" onClick={() => handleSort('pa')}>PA{sortIndicator('pa')}</th>
                                                 <th className="sortable" onClick={() => handleSort('ab')}>AB{sortIndicator('ab')}</th>
                                                 <th className="sortable" onClick={() => handleSort('h')}>H{sortIndicator('h')}</th>
+                                                <th className="sortable" onClick={() => handleSort('db')}>2B{sortIndicator('db')}</th>
+                                                <th className="sortable" onClick={() => handleSort('tr')}>3B{sortIndicator('tr')}</th>
                                                 <th className="sortable" onClick={() => handleSort('hr')}>HR{sortIndicator('hr')}</th>
                                                 <th className="sortable" onClick={() => handleSort('r')}>R{sortIndicator('r')}</th>
                                                 <th className="sortable" onClick={() => handleSort('rbi')}>RBI{sortIndicator('rbi')}</th>
+                                                <th className="sortable" onClick={() => handleSort('sb')}>SB{sortIndicator('sb')}</th>
                                                 <th className="sortable" onClick={() => handleSort('bb')}>BB{sortIndicator('bb')}</th>
                                                 <th className="sortable" onClick={() => handleSort('so')}>SO{sortIndicator('so')}</th>
-                                                <th className="sortable" onClick={() => handleSort('sb')}>SB{sortIndicator('sb')}</th>
                                                 <th className="sortable" onClick={() => handleSort('avg')}>AVG{sortIndicator('avg')}</th>
+                                                <th className="sortable" onClick={() => handleSort('obp')}>OBP{sortIndicator('obp')}</th>
+                                                <th className="sortable" onClick={() => handleSort('slg')}>SLG{sortIndicator('slg')}</th>
+                                                <th className="sortable" onClick={() => handleSort('ops')}>OPS{sortIndicator('ops')}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -163,15 +189,21 @@ export default function StatsPage({ onBack }: Props) {
                                                 <tr key={s.card_id}>
                                                     <td className="stats-player-name">{s.card_name}</td>
                                                     <td>{s.games}</td>
+                                                    <td>{s.pa}</td>
                                                     <td>{s.ab}</td>
                                                     <td>{s.h}</td>
+                                                    <td>{s.db}</td>
+                                                    <td>{s.tr}</td>
                                                     <td>{s.hr}</td>
                                                     <td>{s.r}</td>
                                                     <td>{s.rbi}</td>
+                                                    <td>{s.sb}</td>
                                                     <td>{s.bb}</td>
                                                     <td>{s.so}</td>
-                                                    <td>{s.sb}</td>
                                                     <td>{fmtAvg(s.h, s.ab)}</td>
+                                                    <td>{fmtObp(s)}</td>
+                                                    <td>{fmtSlg(s)}</td>
+                                                    <td>{fmtOps(s)}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -198,6 +230,7 @@ export default function StatsPage({ onBack }: Props) {
                                                 <th className="sortable" onClick={() => handleSort('hr')}>HR{sortIndicator('hr')}</th>
                                                 <th className="sortable" onClick={() => handleSort('bf')}>BF{sortIndicator('bf')}</th>
                                                 <th className="sortable" onClick={() => handleSort('era')}>ERA{sortIndicator('era')}</th>
+                                                <th className="sortable" onClick={() => handleSort('whip')}>WHIP{sortIndicator('whip')}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -214,6 +247,7 @@ export default function StatsPage({ onBack }: Props) {
                                                     <td>{s.hr}</td>
                                                     <td>{s.bf}</td>
                                                     <td>{fmtEra(s.r, s.ip)}</td>
+                                                    <td>{fmtWhip(s)}</td>
                                                 </tr>
                                             ))}
                                         </tbody>

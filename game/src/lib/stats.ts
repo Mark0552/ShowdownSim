@@ -70,7 +70,7 @@ export async function getCareerBattingStats() {
 
     const { data, error } = await supabase
         .from('game_player_stats')
-        .select('card_id, card_name, ab, h, r, rbi, bb, ibb, so, hr, sb, cs, win')
+        .select('card_id, card_name, pa, ab, h, r, rbi, bb, ibb, so, hr, db, tr, tb, sb, cs, gidp, sh, sf, win')
         .eq('user_id', user.id)
         .eq('card_type', 'hitter');
     if (error) throw error;
@@ -79,12 +79,14 @@ export async function getCareerBattingStats() {
     const map = new Map<string, any>();
     for (const row of data || []) {
         if (!map.has(row.card_id)) {
-            map.set(row.card_id, { card_id: row.card_id, card_name: row.card_name, games: 0, ab: 0, h: 0, r: 0, rbi: 0, bb: 0, ibb: 0, so: 0, hr: 0, sb: 0, cs: 0, wins: 0 });
+            map.set(row.card_id, { card_id: row.card_id, card_name: row.card_name, games: 0, pa: 0, ab: 0, h: 0, r: 0, rbi: 0, bb: 0, ibb: 0, so: 0, hr: 0, db: 0, tr: 0, tb: 0, sb: 0, cs: 0, gidp: 0, sh: 0, sf: 0, wins: 0 });
         }
         const agg = map.get(row.card_id)!;
-        agg.games++; agg.ab += row.ab; agg.h += row.h; agg.r += row.r; agg.rbi += row.rbi;
-        agg.bb += row.bb; agg.ibb += row.ibb; agg.so += row.so; agg.hr += row.hr;
+        agg.games++; agg.pa += (row.pa || 0); agg.ab += row.ab; agg.h += row.h; agg.r += row.r; agg.rbi += row.rbi;
+        agg.bb += row.bb; agg.ibb += (row.ibb || 0); agg.so += row.so; agg.hr += row.hr;
+        agg.db += (row.db || 0); agg.tr += (row.tr || 0); agg.tb += (row.tb || 0);
         agg.sb += row.sb; agg.cs += row.cs;
+        agg.gidp += (row.gidp || 0); agg.sh += (row.sh || 0); agg.sf += (row.sf || 0);
         if (row.win) agg.wins++;
     }
     return Array.from(map.values());
