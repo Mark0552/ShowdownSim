@@ -97,10 +97,12 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     };
     const handlePlayerLeave = () => { if (hoverTimer.current) clearTimeout(hoverTimer.current); setHoveredPlayer(null); };
 
-    const pitcherIp = pitcher.ip || 0;
-    const pitcherInningsCompleted = fieldingTeam.inningsPitched || 0;
-    const pitcherInningsDisplay = pitcherInningsCompleted + 1;
-    const fatigueActive = pitcherInningsDisplay > pitcherIp;
+    const cardIp = pitcher.ip || 0;
+    const pitcherRuns = fieldingTeam.pitcherStats?.[pitcher.cardId]?.r || 0;
+    const effectiveIp = Math.max(0, cardIp - Math.floor(pitcherRuns / 3));
+    const inningsPitching = state.inning - (fieldingTeam.pitcherEntryInning || 1) + 1;
+    const fatigueActive = inningsPitching > effectiveIp;
+    const fatiguePenalty = Math.max(0, inningsPitching - effectiveIp);
     const hasRunners = !!(state.bases.first || state.bases.second || state.bases.third);
 
     const rollKey = `${state.lastRollType}-${state.lastRoll}-${state.inning}-${state.halfInning}-${state.outs}-${battingTeam.currentBatterIndex}`;
@@ -390,7 +392,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 {/* IP / Fatigue near pitcher */}
                 <rect x={MOUND.x - 42} y={MOUND.y + 56} width="84" height="20" rx="4" fill="rgba(0,0,0,0.75)"/>
                 <text x={MOUND.x} y={MOUND.y + 70} textAnchor="middle" fontSize="10" fill={fatigueActive ? '#ff6060' : '#8aade0'} fontWeight="bold" fontFamily="monospace">
-                    IP: {pitcherInningsDisplay}/{pitcherIp}{fatigueActive ? ` (-${pitcherInningsDisplay - pitcherIp})` : ''}
+                    IP: {inningsPitching}/{effectiveIp}{fatigueActive ? ` (-${fatiguePenalty})` : ''}
                 </text>
 
                 {/* ====== BOTTOM BAR (y=750..948) ====== */}

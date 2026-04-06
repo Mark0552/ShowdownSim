@@ -18,8 +18,13 @@ export function handlePitch(state) {
 
     const roll = rollD20();
     const baseControl = pitcher.control || 0;
-    const ipRating = pitcher.fatigued ? 0 : (pitcher.ip || 0); // fatigued relievers start at IP 0
-    const fatiguePenalty = Math.max(0, fieldingTeam.inningsPitched - ipRating);
+    const cardIp = pitcher.fatigued ? 0 : (pitcher.ip || 0);
+    // Runs given up reduce effective IP: every 3 runs = -1 IP
+    const pitcherRuns = fieldingTeam.pitcherStats?.[pitcher.cardId]?.r || 0;
+    const effectiveIp = Math.max(0, cardIp - Math.floor(pitcherRuns / 3));
+    // Fatigue: current inning the pitcher is IN (not completed) vs effective IP
+    const inningsPitching = state.inning - (fieldingTeam.pitcherEntryInning || 1) + 1;
+    const fatiguePenalty = Math.max(0, inningsPitching - effectiveIp);
     // RP bonus only applies if this pitcher is the one who activated it
     let controlMod = state.controlModifier || 0;
     if (controlMod > 0 && state.rpActivePitcherId && state.rpActivePitcherId !== pitcher.cardId) {
