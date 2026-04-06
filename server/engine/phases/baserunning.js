@@ -235,12 +235,12 @@ export function endHalfInning(state) {
     fieldingTeam = addPitcherStat(fieldingTeam, pitcherId, 'ip', outsForCurrentPitcher);
     fieldingTeam.outsRecordedByCurrentPitcher = 0; // reset for next half-inning
 
-    // CY icon check
+    // CY icon check — 1-2-3 inning increases effective IP by 1
     if (state.halfInningClean && playerHasIcon(fieldingTeam.pitcher, 'CY')) {
         const pitcher = fieldingTeam.pitcher;
         if (canUseIcon(fieldingTeam, pitcher.cardId, 'CY')) {
             fieldingTeam = recordIconUse(fieldingTeam, pitcher.cardId, 'CY');
-            fieldingTeam.inningsPitched = Math.max(0, fieldingTeam.inningsPitched - 1);
+            fieldingTeam.cyBonusInnings = (fieldingTeam.cyBonusInnings || 0) + 1;
             state = { ...state, gameLog: [...state.gameLog, `CY icon: ${pitcher.name} threw a 1-2-3 inning! +1 effective IP`] };
         }
     }

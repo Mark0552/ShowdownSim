@@ -98,7 +98,8 @@ export function handlePitchingChange(state, action) {
     team.usedPlayers = [...team.usedPlayers, oldPitcher.cardId];
     team.inningsPitched = 0;
     team.pitcherEntryInning = state.inning;
-    team.outsRecordedByCurrentPitcher = 0; // reset for new pitcher
+    team.outsRecordedByCurrentPitcher = 0;
+    team.cyBonusInnings = 0; // new pitcher doesn't inherit CY bonuses
 
     // Fix 3: If the departing pitcher had RP active, clear it
     const rpCleared = state.rpActivePitcherId && state.rpActivePitcherId === oldPitcher.cardId;

@@ -19,9 +19,10 @@ export function handlePitch(state) {
     const roll = rollD20();
     const baseControl = pitcher.control || 0;
     const cardIp = pitcher.fatigued ? 0 : (pitcher.ip || 0);
-    // Runs given up reduce effective IP: every 3 runs = -1 IP
+    // Effective IP = card IP - floor(runs/3) + CY bonus innings
     const pitcherRuns = fieldingTeam.pitcherStats?.[pitcher.cardId]?.r || 0;
-    const effectiveIp = Math.max(0, cardIp - Math.floor(pitcherRuns / 3));
+    const cyBonus = fieldingTeam.cyBonusInnings || 0;
+    const effectiveIp = Math.max(0, cardIp - Math.floor(pitcherRuns / 3) + cyBonus);
     // Fatigue: current inning the pitcher is IN (not completed) vs effective IP
     const inningsPitching = state.inning - (fieldingTeam.pitcherEntryInning || 1) + 1;
     const fatiguePenalty = Math.max(0, inningsPitching - effectiveIp);

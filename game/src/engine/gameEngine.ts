@@ -110,6 +110,7 @@ export interface TeamState {
     iconUsage: IconUsage;             // track icon uses per player per game
     inningsPitched: number;           // IP accumulated by current pitcher
     pitcherEntryInning: number;       // inning when current pitcher entered
+    cyBonusInnings?: number;          // CY icon: extra effective IP from 1-2-3 innings
     totalInfieldFielding: number;     // sum of 1B+2B+3B+SS fielding (catchers have 0 fielding)
     totalOutfieldFielding: number;    // sum of LF+CF+RF fielding
     catcherArm: number;              // catcher's Arm value for steal defense

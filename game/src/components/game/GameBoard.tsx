@@ -99,7 +99,8 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
 
     const cardIp = pitcher.ip || 0;
     const pitcherRuns = fieldingTeam.pitcherStats?.[pitcher.cardId]?.r || 0;
-    const effectiveIp = Math.max(0, cardIp - Math.floor(pitcherRuns / 3));
+    const cyBonus = fieldingTeam.cyBonusInnings || 0;
+    const effectiveIp = Math.max(0, cardIp - Math.floor(pitcherRuns / 3) + cyBonus);
     const inningsPitching = state.inning - (fieldingTeam.pitcherEntryInning || 1) + 1;
     const fatigueActive = inningsPitching > effectiveIp;
     const fatiguePenalty = Math.max(0, inningsPitching - effectiveIp);
