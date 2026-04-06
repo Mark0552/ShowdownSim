@@ -104,7 +104,7 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                         return (
                             <g key="skip" className="roll-button" onClick={() => onAction({ type: 'SKIP_SUB' })} cursor="pointer">
                                 <rect x={x} y={ROW1} width={item.width} height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
-                                <text x={x + item.width / 2} y={ROW1 + 27} textAnchor="middle" fontSize="15" fill="#ccc" fontWeight="900" fontFamily="Impact">SKIP</text>
+                                <text x={x + item.width / 2} y={ROW1 + 27} textAnchor="middle" fontSize="14" fill="#ccc" fontWeight="900" fontFamily="Impact">NO ACTION</text>
                             </g>
                         );
                     })}
@@ -158,7 +158,7 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                             case 'rp': return (
                                 <g key="rp" className="roll-button" onClick={() => onAction({ type: 'USE_ICON', cardId: fieldingTeam.pitcher.cardId, icon: 'RP' })} cursor="pointer">
                                     <rect x={x} y={y} width={item.width} height={ROW1_H} rx="6" fill="#60a5fa" stroke="#93c5fd" strokeWidth="1.5"/>
-                                    <text x={x + item.width / 2} y={y + 27} textAnchor="middle" fontSize="14" fill="#002" fontWeight="900" fontFamily="Impact">USE RP (+3)</text>
+                                    <text x={x + item.width / 2} y={y + 27} textAnchor="middle" fontSize="14" fill="#002" fontWeight="900" fontFamily="Impact">RP ICON (+3 CTRL)</text>
                                 </g>
                             );
                             case 'ibb': return (
@@ -170,7 +170,7 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                             case 'pitch_bunt': return (
                                 <g key="pitch_bunt" className="roll-button" onClick={() => onAction({ type: 'SKIP_SUB' })} cursor="pointer">
                                     <rect x={x} y={y} width={item.width} height={ROW1_H} rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
-                                    <text x={x + item.width / 2} y={y + 28} textAnchor="middle" fontSize="18" fill="white" fontWeight="900" fontFamily="Impact" letterSpacing="1">PITCH</text>
+                                    <text x={x + item.width / 2} y={y + 28} textAnchor="middle" fontSize="16" fill="white" fontWeight="900" fontFamily="Impact" letterSpacing="1">READY TO PITCH</text>
                                 </g>
                             );
                             case 'roll_pitch': return (
@@ -257,8 +257,8 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                         <text x={CX - 4} y={ROW1 + 27} textAnchor="middle" fontSize="15" fill="white" fontWeight="900" fontFamily="Impact">SAC BUNT</text>
                     </g>
                     <g className="roll-button" onClick={() => onAction({ type: 'SKIP_BUNT' })} cursor="pointer">
-                        <rect x={CX + 84} y={ROW1} width="100" height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
-                        <text x={CX + 134} y={ROW1 + 27} textAnchor="middle" fontSize="15" fill="#ccc" fontWeight="900" fontFamily="Impact">SKIP</text>
+                        <rect x={CX + 84} y={ROW1} width="120" height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
+                        <text x={CX + 144} y={ROW1 + 27} textAnchor="middle" fontSize="14" fill="#ccc" fontWeight="900" fontFamily="Impact">NO BUNT</text>
                     </g>
                 </g>
             )}
@@ -371,7 +371,7 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                                 })()}
                                 <g className="roll-button" onClick={() => onAction({ type: 'HOLD_RUNNERS' })} cursor="pointer">
                                     <rect x={bx} y={ROW1} width={holdW} height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
-                                    <text x={bx + holdW / 2} y={ROW1 + 27} textAnchor="middle" fontSize="14" fill="#ccc" fontWeight="bold" fontFamily="Arial">HOLD</text>
+                                    <text x={bx + holdW / 2} y={ROW1 + 27} textAnchor="middle" fontSize="13" fill="#ccc" fontWeight="bold" fontFamily="Arial">HOLD RUNNERS</text>
                                 </g>
                             </>
                         );
@@ -387,11 +387,11 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                     </text>
                     {(() => {
                         const buttons: { label: string; sub: string; choice: string; color: string }[] = [];
-                        if (state.gbOptions.canDP) buttons.push({ label: 'DOUBLE PLAY', sub: 'Runner on 1st out + roll', choice: 'dp', color: '#e94560' });
-                        if (state.gbOptions.canForceHome) buttons.push({ label: 'FORCE HOME', sub: 'Out at home, no run', choice: 'force_home', color: '#8b5cf6' });
-                        if (state.gbOptions.canHoldThird) buttons.push({ label: 'HOLD 3RD', sub: 'No DP, roll at 1st', choice: 'hold', color: '#d4a018' });
-                        if (state.gbOptions.canHoldRunners) buttons.push({ label: 'HOLD', sub: 'Roll for out at 1st', choice: 'hold', color: '#d4a018' });
-                        if (state.gbOptions.canAdvanceRunners) buttons.push({ label: 'ADVANCE', sub: 'Runners advance freely', choice: 'advance', color: '#334155' });
+                        if (state.gbOptions.canDP) buttons.push({ label: 'DOUBLE PLAY', sub: 'Force 2nd, roll for 1st', choice: 'dp', color: '#e94560' });
+                        if (state.gbOptions.canForceHome) buttons.push({ label: 'FORCE HOME', sub: 'Out at home, runners shift', choice: 'force_home', color: '#8b5cf6' });
+                        if (state.gbOptions.canHoldThird) buttons.push({ label: 'HOLD RUNNER', sub: '3B stays, roll for 1st', choice: 'hold', color: '#d4a018' });
+                        if (state.gbOptions.canHoldRunners) buttons.push({ label: 'HOLD RUNNERS', sub: 'Runners stay, roll for 1st', choice: 'hold', color: '#d4a018' });
+                        if (state.gbOptions.canAdvanceRunners) buttons.push({ label: 'LET ADVANCE', sub: 'Runners advance, out at 1st', choice: 'advance', color: '#334155' });
                         if (!state.gbOptions.canDP && !state.gbOptions.canHoldRunners && !state.gbOptions.canHoldThird && !state.gbOptions.canAdvanceRunners) {
                             buttons.push({ label: 'LET ADVANCE', sub: 'Runners advance', choice: 'advance', color: '#334155' });
                         }
@@ -462,7 +462,7 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                                 })}
                                 <g className="roll-button" onClick={() => onAction({ type: 'STEAL_G_DECISION' })} cursor="pointer">
                                     <rect x={bx} y={ROW1} width={noGW} height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
-                                    <text x={bx + noGW / 2} y={ROW1 + 27} textAnchor="middle" fontSize="14" fill="#ccc" fontWeight="bold" fontFamily="Arial">NO G</text>
+                                    <text x={bx + noGW / 2} y={ROW1 + 27} textAnchor="middle" fontSize="12" fill="#ccc" fontWeight="bold" fontFamily="Arial">NO GOLD GLOVE</text>
                                 </g>
                             </>
                         );
@@ -514,7 +514,7 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                                 })}
                                 <g className="roll-button" onClick={() => onAction({ type: 'SKIP_EXTRA_BASE' })} cursor="pointer">
                                     <rect x={bx} y={ROW1} width={noThrowW} height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
-                                    <text x={bx + noThrowW / 2} y={ROW1 + 27} textAnchor="middle" fontSize="14" fill="#ccc" fontWeight="bold" fontFamily="Arial">NO THROW</text>
+                                    <text x={bx + noThrowW / 2} y={ROW1 + 27} textAnchor="middle" fontSize="12" fill="#ccc" fontWeight="bold" fontFamily="Arial">LET ADVANCE</text>
                                 </g>
                             </>
                         );
