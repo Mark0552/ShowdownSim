@@ -48,11 +48,13 @@ export function checkExtraBaseEligible(state, outcome) {
     }
 
     if (outcome === 'FB' && state.outs < 3) {
-        // Tag-up: runner on 3rd can try to score
+        // Tag-up: use current outs (after FB) for 2-out bonus — runners go on contact with 2 outs
+        const fbOuts = state.outs;
+        // Runner on 3rd can try to score
         if (bases.third) {
             const runner = battingTeam.lineup.find(p => p.cardId === bases.third);
             if (runner) {
-                const target = runner.speed + 5 + (outsBeforeSwing >= 2 ? 5 : 0);
+                const target = runner.speed + 5 + (fbOuts >= 2 ? 5 : 0);
                 eligible.push({ runnerId: runner.cardId, runnerName: runner.name, fromBase: 'third', toBase: 'home', runnerSpeed: runner.speed, targetWithBonuses: target });
             }
         }
@@ -60,7 +62,7 @@ export function checkExtraBaseEligible(state, outcome) {
         if (bases.second) {
             const runner = battingTeam.lineup.find(p => p.cardId === bases.second);
             if (runner) {
-                const target = runner.speed + (outsBeforeSwing >= 2 ? 5 : 0);
+                const target = runner.speed + (fbOuts >= 2 ? 5 : 0);
                 eligible.push({ runnerId: runner.cardId, runnerName: runner.name, fromBase: 'second', toBase: 'third', runnerSpeed: runner.speed, targetWithBonuses: target });
             }
         }
@@ -97,7 +99,7 @@ export function handleExtraBaseThrow(state, action) {
 
     const fieldingSide = state.halfInning === 'top' ? 'homeTeam' : 'awayTeam';
     const battingSide = state.halfInning === 'top' ? 'awayTeam' : 'homeTeam';
-    let fieldingTeam = state[fieldingSide];
+    let fieldingTeam = { ...state[fieldingSide] };
     const side = state.halfInning === 'top' ? 'away' : 'home';
 
     const roll = rollD20();

@@ -43,9 +43,11 @@ export function handlePitch(state) {
     if (controlMod > 0) controlStr += ` + ${controlMod}(icon)`;
     logs.push(`Pitch: ${controlStr} = ${total} vs OB ${batter.onBase} -> ${chartOwner}'s chart`);
 
+    // After the pitch, strip the 20 icon's +3 (it only applies to one pitch)
+    // If RP is also active, controlMod includes both (+6); strip only the 20 portion (+3)
     let newControlModifier = controlMod;
-    if (state.icon20UsedThisInning && controlMod > 0 && !state.rpActiveInning) {
-        newControlModifier = 0;
+    if (state.icon20UsedThisInning && controlMod > 0) {
+        newControlModifier = Math.max(0, controlMod - 3);
     }
 
     return {

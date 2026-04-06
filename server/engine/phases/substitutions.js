@@ -143,7 +143,9 @@ function enterDefenseSub(state) {
     const has20 = !state.icon20UsedThisInning &&
         playerHasIcon(fieldingTeam.pitcher, '20') &&
         canUseIcon(fieldingTeam, fieldingTeam.pitcher.cardId, '20');
-    const hasRP = state.inning > 6 && !state.rpActiveInning &&
+    const currentFieldingTeamId = state.halfInning === 'top' ? 'home' : 'away';
+    const rpAlreadyUsedByThisTeam = state.rpActiveInning === state.inning && state.rpActiveTeam === currentFieldingTeamId;
+    const hasRP = state.inning > 6 && !rpAlreadyUsedByThisTeam &&
         playerHasIcon(fieldingTeam.pitcher, 'RP') &&
         canUseIcon(fieldingTeam, fieldingTeam.pitcher.cardId, 'RP');
 
@@ -195,14 +197,16 @@ export function enterPreAtBat(state) {
     }
 
     // Check defense options: pitcher icons (20, RP)
-    const has20 = !state.icon20UsedThisInning &&
+    const has20b = !state.icon20UsedThisInning &&
         playerHasIcon(fieldingTeam.pitcher, '20') &&
         canUseIcon(fieldingTeam, fieldingTeam.pitcher.cardId, '20');
-    const hasRP = state.inning > 6 && !state.rpActiveInning &&
+    const fieldTeamId = state.halfInning === 'top' ? 'home' : 'away';
+    const rpUsedByThisTeam = state.rpActiveInning === state.inning && state.rpActiveTeam === fieldTeamId;
+    const hasRP = state.inning > 6 && !rpUsedByThisTeam &&
         playerHasIcon(fieldingTeam.pitcher, 'RP') &&
         canUseIcon(fieldingTeam, fieldingTeam.pitcher.cardId, 'RP');
 
-    if (hasRelievers || has20 || hasRP) {
+    if (hasRelievers || has20b || hasRP) {
         return { ...state, phase: 'defense_sub', subPhaseStep: 'defense' };
     }
 
