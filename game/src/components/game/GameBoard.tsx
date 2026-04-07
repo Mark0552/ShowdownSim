@@ -276,8 +276,8 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 {/* Centered scoreboard + inning + outs as one unit */}
                 {(() => {
                     const colW = 40, teamW = 100, rhW = 44;
-                    const sbTableW = teamW + 9 * colW + 2 * rhW; // scoreboard table width
-                    const innW = 190; // inning + top/bot + outs section (46 + 36 + 3*28 + gaps)
+                    const sbTableW = teamW + 9 * colW + rhW; // scoreboard table width (no H column)
+                    const innW = 190; // inning + top/bot + outs section
                     const gapBetween = 16;
                     const unitW = sbTableW + gapBetween + innW;
                     const unitX = (1400 - unitW) / 2;
@@ -296,8 +296,6 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             ))}
                             <rect x={unitX + teamW + 9 * colW} y={ry} width={rhW} height={rowH} fill="#3a0a0a"/>
                             <text x={unitX + teamW + 9 * colW + rhW / 2} y={ry + 16} textAnchor="middle" fontSize="16" fill="white" fontWeight="bold" fontFamily="Impact">{team === state.awayTeam ? state.score.away : state.score.home}</text>
-                            <rect x={unitX + teamW + 9 * colW + rhW} y={ry} width={rhW} height={rowH} fill="#081222"/>
-                            <text x={unitX + teamW + 9 * colW + rhW + rhW / 2} y={ry + 16} textAnchor="middle" fontSize="16" fill="#c8d8f8" fontWeight="bold" fontFamily="Impact">{team.hits || 0}</text>
                         </g>
                     );
 
@@ -315,8 +313,6 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             ))}
                             <rect x={unitX + teamW + 9 * colW} y={sbY} width={rhW} height={hdrH} rx="2" fill="#9a0000"/>
                             <text x={unitX + teamW + 9 * colW + rhW / 2} y={sbY + 14} textAnchor="middle" fontSize="10" fill="white" fontWeight="bold" fontFamily="Arial">R</text>
-                            <rect x={unitX + teamW + 9 * colW + rhW} y={sbY} width={rhW} height={hdrH} rx="2" fill="#7a0000"/>
-                            <text x={unitX + teamW + 9 * colW + rhW + rhW / 2} y={sbY + 14} textAnchor="middle" fontSize="10" fill="white" fontWeight="bold" fontFamily="Arial">H</text>
                             {/* Team rows */}
                             {renderRow(state.awayTeam, awayName, sbY + hdrH + 1)}
                             {renderRow(state.homeTeam, homeName, sbY + hdrH + 1 + rowH + 1)}
@@ -341,14 +337,28 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     );
                 })()}
 
-                {/* Log / Score — top right */}
+                {/* Game Log / Box Score — top right, stacked two-line labels */}
                 <g cursor="pointer" onClick={() => { setShowGameLog(!showGameLog); setShowStats(false); }}>
-                    <rect x="1300" y="8" width="44" height="28" rx="4" fill="#0a1428" stroke="#d4a018" strokeWidth="1"/>
-                    <text x="1322" y="26" textAnchor="middle" fontSize="11" fill="#d4a018" fontWeight="bold" fontFamily="Arial">{showGameLog ? 'CLOSE' : 'LOG'}</text>
+                    <rect x="1288" y="6" width="54" height="40" rx="4" fill="#0a1428" stroke="#d4a018" strokeWidth="1"/>
+                    {showGameLog ? (
+                        <text x="1315" y="31" textAnchor="middle" fontSize="12" fill="#d4a018" fontWeight="bold" fontFamily="Arial">CLOSE</text>
+                    ) : (
+                        <>
+                            <text x="1315" y="22" textAnchor="middle" fontSize="11" fill="#d4a018" fontWeight="bold" fontFamily="Arial">GAME</text>
+                            <text x="1315" y="38" textAnchor="middle" fontSize="11" fill="#d4a018" fontWeight="bold" fontFamily="Arial">LOG</text>
+                        </>
+                    )}
                 </g>
                 <g cursor="pointer" onClick={() => { setShowStats(!showStats); setShowGameLog(false); }}>
-                    <rect x="1348" y="8" width="48" height="28" rx="4" fill="#0a1428" stroke="#d4a018" strokeWidth="1"/>
-                    <text x="1372" y="26" textAnchor="middle" fontSize="11" fill="#d4a018" fontWeight="bold" fontFamily="Arial">{showStats ? 'CLOSE' : 'SCORE'}</text>
+                    <rect x="1346" y="6" width="54" height="40" rx="4" fill="#0a1428" stroke="#d4a018" strokeWidth="1"/>
+                    {showStats ? (
+                        <text x="1373" y="31" textAnchor="middle" fontSize="12" fill="#d4a018" fontWeight="bold" fontFamily="Arial">CLOSE</text>
+                    ) : (
+                        <>
+                            <text x="1373" y="22" textAnchor="middle" fontSize="11" fill="#d4a018" fontWeight="bold" fontFamily="Arial">BOX</text>
+                            <text x="1373" y="38" textAnchor="middle" fontSize="11" fill="#d4a018" fontWeight="bold" fontFamily="Arial">SCORE</text>
+                        </>
+                    )}
                 </g>
 
                 <line x1="0" y1={TOP} x2="1400" y2={TOP} stroke="#d4a018" strokeWidth="1.5"/>
@@ -543,7 +553,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
 
             {showGameLog && <GameLogOverlay gameLog={state.gameLog} onClose={() => setShowGameLog(false)} />}
             {showStats && (
-                <div className="overlay-panel" style={{ minWidth: 650 }}>
+                <div className="overlay-panel" style={{ minWidth: 1200, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto' }}>
                     <div className="overlay-panel-header">
                         <span className="overlay-panel-title">BOX SCORE</span>
                         <button className="overlay-close" onClick={() => setShowStats(false)}>CLOSE</button>

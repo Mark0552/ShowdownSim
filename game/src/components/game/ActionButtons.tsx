@@ -191,10 +191,10 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                                 </g>
                             );
                             case '20': return (
-                                <g key="20" className="roll-button" onClick={() => { onAction({ type: 'USE_ICON', cardId: fieldingTeam.pitcher.cardId, icon: '20' }); }} cursor="pointer">
+                                <g key="20" className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH', useIcon20: true })} cursor="pointer">
                                     <rect x={x} y={y} width={item.width} height={ROW1_H} rx="8" fill="#60a5fa" stroke="#93c5fd" strokeWidth="2"/>
-                                    <text x={x + item.width / 2} y={y + 20} textAnchor="middle" fontSize="16" fill="#002" fontWeight="900" fontFamily="Impact">PITCH + 20 (+3)</text>
-                                    <text x={x + item.width / 2} y={y + 40} textAnchor="middle" fontSize="13" fill="rgba(0,0,0,0.6)" fontFamily="Arial">+3 control this pitch</text>
+                                    <text x={x + item.width / 2} y={y + 20} textAnchor="middle" fontSize="16" fill="#002" fontWeight="900" fontFamily="Impact">USE 20 ICON</text>
+                                    <text x={x + item.width / 2} y={y + 40} textAnchor="middle" fontSize="13" fill="rgba(0,0,0,0.6)" fontFamily="Arial">d20 + control + 3 vs OB</text>
                                 </g>
                             );
                             default: return null;
@@ -248,10 +248,10 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                                 <text x={CX - 25} y={ROW1 + 20} textAnchor="middle" fontSize="18" fill="white" fontWeight="900" fontFamily="Impact">ROLL PITCH</text>
                                 <text x={CX - 25} y={ROW1 + 40} textAnchor="middle" fontSize="13" fill="rgba(255,255,255,0.6)" fontFamily="Arial">d20 + control vs OB</text>
                             </g>
-                            <g className="roll-button" onClick={() => { onAction({ type: 'USE_ICON', cardId: fieldingTeam.pitcher.cardId, icon: '20' }); }} cursor="pointer">
+                            <g className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH', useIcon20: true })} cursor="pointer">
                                 <rect x={CX + 80} y={ROW1} width="180" height={ROW1_H} rx="8" fill="#60a5fa" stroke="#93c5fd" strokeWidth="2"/>
-                                <text x={CX + 170} y={ROW1 + 20} textAnchor="middle" fontSize="16" fill="#002" fontWeight="900" fontFamily="Impact">PITCH + 20 (+3)</text>
-                                <text x={CX + 170} y={ROW1 + 40} textAnchor="middle" fontSize="13" fill="rgba(0,0,0,0.6)" fontFamily="Arial">+3 control this pitch</text>
+                                <text x={CX + 170} y={ROW1 + 20} textAnchor="middle" fontSize="16" fill="#002" fontWeight="900" fontFamily="Impact">USE 20 ICON</text>
+                                <text x={CX + 170} y={ROW1 + 40} textAnchor="middle" fontSize="13" fill="rgba(0,0,0,0.6)" fontFamily="Arial">d20 + control + 3 vs OB</text>
                             </g>
                         </g>
                     );
@@ -299,10 +299,10 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                                 <text x={CX - 110} y={ROW1 + 20} textAnchor="middle" fontSize="18" fill="white" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="2">ROLL PITCH</text>
                                 <text x={CX - 110} y={ROW1 + 40} textAnchor="middle" fontSize="13" fill="rgba(255,255,255,0.6)" fontFamily="Arial">d20 + control vs OB</text>
                             </g>
-                            <g className="roll-button" onClick={() => { onAction({ type: 'USE_ICON', cardId: fieldingTeam.pitcher.cardId, icon: '20' }); }} cursor="pointer">
+                            <g className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH', useIcon20: true })} cursor="pointer">
                                 <rect x={CX + 10} y={ROW1} width="200" height={ROW1_H} rx="8" fill="#60a5fa" stroke="#93c5fd" strokeWidth="2"/>
-                                <text x={CX + 110} y={ROW1 + 20} textAnchor="middle" fontSize="16" fill="#002" fontWeight="900" fontFamily="Impact,sans-serif">PITCH + 20 (+3)</text>
-                                <text x={CX + 110} y={ROW1 + 40} textAnchor="middle" fontSize="13" fill="rgba(0,0,0,0.6)" fontFamily="Arial">+3 control this pitch</text>
+                                <text x={CX + 110} y={ROW1 + 20} textAnchor="middle" fontSize="16" fill="#002" fontWeight="900" fontFamily="Impact,sans-serif">USE 20 ICON</text>
+                                <text x={CX + 110} y={ROW1 + 40} textAnchor="middle" fontSize="13" fill="rgba(0,0,0,0.6)" fontFamily="Arial">d20 + control + 3 vs OB</text>
                             </g>
                         </g>
                     );

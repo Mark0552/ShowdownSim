@@ -41,7 +41,7 @@ export function processAction(state, action) {
     if (state.isOver) return state;
     switch (action.type) {
         case 'ROLL_STARTERS':      return handleRollStarters(state);
-        case 'ROLL_PITCH':         return handlePitch(state);
+        case 'ROLL_PITCH':         return handlePitch(state, action);
         case 'ROLL_SWING':         return handleSwing(state);
         case 'PINCH_HIT':          return handlePinchHit(state, action);
         case 'PITCHING_CHANGE':    return handlePitchingChange(state, action);

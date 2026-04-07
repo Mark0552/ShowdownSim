@@ -42,7 +42,7 @@ export function initializeGame(homeLineupData, awayLineupData, homeUserId, awayU
         logs.push('Roll for starting pitchers!');
     }
 
-    return {
+    const initialState = {
         inning: 1,
         halfInning: 'top',
         outs: 0,
@@ -84,6 +84,13 @@ export function initializeGame(homeLineupData, awayLineupData, homeUserId, awayU
             homeLP: null, awayLP: null,  // potential losing pitcher for each team
         },
     };
+
+    // For series game 2+ (which skips SP roll), pipe through enterPreAtBat
+    // for auto-skip logic so the first at-bat doesn't get stuck on "NO ACTION"
+    if (startPhase === 'pre_atbat') {
+        return enterPreAtBat(initialState);
+    }
+    return initialState;
 }
 
 /**

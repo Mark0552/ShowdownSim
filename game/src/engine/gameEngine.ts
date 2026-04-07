@@ -73,6 +73,7 @@ export interface PlayerSlot {
 }
 
 export interface BatterStats {
+    pa: number;     // plate appearances
     ab: number;     // at bats
     h: number;      // hits
     r: number;      // runs scored
@@ -81,8 +82,14 @@ export interface BatterStats {
     ibb: number;    // intentional walks
     so: number;     // strikeouts
     hr: number;     // home runs
+    db: number;     // doubles
+    tr: number;     // triples
+    tb: number;     // total bases
     sb: number;     // stolen bases
     cs: number;     // caught stealing
+    gidp: number;   // grounded into double play
+    sh: number;     // sacrifice hits (bunts)
+    sf: number;     // sacrifice flies
 }
 
 export interface PitcherStats {
@@ -254,7 +261,7 @@ export interface GameState {
 // ============================================================================
 
 export type GameAction =
-    | { type: 'ROLL_PITCH' }
+    | { type: 'ROLL_PITCH'; useIcon20?: boolean }
     | { type: 'ROLL_SWING' }
     | { type: 'PINCH_HIT'; benchCardId: string; lineupIndex: number }
     | { type: 'PITCHING_CHANGE'; bullpenCardId: string }

@@ -21,12 +21,18 @@ export default function BullpenPanel({ team, side, onClose, onHover, onLeave }: 
     // Available bench: hitters from bench
     const availableBench = (team.bench || []);
 
-    // Starting rotation: all starters (including active pitcher if they're a starter)
+    // Starting rotation: all starters (including active pitcher if they're a starter),
+    // sorted SP1 → SP4 by their assignedPosition (Starter-1, Starter-2, etc.)
     const inactiveStarters = (team.bullpen || []).filter(p => p.role === 'Starter');
     const activeIsStarter = team.pitcher.role === 'Starter';
-    const startingRotation = activeIsStarter
+    const allStarters = activeIsStarter
         ? [team.pitcher, ...inactiveStarters]
         : inactiveStarters;
+    const getSpNum = (p: PlayerSlot) => {
+        const match = p.assignedPosition?.match(/Starter-(\d+)/);
+        return match ? parseInt(match[1]) : 99;
+    };
+    const startingRotation = [...allStarters].sort((a, b) => getSpNum(a) - getSpNum(b));
 
     // Used players — try to find names by searching lineup, bullpen, bench
     const allKnownPlayers = [
@@ -98,6 +104,7 @@ export default function BullpenPanel({ team, side, onClose, onHover, onLeave }: 
                         <div className="bp-section-label" style={{ color: '#4a7a9a' }}>STARTING ROTATION ({startingRotation.length})</div>
                         {startingRotation.map((p, i) => {
                             const isActive = p.cardId === activePitcherId;
+                            const spNum = getSpNum(p);
                             return (
                                 <div key={`sp-${i}`} className="bp-card" style={{
                                     opacity: isActive ? 1 : 0.6,
@@ -108,7 +115,7 @@ export default function BullpenPanel({ team, side, onClose, onHover, onLeave }: 
                                     <img src={p.imagePath} alt="" />
                                     <div className="bp-card-info">
                                         <span className="bp-card-name" style={{ color: isActive ? '#4ade80' : '#4a7a9a' }}>
-                                            {p.name}{isActive ? ' ★' : ''}
+                                            SP{spNum} — {p.name}{isActive ? ' ★' : ''}
                                         </span>
                                         <span className="bp-card-stats">Ctrl:{p.control} IP:{p.ip} Starter</span>
                                     </div>

@@ -8,58 +8,83 @@ interface BoxScoreProps {
     homeName: string;
 }
 
-/** Box Score component — batting and pitching stats */
+const emptyBat: BatterStats = { pa: 0, ab: 0, h: 0, r: 0, rbi: 0, bb: 0, ibb: 0, so: 0, hr: 0, db: 0, tr: 0, tb: 0, sb: 0, cs: 0, gidp: 0, sh: 0, sf: 0 };
+
+const fmt3 = (n: number) => n === 0 ? '.000' : n.toFixed(3).replace(/^0/, '');
+const fmtAvg = (h: number, ab: number) => ab === 0 ? '.000' : fmt3(h / ab);
+const fmtObp = (s: BatterStats) => {
+    const denom = s.ab + s.bb + s.ibb + s.sf;
+    return denom === 0 ? '.000' : fmt3((s.h + s.bb + s.ibb) / denom);
+};
+const fmtSlg = (s: BatterStats) => s.ab === 0 ? '.000' : fmt3(s.tb / s.ab);
+const fmtOps = (s: BatterStats) => {
+    const denom = s.ab + s.bb + s.ibb + s.sf;
+    const obp = denom === 0 ? 0 : (s.h + s.bb + s.ibb) / denom;
+    const slg = s.ab === 0 ? 0 : s.tb / s.ab;
+    return fmt3(obp + slg);
+};
+const fmtIp = (thirds: number) => {
+    const full = Math.floor(thirds / 3);
+    const rem = thirds % 3;
+    return `${full}.${rem}`;
+};
+const fmtEra = (r: number, ip: number) => ip === 0 ? '-' : ((r * 9) / (ip / 3)).toFixed(2);
+const fmtWhip = (s: PitcherStats) => s.ip === 0 ? '-' : ((s.h + s.bb) / (s.ip / 3)).toFixed(2);
+
+/** Box Score component — full baseball-reference batting and pitching stats */
 export default function BoxScore({ awayTeam, homeTeam, awayName, homeName }: BoxScoreProps) {
-    const formatIP = (thirds: number) => {
-        const full = Math.floor(thirds / 3);
-        const rem = thirds % 3;
-        return rem === 0 ? `${full}.0` : `${full}.${rem}`;
-    };
-
-    const formatAVG = (h: number, ab: number) => {
-        if (ab === 0) return '.000';
-        return (h / ab).toFixed(3).replace(/^0/, '');
-    };
-
     const renderBattingTable = (team: TeamState, label: string) => {
         const stats = team.batterStats || {};
+        const rows = team.lineup.map((p, i) => {
+            const s: BatterStats = { ...emptyBat, ...(stats[p.cardId] || {}) };
+            return { p, s, i };
+        }).filter(r => r.s.pa > 0 || r.s.ab > 0 || r.s.bb > 0); // skip players who didn't bat
+
+        const totals = rows.reduce((a, r) => {
+            const s = r.s;
+            return {
+                pa: a.pa + s.pa, ab: a.ab + s.ab, h: a.h + s.h, r: a.r + s.r, rbi: a.rbi + s.rbi,
+                bb: a.bb + s.bb, ibb: a.ibb + s.ibb, so: a.so + s.so, hr: a.hr + s.hr,
+                db: a.db + s.db, tr: a.tr + s.tr, tb: a.tb + s.tb,
+                sb: a.sb + s.sb, cs: a.cs + s.cs, gidp: a.gidp + s.gidp, sh: a.sh + s.sh, sf: a.sf + s.sf,
+            };
+        }, { ...emptyBat });
+
         return (
             <>
                 <div className="stats-section-label">{label} BATTING</div>
                 <table className="stats-table">
                     <thead>
                         <tr>
-                            <th>PLAYER</th><th>AB</th><th>H</th><th>R</th><th>RBI</th>
-                            <th>BB</th><th>SO</th><th>HR</th><th>SB</th><th>AVG</th>
+                            <th>PLAYER</th>
+                            <th>PA</th><th>AB</th><th>H</th><th>2B</th><th>3B</th><th>HR</th>
+                            <th>R</th><th>RBI</th><th>SB</th><th>CS</th>
+                            <th>BB</th><th>SO</th><th>GIDP</th><th>SH</th><th>SF</th>
+                            <th>AVG</th><th>OBP</th><th>SLG</th><th>OPS</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {team.lineup.map((p, i) => {
-                            const s: BatterStats = stats[p.cardId] || { ab: 0, h: 0, r: 0, rbi: 0, bb: 0, so: 0, hr: 0, sb: 0, cs: 0 };
-                            return (
-                                <tr key={`bat-${i}`}>
-                                    <td>{p.name}</td>
-                                    <td>{s.ab}</td><td>{s.h}</td><td>{s.r}</td><td>{s.rbi}</td>
-                                    <td>{s.bb}</td><td>{s.so}</td><td>{s.hr}</td><td>{s.sb}</td>
-                                    <td>{formatAVG(s.h, s.ab)}</td>
-                                </tr>
-                            );
-                        })}
+                        {rows.map(({ p, s, i }) => (
+                            <tr key={`bat-${i}`}>
+                                <td>{p.name}</td>
+                                <td>{s.pa}</td><td>{s.ab}</td><td>{s.h}</td><td>{s.db}</td><td>{s.tr}</td><td>{s.hr}</td>
+                                <td>{s.r}</td><td>{s.rbi}</td><td>{s.sb}</td><td>{s.cs}</td>
+                                <td>{s.bb}</td><td>{s.so}</td><td>{s.gidp}</td><td>{s.sh}</td><td>{s.sf}</td>
+                                <td>{fmtAvg(s.h, s.ab)}</td>
+                                <td>{fmtObp(s)}</td>
+                                <td>{fmtSlg(s)}</td>
+                                <td>{fmtOps(s)}</td>
+                            </tr>
+                        ))}
                         <tr style={{ borderTop: '2px solid #d4a018' }}>
                             <td style={{ color: '#d4a018' }}>TOTALS</td>
-                            {(() => {
-                                const totals = team.lineup.reduce((acc, p) => {
-                                    const s: BatterStats = stats[p.cardId] || { ab: 0, h: 0, r: 0, rbi: 0, bb: 0, so: 0, hr: 0, sb: 0, cs: 0 };
-                                    return { ab: acc.ab + s.ab, h: acc.h + s.h, r: acc.r + s.r, rbi: acc.rbi + s.rbi, bb: acc.bb + s.bb, so: acc.so + s.so, hr: acc.hr + s.hr, sb: acc.sb + s.sb };
-                                }, { ab: 0, h: 0, r: 0, rbi: 0, bb: 0, so: 0, hr: 0, sb: 0 });
-                                return (
-                                    <>
-                                        <td>{totals.ab}</td><td>{totals.h}</td><td>{totals.r}</td><td>{totals.rbi}</td>
-                                        <td>{totals.bb}</td><td>{totals.so}</td><td>{totals.hr}</td><td>{totals.sb}</td>
-                                        <td>{formatAVG(totals.h, totals.ab)}</td>
-                                    </>
-                                );
-                            })()}
+                            <td>{totals.pa}</td><td>{totals.ab}</td><td>{totals.h}</td><td>{totals.db}</td><td>{totals.tr}</td><td>{totals.hr}</td>
+                            <td>{totals.r}</td><td>{totals.rbi}</td><td>{totals.sb}</td><td>{totals.cs}</td>
+                            <td>{totals.bb}</td><td>{totals.so}</td><td>{totals.gidp}</td><td>{totals.sh}</td><td>{totals.sf}</td>
+                            <td>{fmtAvg(totals.h, totals.ab)}</td>
+                            <td>{fmtObp(totals)}</td>
+                            <td>{fmtSlg(totals)}</td>
+                            <td>{fmtOps(totals)}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -69,10 +94,9 @@ export default function BoxScore({ awayTeam, homeTeam, awayName, homeName }: Box
 
     const renderPitchingTable = (team: TeamState, label: string) => {
         const stats = team.pitcherStats || {};
-        // Get all pitcher cardIds that have stats
         const pitcherIds = Object.keys(stats).filter(id => {
             const s = stats[id];
-            return s && (s.bf > 0 || s.ip > 0);
+            return s && s.bf > 0;
         });
 
         return (
@@ -81,22 +105,25 @@ export default function BoxScore({ awayTeam, homeTeam, awayName, homeName }: Box
                 <table className="stats-table">
                     <thead>
                         <tr>
-                            <th>PITCHER</th><th>IP</th><th>H</th><th>R</th>
-                            <th>BB</th><th>SO</th><th>HR</th><th>BF</th>
+                            <th>PITCHER</th>
+                            <th>IP</th><th>H</th><th>R</th><th>BB</th><th>IBB</th><th>SO</th>
+                            <th>HR</th><th>BF</th><th>ERA</th><th>WHIP</th>
                         </tr>
                     </thead>
                     <tbody>
                         {pitcherIds.map((id, i) => {
-                            const s: PitcherStats = stats[id] || { ip: 0, h: 0, r: 0, bb: 0, so: 0, hr: 0, bf: 0 };
-                            // Find pitcher name
+                            const s: PitcherStats = stats[id] || { ip: 0, h: 0, r: 0, bb: 0, ibb: 0, so: 0, hr: 0, bf: 0 };
                             const p = team.pitcher.cardId === id ? team.pitcher
                                 : team.bullpen.find(bp => bp.cardId === id);
                             const name = p?.name || id;
                             return (
                                 <tr key={`pit-${i}`}>
-                                    <td>{name}{team.pitcher.cardId === id ? ' *' : ''}</td>
-                                    <td>{formatIP(s.ip)}</td><td>{s.h}</td><td>{s.r}</td>
-                                    <td>{s.bb}</td><td>{s.so}</td><td>{s.hr}</td><td>{s.bf}</td>
+                                    <td>{name}</td>
+                                    <td>{fmtIp(s.ip)}</td>
+                                    <td>{s.h}</td><td>{s.r}</td><td>{s.bb}</td><td>{s.ibb}</td><td>{s.so}</td>
+                                    <td>{s.hr}</td><td>{s.bf}</td>
+                                    <td>{fmtEra(s.r, s.ip)}</td>
+                                    <td>{fmtWhip(s)}</td>
                                 </tr>
                             );
                         })}

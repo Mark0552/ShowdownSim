@@ -256,9 +256,8 @@ export function endHalfInning(state) {
         if (state.inning >= 9 && state.score.home > state.score.away) {
             return { ...s, phase: 'game_over', isOver: true, winnerId: state.homeTeam.userId, gameLog: [...s.gameLog, `Game Over! Home team wins ${state.score.home}-${state.score.away}`] };
         }
-        return {
+        const bottomState = {
             ...s, halfInning: 'bottom', outs: 0, bases: { first: null, second: null, third: null },
-            phase: 'pre_atbat', subPhaseStep: 'offense_first',
             lastOutcome: null, pendingDpResult: null, extraBaseEligible: null, pendingExtraBaseResult: null,
             iconPrompt: null, halfInningClean: true, icon20UsedThisInning: false, gbOptions: null,
             pendingSteal: null, pendingStealResult: null,
@@ -266,6 +265,8 @@ export function endHalfInning(state) {
             rpActivePitcherId: (s.rpActiveInning === state.inning && s.rpActiveTeam === 'home') ? s.rpActivePitcherId : null,
             gameLog: [...s.gameLog, `--- Bottom of ${state.inning} ---`],
         };
+        // Pipe through enterPreAtBat for auto-skip logic (skips to defense_sub if no offense options)
+        return enterPreAtBat(bottomState);
     }
 
     if (state.inning >= 9 && state.score.home !== state.score.away) {
@@ -281,15 +282,16 @@ export function endHalfInning(state) {
     const rpCarriesOver = s.rpActiveInning === state.inning + 1 && s.rpActiveTeam === 'away';
     const newControlMod = rpCarriesOver ? s.controlModifier : 0;
 
-    return {
+    const topState = {
         ...s, awayTeam: away, homeTeam: home,
         inning: state.inning + 1, halfInning: 'top',
         outs: 0, bases: { first: null, second: null, third: null },
-        phase: 'pre_atbat', subPhaseStep: 'offense_first',
         lastOutcome: null, pendingDpResult: null, extraBaseEligible: null, pendingExtraBaseResult: null,
         iconPrompt: null, halfInningClean: true, icon20UsedThisInning: false,
         controlModifier: newControlMod, rpActivePitcherId: rpCarriesOver ? s.rpActivePitcherId : null, gbOptions: null,
         pendingSteal: null, pendingStealResult: null,
         gameLog: [...s.gameLog, `--- Top of ${state.inning + 1} ---`],
     };
+    // Pipe through enterPreAtBat for auto-skip logic
+    return enterPreAtBat(topState);
 }

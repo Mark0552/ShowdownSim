@@ -5,8 +5,9 @@
 import { rollD20, resolveChart, getRollSequence } from '../dice.js';
 import { getPostResultIcons } from './resultIcons.js';
 import { applyResult } from './baserunning.js';
+import { playerHasIcon, canUseIcon, recordIconUse } from '../icons.js';
 
-export function handlePitch(state) {
+export function handlePitch(state, action) {
     // Allow rolling pitch directly from defense_sub or ibb_decision (skips bunt if not eligible)
     if (state.phase === 'defense_sub' || state.phase === 'ibb_decision') {
         const bases = state.bases;
@@ -15,6 +16,23 @@ export function handlePitch(state) {
         state = { ...state, phase: 'pitch' };
     }
     if (state.phase !== 'pitch') return state;
+
+    // If useIcon20 flag is set, activate the 20 icon inline before rolling
+    if (action?.useIcon20) {
+        const fSide = state.halfInning === 'top' ? 'homeTeam' : 'awayTeam';
+        const fTeam = state[fSide];
+        const p = fTeam.pitcher;
+        if (playerHasIcon(p, '20') && canUseIcon(fTeam, p.cardId, '20') && !state.icon20UsedThisInning) {
+            const updatedTeam = recordIconUse(fTeam, p.cardId, '20');
+            state = {
+                ...state,
+                [fSide]: updatedTeam,
+                controlModifier: (state.controlModifier || 0) + 3,
+                icon20UsedThisInning: true,
+                gameLog: [...state.gameLog, `20 icon: +3 control for this pitch`],
+            };
+        }
+    }
 
     const fieldingSide = state.halfInning === 'top' ? 'homeTeam' : 'awayTeam';
     const battingSide = state.halfInning === 'top' ? 'awayTeam' : 'homeTeam';
