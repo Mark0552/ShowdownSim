@@ -3,7 +3,7 @@
  * Layout (viewBox 1400x950):
  *   Top bar:    y=0..50    [EXIT] ... centered scoreboard ... [LOG][SCORE]
  *   Main area:  y=52..748  [Away 0..360 | Diamond 360..1040 | Home 1040..1400]
- *   Bottom bar: y=750..948 [Actions 0..700 | Dice 700..1050 | Result 1050..1400]
+ *   Bottom bar: y=750..948 [Actions 0..980 (70%) | Dice 980..1190 (15%) | Result 1190..1400 (15%)]
  */
 import { useState, useRef, useCallback } from 'react';
 import type { GameState, GameAction, PlayerSlot } from '../../engine/gameEngine';
@@ -438,15 +438,15 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 <rect x="0" y={BOT_Y} width="1400" height={948 - BOT_Y} fill="url(#botBg)"/>
 
                 {/* Section dividers */}
-                <line x1="700" y1={BOT_Y + 2} x2="700" y2="946" stroke="#d4a01840" strokeWidth="1"/>
-                <line x1="1050" y1={BOT_Y + 2} x2="1050" y2="946" stroke="#d4a01840" strokeWidth="1"/>
+                <line x1="980" y1={BOT_Y + 2} x2="980" y2="946" stroke="#d4a01840" strokeWidth="1"/>
+                <line x1="1190" y1={BOT_Y + 2} x2="1190" y2="946" stroke="#d4a01840" strokeWidth="1"/>
 
                 {/* Section labels */}
-                <text x="350" y={BOT_Y + 14} textAnchor="middle" fontSize="9" fill="#d4a01860" fontWeight="bold" letterSpacing="2" fontFamily="Arial">ACTIONS</text>
-                <text x="875" y={BOT_Y + 14} textAnchor="middle" fontSize="9" fill="#d4a01860" fontWeight="bold" letterSpacing="2" fontFamily="Arial">DICE</text>
-                <text x="1225" y={BOT_Y + 14} textAnchor="middle" fontSize="9" fill="#d4a01860" fontWeight="bold" letterSpacing="2" fontFamily="Arial">RESULT</text>
+                <text x="490" y={BOT_Y + 14} textAnchor="middle" fontSize="9" fill="#d4a01860" fontWeight="bold" letterSpacing="2" fontFamily="Arial">ACTIONS</text>
+                <text x="1085" y={BOT_Y + 14} textAnchor="middle" fontSize="9" fill="#d4a01860" fontWeight="bold" letterSpacing="2" fontFamily="Arial">DICE</text>
+                <text x="1295" y={BOT_Y + 14} textAnchor="middle" fontSize="9" fill="#d4a01860" fontWeight="bold" letterSpacing="2" fontFamily="Arial">RESULT</text>
 
-                {/* ACTION BUTTONS (left 50%) */}
+                {/* ACTION BUTTONS (left 70%) */}
                 <ActionButtons
                     state={state}
                     myRole={myRole}
@@ -460,36 +460,36 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     onShowSubPanel={() => setShowSubPanel(true)}
                 />
 
-                {/* DICE SECTION (center 25%: x=700..1050) — only show after animation completes */}
+                {/* DICE SECTION (center 15%: x=980..1190) — only show after animation completes */}
                 {!diceAnimating && state.lastRoll && state.lastRollType && (
                     <g>
-                        <text x="875" y={BOT_Y + 30} textAnchor="middle" fontSize="16" fill={state.lastRollType === 'pitch' ? '#e94560' : state.lastRollType === 'swing' ? '#4ade80' : '#d4a018'} fontWeight="bold" fontFamily="Impact" letterSpacing="3">
+                        <text x="1085" y={BOT_Y + 30} textAnchor="middle" fontSize="16" fill={state.lastRollType === 'pitch' ? '#e94560' : state.lastRollType === 'swing' ? '#4ade80' : '#d4a018'} fontWeight="bold" fontFamily="Impact" letterSpacing="2">
                             {state.lastRollType === 'pitch' ? 'PITCH' : state.lastRollType === 'swing' ? 'SWING' : state.lastRollType?.toUpperCase()}
                         </text>
-                        <rect x="830" y={BOT_Y + 38} width="90" height="64" rx="8" fill="#040c1a" stroke="#d4a018" strokeWidth="2.5"/>
-                        <text x="875" y={BOT_Y + 84} textAnchor="middle" fontSize="42" fill="white" fontWeight="900" fontFamily="Impact">{state.lastRoll}</text>
-                        {/* Pitch details — doubled text size */}
+                        <rect x="1040" y={BOT_Y + 38} width="90" height="64" rx="8" fill="#040c1a" stroke="#d4a018" strokeWidth="2.5"/>
+                        <text x="1085" y={BOT_Y + 84} textAnchor="middle" fontSize="42" fill="white" fontWeight="900" fontFamily="Impact">{state.lastRoll}</text>
+                        {/* Pitch details */}
                         {state.lastPitchRoll > 0 && (
                             <g>
-                                <text x="875" y={BOT_Y + 124} textAnchor="middle" fontSize="14" fill="#aaa" fontFamily="monospace">
+                                <text x="1085" y={BOT_Y + 122} textAnchor="middle" fontSize="12" fill="#aaa" fontFamily="monospace">
                                     {state.lastPitchRoll}+{pitcher.control || 0}{state.fatiguePenalty ? `-${state.fatiguePenalty}` : ''}{state.controlModifier ? `+${state.controlModifier}` : ''}={state.lastPitchTotal} vs OB {batter.onBase}
                                 </text>
-                                <text x="875" y={BOT_Y + 144} textAnchor="middle" fontSize="14" fill={state.usedPitcherChart ? '#60a5fa' : '#4ade80'} fontFamily="monospace" fontWeight="bold">
-                                    {'\u2192'} {state.usedPitcherChart ? "Pitcher's chart" : "Batter's chart"}{state.lastSwingRoll > 0 ? `  Swing: ${state.lastSwingRoll}` : ''}
+                                <text x="1085" y={BOT_Y + 140} textAnchor="middle" fontSize="12" fill={state.usedPitcherChart ? '#60a5fa' : '#4ade80'} fontFamily="monospace" fontWeight="bold">
+                                    {'\u2192'} {state.usedPitcherChart ? "Pitcher chart" : "Batter chart"}{state.lastSwingRoll > 0 ? `  Sw: ${state.lastSwingRoll}` : ''}
                                 </text>
                             </g>
                         )}
                     </g>
                 )}
 
-                {/* RESULT SECTION (right 25%: x=1050..1400) — only show after dice animation */}
+                {/* RESULT SECTION (right 15%: x=1190..1400) — only show after dice animation */}
                 {!diceAnimating && state.lastOutcome && (
                     <g>
-                        <rect x="1070" y={BOT_Y + 24} width="310" height="54" rx="8" fill={
+                        <rect x="1200" y={BOT_Y + 24} width="190" height="54" rx="8" fill={
                             ['SO','GB','FB','PU'].includes(state.lastOutcome) ? 'rgba(200,30,30,0.9)' :
                             state.lastOutcome === 'HR' ? 'rgba(233,69,96,0.95)' : 'rgba(34,180,80,0.9)'
                         }/>
-                        <text x="1225" y={BOT_Y + 60} textAnchor="middle" fontSize="28" fill="white" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="3">
+                        <text x="1295" y={BOT_Y + 60} textAnchor="middle" fontSize="20" fill="white" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="1">
                             {outcomeNames[state.lastOutcome] || state.lastOutcome}
                         </text>
                     </g>
@@ -508,11 +508,11 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             else if (dp.choice === 'force_home') { label = 'FORCE AT HOME'; color = 'rgba(200,30,30,0.85)'; showRoll = false; }
                             else if (dp.choice === 'advance') { label = 'RUNNERS ADVANCE'; showRoll = false; }
                             return (<>
-                                <rect x="1070" y={BOT_Y + 84} width="310" height={showRoll ? 50 : 38} rx="6" fill={color}/>
-                                <text x="1225" y={BOT_Y + 106} textAnchor="middle" fontSize="18" fill="white" fontWeight="bold" fontFamily="Impact">{label}</text>
+                                <rect x="1200" y={BOT_Y + 84} width="190" height={showRoll ? 50 : 38} rx="6" fill={color}/>
+                                <text x="1295" y={BOT_Y + 104} textAnchor="middle" fontSize="14" fill="white" fontWeight="bold" fontFamily="Impact">{label}</text>
                                 {showRoll && (
-                                    <text x="1225" y={BOT_Y + 126} textAnchor="middle" fontSize="12" fill="rgba(255,255,255,0.8)" fontFamily="monospace">
-                                        d20({dp.roll})+IF({dp.defenseTotal - dp.roll})={dp.defenseTotal} vs Spd {dp.offenseSpeed}
+                                    <text x="1295" y={BOT_Y + 124} textAnchor="middle" fontSize="11" fill="rgba(255,255,255,0.85)" fontFamily="monospace">
+                                        d20({dp.roll})+IF({dp.defenseTotal - dp.roll})={dp.defenseTotal} vs {dp.offenseSpeed}
                                     </text>
                                 )}
                             </>);
@@ -521,12 +521,12 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 )}
                 {!diceAnimating && state.pendingExtraBaseResult && (() => {
                     const eb = state.pendingExtraBaseResult;
-                    const label = eb.safe ? `${eb.runnerName} SCORES!` : `${eb.runnerName} OUT!`;
+                    const label = eb.safe ? `${eb.runnerName} SAFE!` : `${eb.runnerName} OUT!`;
                     return (
                         <g>
-                            <rect x="1070" y={BOT_Y + 84} width="310" height="50" rx="6" fill={eb.safe ? 'rgba(34,180,80,0.85)' : 'rgba(200,30,30,0.85)'}/>
-                            <text x="1225" y={BOT_Y + 106} textAnchor="middle" fontSize="18" fill="white" fontWeight="bold" fontFamily="Impact">{label}</text>
-                            <text x="1225" y={BOT_Y + 126} textAnchor="middle" fontSize="12" fill="rgba(255,255,255,0.8)" fontFamily="monospace">Spd {eb.runnerSpeed} vs d20({eb.roll})+OF={eb.defenseTotal}</text>
+                            <rect x="1200" y={BOT_Y + 84} width="190" height="50" rx="6" fill={eb.safe ? 'rgba(34,180,80,0.85)' : 'rgba(200,30,30,0.85)'}/>
+                            <text x="1295" y={BOT_Y + 104} textAnchor="middle" fontSize="14" fill="white" fontWeight="bold" fontFamily="Impact">{label}</text>
+                            <text x="1295" y={BOT_Y + 124} textAnchor="middle" fontSize="11" fill="rgba(255,255,255,0.85)" fontFamily="monospace">Spd {eb.runnerSpeed} vs d20({eb.roll})+OF={eb.defenseTotal}</text>
                         </g>
                     );
                 })()}
@@ -534,14 +534,14 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     const sr = state.pendingStealResult;
                     const isSbIcon = sr.roll === 0 && sr.defenseTotal === 0;
                     const label = sr.safe
-                        ? (isSbIcon ? `${sr.runnerName} STEALS! (SB ICON)` : `${sr.runnerName} STEALS!`)
-                        : `${sr.runnerName} CAUGHT STEALING!`;
+                        ? (isSbIcon ? `${sr.runnerName} SB!` : `${sr.runnerName} STEALS!`)
+                        : `${sr.runnerName} CAUGHT!`;
                     return (
                         <g>
-                            <rect x="1070" y={BOT_Y + 84} width="310" height={isSbIcon ? 38 : 50} rx="6" fill={sr.safe ? 'rgba(34,180,80,0.85)' : 'rgba(200,30,30,0.85)'}/>
-                            <text x="1225" y={BOT_Y + 106} textAnchor="middle" fontSize="18" fill="white" fontWeight="bold" fontFamily="Impact">{label}</text>
+                            <rect x="1200" y={BOT_Y + 84} width="190" height={isSbIcon ? 38 : 50} rx="6" fill={sr.safe ? 'rgba(34,180,80,0.85)' : 'rgba(200,30,30,0.85)'}/>
+                            <text x="1295" y={BOT_Y + 104} textAnchor="middle" fontSize="14" fill="white" fontWeight="bold" fontFamily="Impact">{label}</text>
                             {!isSbIcon && (
-                                <text x="1225" y={BOT_Y + 126} textAnchor="middle" fontSize="12" fill="rgba(255,255,255,0.8)" fontFamily="monospace">Spd {sr.runnerSpeed} vs d20({sr.roll})+Arm={sr.defenseTotal}</text>
+                                <text x="1295" y={BOT_Y + 124} textAnchor="middle" fontSize="11" fill="rgba(255,255,255,0.85)" fontFamily="monospace">Spd {sr.runnerSpeed} vs d20({sr.roll})+Arm={sr.defenseTotal}</text>
                             )}
                         </g>
                     );

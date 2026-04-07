@@ -1,4 +1,5 @@
 import type { GameState, GameAction, TeamState } from '../../engine/gameEngine';
+import { getCurrentBatter, getCurrentPitcher } from '../../engine/gameEngine';
 
 interface ActionButtonsProps {
     state: GameState;
@@ -13,8 +14,8 @@ interface ActionButtonsProps {
     onShowSubPanel: () => void;
 }
 
-// Layout constants for the bottom-left actions section (x=2..700, y=750..948)
-const CX = 350;       // center of actions section
+// Layout constants for the bottom-left actions section (x=2..980, y=750..948)
+const CX = 490;       // center of actions section (70% of 1400)
 const BOT_TOP = 770;  // bottom bar top
 const BOT_H = 178;    // bottom bar height
 const ROW1_H = 54;    // button height (main label + description)
@@ -24,6 +25,16 @@ const LABEL_Y = ROW1 - 16;  // context label above buttons
 
 /** All phase-specific action button groups rendered as an SVG <g> element */
 export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onAction, battingTeam, fieldingTeam, hasRunners, outcomeNames, onShowSubPanel }: ActionButtonsProps) {
+    const curBatter = getCurrentBatter(state);
+    const curPitcher = getCurrentPitcher(state);
+    const ctrl = curPitcher.control || 0;
+    const ob = curBatter.onBase || 0;
+    const fatigue = state.fatiguePenalty || 0;
+    const ctrlMod = state.controlModifier || 0;
+    const effCtrl = ctrl - fatigue + ctrlMod;
+    const pitchMath = `d20+Ctrl(${ctrl}${fatigue ? `-${fatigue}` : ''}${ctrlMod ? `+${ctrlMod}` : ''}${(fatigue || ctrlMod) ? `=${effCtrl}` : ''}) vs OB(${ob})`;
+    const pitch20Math = `d20+Ctrl(${ctrl}${fatigue ? `-${fatigue}` : ''}+3${ctrlMod ? `+${ctrlMod}` : ''}=${effCtrl + 3}) vs OB(${ob})`;
+    const swingMath = `d20 on ${state.usedPitcherChart ? 'Pitcher' : 'Batter'} chart`;
     return (
         <g>
             {/* SP Roll phase: home team rolls for starting pitchers */}
@@ -91,20 +102,28 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                                 </g>
                             );
                         }
-                        if (item.type === 'steal2') return (
-                            <g key="steal2" className="roll-button" onClick={() => onAction({ type: 'STEAL', runnerId: state.bases.first! })} cursor="pointer">
-                                <rect x={x} y={ROW1} width={item.width} height={ROW1_H} rx="6" fill="#22c55e" stroke="#4ade80" strokeWidth="1.5"/>
-                                <text x={x + item.width / 2} y={ROW1 + 20} textAnchor="middle" fontSize="16" fill="#002" fontWeight="900" fontFamily="Impact">STEAL 2ND</text>
-                                <text x={x + item.width / 2} y={ROW1 + 40} textAnchor="middle" fontSize="13" fill="rgba(0,0,0,0.6)" fontFamily="Arial">Spd vs d20 + Arm</text>
-                            </g>
-                        );
-                        if (item.type === 'steal3') return (
-                            <g key="steal3" className="roll-button" onClick={() => onAction({ type: 'STEAL', runnerId: state.bases.second! })} cursor="pointer">
-                                <rect x={x} y={ROW1} width={item.width} height={ROW1_H} rx="6" fill="#22c55e" stroke="#4ade80" strokeWidth="1.5"/>
-                                <text x={x + item.width / 2} y={ROW1 + 20} textAnchor="middle" fontSize="16" fill="#002" fontWeight="900" fontFamily="Impact">STEAL 3RD</text>
-                                <text x={x + item.width / 2} y={ROW1 + 40} textAnchor="middle" fontSize="13" fill="rgba(0,0,0,0.6)" fontFamily="Arial">Spd vs d20 + Arm + 5</text>
-                            </g>
-                        );
+                        if (item.type === 'steal2') {
+                            const r = battingTeam.lineup.find(p => p.cardId === state.bases.first);
+                            const arm = fieldingTeam.catcherArm || 0;
+                            return (
+                                <g key="steal2" className="roll-button" onClick={() => onAction({ type: 'STEAL', runnerId: state.bases.first! })} cursor="pointer">
+                                    <rect x={x} y={ROW1} width={item.width} height={ROW1_H} rx="6" fill="#22c55e" stroke="#4ade80" strokeWidth="1.5"/>
+                                    <text x={x + item.width / 2} y={ROW1 + 20} textAnchor="middle" fontSize="16" fill="#002" fontWeight="900" fontFamily="Impact">STEAL 2ND</text>
+                                    <text x={x + item.width / 2} y={ROW1 + 40} textAnchor="middle" fontSize="12" fill="rgba(0,0,0,0.7)" fontFamily="monospace">Spd {r?.speed ?? '?'} vs d20+Arm({arm})</text>
+                                </g>
+                            );
+                        }
+                        if (item.type === 'steal3') {
+                            const r = battingTeam.lineup.find(p => p.cardId === state.bases.second);
+                            const arm = fieldingTeam.catcherArm || 0;
+                            return (
+                                <g key="steal3" className="roll-button" onClick={() => onAction({ type: 'STEAL', runnerId: state.bases.second! })} cursor="pointer">
+                                    <rect x={x} y={ROW1} width={item.width} height={ROW1_H} rx="6" fill="#22c55e" stroke="#4ade80" strokeWidth="1.5"/>
+                                    <text x={x + item.width / 2} y={ROW1 + 20} textAnchor="middle" fontSize="16" fill="#002" fontWeight="900" fontFamily="Impact">STEAL 3RD</text>
+                                    <text x={x + item.width / 2} y={ROW1 + 40} textAnchor="middle" fontSize="12" fill="rgba(0,0,0,0.7)" fontFamily="monospace">Spd {r?.speed ?? '?'} vs d20+Arm({arm})+5</text>
+                                </g>
+                            );
+                        }
                         // skip
                         return (
                             <g key="skip" className="roll-button" onClick={() => onAction({ type: 'SKIP_SUB' })} cursor="pointer">
@@ -187,14 +206,14 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                                 <g key="roll_pitch" className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH' })} cursor="pointer">
                                     <rect x={x} y={y} width={item.width} height={ROW1_H} rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
                                     <text x={x + item.width / 2} y={y + 20} textAnchor="middle" fontSize="18" fill="white" fontWeight="900" fontFamily="Impact" letterSpacing="1">ROLL PITCH</text>
-                                    <text x={x + item.width / 2} y={y + 40} textAnchor="middle" fontSize="13" fill="rgba(255,255,255,0.6)" fontFamily="Arial">d20 + control vs OB</text>
+                                    <text x={x + item.width / 2} y={y + 40} textAnchor="middle" fontSize="11" fill="rgba(255,255,255,0.85)" fontFamily="monospace">{pitchMath}</text>
                                 </g>
                             );
                             case '20': return (
                                 <g key="20" className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH', useIcon20: true })} cursor="pointer">
                                     <rect x={x} y={y} width={item.width} height={ROW1_H} rx="8" fill="#60a5fa" stroke="#93c5fd" strokeWidth="2"/>
                                     <text x={x + item.width / 2} y={y + 20} textAnchor="middle" fontSize="16" fill="#002" fontWeight="900" fontFamily="Impact">USE 20 ICON</text>
-                                    <text x={x + item.width / 2} y={y + 40} textAnchor="middle" fontSize="13" fill="rgba(0,0,0,0.6)" fontFamily="Arial">d20 + control + 3 vs OB</text>
+                                    <text x={x + item.width / 2} y={y + 40} textAnchor="middle" fontSize="11" fill="rgba(0,0,0,0.75)" fontFamily="monospace">{pitch20Math}</text>
                                 </g>
                             );
                             default: return null;
@@ -246,12 +265,12 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                             <g className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH' })} cursor="pointer">
                                 <rect x={CX - 110} y={ROW1} width="170" height={ROW1_H} rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
                                 <text x={CX - 25} y={ROW1 + 20} textAnchor="middle" fontSize="18" fill="white" fontWeight="900" fontFamily="Impact">ROLL PITCH</text>
-                                <text x={CX - 25} y={ROW1 + 40} textAnchor="middle" fontSize="13" fill="rgba(255,255,255,0.6)" fontFamily="Arial">d20 + control vs OB</text>
+                                <text x={CX - 25} y={ROW1 + 40} textAnchor="middle" fontSize="11" fill="rgba(255,255,255,0.85)" fontFamily="monospace">{pitchMath}</text>
                             </g>
                             <g className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH', useIcon20: true })} cursor="pointer">
                                 <rect x={CX + 80} y={ROW1} width="180" height={ROW1_H} rx="8" fill="#60a5fa" stroke="#93c5fd" strokeWidth="2"/>
                                 <text x={CX + 170} y={ROW1 + 20} textAnchor="middle" fontSize="16" fill="#002" fontWeight="900" fontFamily="Impact">USE 20 ICON</text>
-                                <text x={CX + 170} y={ROW1 + 40} textAnchor="middle" fontSize="13" fill="rgba(0,0,0,0.6)" fontFamily="Arial">d20 + control + 3 vs OB</text>
+                                <text x={CX + 170} y={ROW1 + 40} textAnchor="middle" fontSize="11" fill="rgba(0,0,0,0.75)" fontFamily="monospace">{pitch20Math}</text>
                             </g>
                         </g>
                     );
@@ -266,7 +285,7 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                         <g className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH' })} cursor="pointer">
                             <rect x={CX + 10} y={ROW1} width="180" height={ROW1_H} rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
                             <text x={CX + 100} y={ROW1 + 20} textAnchor="middle" fontSize="20" fill="white" fontWeight="900" fontFamily="Impact" letterSpacing="2">ROLL PITCH</text>
-                            <text x={CX + 100} y={ROW1 + 40} textAnchor="middle" fontSize="13" fill="rgba(255,255,255,0.6)" fontFamily="Arial">d20 + control vs OB</text>
+                            <text x={CX + 100} y={ROW1 + 40} textAnchor="middle" fontSize="11" fill="rgba(255,255,255,0.85)" fontFamily="monospace">{pitchMath}</text>
                         </g>
                     </g>
                 );
@@ -297,12 +316,12 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                             <g className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH' })} cursor="pointer">
                                 <rect x={CX - 210} y={ROW1} width="200" height={ROW1_H} rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
                                 <text x={CX - 110} y={ROW1 + 20} textAnchor="middle" fontSize="18" fill="white" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="2">ROLL PITCH</text>
-                                <text x={CX - 110} y={ROW1 + 40} textAnchor="middle" fontSize="13" fill="rgba(255,255,255,0.6)" fontFamily="Arial">d20 + control vs OB</text>
+                                <text x={CX - 110} y={ROW1 + 40} textAnchor="middle" fontSize="11" fill="rgba(255,255,255,0.85)" fontFamily="monospace">{pitchMath}</text>
                             </g>
                             <g className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH', useIcon20: true })} cursor="pointer">
                                 <rect x={CX + 10} y={ROW1} width="200" height={ROW1_H} rx="8" fill="#60a5fa" stroke="#93c5fd" strokeWidth="2"/>
                                 <text x={CX + 110} y={ROW1 + 20} textAnchor="middle" fontSize="16" fill="#002" fontWeight="900" fontFamily="Impact,sans-serif">USE 20 ICON</text>
-                                <text x={CX + 110} y={ROW1 + 40} textAnchor="middle" fontSize="13" fill="rgba(0,0,0,0.6)" fontFamily="Arial">d20 + control + 3 vs OB</text>
+                                <text x={CX + 110} y={ROW1 + 40} textAnchor="middle" fontSize="11" fill="rgba(0,0,0,0.75)" fontFamily="monospace">{pitch20Math}</text>
                             </g>
                         </g>
                     );
@@ -311,7 +330,7 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                     <g className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH' })} cursor="pointer">
                         <rect x={CX - 100} y={ROW1} width="200" height={ROW1_H} rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
                         <text x={CX} y={ROW1 + 20} textAnchor="middle" fontSize="20" fill="white" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="2">ROLL PITCH</text>
-                        <text x={CX} y={ROW1 + 40} textAnchor="middle" fontSize="13" fill="rgba(255,255,255,0.6)" fontFamily="Arial">d20 + control vs OB</text>
+                        <text x={CX} y={ROW1 + 40} textAnchor="middle" fontSize="11" fill="rgba(255,255,255,0.85)" fontFamily="monospace">{pitchMath}</text>
                     </g>
                 );
             })()}
@@ -321,7 +340,7 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 <g className="roll-button" onClick={() => onAction({ type: 'ROLL_SWING' })} cursor="pointer">
                     <rect x={CX - 100} y={ROW1} width="200" height={ROW1_H} rx="8" fill="#4ade80" stroke="#6bff9a" strokeWidth="2"/>
                     <text x={CX} y={ROW1 + 20} textAnchor="middle" fontSize="20" fill="#002" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="2">ROLL SWING</text>
-                    <text x={CX} y={ROW1 + 40} textAnchor="middle" fontSize="13" fill="rgba(0,0,0,0.6)" fontFamily="Arial">d20 on {state.usedPitcherChart ? "pitcher's" : "batter's"} chart</text>
+                    <text x={CX} y={ROW1 + 40} textAnchor="middle" fontSize="11" fill="rgba(0,0,0,0.75)" fontFamily="monospace">{swingMath}</text>
                 </g>
             )}
 
@@ -418,43 +437,48 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
             )}
 
             {/* GB Decision phase: defense chooses how to handle ground ball */}
-            {!state.isOver && isMyTurn && state.phase === 'gb_decision' && state.gbOptions && (
-                <g>
-                    <text x={CX} y={LABEL_Y} textAnchor="middle" fontSize="14" fill="#e94560" fontWeight="bold" fontFamily="Arial">
-                        Ground Ball — Choose defensive play:
-                    </text>
-                    {(() => {
-                        const buttons: { label: string; sub: string; choice: string; color: string }[] = [];
-                        if (state.gbOptions.canDP) buttons.push({ label: 'DOUBLE PLAY', sub: 'Force 2nd, roll for 1st', choice: 'dp', color: '#e94560' });
-                        if (state.gbOptions.canForceHome) buttons.push({ label: 'FORCE HOME', sub: 'Out at home, runners shift', choice: 'force_home', color: '#8b5cf6' });
-                        if (state.gbOptions.canHoldThird) buttons.push({ label: 'HOLD RUNNER', sub: '3B stays, roll for 1st', choice: 'hold', color: '#d4a018' });
-                        if (state.gbOptions.canHoldRunners) buttons.push({ label: 'HOLD RUNNERS', sub: 'Runners stay, roll for 1st', choice: 'hold', color: '#d4a018' });
-                        if (state.gbOptions.canAdvanceRunners) buttons.push({ label: 'LET ADVANCE', sub: 'Runners advance, out at 1st', choice: 'advance', color: '#334155' });
-                        if (!state.gbOptions.canDP && !state.gbOptions.canHoldRunners && !state.gbOptions.canHoldThird && !state.gbOptions.canAdvanceRunners) {
-                            buttons.push({ label: 'LET ADVANCE', sub: 'Runners advance', choice: 'advance', color: '#334155' });
-                        }
-                        const gPlayers = state.gbOptions.gPlayers || [];
-                        const bw = 150, gap = 8;
-                        const totalW = buttons.length * bw + (buttons.length - 1) * gap;
-                        const startX = CX - totalW / 2;
-                        return buttons.map((btn, i) => (
+            {!state.isOver && isMyTurn && state.phase === 'gb_decision' && state.gbOptions && (() => {
+                const batter = getCurrentBatter(state);
+                const ifField = fieldingTeam.totalInfieldFielding || 0;
+                const batSpd = batter.speed;
+                const rollVs = `d20+IF(${ifField}) vs Spd ${batSpd}`;
+                const rollVsG = `d20+IF(${ifField}+10) vs Spd ${batSpd}`;
+                const buttons: { label: string; sub: string; choice: string; color: string; needsRoll: boolean }[] = [];
+                if (state.gbOptions.canDP) buttons.push({ label: 'DOUBLE PLAY', sub: rollVs, choice: 'dp', color: '#e94560', needsRoll: true });
+                if (state.gbOptions.canForceHome) buttons.push({ label: 'FORCE HOME', sub: 'Out at home, no roll', choice: 'force_home', color: '#8b5cf6', needsRoll: false });
+                if (state.gbOptions.canHoldThird) buttons.push({ label: 'HOLD RUNNER', sub: rollVs, choice: 'hold', color: '#d4a018', needsRoll: true });
+                if (state.gbOptions.canHoldRunners) buttons.push({ label: 'HOLD RUNNERS', sub: rollVs, choice: 'hold', color: '#d4a018', needsRoll: true });
+                if (state.gbOptions.canAdvanceRunners) buttons.push({ label: 'LET ADVANCE', sub: 'Runners advance, out at 1st', choice: 'advance', color: '#334155', needsRoll: false });
+                if (!state.gbOptions.canDP && !state.gbOptions.canHoldRunners && !state.gbOptions.canHoldThird && !state.gbOptions.canAdvanceRunners) {
+                    buttons.push({ label: 'LET ADVANCE', sub: 'Runners advance', choice: 'advance', color: '#334155', needsRoll: false });
+                }
+                const gPlayers = state.gbOptions.gPlayers || [];
+                const bw = 200, gap = 10;
+                const totalW = buttons.length * bw + (buttons.length - 1) * gap;
+                const startX = CX - totalW / 2;
+                return (
+                    <g>
+                        <text x={CX} y={LABEL_Y} textAnchor="middle" fontSize="14" fill="#e94560" fontWeight="bold" fontFamily="Arial">
+                            Ground Ball — IF total: {ifField}  |  Batter Spd: {batSpd}
+                        </text>
+                        {buttons.map((btn, i) => (
                             <g key={`gb-${i}`}>
                                 <g className="roll-button" onClick={() => onAction({ type: 'GB_DECISION', choice: btn.choice as any })} cursor="pointer">
-                                    <rect x={startX + i * (bw + gap)} y={ROW1} width={bw} height={ROW1_H} rx="6" fill={btn.color} stroke="rgba(255,255,255,0.3)" strokeWidth="1"/>
-                                    <text x={startX + i * (bw + gap) + bw / 2} y={ROW1 + 18} textAnchor="middle" fontSize="14" fill="white" fontWeight="bold" fontFamily="Arial">{btn.label}</text>
-                                    <text x={startX + i * (bw + gap) + bw / 2} y={ROW1 + 34} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.6)" fontFamily="Arial">{btn.sub}</text>
+                                    <rect x={startX + i * (bw + gap)} y={ROW1} width={bw} height={ROW1_H} rx="6" fill={btn.color} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5"/>
+                                    <text x={startX + i * (bw + gap) + bw / 2} y={ROW1 + 22} textAnchor="middle" fontSize="16" fill="white" fontWeight="900" fontFamily="Impact">{btn.label}</text>
+                                    <text x={startX + i * (bw + gap) + bw / 2} y={ROW1 + 42} textAnchor="middle" fontSize="12" fill="rgba(255,255,255,0.85)" fontFamily="monospace">{btn.sub}</text>
                                 </g>
-                                {btn.choice !== 'force_home' && btn.choice !== 'advance' && gPlayers.map((gp, gi) => (
+                                {btn.needsRoll && gPlayers.map((gp, gi) => (
                                     <g key={`gb-g-${i}-${gi}`} className="roll-button" onClick={() => onAction({ type: 'GB_DECISION', choice: btn.choice as any, goldGloveCardId: gp.cardId })} cursor="pointer">
-                                        <rect x={startX + i * (bw + gap)} y={ROW2 + gi * 22} width={bw} height="18" rx="3" fill="#d4a018" stroke="#f0c840" strokeWidth="1"/>
-                                        <text x={startX + i * (bw + gap) + bw / 2} y={ROW2 + 14 + gi * 22} textAnchor="middle" fontSize="11" fill="#002" fontWeight="bold" fontFamily="Arial">+ G: {gp.name} ({gp.position})</text>
+                                        <rect x={startX + i * (bw + gap)} y={ROW2 + gi * 24} width={bw} height="22" rx="3" fill="#d4a018" stroke="#f0c840" strokeWidth="1"/>
+                                        <text x={startX + i * (bw + gap) + bw / 2} y={ROW2 + 16 + gi * 24} textAnchor="middle" fontSize="11" fill="#002" fontWeight="bold" fontFamily="Arial">+G: {gp.name} ({gp.position}) — {rollVsG}</text>
                                     </g>
                                 ))}
                             </g>
-                        ));
-                    })()}
-                </g>
-            )}
+                        ))}
+                    </g>
+                );
+            })()}
 
             {/* Steal SB phase: offense decides whether to use SB icon */}
             {!state.isOver && isMyTurn && state.phase === 'steal_sb' && state.pendingSteal && (
@@ -474,91 +498,94 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
             )}
 
             {/* Steal resolve phase: defense decides whether to use G */}
-            {!state.isOver && isMyTurn && state.phase === 'steal_resolve' && state.pendingSteal && (
-                <g>
-                    <text x={CX} y={LABEL_Y} textAnchor="middle" fontSize="14" fill="#e94560" fontWeight="bold" fontFamily="Arial">
-                        {state.pendingSteal.runnerName} stealing {state.pendingSteal.toBase} — Use Gold Glove?
-                    </text>
-                    {(() => {
-                        const catchers = state.pendingSteal.catcherGPlayers || [];
-                        const btnW = 160;
-                        const noGW = 100;
-                        const gap = 8;
-                        const totalW = catchers.length * (btnW + gap) + noGW;
-                        let bx = CX - totalW / 2;
-                        return (
-                            <>
-                                {catchers.map((gp: any, i: number) => {
-                                    const x = bx;
-                                    bx += btnW + gap;
-                                    return (
-                                        <g key={`sg-${i}`} className="roll-button" onClick={() => onAction({ type: 'STEAL_G_DECISION', goldGloveCardId: gp.cardId })} cursor="pointer">
-                                            <rect x={x} y={ROW1} width={btnW} height={ROW1_H} rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
-                                            <text x={x + btnW / 2} y={ROW1 + 20} textAnchor="middle" fontSize="16" fill="#002" fontWeight="bold" fontFamily="Arial">G: {gp.name} (+10)</text>
-                                        </g>
-                                    );
-                                })}
-                                <g className="roll-button" onClick={() => onAction({ type: 'STEAL_G_DECISION' })} cursor="pointer">
-                                    <rect x={bx} y={ROW1} width={noGW} height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
-                                    <text x={bx + noGW / 2} y={ROW1 + 20} textAnchor="middle" fontSize="16" fill="#ccc" fontWeight="bold" fontFamily="Arial">NO GOLD GLOVE</text>
+            {!state.isOver && isMyTurn && state.phase === 'steal_resolve' && state.pendingSteal && (() => {
+                const ps = state.pendingSteal;
+                const arm = ps.catcherArm || 0;
+                const bonus = ps.stealThirdBonus || 0;
+                const baseDef = `d20+Arm(${arm})${bonus ? `+${bonus}(3rd)` : ''} vs Spd ${ps.runnerSpeed}`;
+                const gDef = `d20+Arm(${arm}+10)${bonus ? `+${bonus}(3rd)` : ''} vs Spd ${ps.runnerSpeed}`;
+                const catchers = ps.catcherGPlayers || [];
+                const btnW = 240;
+                const noGW = 200;
+                const gap = 10;
+                const totalW = catchers.length * (btnW + gap) + noGW;
+                let bx = CX - totalW / 2;
+                return (
+                    <g>
+                        <text x={CX} y={LABEL_Y} textAnchor="middle" fontSize="14" fill="#e94560" fontWeight="bold" fontFamily="Arial">
+                            {ps.runnerName} stealing {ps.toBase} — Use Gold Glove?
+                        </text>
+                        {catchers.map((gp: any, i: number) => {
+                            const x = bx;
+                            bx += btnW + gap;
+                            return (
+                                <g key={`sg-${i}`} className="roll-button" onClick={() => onAction({ type: 'STEAL_G_DECISION', goldGloveCardId: gp.cardId })} cursor="pointer">
+                                    <rect x={x} y={ROW1} width={btnW} height={ROW1_H} rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
+                                    <text x={x + btnW / 2} y={ROW1 + 20} textAnchor="middle" fontSize="15" fill="#002" fontWeight="900" fontFamily="Impact">USE G: {gp.name}</text>
+                                    <text x={x + btnW / 2} y={ROW1 + 40} textAnchor="middle" fontSize="11" fill="rgba(0,0,0,0.7)" fontFamily="monospace">{gDef}</text>
                                 </g>
-                            </>
-                        );
-                    })()}
-                </g>
-            )}
+                            );
+                        })}
+                        <g className="roll-button" onClick={() => onAction({ type: 'STEAL_G_DECISION' })} cursor="pointer">
+                            <rect x={bx} y={ROW1} width={noGW} height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
+                            <text x={bx + noGW / 2} y={ROW1 + 20} textAnchor="middle" fontSize="15" fill="#ccc" fontWeight="900" fontFamily="Impact">NO GOLD GLOVE</text>
+                            <text x={bx + noGW / 2} y={ROW1 + 40} textAnchor="middle" fontSize="11" fill="rgba(204,204,204,0.75)" fontFamily="monospace">{baseDef}</text>
+                        </g>
+                    </g>
+                );
+            })()}
 
             {/* Extra base phase: defense chooses who to throw at (with optional G) */}
-            {!state.isOver && isMyTurn && state.phase === 'extra_base' && state.extraBaseEligible && (
-                <g>
-                    <text x={CX} y={LABEL_Y} textAnchor="middle" fontSize="14" fill="#e94560" fontWeight="bold" fontFamily="Arial">
-                        Runners advancing — Choose who to throw at:
-                    </text>
-                    {(() => {
-                        // Only outfielders with G are relevant for extra base throws (OF fielding)
-                        const OF_POSITIONS = ['LF', 'CF', 'RF', 'LF-RF'];
-                        const gPlayers = fieldingTeam.lineup
-                            .filter((p: any) => {
-                                const pos = (p.assignedPosition || '').replace(/-\d+$/, '');
-                                return p.icons?.includes('G') && !fieldingTeam.iconUsage?.[p.cardId]?.['G'] && OF_POSITIONS.includes(pos);
-                            })
-                            .map((p: any) => ({ cardId: p.cardId, name: p.name, position: (p.assignedPosition || '').replace(/-\d+$/, '') }));
-                        const runners = state.extraBaseEligible!;
-                        const btnW = 160;
-                        const noThrowW = 120;
-                        const gap = 8;
-                        const totalW = runners.length * (btnW + gap) + noThrowW;
-                        let bx = CX - totalW / 2;
-                        return (
-                            <>
-                                {runners.map((runner, i) => {
-                                    const x = bx;
-                                    bx += btnW + gap;
-                                    return (
-                                        <g key={`eb-${i}`}>
-                                            <g className="roll-button" onClick={() => onAction({ type: 'EXTRA_BASE_THROW', runnerId: runner.runnerId })} cursor="pointer">
-                                                <rect x={x} y={ROW1} width={btnW} height={ROW1_H} rx="6" fill="#e94560" stroke="#ff6b8a" strokeWidth="1.5"/>
-                                                <text x={x + btnW / 2} y={ROW1 + 17} textAnchor="middle" fontSize="14" fill="white" fontWeight="bold" fontFamily="Arial">THROW: {runner.runnerName}</text>
-                                                <text x={x + btnW / 2} y={ROW1 + 34} textAnchor="middle" fontSize="11" fill="rgba(255,255,255,0.7)" fontFamily="monospace">{runner.fromBase}{'\u2192'}{runner.toBase} Tgt:{(runner as any).targetWithBonuses || runner.runnerSpeed}</text>
-                                            </g>
-                                            {gPlayers.map((gp: any, gi: number) => (
-                                                <g key={`eb-g-${i}-${gi}`} className="roll-button" onClick={() => onAction({ type: 'EXTRA_BASE_THROW', runnerId: runner.runnerId, goldGloveCardId: gp.cardId })} cursor="pointer">
-                                                    <rect x={x} y={ROW2 + gi * 22} width={btnW} height="18" rx="3" fill="#d4a018" stroke="#f0c840" strokeWidth="1"/>
-                                                    <text x={x + btnW / 2} y={ROW2 + 14 + gi * 22} textAnchor="middle" fontSize="11" fill="#002" fontWeight="bold" fontFamily="Arial">+ G: {gp.name} ({gp.position})</text>
-                                                </g>
-                                            ))}
+            {!state.isOver && isMyTurn && state.phase === 'extra_base' && state.extraBaseEligible && (() => {
+                const ofField = fieldingTeam.totalOutfieldFielding || 0;
+                // Only outfielders with G are relevant for extra base throws (OF fielding)
+                const OF_POSITIONS = ['LF', 'CF', 'RF', 'LF-RF'];
+                const gPlayers = fieldingTeam.lineup
+                    .filter((p: any) => {
+                        const pos = (p.assignedPosition || '').replace(/-\d+$/, '');
+                        return p.icons?.includes('G') && !fieldingTeam.iconUsage?.[p.cardId]?.['G'] && OF_POSITIONS.includes(pos);
+                    })
+                    .map((p: any) => ({ cardId: p.cardId, name: p.name, position: (p.assignedPosition || '').replace(/-\d+$/, '') }));
+                const runners = state.extraBaseEligible!;
+                const truncate = (name: string, max: number) => name.length > max ? name.slice(0, max - 1) + '\u2026' : name;
+                const btnW = 230;
+                const noThrowW = 180;
+                const gap = 10;
+                const totalW = runners.length * (btnW + gap) + noThrowW;
+                let bx = CX - totalW / 2;
+                return (
+                    <g>
+                        <text x={CX} y={LABEL_Y} textAnchor="middle" fontSize="14" fill="#e94560" fontWeight="bold" fontFamily="Arial">
+                            Runners advancing — OF total: {ofField}  |  Choose who to throw at:
+                        </text>
+                        {runners.map((runner, i) => {
+                            const x = bx;
+                            bx += btnW + gap;
+                            const target = (runner as any).targetWithBonuses ?? runner.runnerSpeed;
+                            return (
+                                <g key={`eb-${i}`}>
+                                    <g className="roll-button" onClick={() => onAction({ type: 'EXTRA_BASE_THROW', runnerId: runner.runnerId })} cursor="pointer">
+                                        <rect x={x} y={ROW1} width={btnW} height={ROW1_H} rx="6" fill="#e94560" stroke="#ff6b8a" strokeWidth="1.5"/>
+                                        <text x={x + btnW / 2} y={ROW1 + 20} textAnchor="middle" fontSize="15" fill="white" fontWeight="900" fontFamily="Impact">THROW: {truncate(runner.runnerName, 16)}</text>
+                                        <text x={x + btnW / 2} y={ROW1 + 40} textAnchor="middle" fontSize="11" fill="rgba(255,255,255,0.85)" fontFamily="monospace">{runner.fromBase}{'\u2192'}{runner.toBase} | d20+OF({ofField}) vs {target}</text>
+                                    </g>
+                                    {gPlayers.map((gp: any, gi: number) => (
+                                        <g key={`eb-g-${i}-${gi}`} className="roll-button" onClick={() => onAction({ type: 'EXTRA_BASE_THROW', runnerId: runner.runnerId, goldGloveCardId: gp.cardId })} cursor="pointer">
+                                            <rect x={x} y={ROW2 + gi * 24} width={btnW} height="22" rx="3" fill="#d4a018" stroke="#f0c840" strokeWidth="1"/>
+                                            <text x={x + btnW / 2} y={ROW2 + 16 + gi * 24} textAnchor="middle" fontSize="11" fill="#002" fontWeight="bold" fontFamily="Arial">+G: {gp.name} ({gp.position}) — d20+OF({ofField}+10) vs {target}</text>
                                         </g>
-                                    );
-                                })}
-                                <g className="roll-button" onClick={() => onAction({ type: 'SKIP_EXTRA_BASE' })} cursor="pointer">
-                                    <rect x={bx} y={ROW1} width={noThrowW} height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
-                                    <text x={bx + noThrowW / 2} y={ROW1 + 20} textAnchor="middle" fontSize="16" fill="#ccc" fontWeight="bold" fontFamily="Arial">LET ADVANCE</text>
+                                    ))}
                                 </g>
-                            </>
-                        );
-                    })()}
-                </g>
-            )}
+                            );
+                        })}
+                        <g className="roll-button" onClick={() => onAction({ type: 'SKIP_EXTRA_BASE' })} cursor="pointer">
+                            <rect x={bx} y={ROW1} width={noThrowW} height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
+                            <text x={bx + noThrowW / 2} y={ROW1 + 20} textAnchor="middle" fontSize="15" fill="#ccc" fontWeight="900" fontFamily="Impact">LET ADVANCE</text>
+                            <text x={bx + noThrowW / 2} y={ROW1 + 40} textAnchor="middle" fontSize="11" fill="rgba(204,204,204,0.75)" fontFamily="Arial">No throw</text>
+                        </g>
+                    </g>
+                );
+            })()}
 
             {/* Waiting for opponent — exclude sp_roll which has its own message */}
             {!state.isOver && !isMyTurn && state.phase !== 'sp_roll' && (
