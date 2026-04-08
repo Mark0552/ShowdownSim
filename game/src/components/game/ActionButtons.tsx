@@ -382,50 +382,61 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                     {(() => {
                         const runners = state.extraBaseEligible!;
                         const btnW = 280;
-                        const sendAllW = 180;
-                        const holdW = 180;
+                        const sendAllW = 200;
+                        const holdW = 200;
                         const gap = 12;
                         const hasSendAll = runners.length > 1;
-                        const totalW = runners.length * (btnW + gap) + (hasSendAll ? sendAllW + gap : 0) + holdW;
-                        let bx = CX - totalW / 2;
                         const truncate = (name: string, max: number) => name.length > max ? name.slice(0, max - 1) + '\u2026' : name;
-                        return (
-                            <>
-                                {runners.map((runner, i) => {
-                                    const x = bx;
-                                    bx += btnW + gap;
-                                    const target = (runner as any).targetWithBonuses ?? runner.runnerSpeed;
-                                    const homeBonus = runner.toBase === 'home' ? 5 : 0;
-                                    const twoOutBonus = (state.outs >= 2) ? 5 : 0;
-                                    const bonusText = (homeBonus || twoOutBonus)
-                                        ? `Spd ${runner.runnerSpeed}${homeBonus ? '+5(home)' : ''}${twoOutBonus ? '+5(2 out)' : ''} = ${target}`
-                                        : `Spd ${runner.runnerSpeed} = Tgt ${target}`;
-                                    return (
-                                        <g key={`ebo-${i}`} className="roll-button" onClick={() => onAction({ type: 'SEND_RUNNERS', runnerIds: [runner.runnerId] })} cursor="pointer">
-                                            <rect x={x} y={ROW1} width={btnW} height={ROW1_H} rx="6" fill="#4ade80" stroke="#6bff9a" strokeWidth="1.5"/>
-                                            <text x={x + btnW / 2} y={ROW1 + 32} textAnchor="middle" fontSize="22" fill="#002" fontWeight="bold" fontFamily="Impact">SEND: {truncate(runner.runnerName, 16)}</text>
-                                            <text x={x + btnW / 2} y={ROW1 + 58} textAnchor="middle" fontSize="15" fill="rgba(0,0,0,0.75)" fontFamily="Arial">{runner.fromBase}{'\u2192'}{runner.toBase} | {bonusText}</text>
-                                        </g>
-                                    );
-                                })}
-                                {hasSendAll && (() => {
-                                    const x = bx;
-                                    bx += sendAllW + gap;
-                                    return (
-                                        <g className="roll-button" onClick={() => onAction({ type: 'SEND_RUNNERS', runnerIds: runners.map(r => r.runnerId) })} cursor="pointer">
-                                            <rect x={x} y={ROW1} width={sendAllW} height={ROW1_H} rx="6" fill="#22c55e" stroke="#4ade80" strokeWidth="1.5"/>
-                                            <text x={x + sendAllW / 2} y={ROW1 + 32} textAnchor="middle" fontSize="22" fill="#002" fontWeight="bold" fontFamily="Impact">SEND ALL</text>
-                                            <text x={x + sendAllW / 2} y={ROW1 + 58} textAnchor="middle" fontSize="15" fill="rgba(0,0,0,0.75)" fontFamily="Arial">All runners advance</text>
-                                        </g>
-                                    );
-                                })()}
-                                <g className="roll-button" onClick={() => onAction({ type: 'HOLD_RUNNERS' })} cursor="pointer">
-                                    <rect x={bx} y={ROW1} width={holdW} height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
-                                    <text x={bx + holdW / 2} y={ROW1 + 32} textAnchor="middle" fontSize="22" fill="#ccc" fontWeight="bold" fontFamily="Impact">HOLD RUNNERS</text>
-                                    <text x={bx + holdW / 2} y={ROW1 + 58} textAnchor="middle" fontSize="15" fill="rgba(204,204,204,0.75)" fontFamily="Arial">Stay at current bases</text>
+                        // Try single row first; if too wide, wrap: runners on row 1, sendAll/hold on row 2
+                        const singleRowW = runners.length * (btnW + gap) + (hasSendAll ? sendAllW + gap : 0) + holdW;
+                        const MAX_W = 960;
+                        const wrap = singleRowW > MAX_W;
+                        const rowGap = 6;
+                        const totalH = wrap ? 2 * ROW1_H + rowGap : ROW1_H;
+                        const startY = BOT_TOP + (BOT_H - totalH) / 2;
+                        const row1Y = startY;
+                        const row2Y = wrap ? startY + ROW1_H + rowGap : startY;
+                        // Row 1: runner buttons
+                        const row1W = wrap
+                            ? runners.length * btnW + (runners.length - 1) * gap
+                            : singleRowW;
+                        let bx = CX - row1W / 2;
+                        const runnerBtns = runners.map((runner, i) => {
+                            const x = bx;
+                            bx += btnW + gap;
+                            const target = (runner as any).targetWithBonuses ?? runner.runnerSpeed;
+                            const homeBonus = runner.toBase === 'home' ? 5 : 0;
+                            const twoOutBonus = (state.outs >= 2) ? 5 : 0;
+                            const bonusText = (homeBonus || twoOutBonus)
+                                ? `Spd ${runner.runnerSpeed}${homeBonus ? '+5(home)' : ''}${twoOutBonus ? '+5(2 out)' : ''} = ${target}`
+                                : `Spd ${runner.runnerSpeed} = Tgt ${target}`;
+                            return (
+                                <g key={`ebo-${i}`} className="roll-button" onClick={() => onAction({ type: 'SEND_RUNNERS', runnerIds: [runner.runnerId] })} cursor="pointer">
+                                    <rect x={x} y={row1Y} width={btnW} height={ROW1_H} rx="6" fill="#4ade80" stroke="#6bff9a" strokeWidth="1.5"/>
+                                    <text x={x + btnW / 2} y={row1Y + 32} textAnchor="middle" fontSize="22" fill="#002" fontWeight="bold" fontFamily="Impact">SEND: {truncate(runner.runnerName, 16)}</text>
+                                    <text x={x + btnW / 2} y={row1Y + 58} textAnchor="middle" fontSize="15" fill="rgba(0,0,0,0.75)" fontFamily="Arial">{runner.fromBase}{'\u2192'}{runner.toBase} | {bonusText}</text>
                                 </g>
-                            </>
+                            );
+                        });
+                        // Row 2 (or end of row 1): send all + hold
+                        const row2W = (hasSendAll ? sendAllW + gap : 0) + holdW;
+                        let sx = wrap ? CX - row2W / 2 : bx;
+                        const sendAllEl = hasSendAll ? (
+                            <g className="roll-button" onClick={() => onAction({ type: 'SEND_RUNNERS', runnerIds: runners.map(r => r.runnerId) })} cursor="pointer">
+                                <rect x={sx} y={row2Y} width={sendAllW} height={ROW1_H} rx="6" fill="#22c55e" stroke="#4ade80" strokeWidth="1.5"/>
+                                <text x={sx + sendAllW / 2} y={row2Y + 32} textAnchor="middle" fontSize="22" fill="#002" fontWeight="bold" fontFamily="Impact">SEND ALL</text>
+                                <text x={sx + sendAllW / 2} y={row2Y + 58} textAnchor="middle" fontSize="15" fill="rgba(0,0,0,0.75)" fontFamily="Arial">All runners advance</text>
+                            </g>
+                        ) : null;
+                        if (hasSendAll) sx += sendAllW + gap;
+                        const holdEl = (
+                            <g className="roll-button" onClick={() => onAction({ type: 'HOLD_RUNNERS' })} cursor="pointer">
+                                <rect x={sx} y={row2Y} width={holdW} height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
+                                <text x={sx + holdW / 2} y={row2Y + 32} textAnchor="middle" fontSize="22" fill="#ccc" fontWeight="bold" fontFamily="Impact">HOLD RUNNERS</text>
+                                <text x={sx + holdW / 2} y={row2Y + 58} textAnchor="middle" fontSize="15" fill="rgba(204,204,204,0.75)" fontFamily="Arial">Stay at current bases</text>
+                            </g>
                         );
+                        return (<>{runnerBtns}{sendAllEl}{holdEl}</>);
                     })()}
                 </g>
             )}
@@ -547,8 +558,18 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 const btnW = 290;
                 const noThrowW = 200;
                 const gap = 12;
-                const totalW = runners.length * (btnW + gap) + noThrowW;
-                let bx = CX - totalW / 2;
+                const singleRowW = runners.length * (btnW + gap) + noThrowW;
+                const MAX_W = 960;
+                const wrap = singleRowW > MAX_W;
+                const rowGap = 6;
+                const totalH = wrap ? 2 * ROW1_H + rowGap : ROW1_H;
+                const startY = BOT_TOP + (BOT_H - totalH) / 2;
+                const row1Y = startY;
+                const row2Y = wrap ? startY + ROW1_H + rowGap : startY;
+                const runnersRowW = wrap
+                    ? runners.length * btnW + (runners.length - 1) * gap
+                    : singleRowW;
+                let bx = CX - runnersRowW / 2;
                 return (
                     <g>
                         <text x={CX} y={LABEL_Y} textAnchor="middle" fontSize="14" fill="#e94560" fontWeight="bold" fontFamily="Arial">
@@ -561,11 +582,11 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                             return (
                                 <g key={`eb-${i}`}>
                                     <g className="roll-button" onClick={() => onAction({ type: 'EXTRA_BASE_THROW', runnerId: runner.runnerId })} cursor="pointer">
-                                        <rect x={x} y={ROW1} width={btnW} height={ROW1_H} rx="6" fill="#e94560" stroke="#ff6b8a" strokeWidth="1.5"/>
-                                        <text x={x + btnW / 2} y={ROW1 + 32} textAnchor="middle" fontSize="20" fill="white" fontWeight="900" fontFamily="Impact">THROW: {truncate(runner.runnerName, 16)}</text>
-                                        <text x={x + btnW / 2} y={ROW1 + 58} textAnchor="middle" fontSize="14" fill="rgba(255,255,255,0.9)" fontFamily="monospace">{runner.fromBase}{'\u2192'}{runner.toBase} | d20+OF({ofField}) vs {target}</text>
+                                        <rect x={x} y={row1Y} width={btnW} height={ROW1_H} rx="6" fill="#e94560" stroke="#ff6b8a" strokeWidth="1.5"/>
+                                        <text x={x + btnW / 2} y={row1Y + 32} textAnchor="middle" fontSize="20" fill="white" fontWeight="900" fontFamily="Impact">THROW: {truncate(runner.runnerName, 16)}</text>
+                                        <text x={x + btnW / 2} y={row1Y + 58} textAnchor="middle" fontSize="14" fill="rgba(255,255,255,0.9)" fontFamily="monospace">{runner.fromBase}{'\u2192'}{runner.toBase} | d20+OF({ofField}) vs {target}</text>
                                     </g>
-                                    {gPlayers.map((gp: any, gi: number) => (
+                                    {!wrap && gPlayers.map((gp: any, gi: number) => (
                                         <g key={`eb-g-${i}-${gi}`} className="roll-button" onClick={() => onAction({ type: 'EXTRA_BASE_THROW', runnerId: runner.runnerId, goldGloveCardId: gp.cardId })} cursor="pointer">
                                             <rect x={x} y={ROW2 + gi * 24} width={btnW} height="22" rx="3" fill="#d4a018" stroke="#f0c840" strokeWidth="1"/>
                                             <text x={x + btnW / 2} y={ROW2 + 16 + gi * 24} textAnchor="middle" fontSize="11" fill="#002" fontWeight="bold" fontFamily="Arial">+G: {gp.name} ({gp.position}) — d20+OF({ofField}+10) vs {target}</text>
@@ -574,11 +595,16 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                                 </g>
                             );
                         })}
-                        <g className="roll-button" onClick={() => onAction({ type: 'SKIP_EXTRA_BASE' })} cursor="pointer">
-                            <rect x={bx} y={ROW1} width={noThrowW} height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
-                            <text x={bx + noThrowW / 2} y={ROW1 + 32} textAnchor="middle" fontSize="20" fill="#ccc" fontWeight="900" fontFamily="Impact">LET ADVANCE</text>
-                            <text x={bx + noThrowW / 2} y={ROW1 + 58} textAnchor="middle" fontSize="14" fill="rgba(204,204,204,0.85)" fontFamily="Arial">No throw</text>
-                        </g>
+                        {(() => {
+                            const nx = wrap ? CX - noThrowW / 2 : bx;
+                            return (
+                                <g className="roll-button" onClick={() => onAction({ type: 'SKIP_EXTRA_BASE' })} cursor="pointer">
+                                    <rect x={nx} y={row2Y} width={noThrowW} height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
+                                    <text x={nx + noThrowW / 2} y={row2Y + 32} textAnchor="middle" fontSize="20" fill="#ccc" fontWeight="900" fontFamily="Impact">LET ADVANCE</text>
+                                    <text x={nx + noThrowW / 2} y={row2Y + 58} textAnchor="middle" fontSize="14" fill="rgba(204,204,204,0.85)" fontFamily="Arial">No throw</text>
+                                </g>
+                            );
+                        })()}
                     </g>
                 );
             })()}
