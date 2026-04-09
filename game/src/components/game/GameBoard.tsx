@@ -121,7 +121,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     }
     // Runner animation state
     const BASE_ANIM_MS = 400; // ms per base segment
-    const [runnerAnims, setRunnerAnims] = useState<{ id: string; imagePath: string; fromBase: string; toBase: string; segments: number }[]>([]);
+    const [runnerAnims, setRunnerAnims] = useState<{ id: string; imagePath: string; fromBase: string; toBase: string; outTarget?: string; segments: number }[]>([]);
     const runnerAnimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Base coordinates for card top-left corner
@@ -184,8 +184,11 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 const { segments } = buildBasePath(fromBase, 'scored');
                 anims.push({ id: cardId, imagePath: player.imagePath, fromBase, toBase: 'scored', segments: Math.max(segments, 1) });
             } else {
-                // Runner left all bases but no score increase → out (fade in place)
-                anims.push({ id: cardId, imagePath: player.imagePath, fromBase, toBase: 'out', segments: 0 });
+                // Runner left all bases but no score increase → out
+                // Determine next base they were trying to reach
+                const fromIdx = BASE_ORDER.indexOf(fromBase as any);
+                const nextBase = fromIdx >= 0 && fromIdx < BASE_ORDER.length - 1 ? BASE_ORDER[fromIdx + 1] : 'scored';
+                anims.push({ id: cardId, imagePath: player.imagePath, fromBase, toBase: 'out', outTarget: nextBase, segments: 1 });
             }
             movedIds.add(cardId);
         }
@@ -622,17 +625,37 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     const isOut = anim.toBase === 'out';
                     const scoring = anim.toBase === 'scored';
 
-                    // Out: fade in place with red flash
+                    // Out: slide partway toward next base, turn red, fade before arriving
                     if (isOut) {
+                        const target = BASE_COORDS[anim.outTarget || 'home'];
+                        if (!target) return null;
+                        // Slide 60% of the way to the next base
+                        const dx = (target.x - from.x) * 0.6;
+                        const dy = (target.y - from.y) * 0.6;
+                        const outDur = BASE_ANIM_MS;
                         return (
                             <g key={`anim-${anim.id}`}>
                                 <image href={anim.imagePath}
                                     x={from.x + 3} y={from.y + 3} width={70} height={100}
                                     preserveAspectRatio="xMidYMid slice">
-                                    <animate attributeName="opacity" from="1" to="0" dur="400ms" fill="freeze" />
+                                    <animateMotion
+                                        path={`M 0 0 L ${dx} ${dy}`}
+                                        dur={`${outDur}ms`} fill="freeze"
+                                        calcMode="spline" keySplines="0.4 0 1 1"
+                                        keyTimes="0;1"
+                                    />
+                                    <animate attributeName="opacity" from="1" to="0"
+                                        begin={`${outDur * 0.4}ms`} dur={`${outDur * 0.6}ms`} fill="freeze" />
                                 </image>
-                                <rect x={from.x} y={from.y} width={76} height={106} rx="6" fill="rgba(200,30,30,0.6)">
-                                    <animate attributeName="opacity" from="0.6" to="0" dur="400ms" fill="freeze" />
+                                {/* Red tint overlay that follows the same path */}
+                                <rect x={from.x} y={from.y} width={76} height={106} rx="6" fill="rgba(220,30,30,0.5)">
+                                    <animateMotion
+                                        path={`M 0 0 L ${dx} ${dy}`}
+                                        dur={`${outDur}ms`} fill="freeze"
+                                        calcMode="spline" keySplines="0.4 0 1 1"
+                                        keyTimes="0;1"
+                                    />
+                                    <animate attributeName="opacity" values="0;0.5;0" dur={`${outDur}ms`} fill="freeze" />
                                 </rect>
                             </g>
                         );
