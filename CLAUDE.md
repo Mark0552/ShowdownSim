@@ -110,9 +110,14 @@ pre_atbat (offense: pinch hit / sac bunt / SB icon / skip)
 - State persisted to Supabase on phase transitions and game over
 
 ### Game UI Components
-- `GameBoard.tsx` — Primary SVG game board (1400x950). Shows scoreboard, lineup panels (away/home), diamond with card slots, base runners, action buttons for all phases (pitch, swing, subs, icons, extra bases), DP/extra base result overlays, pitcher IP/fatigue display, player icon indicators. Handles all Advanced rule UI interactions.
-- `GamePage.tsx` — WebSocket connection handler. Sends typed `GameAction` to server, receives `GameState` broadcasts.
-- Unused but available: `Diamond.tsx`, `Scoreboard.tsx`, `AtBatPanel.tsx`, `ActionBar.tsx`, `GameLog.tsx`, `SidePanel.tsx`, `LineupStrip.tsx`.
+- `GameBoard.tsx` — Primary SVG game board (1400x950). Bottom row: Actions (59%) | Dice (26%) | Result (16%). Shows scoreboard with live inning tracking, lineup panels (away/home), diamond with card slots, base runners with speed labels, action buttons for all phases with full numerical breakdowns, user-perspective color coding (green=my action, red=opponent), pitcher/hitter advantage indicator, player icon indicators. Handles all Advanced rule UI interactions.
+- `GamePage.tsx` — WebSocket connection handler with reconnection logic (exponential backoff, max 10 attempts). Sends typed `GameAction` to server, receives `GameState` broadcasts. Blocks actions during opponent disconnect. Saves stats on game over.
+- `DiceSpinner.tsx` — SVG d20 number spinner. Dual pitch+swing side-by-side layout after swing. Linear equation display for pitch modifiers. User-perspective colors. Advantage bar.
+- `ActionButtons.tsx` — Phase-specific action buttons with full math breakdowns (fielding values, speed, bonuses). Phase-aware waiting messages.
+- `BoxScore.tsx` — Full baseball-reference batting/pitching stats (AVG, OBP, SLG, OPS, ERA, WHIP).
+- `BullpenPanel.tsx` — Bullpen/bench expansion panel with starting rotation display.
+- `CardSlot.tsx` — Card image slots for field positions.
+- `GameLogOverlay.tsx` — Scrollable game log overlay.
 
 ## Card Images (`cards/`)
 
@@ -135,9 +140,20 @@ Images are 251x350px JPEGs from TCDB. Referenced via `imagePath` field on each c
 
 - Strategy cards have data + images but are not used in the game yet (Expert rules use them)
 - Server rolls all dice (away player can't verify) — fine for casual play
-- No reconnection handling if a player disconnects mid-game
 - R and RY icons exist on some cards but are not implemented (informational only — Rookie/Rookie Year)
 - Icons `K` on hitters — K icon is currently only checked on the pitcher; if hitters can also have K, that needs review
-- GameLog component exists but is not currently rendered in GameBoard (could be added as overlay)
+- Game password validation is client-side only (functional for casual play, not cryptographically secure)
 - Position parsing uses regex that handles: `1B+1`, `LF-RF+2`, `OF+0`, `IF+1`, `C+9, 1B+0`, `DH`, etc.
 - `parseRange()` handles bad data like `"3-0"` (high < low) by treating as single number
+
+## Recently Completed
+
+- Reconnection handling: exponential backoff, opponent disconnect popup, action blocking during disconnect, player_joined broadcast on reconnect
+- GameLog overlay rendered in GameBoard (toggle via top-right button)
+- Box score with full batting/pitching stats (AVG, OBP, SLG, OPS, ERA, WHIP, W/L/SV)
+- SVG d20 number spinner replacing 3D dice-box library (accurate rolls for both clients)
+- Dice animation for all d20 rolls (pitch, swing, fielding/DP, extra base, steal, bunt)
+- User-perspective colors throughout (green=good for me, red=bad)
+- Live scoreboard with gold current-inning highlighting
+- Card metadata in tooltips (team, year, edition, points, hand, card number)
+- Stats saved to Supabase with card metadata in player names

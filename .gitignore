@@ -21,3 +21,10 @@ game/public/pitchers.json
 
 # Screenshots for bug reporting
 screenshots/
+Screenshots/
+*.JPG
+*.png
+!game/public/**/*.png
+
+# Misc scratch files
+mlb_showdown_2005_board.html
