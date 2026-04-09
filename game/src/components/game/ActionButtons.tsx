@@ -479,8 +479,9 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                                 </g>
                                 {btn.needsRoll && gPlayers.map((gp, gi) => (
                                     <g key={`gb-g-${i}-${gi}`} className="roll-button" onClick={() => onAction({ type: 'GB_DECISION', choice: btn.choice as any, goldGloveCardId: gp.cardId })} cursor="pointer">
-                                        <rect x={startX + i * (bw + gap)} y={ROW2 + gi * 24} width={bw} height="22" rx="3" fill="#d4a018" stroke="#f0c840" strokeWidth="1"/>
-                                        <text x={startX + i * (bw + gap) + bw / 2} y={ROW2 + 16 + gi * 24} textAnchor="middle" fontSize="11" fill="#002" fontWeight="normal" fontFamily="Arial">+G: {gp.name} ({gp.position}) — {rollVsG}</text>
+                                        <rect x={startX + i * (bw + gap)} y={ROW2 + gi * 32} width={bw} height="28" rx="4" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
+                                        <text x={startX + i * (bw + gap) + bw / 2} y={ROW2 + 12 + gi * 32} textAnchor="middle" fontSize="12" fill="#002" fontWeight="normal" fontFamily="Impact">USE G: {gp.name} ({gp.position})</text>
+                                        <text x={startX + i * (bw + gap) + bw / 2} y={ROW2 + 24 + gi * 32} textAnchor="middle" fontSize="10" fill="rgba(0,0,0,0.7)" fontFamily="monospace">{rollVsG}</text>
                                     </g>
                                 ))}
                             </g>
@@ -581,8 +582,9 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                                     </g>
                                     {gPlayers.map((gp: any, gi: number) => (
                                         <g key={`eb-g-${i}-${gi}`} className="roll-button" onClick={() => onAction({ type: 'EXTRA_BASE_THROW', runnerId: runner.runnerId, goldGloveCardId: gp.cardId })} cursor="pointer">
-                                            <rect x={x} y={ROW2 + gi * 24} width={btnW} height="22" rx="3" fill="#d4a018" stroke="#f0c840" strokeWidth="1"/>
-                                            <text x={x + btnW / 2} y={ROW2 + 16 + gi * 24} textAnchor="middle" fontSize="11" fill="#002" fontWeight="normal" fontFamily="Arial">+G: {gp.name} ({gp.position}) — d20+OF({ofField}+10) vs {target}</text>
+                                            <rect x={x} y={ROW2 + gi * 32} width={btnW} height="28" rx="4" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
+                                            <text x={x + btnW / 2} y={ROW2 + 12 + gi * 32} textAnchor="middle" fontSize="12" fill="#002" fontWeight="normal" fontFamily="Impact">USE G: {gp.name} ({gp.position})</text>
+                                            <text x={x + btnW / 2} y={ROW2 + 24 + gi * 32} textAnchor="middle" fontSize="10" fill="rgba(0,0,0,0.7)" fontFamily="monospace">d20+OF({ofField}+10) vs {target}</text>
                                         </g>
                                     ))}
                                 </g>
