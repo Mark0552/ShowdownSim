@@ -28,48 +28,58 @@
     position: fixed;
     z-index: 1000;
     display: flex;
-    gap: 12px;
+    gap: 16px;
     background: #0a1628;
-    border: 1px solid #e94560;
-    border-radius: 10px;
-    padding: 12px;
+    border: 2px solid #e94560;
+    border-radius: 12px;
+    padding: 16px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.7);
     pointer-events: none;
-    max-width: 400px;
+    max-width: 600px;
 }
 
 .tooltip-card-img {
-    width: 120px;
-    height: 168px;
+    width: 180px;
+    height: 252px;
     object-fit: cover;
-    border-radius: 6px;
-    border: 1px solid #1f4068;
+    border-radius: 8px;
+    border: 2px solid #1f4068;
     flex-shrink: 0;
 }
 
 .tooltip-info {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    min-width: 140px;
+    gap: 8px;
+    min-width: 200px;
 }
 
 .tooltip-name {
-    font-size: 16px;
+    font-size: 24px;
     font-weight: 700;
     color: #eee;
 }
 
+.tooltip-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    font-size: 13px;
+    color: #8aade0;
+    font-weight: 500;
+    font-family: Arial, sans-serif;
+}
+
 .tooltip-stats {
     display: flex;
-    gap: 10px;
-    font-size: 13px;
+    gap: 12px;
+    font-size: 18px;
     color: #e94560;
     font-weight: 600;
 }
 
 .tooltip-icons {
-    font-size: 12px;
+    font-size: 18px;
     color: #d4a018;
     font-weight: 600;
 }
@@ -77,8 +87,8 @@
 .tooltip-chart {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px 8px;
-    font-size: 11px;
+    gap: 6px 10px;
+    font-size: 16px;
     color: #8aade0;
     font-family: 'Consolas', 'Courier New', monospace;
 }
@@ -93,6 +103,8 @@
     padding: 12px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.6);
     min-width: 200px;
+    max-height: 70vh;
+    overflow-y: auto;
 }
 
 .away-panel {

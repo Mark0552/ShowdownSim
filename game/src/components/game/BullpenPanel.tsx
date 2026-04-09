@@ -86,7 +86,6 @@ export default function BullpenPanel({ team, side, onClose, onHover, onLeave }: 
                                 <div className="bp-card-info">
                                     <span className="bp-card-name">
                                         {p.name}
-                                        {p.isBackup && <span style={{ color: '#6a8aba', fontSize: '9px' }}> (backup)</span>}
                                     </span>
                                     <span className="bp-card-stats">OB:{p.onBase} Spd:{p.speed}</span>
                                     {p.icons && p.icons.length > 0 && (

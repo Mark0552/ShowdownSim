@@ -268,5 +268,10 @@ function toPlayer(slot) {
         arm: isCatcher ? rawFielding : 0,
         positions: c.positions || [],
         isBackup: !!slot.isBackup,
+        // Card metadata for tooltip display
+        cardNumber: c['#'] || c.cardNumber, edition: c.Ed || c.edition,
+        team: c.Team || c.team, points: c.Points || c.points,
+        year: c['Yr.'] || c.year, hand: c.H || c.hand,
+        expansion: c.expansion,
     };
 }

@@ -134,14 +134,14 @@ export default function DiceSpinner({
         return (
             <g>
                 {/* Pitch column (left) */}
-                <text x={pitchCX} y={botY + 18} textAnchor="middle" fontSize="12" fill={pitchColor}
+                <text x={pitchCX} y={botY + 18} textAnchor="middle" fontSize="16" fill={pitchColor}
                     fontWeight="bold" fontFamily="Impact" letterSpacing="1">PITCH</text>
                 <D20Diamond x={pitchCX} y={dieY} r={dieR} value={pitchRoll!} color={pitchColor} spinning={false} />
                 {/* Equation below die */}
-                <text x={pitchCX} y={dieY + dieR + 16} textAnchor="middle" fontSize="11" fill="#ccc" fontWeight="bold" fontFamily="monospace">
+                <text x={pitchCX} y={dieY + dieR + 16} textAnchor="middle" fontSize="13" fill="#ddd" fontWeight="bold" fontFamily="monospace">
                     {equation}
                 </text>
-                <text x={pitchCX} y={dieY + dieR + 32} textAnchor="middle" fontSize="11" fill="#aaa" fontFamily="monospace">
+                <text x={pitchCX} y={dieY + dieR + 34} textAnchor="middle" fontSize="13" fill="#bbb" fontWeight="bold" fontFamily="monospace">
                     vs OB {batterOnBase}
                 </text>
 
@@ -149,7 +149,7 @@ export default function DiceSpinner({
                 <line x1={cx} y1={botY + 12} x2={cx} y2={advY - 6} stroke="#d4a01830" strokeWidth="1" />
 
                 {/* Swing column (right) */}
-                <text x={swingCX} y={botY + 18} textAnchor="middle" fontSize="12" fill={swingColor}
+                <text x={swingCX} y={botY + 18} textAnchor="middle" fontSize="16" fill={swingColor}
                     fontWeight="bold" fontFamily="Impact" letterSpacing="1">SWING</text>
                 <D20Diamond x={swingCX} y={dieY} r={dieR} value={swingRoll!} color={swingColor} spinning={false} />
 
@@ -169,7 +169,7 @@ export default function DiceSpinner({
 
     return (
         <g>
-            <text x={cx} y={botY + 22} textAnchor="middle" fontSize="14" fill={color}
+            <text x={cx} y={botY + 22} textAnchor="middle" fontSize="18" fill={color}
                 fontWeight="bold" fontFamily="Impact" letterSpacing="2">{label}</text>
 
             <D20Diamond x={dieX} y={dieY} r={dieR} value={displayValue} color={color} spinning={spinning && !settled} />
@@ -177,25 +177,25 @@ export default function DiceSpinner({
             {/* Pitch: equation + vs OB + advantage */}
             {isPitch && settled && !spinning && hasPitchData && (
                 <g>
-                    <text x={cx} y={dieY + dieR + 18} textAnchor="middle" fontSize="12" fill="#ccc" fontWeight="bold" fontFamily="monospace">
+                    <text x={cx} y={dieY + dieR + 18} textAnchor="middle" fontSize="14" fill="#ddd" fontWeight="bold" fontFamily="monospace">
                         {buildPitchEquation(pitchRoll!, pitchControl, fatiguePenalty, controlModifier, pitchTotal!)}
                     </text>
-                    <text x={cx} y={dieY + dieR + 36} textAnchor="middle" fontSize="12" fill="#aaa" fontFamily="monospace">
+                    <text x={cx} y={dieY + dieR + 38} textAnchor="middle" fontSize="14" fill="#bbb" fontWeight="bold" fontFamily="monospace">
                         vs OB {batterOnBase}
                     </text>
                     {/* Advantage bar */}
-                    <rect x={cx - 120} y={advY - 4} width="240" height="20" rx="4" fill={advantageColor} opacity="0.25" />
-                    <text x={cx} y={advY + 11} textAnchor="middle" fontSize="12" fill={advantageColor}
-                        fontWeight="900" fontFamily="Impact" letterSpacing="1">{advantageText}</text>
+                    <rect x={cx - 178} y={advY} width="356" height={advH} rx="4" fill={advantageColor} />
+                    <text x={cx} y={advY + advH / 2 + 7} textAnchor="middle" fontSize="20" fill="white"
+                        fontWeight="900" fontFamily="Impact" letterSpacing="2">{advantageText}</text>
                 </g>
             )}
 
             {/* Swing single: chart + advantage */}
             {isSwing && settled && !spinning && !showDual && (
                 <g>
-                    <rect x={cx - 120} y={advY - 4} width="240" height="20" rx="4" fill={advantageColor} opacity="0.25" />
-                    <text x={cx} y={advY + 11} textAnchor="middle" fontSize="12" fill={advantageColor}
-                        fontWeight="900" fontFamily="Impact" letterSpacing="1">{advantageText}</text>
+                    <rect x={cx - 178} y={advY} width="356" height={advH} rx="4" fill={advantageColor} />
+                    <text x={cx} y={advY + advH / 2 + 7} textAnchor="middle" fontSize="20" fill="white"
+                        fontWeight="900" fontFamily="Impact" letterSpacing="2">{advantageText}</text>
                 </g>
             )}
         </g>

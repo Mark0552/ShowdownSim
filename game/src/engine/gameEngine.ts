@@ -70,6 +70,14 @@ export interface PlayerSlot {
     fielding?: number;          // fielding value at assigned position
     arm?: number;               // catcher Arm value (used for steal defense)
     isBackup?: boolean;         // bench player at 1/5 cost (timing restrictions)
+    // Card metadata
+    cardNumber?: string;
+    edition?: string;
+    team?: string;
+    points?: number;
+    year?: string;
+    hand?: string;
+    expansion?: string;
 }
 
 export interface BatterStats {
