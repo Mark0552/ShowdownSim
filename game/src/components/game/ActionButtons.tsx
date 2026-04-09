@@ -239,8 +239,12 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 const bases = state.bases;
                 const canBunt = state.outs < 2 && (bases.first || bases.second) && !bases.third;
                 const has20 = !state.icon20UsedThisInning && fieldingTeam.pitcher.icons?.includes('20');
+                const currentFieldingTeamId2 = state.halfInning === 'top' ? 'home' : 'away';
+                const rpUsed2 = state.rpActiveInning === state.inning && state.rpActiveTeam === currentFieldingTeamId2;
+                const hasRP2 = state.inning > 6 && !rpUsed2 && fieldingTeam.pitcher.icons?.includes('RP');
                 // Build button list and center it
                 const items: { type: string; w: number }[] = [{ type: 'ibb', w: 200 }];
+                if (hasRP2) items.push({ type: 'rp', w: 190 });
                 if (canBunt) items.push({ type: 'pitch_bunt', w: 190 });
                 else {
                     items.push({ type: 'roll_pitch', w: 200 });
@@ -265,6 +269,13 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                                     <rect x={x} y={ROW1} width={it.w} height={ROW1_H} rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
                                     <text x={x + it.w / 2} y={ROW1 + 32} textAnchor="middle" fontSize="24" fill="white" fontWeight="normal" fontFamily="Impact">READY TO PITCH</text>
                                     <text x={x + it.w / 2} y={ROW1 + 58} textAnchor="middle" fontSize="15" fill="rgba(255,255,255,0.7)" fontFamily="Arial">Bunt option next</text>
+                                </g>
+                            );
+                            if (it.type === 'rp') return (
+                                <g key={`ib-${idx}`} className="roll-button" onClick={() => onAction({ type: 'USE_ICON', cardId: fieldingTeam.pitcher.cardId, icon: 'RP' })} cursor="pointer">
+                                    <rect x={x} y={ROW1} width={it.w} height={ROW1_H} rx="6" fill="#60a5fa" stroke="#93c5fd" strokeWidth="1.5"/>
+                                    <text x={x + it.w / 2} y={ROW1 + 32} textAnchor="middle" fontSize="22" fill="#002" fontWeight="normal" fontFamily="Impact">RP ICON (+3 CTRL)</text>
+                                    <text x={x + it.w / 2} y={ROW1 + 58} textAnchor="middle" fontSize="15" fill="rgba(0,0,0,0.7)" fontFamily="Arial">Rest of inning</text>
                                 </g>
                             );
                             if (it.type === 'roll_pitch') return (
@@ -302,30 +313,45 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 </g>
             )}
 
-            {/* Pitch phase — with optional 20 icon */}
+            {/* Pitch phase — with optional 20/RP icons */}
             {!state.isOver && isMyTurn && state.phase === 'pitch' && (() => {
                 const has20 = !state.icon20UsedThisInning && fieldingTeam.pitcher.icons?.includes('20');
-                if (has20) {
-                    return (
-                        <g>
-                            <g className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH' })} cursor="pointer">
-                                <rect x={CX - 226} y={ROW1} width="220" height={ROW1_H} rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
-                                <text x={CX - 116} y={ROW1 + 32} textAnchor="middle" fontSize="24" fill="white" fontWeight="normal" fontFamily="Impact,sans-serif" letterSpacing="2">ROLL PITCH</text>
-                                <text x={CX - 116} y={ROW1 + 58} textAnchor="middle" fontSize="12" fill="rgba(255,255,255,0.9)" fontFamily="monospace">{pitchMath}</text>
-                            </g>
-                            <g className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH', useIcon20: true })} cursor="pointer">
-                                <rect x={CX + 6} y={ROW1} width="220" height={ROW1_H} rx="8" fill="#60a5fa" stroke="#93c5fd" strokeWidth="2"/>
-                                <text x={CX + 116} y={ROW1 + 32} textAnchor="middle" fontSize="22" fill="#002" fontWeight="normal" fontFamily="Impact,sans-serif">USE 20 ICON</text>
-                                <text x={CX + 116} y={ROW1 + 58} textAnchor="middle" fontSize="12" fill="rgba(0,0,0,0.8)" fontFamily="monospace">{pitch20Math}</text>
-                            </g>
-                        </g>
-                    );
-                }
+                const pCurrentFieldingTeamId = state.halfInning === 'top' ? 'home' : 'away';
+                const pRpUsed = state.rpActiveInning === state.inning && state.rpActiveTeam === pCurrentFieldingTeamId;
+                const hasRP = state.inning > 6 && !pRpUsed && fieldingTeam.pitcher.icons?.includes('RP');
+                const items: { type: string; w: number }[] = [];
+                items.push({ type: 'roll_pitch', w: 200 });
+                if (has20) items.push({ type: '20', w: 210 });
+                if (hasRP) items.push({ type: 'rp', w: 190 });
+                const pgap = 10;
+                const ptotalW = items.reduce((s, it) => s + it.w, 0) + (items.length - 1) * pgap;
+                let px = CX - ptotalW / 2;
                 return (
-                    <g className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH' })} cursor="pointer">
-                        <rect x={CX - 120} y={ROW1} width="240" height={ROW1_H} rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
-                        <text x={CX} y={ROW1 + 32} textAnchor="middle" fontSize="24" fill="white" fontWeight="normal" fontFamily="Impact,sans-serif" letterSpacing="2">ROLL PITCH</text>
-                        <text x={CX} y={ROW1 + 58} textAnchor="middle" fontSize="12" fill="rgba(255,255,255,0.9)" fontFamily="monospace">{pitchMath}</text>
+                    <g>
+                        {items.map((it, idx) => {
+                            const x = px; px += it.w + pgap;
+                            if (it.type === 'roll_pitch') return (
+                                <g key={`p-${idx}`} className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH' })} cursor="pointer">
+                                    <rect x={x} y={ROW1} width={it.w} height={ROW1_H} rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
+                                    <text x={x + it.w / 2} y={ROW1 + 32} textAnchor="middle" fontSize="24" fill="white" fontWeight="normal" fontFamily="Impact" letterSpacing="2">ROLL PITCH</text>
+                                    <text x={x + it.w / 2} y={ROW1 + 58} textAnchor="middle" fontSize="12" fill="rgba(255,255,255,0.9)" fontFamily="monospace">{pitchMath}</text>
+                                </g>
+                            );
+                            if (it.type === '20') return (
+                                <g key={`p-${idx}`} className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH', useIcon20: true })} cursor="pointer">
+                                    <rect x={x} y={ROW1} width={it.w} height={ROW1_H} rx="8" fill="#60a5fa" stroke="#93c5fd" strokeWidth="2"/>
+                                    <text x={x + it.w / 2} y={ROW1 + 32} textAnchor="middle" fontSize="22" fill="#002" fontWeight="normal" fontFamily="Impact">USE 20 ICON</text>
+                                    <text x={x + it.w / 2} y={ROW1 + 58} textAnchor="middle" fontSize="12" fill="rgba(0,0,0,0.8)" fontFamily="monospace">{pitch20Math}</text>
+                                </g>
+                            );
+                            return (
+                                <g key={`p-${idx}`} className="roll-button" onClick={() => onAction({ type: 'USE_ICON', cardId: fieldingTeam.pitcher.cardId, icon: 'RP' })} cursor="pointer">
+                                    <rect x={x} y={ROW1} width={it.w} height={ROW1_H} rx="6" fill="#60a5fa" stroke="#93c5fd" strokeWidth="1.5"/>
+                                    <text x={x + it.w / 2} y={ROW1 + 32} textAnchor="middle" fontSize="22" fill="#002" fontWeight="normal" fontFamily="Impact">RP ICON (+3 CTRL)</text>
+                                    <text x={x + it.w / 2} y={ROW1 + 58} textAnchor="middle" fontSize="15" fill="rgba(0,0,0,0.7)" fontFamily="Arial">Rest of inning</text>
+                                </g>
+                            );
+                        })}
                     </g>
                 );
             })()}

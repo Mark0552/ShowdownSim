@@ -124,7 +124,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     type RunnerAnim = { id: string; imagePath: string; fromBase: string; toBase: string; outTarget?: string; segments: number };
     const [runnerAnims, setRunnerAnims] = useState<RunnerAnim[]>([]);
     const runnerAnimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const frozenVersionRef = useRef(0);
+    const [frozenVersion, setFrozenVersion] = useState(0);
 
     // Base coordinates for card top-left corner
     const BASE_COORDS: Record<string, { x: number; y: number }> = {
@@ -154,7 +154,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         const changed = oldBases !== newBases && (
             oldBases.first !== newBases.first || oldBases.second !== newBases.second || oldBases.third !== newBases.third
         );
-        if (changed) frozenVersionRef.current++;
+        if (changed) setFrozenVersion(v => v + 1);
         frozenRef.current = { bases: state.bases, outs: state.outs, score: state.score, battingTeam };
     }
 
@@ -231,7 +231,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             runnerAnimTimerRef.current = setTimeout(() => setRunnerAnims([]), totalMs + 100);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [frozenVersionRef.current]);
+    }, [frozenVersion]);
 
     // Frozen display values for field visuals during dice animation
     const displayBases = frozenRef.current.bases;
