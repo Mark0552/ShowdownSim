@@ -5,7 +5,7 @@
  *   Main area:  y=52..748  [Away 0..360 | Diamond 360..1040 | Home 1040..1400]
  *   Bottom bar: y=750..948 [Actions 0..820 (59%) | Dice 820..1180 (26%) | Result 1180..1400 (16%)]
  */
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import type { GameState, GameAction, PlayerSlot } from '../../engine/gameEngine';
 import { getCurrentBatter, getCurrentPitcher } from '../../engine/gameEngine';
 import CardSlot from './CardSlot';
@@ -121,25 +121,24 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     }
     // Runner animation state
     const BASE_ANIM_MS = 400; // ms per base segment
-    const [runnerAnims, setRunnerAnims] = useState<{ id: string; imagePath: string; fromBase: string; toBase: string; outTarget?: string; segments: number }[]>([]);
+    type RunnerAnim = { id: string; imagePath: string; fromBase: string; toBase: string; outTarget?: string; segments: number };
+    const [runnerAnims, setRunnerAnims] = useState<RunnerAnim[]>([]);
     const runnerAnimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const frozenVersionRef = useRef(0);
 
     // Base coordinates for card top-left corner
     const BASE_COORDS: Record<string, { x: number; y: number }> = {
         home: { x: HP.x - 38, y: HP.y - 53 }, first: { x: B1.x - 38, y: B1.y - 53 },
         second: { x: B2.x - 38, y: B2.y - 53 }, third: { x: B3.x - 38, y: B3.y - 53 },
-        scored: { x: HP.x - 38, y: HP.y - 53 }, out: { x: 0, y: 0 }, // out = fade in place
+        scored: { x: HP.x - 38, y: HP.y - 53 }, out: { x: 0, y: 0 },
     };
-    // Base path order for following the diamond
     const BASE_ORDER = ['home', 'first', 'second', 'third', 'scored'] as const;
 
-    // Build an SVG path that follows the base paths from one base to another
     const buildBasePath = (fromBase: string, toBase: string) => {
         const fromIdx = BASE_ORDER.indexOf(fromBase as any);
         const toIdx = BASE_ORDER.indexOf(toBase as any);
         if (fromIdx < 0 || toIdx < 0 || toIdx <= fromIdx) return { path: '', segments: 0 };
         const from = BASE_COORDS[fromBase];
-        // Build path segments through each intermediate base
         let d = 'M 0 0';
         for (let i = fromIdx + 1; i <= toIdx; i++) {
             const waypoint = BASE_COORDS[BASE_ORDER[i]];
@@ -148,24 +147,46 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         return { path: d, segments: toIdx - fromIdx };
     };
 
-    // Only update frozen display values when NOT animating
+    // Update frozen display values when NOT animating — track version for useEffect
     if (!animatingRef.current) {
         const oldBases = frozenRef.current.bases;
-        const oldTeam = frozenRef.current.battingTeam;
         const newBases = state.bases;
+        const changed = oldBases !== newBases && (
+            oldBases.first !== newBases.first || oldBases.second !== newBases.second || oldBases.third !== newBases.third
+        );
+        if (changed) frozenVersionRef.current++;
+        frozenRef.current = { bases: state.bases, outs: state.outs, score: state.score, battingTeam };
+    }
 
-        // Detect runner movements for animation
+    // Detect runner movements via useEffect (not during render) to avoid React 18 issues
+    const prevBasesRef = useRef(frozenRef.current.bases);
+    const prevScoreRef = useRef(frozenRef.current.score);
+    const prevTeamRef = useRef(frozenRef.current.battingTeam);
+    useEffect(() => {
+        const oldBases = prevBasesRef.current;
+        const oldTeam = prevTeamRef.current;
+        const oldScoreVal = prevScoreRef.current;
+        const newBases = frozenRef.current.bases;
+        const newScore = frozenRef.current.score;
+
+        prevBasesRef.current = newBases;
+        prevScoreRef.current = newScore;
+        prevTeamRef.current = frozenRef.current.battingTeam;
+
+        if (oldBases === newBases) return; // same reference = no change
+
         const BASE_KEYS = ['first', 'second', 'third'] as const;
-        const anims: typeof runnerAnims = [];
+        const anims: RunnerAnim[] = [];
         const movedIds = new Set<string>();
 
-        // Check if runs scored to distinguish scoring from outs
-        const side = state.halfInning === 'top' ? 'away' : 'home';
-        const oldScore = frozenRef.current.score[side];
-        const newScore = state.score[side];
-        let runsToAccount = newScore - oldScore;
+        // Use the half-inning from the OLD state for score comparison
+        // (after half-inning switch, the "side" changes)
+        const oldSide = oldTeam === state.awayTeam ? 'away' : oldTeam === state.homeTeam ? 'home' :
+            (state.halfInning === 'top' ? 'away' : 'home');
+        const scoreBefore = oldScoreVal[oldSide as 'home' | 'away'] || 0;
+        const scoreAfter = newScore[oldSide as 'home' | 'away'] || 0;
+        let runsToAccount = scoreAfter - scoreBefore;
 
-        // Existing runners that moved
         for (const fromBase of BASE_KEYS) {
             const cardId = oldBases[fromBase];
             if (!cardId) continue;
@@ -175,17 +196,13 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             if (!player) continue;
 
             if (toBase) {
-                // Runner advanced to another base
                 const { segments } = buildBasePath(fromBase, toBase);
                 anims.push({ id: cardId, imagePath: player.imagePath, fromBase, toBase, segments: Math.max(segments, 1) });
             } else if (runsToAccount > 0) {
-                // Runner left all bases and score went up → scored
                 runsToAccount--;
                 const { segments } = buildBasePath(fromBase, 'scored');
                 anims.push({ id: cardId, imagePath: player.imagePath, fromBase, toBase: 'scored', segments: Math.max(segments, 1) });
             } else {
-                // Runner left all bases but no score increase → out
-                // Determine next base they were trying to reach
                 const fromIdx = BASE_ORDER.indexOf(fromBase as any);
                 const nextBase = fromIdx >= 0 && fromIdx < BASE_ORDER.length - 1 ? BASE_ORDER[fromIdx + 1] : 'scored';
                 anims.push({ id: cardId, imagePath: player.imagePath, fromBase, toBase: 'out', outTarget: nextBase, segments: 1 });
@@ -193,20 +210,17 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             movedIds.add(cardId);
         }
 
-        // Batter reaching base (wasn't on any base before, now is)
+        // Batter reaching base
         for (const toBase of BASE_KEYS) {
             const cardId = newBases[toBase];
             if (!cardId) continue;
             if (movedIds.has(cardId)) continue;
-            // Was this player NOT on any base before?
             const wasOnBase = BASE_KEYS.some(b => oldBases[b] === cardId);
             if (wasOnBase) continue;
             const player = oldTeam.lineup.find(p => p.cardId === cardId) || battingTeam.lineup.find(p => p.cardId === cardId);
             if (!player) continue;
             const { segments } = buildBasePath('home', toBase);
-            if (segments > 0) {
-                anims.push({ id: cardId, imagePath: player.imagePath, fromBase: 'home', toBase, segments });
-            }
+            if (segments > 0) anims.push({ id: cardId, imagePath: player.imagePath, fromBase: 'home', toBase, segments });
         }
 
         if (anims.length > 0) {
@@ -214,11 +228,10 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             const totalMs = maxSegments * BASE_ANIM_MS;
             setRunnerAnims(anims);
             if (runnerAnimTimerRef.current) clearTimeout(runnerAnimTimerRef.current);
-            runnerAnimTimerRef.current = setTimeout(() => setRunnerAnims([]), totalMs + 50);
+            runnerAnimTimerRef.current = setTimeout(() => setRunnerAnims([]), totalMs + 100);
         }
-
-        frozenRef.current = { bases: state.bases, outs: state.outs, score: state.score, battingTeam };
-    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [frozenVersionRef.current]);
 
     // Frozen display values for field visuals during dice animation
     const displayBases = frozenRef.current.bases;
@@ -613,12 +626,16 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 {runner2 && <text x={B2.x} y={B2.y - 58} textAnchor="middle" fontSize="18" fill="white" fontWeight="normal" fontFamily="Impact">Speed: {runner2.speed}</text>}
                 {runner3 && <text x={B3.x} y={B3.y - 58} textAnchor="middle" fontSize="18" fill="white" fontWeight="normal" fontFamily="Impact">Speed: {runner3.speed}</text>}
 
-                {/* Card slots centered on bases */}
-                <CardSlot x={B2.x - 38} y={B2.y - 53} label="2B" card={runner2} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
-                <CardSlot x={B1.x - 38} y={B1.y - 53} label="1B" card={runner1} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
-                <CardSlot x={B3.x - 38} y={B3.y - 53} label="3B" card={runner3} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
-                <CardSlot x={MOUND.x - 38} y={MOUND.y - 53} label="P" card={pitcher} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
-                <CardSlot x={HP.x - 38} y={HP.y - 53} label="H" card={displayBatter} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
+                {/* Card slots centered on bases — hidden during SP roll */}
+                {state.phase !== 'sp_roll' && (
+                    <>
+                        <CardSlot x={B2.x - 38} y={B2.y - 53} label="2B" card={runner2} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
+                        <CardSlot x={B1.x - 38} y={B1.y - 53} label="1B" card={runner1} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
+                        <CardSlot x={B3.x - 38} y={B3.y - 53} label="3B" card={runner3} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
+                        <CardSlot x={MOUND.x - 38} y={MOUND.y - 53} label="P" card={pitcher} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
+                        <CardSlot x={HP.x - 38} y={HP.y - 53} label="H" card={displayBatter} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
+                    </>
+                )}
 
                 {/* Animated runner overlay — cards follow base paths */}
                 {runnerAnims.map(anim => {
@@ -689,11 +706,15 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     );
                 })}
 
-                {/* IP / Fatigue near pitcher */}
-                <rect x={MOUND.x - 42} y={MOUND.y + 56} width="84" height="20" rx="4" fill="rgba(0,0,0,0.75)"/>
-                <text x={MOUND.x} y={MOUND.y + 70} textAnchor="middle" fontSize="10" fill={fatigueActive ? '#ff6060' : '#8aade0'} fontWeight="normal" fontFamily="monospace">
-                    IP: {inningsPitching}/{effectiveIp}{fatigueActive ? ` (-${fatiguePenalty})` : ''}
-                </text>
+                {/* IP / Fatigue near pitcher — hidden during SP roll */}
+                {state.phase !== 'sp_roll' && (
+                    <>
+                        <rect x={MOUND.x - 42} y={MOUND.y + 56} width="84" height="20" rx="4" fill="rgba(0,0,0,0.75)"/>
+                        <text x={MOUND.x} y={MOUND.y + 70} textAnchor="middle" fontSize="10" fill={fatigueActive ? '#ff6060' : '#8aade0'} fontWeight="normal" fontFamily="monospace">
+                            IP: {inningsPitching}/{effectiveIp}{fatigueActive ? ` (-${fatiguePenalty})` : ''}
+                        </text>
+                    </>
+                )}
 
                 {/* ====== BOTTOM BAR (y=750..948) ====== */}
                 <line x1="0" y1={BOT_Y} x2="1400" y2={BOT_Y} stroke="#d4a018" strokeWidth="2"/>
