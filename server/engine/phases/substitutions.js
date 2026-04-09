@@ -165,10 +165,17 @@ export function enterPreAtBat(state) {
     // Check steal eligibility (runner on 1st with 2nd open, or runner on 2nd with 3rd open)
     const canSteal = (bases.first && !bases.second) || (bases.second && !bases.third);
 
-    // Check SB icon
+    // Check SB icon — only for runners on stealable bases (must match client button logic)
     const battingTeam = state[offSide];
-    const hasSBOption = (bases.first || bases.second) &&
-        battingTeam.lineup.some(p => playerHasIcon(p, 'SB') && canUseIcon(battingTeam, p.cardId, 'SB'));
+    let hasSBOption = false;
+    if (bases.first && !bases.second) {
+        const runner = battingTeam.lineup.find(p => p.cardId === bases.first);
+        if (runner && playerHasIcon(runner, 'SB') && canUseIcon(battingTeam, runner.cardId, 'SB')) hasSBOption = true;
+    }
+    if (bases.second && !bases.third) {
+        const runner = battingTeam.lineup.find(p => p.cardId === bases.second);
+        if (runner && playerHasIcon(runner, 'SB') && canUseIcon(battingTeam, runner.cardId, 'SB')) hasSBOption = true;
+    }
 
     // Bunt is now in bunt_decision phase (after IBB), not pre_atbat
 
