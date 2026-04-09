@@ -66,9 +66,8 @@ export default function BullpenPanel({ team, side, onClose, onHover, onLeave }: 
                                 <img src={p.imagePath} alt="" />
                                 <div className="bp-card-info">
                                     <span className="bp-card-name">{p.name}</span>
-                                    <span className="bp-card-stats">Ctrl:{p.control} IP:{p.ip} {p.role}</span>
                                     {p.icons && p.icons.length > 0 && (
-                                        <span className="bp-card-stats" style={{ color: '#d4a018' }}>{p.icons.join(' ')}</span>
+                                        <span className="bp-card-icons">{p.icons.join(' ')}</span>
                                     )}
                                 </div>
                             </div>
@@ -84,12 +83,9 @@ export default function BullpenPanel({ team, side, onClose, onHover, onLeave }: 
                             <div key={`bn-${i}`} className="bp-card" onMouseEnter={(e) => onHover(p, e)} onMouseLeave={onLeave}>
                                 <img src={p.imagePath} alt="" />
                                 <div className="bp-card-info">
-                                    <span className="bp-card-name">
-                                        {p.name}
-                                    </span>
-                                    <span className="bp-card-stats">OB:{p.onBase} Spd:{p.speed}</span>
+                                    <span className="bp-card-name">{p.name}</span>
                                     {p.icons && p.icons.length > 0 && (
-                                        <span className="bp-card-stats" style={{ color: '#d4a018' }}>{p.icons.join(' ')}</span>
+                                        <span className="bp-card-icons">{p.icons.join(' ')}</span>
                                     )}
                                 </div>
                             </div>
@@ -116,7 +112,6 @@ export default function BullpenPanel({ team, side, onClose, onHover, onLeave }: 
                                         <span className="bp-card-name" style={{ color: isActive ? '#4ade80' : '#4a7a9a' }}>
                                             SP{spNum} — {p.name}{isActive ? ' ★' : ''}
                                         </span>
-                                        <span className="bp-card-stats">Ctrl:{p.control} IP:{p.ip} Starter</span>
                                     </div>
                                 </div>
                             );
@@ -133,9 +128,6 @@ export default function BullpenPanel({ team, side, onClose, onHover, onLeave }: 
                                 {u.player?.imagePath && <img src={u.player.imagePath} alt="" />}
                                 <div className="bp-card-info">
                                     <span className="bp-card-name" style={{ color: '#666' }}>{u.player?.name || u.id}</span>
-                                    {u.player && u.player.type === 'pitcher' && (
-                                        <span className="bp-card-stats">Ctrl:{u.player.control} IP:{u.player.ip} {u.player.role}</span>
-                                    )}
                                 </div>
                             </div>
                         ))}
@@ -151,9 +143,6 @@ export default function BullpenPanel({ team, side, onClose, onHover, onLeave }: 
                                 {u.player?.imagePath && <img src={u.player.imagePath} alt="" />}
                                 <div className="bp-card-info">
                                     <span className="bp-card-name" style={{ color: '#666' }}>{u.player?.name || u.id}</span>
-                                    {u.player && u.player.type === 'hitter' && (
-                                        <span className="bp-card-stats">OB:{u.player.onBase} Spd:{u.player.speed}</span>
-                                    )}
                                 </div>
                             </div>
                         ))}

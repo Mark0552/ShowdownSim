@@ -33,7 +33,7 @@ function D20Diamond({ x, y, r, value, color, spinning }: { x: number; y: number;
                 {spinning && <animate attributeName="stroke" values={`${color};#fff;${color}`} dur="0.3s" repeatCount="indefinite" />}
             </polygon>
             <text x={x} y={y + r * 0.3} textAnchor="middle" fontSize={r * 0.9}
-                fill={spinning ? '#aaa' : 'white'} fontWeight="900" fontFamily="Impact">{value}</text>
+                fill={spinning ? '#aaa' : 'white'} fontWeight="normal" fontFamily="Impact">{value}</text>
         </g>
     );
 }
@@ -135,13 +135,13 @@ export default function DiceSpinner({
             <g>
                 {/* Pitch column (left) */}
                 <text x={pitchCX} y={botY + 18} textAnchor="middle" fontSize="16" fill={pitchColor}
-                    fontWeight="bold" fontFamily="Impact" letterSpacing="1">PITCH</text>
+                    fontWeight="normal" fontFamily="Impact" letterSpacing="1">PITCH</text>
                 <D20Diamond x={pitchCX} y={dieY} r={dieR} value={pitchRoll!} color={pitchColor} spinning={false} />
                 {/* Equation below die */}
-                <text x={pitchCX} y={dieY + dieR + 16} textAnchor="middle" fontSize="13" fill="#ddd" fontWeight="bold" fontFamily="monospace">
+                <text x={pitchCX} y={dieY + dieR + 16} textAnchor="middle" fontSize="13" fill="#ddd" fontWeight="normal" fontFamily="monospace">
                     {equation}
                 </text>
-                <text x={pitchCX} y={dieY + dieR + 34} textAnchor="middle" fontSize="13" fill="#bbb" fontWeight="bold" fontFamily="monospace">
+                <text x={pitchCX} y={dieY + dieR + 34} textAnchor="middle" fontSize="13" fill="#bbb" fontWeight="normal" fontFamily="monospace">
                     vs OB {batterOnBase}
                 </text>
 
@@ -150,13 +150,13 @@ export default function DiceSpinner({
 
                 {/* Swing column (right) */}
                 <text x={swingCX} y={botY + 18} textAnchor="middle" fontSize="16" fill={swingColor}
-                    fontWeight="bold" fontFamily="Impact" letterSpacing="1">SWING</text>
+                    fontWeight="normal" fontFamily="Impact" letterSpacing="1">SWING</text>
                 <D20Diamond x={swingCX} y={dieY} r={dieR} value={swingRoll!} color={swingColor} spinning={false} />
 
                 {/* Advantage bar (full width, solid, bottom) */}
                 <rect x={cx - 178} y={advY} width="356" height={advH} rx="4" fill={advantageColor} />
                 <text x={cx} y={advY + advH / 2 + 7} textAnchor="middle" fontSize="20" fill="white"
-                    fontWeight="900" fontFamily="Impact" letterSpacing="2">{advantageText}</text>
+                    fontWeight="normal" fontFamily="Impact" letterSpacing="2">{advantageText}</text>
             </g>
         );
     }
@@ -170,23 +170,23 @@ export default function DiceSpinner({
     return (
         <g>
             <text x={cx} y={botY + 22} textAnchor="middle" fontSize="18" fill={color}
-                fontWeight="bold" fontFamily="Impact" letterSpacing="2">{label}</text>
+                fontWeight="normal" fontFamily="Impact" letterSpacing="2">{label}</text>
 
             <D20Diamond x={dieX} y={dieY} r={dieR} value={displayValue} color={color} spinning={spinning && !settled} />
 
             {/* Pitch: equation + vs OB + advantage */}
             {isPitch && settled && !spinning && hasPitchData && (
                 <g>
-                    <text x={cx} y={dieY + dieR + 18} textAnchor="middle" fontSize="14" fill="#ddd" fontWeight="bold" fontFamily="monospace">
+                    <text x={cx} y={dieY + dieR + 18} textAnchor="middle" fontSize="14" fill="#ddd" fontWeight="normal" fontFamily="monospace">
                         {buildPitchEquation(pitchRoll!, pitchControl, fatiguePenalty, controlModifier, pitchTotal!)}
                     </text>
-                    <text x={cx} y={dieY + dieR + 38} textAnchor="middle" fontSize="14" fill="#bbb" fontWeight="bold" fontFamily="monospace">
+                    <text x={cx} y={dieY + dieR + 38} textAnchor="middle" fontSize="14" fill="#bbb" fontWeight="normal" fontFamily="monospace">
                         vs OB {batterOnBase}
                     </text>
                     {/* Advantage bar */}
                     <rect x={cx - 178} y={advY} width="356" height={advH} rx="4" fill={advantageColor} />
                     <text x={cx} y={advY + advH / 2 + 7} textAnchor="middle" fontSize="20" fill="white"
-                        fontWeight="900" fontFamily="Impact" letterSpacing="2">{advantageText}</text>
+                        fontWeight="normal" fontFamily="Impact" letterSpacing="2">{advantageText}</text>
                 </g>
             )}
 
@@ -195,7 +195,7 @@ export default function DiceSpinner({
                 <g>
                     <rect x={cx - 178} y={advY} width="356" height={advH} rx="4" fill={advantageColor} />
                     <text x={cx} y={advY + advH / 2 + 7} textAnchor="middle" fontSize="20" fill="white"
-                        fontWeight="900" fontFamily="Impact" letterSpacing="2">{advantageText}</text>
+                        fontWeight="normal" fontFamily="Impact" letterSpacing="2">{advantageText}</text>
                 </g>
             )}
         </g>

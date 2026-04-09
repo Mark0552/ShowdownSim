@@ -56,7 +56,7 @@
 
 .tooltip-name {
     font-size: 24px;
-    font-weight: 700;
+    font-weight: normal;
     color: #eee;
 }
 
@@ -66,7 +66,7 @@
     gap: 6px 12px;
     font-size: 13px;
     color: #8aade0;
-    font-weight: 500;
+    font-weight: normal;
     font-family: Arial, sans-serif;
 }
 
@@ -75,13 +75,13 @@
     gap: 12px;
     font-size: 18px;
     color: #e94560;
-    font-weight: 600;
+    font-weight: normal;
 }
 
 .tooltip-icons {
     font-size: 18px;
     color: #d4a018;
-    font-weight: 600;
+    font-weight: normal;
 }
 
 .tooltip-chart {
@@ -120,7 +120,7 @@
 .bp-header {
     font-size: 11px;
     color: #d4a018;
-    font-weight: 700;
+    font-weight: normal;
     letter-spacing: 1px;
     cursor: pointer;
     text-align: center;
@@ -169,9 +169,15 @@
 }
 
 .bp-card-name {
-    font-size: 12px;
-    color: #c8d8f8;
-    font-weight: 600;
+    font-size: 14px;
+    color: #c0d8f0;
+    font-weight: normal;
+}
+
+.bp-card-icons {
+    font-size: 13px;
+    color: #d4a018;
+    font-weight: normal;
 }
 
 .bp-card-stats {
@@ -197,7 +203,7 @@
     background: #0a1428;
     color: #d4a018;
     font-size: 11px;
-    font-weight: 700;
+    font-weight: normal;
     letter-spacing: 1px;
     cursor: pointer;
     font-family: Arial, sans-serif;
@@ -234,7 +240,7 @@
 
 .overlay-panel-title {
     font-size: 16px;
-    font-weight: 700;
+    font-weight: normal;
     color: #d4a018;
     letter-spacing: 2px;
     font-family: Impact, sans-serif;
@@ -261,8 +267,8 @@
 }
 
 .log-entry { color: #6a8aba; padding: 2px 0; }
-.log-entry-inning { color: #d4a018; font-weight: 700; padding: 8px 0 2px; border-top: 1px solid #1a3060; }
-.log-entry-hr { color: #e94560; font-weight: 600; }
+.log-entry-inning { color: #d4a018; font-weight: normal; padding: 8px 0 2px; border-top: 1px solid #1a3060; }
+.log-entry-hr { color: #e94560; font-weight: normal; }
 .log-entry-hit { color: #4ade80; }
 .log-entry-out { color: #6a8aba; }
 
@@ -276,7 +282,7 @@
 
 .stats-table th {
     color: #d4a018;
-    font-weight: 700;
+    font-weight: normal;
     text-align: center;
     padding: 4px 6px;
     border-bottom: 2px solid #d4a018;
@@ -299,14 +305,14 @@
 .stats-table td:first-child {
     text-align: left;
     color: #c8d8f8;
-    font-weight: 600;
+    font-weight: normal;
 }
 
 .stats-table tr:hover td { background: rgba(255,255,255,0.03); }
 
 .stats-section-label {
     font-size: 12px;
-    font-weight: 700;
+    font-weight: normal;
     color: #e94560;
     letter-spacing: 2px;
     margin: 16px 0 6px;

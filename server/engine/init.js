@@ -269,9 +269,12 @@ function toPlayer(slot) {
         positions: c.positions || [],
         isBackup: !!slot.isBackup,
         // Card metadata for tooltip display
-        cardNumber: c['#'] || c.cardNumber, edition: c.Ed || c.edition,
-        team: c.Team || c.team, points: c.Points || c.points,
-        year: c['Yr.'] || c.year, hand: c.H || c.hand,
+        cardNumber: c.cardNum || c['#'] || c.cardNumber,
+        edition: c.edition || c.Ed,
+        team: c.team || c.Team,
+        points: c.points || c.Points,
+        year: c.year || c['Yr.'],
+        hand: c.hand || c.H,
         expansion: c.expansion,
     };
 }
