@@ -66,15 +66,23 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const prevRollKeyRef = useRef('');
     const handleDiceComplete = useCallback(() => { setDiceAnimating(false); }, []);
 
-    // Delayed bases: only update runner card positions after dice animation completes
+    // Delayed field state: only update after dice animation completes
+    // This prevents cards, score, and outs from jumping ahead while the die is still rolling
     const [displayBases, setDisplayBases] = useState(state.bases);
+    const [displayOuts, setDisplayOuts] = useState(state.outs);
+    const [displayScore, setDisplayScore] = useState(state.score);
     const displayBattingTeamRef = useRef(state.halfInning === 'top' ? state.awayTeam : state.homeTeam);
+    const displayBatterIdxRef = useRef((state.halfInning === 'top' ? state.awayTeam : state.homeTeam).currentBatterIndex);
     useEffect(() => {
         if (!diceAnimating) {
             setDisplayBases(state.bases);
-            displayBattingTeamRef.current = state.halfInning === 'top' ? state.awayTeam : state.homeTeam;
+            setDisplayOuts(state.outs);
+            setDisplayScore(state.score);
+            const bt = state.halfInning === 'top' ? state.awayTeam : state.homeTeam;
+            displayBattingTeamRef.current = bt;
+            displayBatterIdxRef.current = bt.currentBatterIndex;
         }
-    }, [diceAnimating, state.bases, state.halfInning, state.awayTeam, state.homeTeam]);
+    }, [diceAnimating, state.bases, state.outs, state.score, state.halfInning, state.awayTeam, state.homeTeam]);
 
     if (!state.awayTeam?.lineup || !state.homeTeam?.lineup) {
         return <div className="game-board-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8aade0' }}>Loading game state...</div>;
@@ -211,12 +219,13 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                         <div className="tooltip-name">{hoveredPlayer.name}</div>
                         {/* Card metadata */}
                         <div className="tooltip-meta">
-                            {hoveredPlayer.team && <span>{hoveredPlayer.team}</span>}
-                            {hoveredPlayer.year && <span>{hoveredPlayer.year}</span>}
-                            {hoveredPlayer.expansion && <span>{hoveredPlayer.expansion}</span>}
-                            {hoveredPlayer.points && <span>{hoveredPlayer.points} pts</span>}
-                            {hoveredPlayer.hand && <span>{hoveredPlayer.hand}</span>}
-                            {hoveredPlayer.cardNumber && <span>#{hoveredPlayer.cardNumber}</span>}
+                            {hoveredPlayer.team != null && <span>{hoveredPlayer.team}</span>}
+                            {hoveredPlayer.year != null && <span>{hoveredPlayer.year}</span>}
+                            {hoveredPlayer.expansion != null && <span>{hoveredPlayer.expansion}</span>}
+                            {hoveredPlayer.points != null && <span>{hoveredPlayer.points} pts</span>}
+                            {hoveredPlayer.hand != null && <span>{hoveredPlayer.hand}</span>}
+                            {hoveredPlayer.cardNumber != null && <span>#{hoveredPlayer.cardNumber}</span>}
+                            {hoveredPlayer.edition != null && <span>{hoveredPlayer.edition}</span>}
                         </div>
                         {hoveredPlayer.type === 'hitter' ? (
                             <div className="tooltip-stats">
@@ -233,7 +242,23 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                                     const team = [state.awayTeam, state.homeTeam].find(t => t.lineup.some(p => p.cardId === hoveredPlayer!.cardId) || t.pitcher.cardId === hoveredPlayer!.cardId);
                                     const usage = team?.iconUsage?.[hoveredPlayer!.cardId] || {};
                                     const maxUses: Record<string, number> = { V: 2 };
+                                    // Determine if this player is the active pitcher on the fielding side
+                                    const isActivePitcher = team?.pitcher.cardId === hoveredPlayer!.cardId;
+                                    const isFieldingHalf = (team === state.homeTeam && state.halfInning === 'top') || (team === state.awayTeam && state.halfInning === 'bottom');
                                     return hoveredPlayer!.icons.map((icon, i) => {
+                                        // CY never crossed out
+                                        if (icon === 'CY') {
+                                            const parts = [<span key={`${i}-0`} style={{ color: '#d4a018' }}>{icon}</span>];
+                                            if (i < hoveredPlayer!.icons.length - 1) parts.push(<span key={`${i}-gap`}> </span>);
+                                            return parts;
+                                        }
+                                        // 20 only crossed out during active pitching half-inning
+                                        if (icon === '20') {
+                                            const crossed = isActivePitcher && isFieldingHalf && !!state.icon20UsedThisInning;
+                                            const parts = [<span key={`${i}-0`} style={{ textDecoration: crossed ? 'line-through' : 'none', color: crossed ? '#4a3030' : '#d4a018' }}>{icon}</span>];
+                                            if (i < hoveredPlayer!.icons.length - 1) parts.push(<span key={`${i}-gap`}> </span>);
+                                            return parts;
+                                        }
                                         const max = maxUses[icon] || 1; const used = usage[icon] || 0;
                                         const parts = [];
                                         for (let j = 0; j < max; j++) { parts.push(<span key={`${i}-${j}`} style={{ textDecoration: j < used ? 'line-through' : 'none', color: j < used ? '#4a3030' : '#d4a018' }}>{icon}</span>); if (j < max - 1) parts.push(<span key={`${i}-${j}-sep`}> </span>); }
@@ -350,7 +375,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                                 );
                             })}
                             <rect x={unitX + teamW + 9 * colW} y={ry} width={rhW} height={rowH} fill="#3a0a0a"/>
-                            <text x={unitX + teamW + 9 * colW + rhW / 2} y={ry + 16} textAnchor="middle" fontSize="16" fill="white" fontWeight="normal" fontFamily="Impact">{team === state.awayTeam ? state.score.away : state.score.home}</text>
+                            <text x={unitX + teamW + 9 * colW + rhW / 2} y={ry + 16} textAnchor="middle" fontSize="16" fill="white" fontWeight="normal" fontFamily="Impact">{team === state.awayTeam ? displayScore.away : displayScore.home}</text>
                         </g>
                     );
 
@@ -395,8 +420,8 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             <text x={innX + 100} y={sbY + 12} fontSize="8" fill="#d4a018" fontWeight="normal" letterSpacing="1" fontFamily="Arial Black">OUTS</text>
                             {[0, 1, 2].map(i => (
                                 <g key={`out-${i}`}>
-                                    <circle cx={innX + 100 + i * 28} cy={sbY + 36} r="10" fill={state.outs > i ? '#cc2020' : '#140608'} stroke="#d4a018" strokeWidth="1.5"/>
-                                    <circle cx={innX + 100 + i * 28} cy={sbY + 36} r="6" fill={state.outs > i ? '#ff3030' : '#0e0408'}/>
+                                    <circle cx={innX + 100 + i * 28} cy={sbY + 36} r="10" fill={displayOuts > i ? '#cc2020' : '#140608'} stroke="#d4a018" strokeWidth="1.5"/>
+                                    <circle cx={innX + 100 + i * 28} cy={sbY + 36} r="6" fill={displayOuts > i ? '#ff3030' : '#0e0408'}/>
                                 </g>
                             ))}
                         </g>
@@ -518,7 +543,10 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 />
 
                 {/* DICE SECTION (26%: x=820..1180) — spinner + settled display */}
-                {state.lastRoll && state.lastRollType && (
+                {/* Hide stale dice between half-innings (pre_atbat/defense_sub with no outcome = fresh start) */}
+                {state.lastRoll && state.lastRollType && !(
+                    !state.lastOutcome && !diceAnimating && ['pre_atbat', 'defense_sub', 'sp_roll', 'ibb_decision'].includes(state.phase)
+                ) && (
                     <DiceSpinner
                         cx={1000} botY={BOT_Y}
                         roll={state.lastRoll} rollType={state.lastRollType}
