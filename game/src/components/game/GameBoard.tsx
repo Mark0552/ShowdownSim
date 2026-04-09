@@ -120,14 +120,32 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         }
     }
     // Runner animation state
-    const RUNNER_ANIM_MS = 500;
-    const [runnerAnims, setRunnerAnims] = useState<{ id: string; imagePath: string; fromBase: string; toBase: string }[]>([]);
+    const BASE_ANIM_MS = 400; // ms per base segment
+    const [runnerAnims, setRunnerAnims] = useState<{ id: string; imagePath: string; fromBase: string; toBase: string; segments: number }[]>([]);
     const runnerAnimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+    // Base coordinates for card top-left corner
     const BASE_COORDS: Record<string, { x: number; y: number }> = {
-        first: { x: B1.x - 38, y: B1.y - 53 }, second: { x: B2.x - 38, y: B2.y - 53 },
-        third: { x: B3.x - 38, y: B3.y - 53 }, home: { x: HP.x - 38, y: HP.y - 53 },
+        home: { x: HP.x - 38, y: HP.y - 53 }, first: { x: B1.x - 38, y: B1.y - 53 },
+        second: { x: B2.x - 38, y: B2.y - 53 }, third: { x: B3.x - 38, y: B3.y - 53 },
         scored: { x: HP.x - 38, y: HP.y - 53 },
+    };
+    // Base path order for following the diamond
+    const BASE_ORDER = ['home', 'first', 'second', 'third', 'scored'] as const;
+
+    // Build an SVG path that follows the base paths from one base to another
+    const buildBasePath = (fromBase: string, toBase: string) => {
+        const fromIdx = BASE_ORDER.indexOf(fromBase as any);
+        const toIdx = BASE_ORDER.indexOf(toBase as any);
+        if (fromIdx < 0 || toIdx < 0 || toIdx <= fromIdx) return { path: '', segments: 0 };
+        const from = BASE_COORDS[fromBase];
+        // Build path segments through each intermediate base
+        let d = 'M 0 0';
+        for (let i = fromIdx + 1; i <= toIdx; i++) {
+            const waypoint = BASE_COORDS[BASE_ORDER[i]];
+            d += ` L ${waypoint.x - from.x} ${waypoint.y - from.y}`;
+        }
+        return { path: d, segments: toIdx - fromIdx };
     };
 
     // Only update frozen display values when NOT animating
@@ -139,19 +157,43 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         // Detect runner movements for animation
         const BASE_KEYS = ['first', 'second', 'third'] as const;
         const anims: typeof runnerAnims = [];
+        const movedIds = new Set<string>();
+
+        // Existing runners that moved
         for (const fromBase of BASE_KEYS) {
             const cardId = oldBases[fromBase];
             if (!cardId) continue;
-            if (newBases[fromBase] === cardId) continue; // still on same base
+            if (newBases[fromBase] === cardId) continue;
             const toBase = BASE_KEYS.find(b => newBases[b] === cardId);
             const player = oldTeam.lineup.find(p => p.cardId === cardId);
             if (!player) continue;
-            anims.push({ id: cardId, imagePath: player.imagePath, fromBase, toBase: toBase || 'scored' });
+            const { segments } = buildBasePath(fromBase, toBase || 'scored');
+            anims.push({ id: cardId, imagePath: player.imagePath, fromBase, toBase: toBase || 'scored', segments: Math.max(segments, 1) });
+            movedIds.add(cardId);
         }
+
+        // Batter reaching base (wasn't on any base before, now is)
+        for (const toBase of BASE_KEYS) {
+            const cardId = newBases[toBase];
+            if (!cardId) continue;
+            if (movedIds.has(cardId)) continue;
+            // Was this player NOT on any base before?
+            const wasOnBase = BASE_KEYS.some(b => oldBases[b] === cardId);
+            if (wasOnBase) continue;
+            const player = oldTeam.lineup.find(p => p.cardId === cardId) || battingTeam.lineup.find(p => p.cardId === cardId);
+            if (!player) continue;
+            const { segments } = buildBasePath('home', toBase);
+            if (segments > 0) {
+                anims.push({ id: cardId, imagePath: player.imagePath, fromBase: 'home', toBase, segments });
+            }
+        }
+
         if (anims.length > 0) {
+            const maxSegments = Math.max(...anims.map(a => a.segments));
+            const totalMs = maxSegments * BASE_ANIM_MS;
             setRunnerAnims(anims);
             if (runnerAnimTimerRef.current) clearTimeout(runnerAnimTimerRef.current);
-            runnerAnimTimerRef.current = setTimeout(() => setRunnerAnims([]), RUNNER_ANIM_MS + 50);
+            runnerAnimTimerRef.current = setTimeout(() => setRunnerAnims([]), totalMs + 50);
         }
 
         frozenRef.current = { bases: state.bases, outs: state.outs, score: state.score, battingTeam };
@@ -555,12 +597,13 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 <CardSlot x={MOUND.x - 38} y={MOUND.y - 53} label="P" card={pitcher} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                 <CardSlot x={HP.x - 38} y={HP.y - 53} label="H" card={batter} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
 
-                {/* Animated runner overlay — cards sliding between bases */}
+                {/* Animated runner overlay — cards follow base paths */}
                 {runnerAnims.map(anim => {
                     const from = BASE_COORDS[anim.fromBase];
-                    const to = BASE_COORDS[anim.toBase];
-                    if (!from || !to) return null;
+                    const { path } = buildBasePath(anim.fromBase, anim.toBase);
+                    if (!from || !path) return null;
                     const scoring = anim.toBase === 'scored';
+                    const durMs = anim.segments * BASE_ANIM_MS;
                     return (
                         <g key={`anim-${anim.id}`}>
                             <image
@@ -568,15 +611,15 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                                 x={from.x + 3} y={from.y + 3} width={70} height={100}
                                 preserveAspectRatio="xMidYMid slice"
                             >
-                                <animateTransform
-                                    attributeName="transform" type="translate"
-                                    from="0 0" to={`${to.x - from.x} ${to.y - from.y}`}
-                                    dur={`${RUNNER_ANIM_MS}ms`} fill="freeze"
-                                    calcMode="spline" keySplines="0.25 0.1 0.25 1"
+                                <animateMotion
+                                    path={path} dur={`${durMs}ms`} fill="freeze"
+                                    calcMode="spline"
+                                    keySplines={Array(anim.segments).fill('0.25 0.1 0.25 1').join(';')}
+                                    keyTimes={Array.from({ length: anim.segments + 1 }, (_, i) => i / anim.segments).join(';')}
                                 />
                                 {scoring && (
                                     <animate attributeName="opacity" from="1" to="0"
-                                        begin={`${RUNNER_ANIM_MS * 0.6}ms`} dur={`${RUNNER_ANIM_MS * 0.4}ms`} fill="freeze" />
+                                        begin={`${durMs * 0.7}ms`} dur={`${durMs * 0.3}ms`} fill="freeze" />
                                 )}
                             </image>
                         </g>
