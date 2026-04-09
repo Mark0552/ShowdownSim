@@ -198,18 +198,34 @@ export function handleExtraBaseThrow(state, action) {
         gameLog: [...state.gameLog, ...logs],
     };
 
+    // Remaining sent runners advance automatically (defense only gets ONE throw)
+    const remaining = eligible.filter(e => e.runnerId !== target.runnerId);
+    for (const runner of remaining) {
+        if (runner.toBase === 'home') {
+            newScore[side]++;
+            bases[runner.fromBase] = null;
+            logs.push(`${runner.runnerName} scores (no throw)`);
+            battingTeam = addBatterStat(battingTeam, runner.runnerId, 'r');
+            const rpi = [...battingTeam.runsPerInning];
+            while (rpi.length < state.inning) rpi.push(0);
+            rpi[state.inning - 1] = (rpi[state.inning - 1] || 0) + 1;
+            battingTeam.runsPerInning = rpi;
+        } else {
+            bases[runner.toBase] = bases[runner.fromBase];
+            bases[runner.fromBase] = null;
+            logs.push(`${runner.runnerName} advances to ${runner.toBase} (no throw)`);
+        }
+    }
+    // Re-apply updated bases/score/battingTeam
+    newState = { ...newState, bases, score: newScore, [battingSide]: battingTeam, gameLog: [...newState.gameLog, ...logs] };
+
     if (newScore.home !== state.score.home || newScore.away !== state.score.away) {
         newState = updateWLTracker(newState, state.score.home, state.score.away);
     }
 
-    const remaining = eligible.filter(e => e.runnerId !== target.runnerId);
-
     if (outs >= 3) return endHalfInning(newState);
     if (state.inning >= 9 && state.halfInning === 'bottom' && newScore.home > newScore.away) {
         return { ...newState, phase: 'game_over', isOver: true, winnerId: state.homeTeam.userId, gameLog: [...newState.gameLog, 'Walk-off! Home team wins!'] };
-    }
-    if (remaining.length > 0) {
-        return { ...newState, extraBaseEligible: remaining, phase: 'extra_base' };
     }
     return advanceBatter({ ...newState, extraBaseEligible: null });
 }

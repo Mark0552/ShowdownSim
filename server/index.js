@@ -230,7 +230,7 @@ const VALID_ACTIONS = {
     'steal_sb':          ['STEAL_SB_DECISION'],
     'steal_resolve':     ['STEAL_G_DECISION'],
     'extra_base_offer':  ['SEND_RUNNERS', 'HOLD_RUNNERS'],
-    'extra_base':        ['EXTRA_BASE_THROW', 'SKIP_EXTRA_BASE'],
+    'extra_base':        ['EXTRA_BASE_THROW'],
 };
 
 function handleAction(ws, msg, userId, room) {
