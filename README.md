@@ -193,6 +193,12 @@ Editions: UL (Unlimited), P (Promo), CC (Cooperstown Collection), SS (Super Seas
 - **Server Hosting:** Railway
 - **Simulation:** Node.js
 
+## Planned Features
+
+- **Sound effects** -- dice rolling, bat crack on hits, crowd roar on home runs, umpire calls, turn notifications
+- **Base runner animations** -- cards slide along the base paths when runners advance instead of teleporting
+- **Expert rules (Strategy cards)** -- 175 strategy cards already have data + images; would add hand management, play timing, and card effects to the game engine
+
 ## Database Setup
 
 If setting up fresh, run these SQL files in the Supabase SQL Editor:

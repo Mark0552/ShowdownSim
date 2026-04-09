@@ -146,6 +146,12 @@ Images are 251x350px JPEGs from TCDB. Referenced via `imagePath` field on each c
 - Position parsing uses regex that handles: `1B+1`, `LF-RF+2`, `OF+0`, `IF+1`, `C+9, 1B+0`, `DH`, etc.
 - `parseRange()` handles bad data like `"3-0"` (high < low) by treating as single number
 
+## Desired Features
+
+- **Sound effects** — dice rolling, bat crack on hits, crowd roar on HRs, umpire calls on strikeouts/steals, "your turn" chime, victory/loss fanfare. Use Web Audio API or `new Audio()` with MP3s in `game/public/sounds/`. Hook into DiceSpinner (spin start/settle), GameBoard (outcome changes), GamePage (turn changes).
+- **Base runner animations** — cards visually slide along base paths when runners advance. Currently cards teleport to new positions after dice animation completes. Implementation: animate the CardSlot x/y positions using CSS transitions or SVG `<animateTransform>` when `displayBases` changes. Track previous base positions in a ref, compute the path (e.g., 1st→2nd→3rd→home along the diamond), and interpolate over ~500ms. The delayed display state (`frozenRef`) already provides the before/after snapshots needed.
+- **Expert rules (Strategy cards)** — 175 strategy cards already have data + images scraped. Would add a strategy card hand, play timing rules, and card effects to the game engine. Major feature requiring new server phases and UI for card selection.
+
 ## Recently Completed
 
 - Reconnection handling: exponential backoff, opponent disconnect popup, action blocking during disconnect, player_joined broadcast on reconnect
