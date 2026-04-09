@@ -119,8 +119,41 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             // frozenRef keeps its current (old) values — this is the freeze point
         }
     }
+    // Runner animation state
+    const RUNNER_ANIM_MS = 500;
+    const [runnerAnims, setRunnerAnims] = useState<{ id: string; imagePath: string; fromBase: string; toBase: string }[]>([]);
+    const runnerAnimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const BASE_COORDS: Record<string, { x: number; y: number }> = {
+        first: { x: B1.x - 38, y: B1.y - 53 }, second: { x: B2.x - 38, y: B2.y - 53 },
+        third: { x: B3.x - 38, y: B3.y - 53 }, home: { x: HP.x - 38, y: HP.y - 53 },
+        scored: { x: HP.x - 38, y: HP.y - 53 },
+    };
+
     // Only update frozen display values when NOT animating
     if (!animatingRef.current) {
+        const oldBases = frozenRef.current.bases;
+        const oldTeam = frozenRef.current.battingTeam;
+        const newBases = state.bases;
+
+        // Detect runner movements for animation
+        const BASE_KEYS = ['first', 'second', 'third'] as const;
+        const anims: typeof runnerAnims = [];
+        for (const fromBase of BASE_KEYS) {
+            const cardId = oldBases[fromBase];
+            if (!cardId) continue;
+            if (newBases[fromBase] === cardId) continue; // still on same base
+            const toBase = BASE_KEYS.find(b => newBases[b] === cardId);
+            const player = oldTeam.lineup.find(p => p.cardId === cardId);
+            if (!player) continue;
+            anims.push({ id: cardId, imagePath: player.imagePath, fromBase, toBase: toBase || 'scored' });
+        }
+        if (anims.length > 0) {
+            setRunnerAnims(anims);
+            if (runnerAnimTimerRef.current) clearTimeout(runnerAnimTimerRef.current);
+            runnerAnimTimerRef.current = setTimeout(() => setRunnerAnims([]), RUNNER_ANIM_MS + 50);
+        }
+
         frozenRef.current = { bases: state.bases, outs: state.outs, score: state.score, battingTeam };
     }
 
@@ -129,7 +162,11 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const displayOuts = frozenRef.current.outs;
     const displayScore = frozenRef.current.score;
     const displayTeam = frozenRef.current.battingTeam;
+    const animTargets = new Set(runnerAnims.map(a => a.toBase));
+    const animSources = new Set(runnerAnims.map(a => a.fromBase));
     const getRunner = (base: 'first' | 'second' | 'third'): PlayerSlot | null => {
+        // Hide card at destination during animation (overlay handles the visual)
+        if (animTargets.has(base)) return null;
         const id = displayBases[base];
         if (!id) return null;
         return displayTeam.lineup.find(p => p.cardId === id) || null;
@@ -517,6 +554,34 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 <CardSlot x={B3.x - 38} y={B3.y - 53} label="3B" card={runner3} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                 <CardSlot x={MOUND.x - 38} y={MOUND.y - 53} label="P" card={pitcher} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                 <CardSlot x={HP.x - 38} y={HP.y - 53} label="H" card={batter} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
+
+                {/* Animated runner overlay — cards sliding between bases */}
+                {runnerAnims.map(anim => {
+                    const from = BASE_COORDS[anim.fromBase];
+                    const to = BASE_COORDS[anim.toBase];
+                    if (!from || !to) return null;
+                    const scoring = anim.toBase === 'scored';
+                    return (
+                        <g key={`anim-${anim.id}`}>
+                            <image
+                                href={anim.imagePath}
+                                x={from.x + 3} y={from.y + 3} width={70} height={100}
+                                preserveAspectRatio="xMidYMid slice"
+                            >
+                                <animateTransform
+                                    attributeName="transform" type="translate"
+                                    from="0 0" to={`${to.x - from.x} ${to.y - from.y}`}
+                                    dur={`${RUNNER_ANIM_MS}ms`} fill="freeze"
+                                    calcMode="spline" keySplines="0.25 0.1 0.25 1"
+                                />
+                                {scoring && (
+                                    <animate attributeName="opacity" from="1" to="0"
+                                        begin={`${RUNNER_ANIM_MS * 0.6}ms`} dur={`${RUNNER_ANIM_MS * 0.4}ms`} fill="freeze" />
+                                )}
+                            </image>
+                        </g>
+                    );
+                })}
 
                 {/* IP / Fatigue near pitcher */}
                 <rect x={MOUND.x - 42} y={MOUND.y + 56} width="84" height="20" rx="4" fill="rgba(0,0,0,0.75)"/>
