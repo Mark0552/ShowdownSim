@@ -35,13 +35,21 @@ export async function saveGameStats(gameId: string, seriesId: string | null, gam
 
     const rows: any[] = [];
 
+    // Build display name with card metadata: "Name (Year Set #Num)"
+    const cardDisplayName = (p: any) => {
+        const parts = [p.name];
+        const meta = [p.year, p.edition, p.cardNumber ? `#${p.cardNumber}` : ''].filter(Boolean);
+        if (meta.length > 0) parts.push(`(${meta.join(' ')})`);
+        return parts.join(' ');
+    };
+
     // Batter stats
     for (const player of myTeam.lineup) {
         const bs = myTeam.batterStats?.[player.cardId];
         if (!bs) continue;
         rows.push({
             game_id: gameId, series_id: seriesId, user_id: user.id,
-            card_id: player.cardId, card_name: player.name, card_type: 'hitter',
+            card_id: player.cardId, card_name: cardDisplayName(player), card_type: 'hitter',
             pa: bs.pa || 0, ab: bs.ab || 0, h: bs.h || 0, r: bs.r || 0, rbi: bs.rbi || 0,
             bb: bs.bb || 0, ibb: bs.ibb || 0, so: bs.so || 0, hr: bs.hr || 0,
             db: bs.db || 0, tr: bs.tr || 0, tb: bs.tb || 0,
@@ -57,7 +65,7 @@ export async function saveGameStats(gameId: string, seriesId: string | null, gam
         if (!s.bf || s.bf === 0) continue; // skip pitchers who never entered the game
         const pitcher = myTeam.pitcher.cardId === cardId ? myTeam.pitcher
             : myTeam.bullpen?.find((p: any) => p.cardId === cardId);
-        const name = pitcher?.name || cardId;
+        const name = pitcher ? cardDisplayName(pitcher) : cardId;
         const pWin = cardId === myWinPitcher;
         const pLoss = cardId === myLossPitcher;
         const pSave = cardId === mySavePitcher;

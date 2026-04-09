@@ -86,6 +86,10 @@ export default function GamePage({ gameId, onBack }: Props) {
                     setOpponentDisconnected(true);
                     setStatus('Opponent disconnected — waiting for them to reconnect...');
                     break;
+                case 'player_joined':
+                    setOpponentDisconnected(false);
+                    setStatus('');
+                    break;
                 case 'error':
                     setError(msg.message);
                     break;
@@ -206,7 +210,7 @@ export default function GamePage({ gameId, onBack }: Props) {
         );
     }
 
-    const isMyTurn = myTurn === myRole;
+    const isMyTurn = myTurn === myRole && !opponentDisconnected;
 
     return (
         <div className="game-page">

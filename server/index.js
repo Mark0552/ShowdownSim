@@ -209,6 +209,8 @@ async function handleJoinGame(ws, msg, setContext) {
             state: room.state,
             turn: whoseTurn(room.state),
         }));
+        // Notify other player that opponent reconnected
+        room.broadcast({ type: 'player_joined', userId });
     } else {
         ws.send(JSON.stringify({ type: 'waiting', message: 'Waiting for opponent...' }));
     }
@@ -239,6 +241,12 @@ function handleAction(ws, msg, userId, room) {
 
     if (room.state.isOver) {
         ws.send(JSON.stringify({ type: 'error', message: 'Game is over' }));
+        return;
+    }
+
+    // Block actions if opponent is disconnected
+    if (room.players.size < 2) {
+        ws.send(JSON.stringify({ type: 'error', message: 'Waiting for opponent to reconnect' }));
         return;
     }
 
