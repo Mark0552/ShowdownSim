@@ -105,16 +105,17 @@ export default function DiceSpinner({
 
     const color = rollColor(rollType);
 
-    // ======== DUAL PITCH + SWING LAYOUT ========
+    // ======== DUAL PITCH + SWING LAYOUT (side by side) ========
     if (showDual) {
-        const pitchY = botY + 48;   // pitch diamond center
-        const swingY = botY + 130;  // swing diamond center
-        const dieR = 26;            // smaller diamonds for dual view
-        const pitchDieX = cx - 36;  // shift left for modifiers
+        const dieR = 28;
+        const midY = botY + 78;     // vertical center of dice section
+        const pitchCX = cx - 90;    // pitch column center (left)
+        const swingCX = cx + 90;    // swing column center (right)
+        const pitchDieX = pitchCX - 20; // shift left for modifiers
         const modX = pitchDieX + dieR * 0.78 + 6;
 
         // Pitch modifier stack
-        let modLines: { text: string; color: string }[] = [];
+        const modLines: { text: string; color: string }[] = [];
         modLines.push({ text: `+${pitchControl}`, color: '#8aade0' });
         if (fatiguePenalty > 0) modLines.push({ text: `\u2212${fatiguePenalty}`, color: '#e94560' });
         if (controlModifier > 0) modLines.push({ text: `+${controlModifier}`, color: '#d4a018' });
@@ -122,28 +123,30 @@ export default function DiceSpinner({
 
         return (
             <g>
-                {/* Pitch row */}
-                <text x={cx} y={botY + 20} textAnchor="middle" fontSize="11" fill="#e94560"
+                {/* Pitch column (left) */}
+                <text x={pitchCX} y={botY + 20} textAnchor="middle" fontSize="12" fill="#e94560"
                     fontWeight="bold" fontFamily="Impact" letterSpacing="1">PITCH</text>
-                <D20Diamond x={pitchDieX} y={pitchY} r={dieR} value={pitchRoll!} color="#e94560" spinning={false} />
-                {/* Modifiers to right */}
+                <D20Diamond x={pitchDieX} y={midY - 10} r={dieR} value={pitchRoll!} color="#e94560" spinning={false} />
                 {modLines.map((m, i) => (
-                    <text key={`pm-${i}`} x={modX} y={pitchY - 10 + i * 14} fontSize="12"
+                    <text key={`pm-${i}`} x={modX} y={midY - 22 + i * 14} fontSize="12"
                         fill={m.color} fontWeight="bold" fontFamily="monospace">{m.text}</text>
                 ))}
-                {/* vs OB + chart */}
-                <text x={cx} y={pitchY + dieR + 14} textAnchor="middle" fontSize="10" fill="#aaa" fontFamily="monospace">
-                    vs OB {batterOnBase} {'\u2192'} {usedPitcherChart ? 'Pitcher' : 'Batter'} chart
+                <text x={pitchCX} y={midY + dieR + 10} textAnchor="middle" fontSize="10" fill="#aaa" fontFamily="monospace">
+                    vs OB {batterOnBase}
+                </text>
+                <text x={pitchCX} y={midY + dieR + 24} textAnchor="middle" fontSize="10"
+                    fill={usedPitcherChart ? '#60a5fa' : '#4ade80'} fontWeight="bold" fontFamily="monospace">
+                    {'\u2192'} {usedPitcherChart ? 'Pitcher' : 'Batter'} chart
                 </text>
 
-                {/* Divider */}
-                <line x1={cx - 60} y1={botY + 100} x2={cx + 60} y2={botY + 100} stroke="#d4a01840" strokeWidth="1" />
+                {/* Vertical divider */}
+                <line x1={cx} y1={botY + 16} x2={cx} y2={botY + 160} stroke="#d4a01830" strokeWidth="1" />
 
-                {/* Swing row */}
-                <text x={cx} y={botY + 114} textAnchor="middle" fontSize="11" fill="#4ade80"
+                {/* Swing column (right) */}
+                <text x={swingCX} y={botY + 20} textAnchor="middle" fontSize="12" fill="#4ade80"
                     fontWeight="bold" fontFamily="Impact" letterSpacing="1">SWING</text>
-                <D20Diamond x={cx} y={swingY} r={dieR} value={swingRoll!} color="#4ade80" spinning={false} />
-                <text x={cx} y={swingY + dieR + 14} textAnchor="middle" fontSize="10"
+                <D20Diamond x={swingCX} y={midY - 10} r={dieR} value={swingRoll!} color="#4ade80" spinning={false} />
+                <text x={swingCX} y={midY + dieR + 10} textAnchor="middle" fontSize="10"
                     fill={usedPitcherChart ? '#60a5fa' : '#4ade80'} fontWeight="bold" fontFamily="monospace">
                     on {usedPitcherChart ? 'Pitcher' : 'Batter'} chart
                 </text>
