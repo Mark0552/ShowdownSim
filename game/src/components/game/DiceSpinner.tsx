@@ -115,15 +115,16 @@ export default function DiceSpinner({
     const advantageGreen = pitcherAdvantage ? !iAmBatting : iAmBatting;
     const advantageColor = advantageGreen ? '#4ade80' : '#e94560';
 
-    // Bottom bar Y for the advantage indicator
-    const advY = botY + 158;
+    // Advantage bar: full width of dice section at bottom, solid color, white text
+    const advH = 32;
+    const advY = botY + 178 - advH - 4; // 4px from bottom edge
 
     // ======== DUAL PITCH + SWING LAYOUT (side by side) ========
     if (showDual) {
         const dieR = 26;
         const dieY = botY + 56;
-        const pitchCX = cx - 100;
-        const swingCX = cx + 100;
+        const pitchCX = cx - 85;
+        const swingCX = cx + 85;
 
         const equation = buildPitchEquation(pitchRoll!, pitchControl, fatiguePenalty, controlModifier, pitchTotal!);
 
@@ -149,10 +150,10 @@ export default function DiceSpinner({
                     fontWeight="bold" fontFamily="Impact" letterSpacing="1">SWING</text>
                 <D20Diamond x={swingCX} y={dieY} r={dieR} value={swingRoll!} color="#4ade80" spinning={false} />
 
-                {/* Advantage bar (full width, bottom) */}
-                <rect x={cx - 120} y={advY - 4} width="240" height="20" rx="4" fill={advantageColor} opacity="0.25" />
-                <text x={cx} y={advY + 11} textAnchor="middle" fontSize="12" fill={advantageColor}
-                    fontWeight="900" fontFamily="Impact" letterSpacing="1">{advantageText}</text>
+                {/* Advantage bar (full width, solid, bottom) */}
+                <rect x={cx - 178} y={advY} width="356" height={advH} rx="4" fill={advantageColor} />
+                <text x={cx} y={advY + advH / 2 + 6} textAnchor="middle" fontSize="16" fill="white"
+                    fontWeight="900" fontFamily="Impact" letterSpacing="2">{advantageText}</text>
             </g>
         );
     }

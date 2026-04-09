@@ -3,7 +3,7 @@
  * Layout (viewBox 1400x950):
  *   Top bar:    y=0..50    [EXIT] ... centered scoreboard ... [LOG][SCORE]
  *   Main area:  y=52..748  [Away 0..360 | Diamond 360..1040 | Home 1040..1400]
- *   Bottom bar: y=750..948 [Actions 0..770 (55%) | Dice 770..1180 (29%) | Result 1180..1400 (16%)]
+ *   Bottom bar: y=750..948 [Actions 0..820 (59%) | Dice 820..1180 (26%) | Result 1180..1400 (16%)]
  */
 import { useState, useRef, useCallback, useEffect } from 'react';
 import type { GameState, GameAction, PlayerSlot } from '../../engine/gameEngine';
@@ -296,16 +296,29 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     const hdrH = 20, rowH = 22;
                     const sbY = 6; // top padding
 
+                    const curInnIdx = state.inning - 1; // 0-based index of current inning
+                    const isBattingTeam = (team: typeof state.awayTeam) =>
+                        (state.halfInning === 'top' && team === state.awayTeam) || (state.halfInning === 'bottom' && team === state.homeTeam);
+
                     const renderRow = (team: typeof state.awayTeam, teamName: string, ry: number) => (
                         <g>
                             <rect x={unitX} y={ry} width={teamW} height={rowH} fill="#0c1a40"/>
                             <text x={unitX + teamW / 2} y={ry + 16} textAnchor="middle" fontSize="12" fill="#8aade0" fontWeight="bold" fontFamily="Arial">{teamName.slice(0, 10).toUpperCase()}</text>
-                            {innings.slice(0, 9).map((inn, i) => (
-                                <g key={`r-${ry}-${inn}`}>
-                                    <rect x={unitX + teamW + i * colW} y={ry} width={colW} height={rowH} fill={i % 2 === 0 ? '#0a1830' : '#071024'}/>
-                                    <text x={unitX + teamW + i * colW + colW / 2} y={ry + 16} textAnchor="middle" fontSize="14" fill={team.runsPerInning[i] !== undefined ? '#c8d8f8' : '#1e3a7a'} fontWeight="bold" fontFamily="Arial">{team.runsPerInning[i] ?? '\u2014'}</text>
-                                </g>
-                            ))}
+                            {innings.slice(0, 9).map((inn, i) => {
+                                const isCurInning = i === curInnIdx && !state.isOver;
+                                const isBatting = isBattingTeam(team) && isCurInning;
+                                // Show live score: current inning for batting team shows 0 if undefined
+                                const val = team.runsPerInning[i];
+                                const displayVal = (isBatting && val === undefined) ? 0 : val;
+                                const cellFill = isBatting ? 'rgba(212,160,24,0.35)' : (i % 2 === 0 ? '#0a1830' : '#071024');
+                                const textFill = displayVal !== undefined ? (isBatting ? '#fff' : '#c8d8f8') : '#1e3a7a';
+                                return (
+                                    <g key={`r-${ry}-${inn}`}>
+                                        <rect x={unitX + teamW + i * colW} y={ry} width={colW} height={rowH} fill={cellFill}/>
+                                        <text x={unitX + teamW + i * colW + colW / 2} y={ry + 16} textAnchor="middle" fontSize="14" fill={textFill} fontWeight="bold" fontFamily="Arial">{displayVal ?? '\u2014'}</text>
+                                    </g>
+                                );
+                            })}
                             <rect x={unitX + teamW + 9 * colW} y={ry} width={rhW} height={rowH} fill="#3a0a0a"/>
                             <text x={unitX + teamW + 9 * colW + rhW / 2} y={ry + 16} textAnchor="middle" fontSize="16" fill="white" fontWeight="bold" fontFamily="Impact">{team === state.awayTeam ? state.score.away : state.score.home}</text>
                         </g>
@@ -317,17 +330,28 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             {/* Scoreboard header */}
                             <rect x={unitX} y={sbY} width={teamW} height={hdrH} rx="2" fill="#002868"/>
                             <text x={unitX + teamW / 2} y={sbY + 14} textAnchor="middle" fontSize="10" fill="white" fontWeight="bold" fontFamily="Arial">TEAM</text>
-                            {innings.slice(0, 9).map((inn, i) => (
-                                <g key={`hdr-${inn}`}>
-                                    <rect x={unitX + teamW + i * colW} y={sbY} width={colW} height={hdrH} fill={i % 2 === 0 ? '#002868' : '#001e50'}/>
-                                    <text x={unitX + teamW + i * colW + colW / 2} y={sbY + 14} textAnchor="middle" fontSize="10" fill="#c8d8f8" fontWeight="bold" fontFamily="Arial">{inn}</text>
-                                </g>
-                            ))}
+                            {innings.slice(0, 9).map((inn, i) => {
+                                const isCur = i === curInnIdx && !state.isOver;
+                                return (
+                                    <g key={`hdr-${inn}`}>
+                                        <rect x={unitX + teamW + i * colW} y={sbY} width={colW} height={hdrH}
+                                            fill={isCur ? '#3a2a00' : (i % 2 === 0 ? '#002868' : '#001e50')}
+                                            stroke={isCur ? '#d4a018' : 'none'} strokeWidth={isCur ? 1.5 : 0}/>
+                                        <text x={unitX + teamW + i * colW + colW / 2} y={sbY + 14} textAnchor="middle"
+                                            fontSize="10" fill={isCur ? '#d4a018' : '#c8d8f8'} fontWeight="bold" fontFamily="Arial">{inn}</text>
+                                    </g>
+                                );
+                            })}
                             <rect x={unitX + teamW + 9 * colW} y={sbY} width={rhW} height={hdrH} rx="2" fill="#9a0000"/>
                             <text x={unitX + teamW + 9 * colW + rhW / 2} y={sbY + 14} textAnchor="middle" fontSize="10" fill="white" fontWeight="bold" fontFamily="Arial">R</text>
                             {/* Team rows */}
                             {renderRow(state.awayTeam, awayName, sbY + hdrH + 1)}
                             {renderRow(state.homeTeam, homeName, sbY + hdrH + 1 + rowH + 1)}
+                            {/* Gold border overlay on entire current inning column */}
+                            {!state.isOver && curInnIdx < 9 && (
+                                <rect x={unitX + teamW + curInnIdx * colW} y={sbY} width={colW} height={hdrH + 2 + rowH * 2 + 1}
+                                    fill="none" stroke="#d4a018" strokeWidth="2" rx="2" />
+                            )}
 
                             {/* Inning indicator (right of scoreboard table) */}
                             <rect x={innX} y={sbY + 4} width="46" height="58" rx="5" fill="#040c1a" stroke="#d4a018" strokeWidth="1.5"/>
@@ -450,7 +474,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 <rect x="0" y={BOT_Y} width="1400" height={948 - BOT_Y} fill="url(#botBg)"/>
 
                 {/* Section dividers */}
-                <line x1="770" y1={BOT_Y + 2} x2="770" y2="946" stroke="#d4a01840" strokeWidth="1"/>
+                <line x1="820" y1={BOT_Y + 2} x2="820" y2="946" stroke="#d4a01840" strokeWidth="1"/>
                 <line x1="1180" y1={BOT_Y + 2} x2="1180" y2="946" stroke="#d4a01840" strokeWidth="1"/>
 
                 {/* ACTION BUTTONS (left 55%) */}
@@ -467,10 +491,10 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     onShowSubPanel={() => setShowSubPanel(true)}
                 />
 
-                {/* DICE SECTION (29%: x=770..1180) — spinner + settled display */}
+                {/* DICE SECTION (26%: x=820..1180) — spinner + settled display */}
                 {state.lastRoll && state.lastRollType && (
                     <DiceSpinner
-                        cx={975} botY={BOT_Y}
+                        cx={1000} botY={BOT_Y}
                         roll={state.lastRoll} rollType={state.lastRollType}
                         triggerKey={rollKey}
                         onAnimationComplete={handleDiceComplete}
