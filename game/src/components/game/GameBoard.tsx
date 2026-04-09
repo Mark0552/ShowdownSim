@@ -13,7 +13,7 @@ import BullpenPanel from './BullpenPanel';
 import BoxScore from './BoxScore';
 import GameLogOverlay from './GameLogOverlay';
 import ActionButtons from './ActionButtons';
-import DiceRoll from './DiceRoll';
+import DiceSpinner from './DiceSpinner';
 import './GameBoard.css';
 
 interface Props {
@@ -472,26 +472,22 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     onShowSubPanel={() => setShowSubPanel(true)}
                 />
 
-                {/* DICE SECTION (center 15%: x=980..1190) — only show after animation completes */}
-                {!diceAnimating && state.lastRoll && state.lastRollType && (
-                    <g>
-                        <text x="1085" y={BOT_Y + 30} textAnchor="middle" fontSize="16" fill={state.lastRollType === 'pitch' ? '#e94560' : state.lastRollType === 'swing' ? '#4ade80' : '#d4a018'} fontWeight="bold" fontFamily="Impact" letterSpacing="2">
-                            {state.lastRollType === 'pitch' ? 'PITCH' : state.lastRollType === 'swing' ? 'SWING' : state.lastRollType?.toUpperCase()}
-                        </text>
-                        <rect x="1040" y={BOT_Y + 38} width="90" height="64" rx="8" fill="#040c1a" stroke="#d4a018" strokeWidth="2.5"/>
-                        <text x="1085" y={BOT_Y + 84} textAnchor="middle" fontSize="42" fill="white" fontWeight="900" fontFamily="Impact">{state.lastRoll}</text>
-                        {/* Pitch details */}
-                        {state.lastPitchRoll > 0 && (
-                            <g>
-                                <text x="1085" y={BOT_Y + 122} textAnchor="middle" fontSize="12" fill="#aaa" fontFamily="monospace">
-                                    {state.lastPitchRoll}+{pitcher.control || 0}{state.fatiguePenalty ? `-${state.fatiguePenalty}` : ''}{state.controlModifier ? `+${state.controlModifier}` : ''}={state.lastPitchTotal} vs OB {batter.onBase}
-                                </text>
-                                <text x="1085" y={BOT_Y + 140} textAnchor="middle" fontSize="12" fill={state.usedPitcherChart ? '#60a5fa' : '#4ade80'} fontFamily="monospace" fontWeight="bold">
-                                    {'\u2192'} {state.usedPitcherChart ? "Pitcher chart" : "Batter chart"}{state.lastSwingRoll > 0 ? `  Sw: ${state.lastSwingRoll}` : ''}
-                                </text>
-                            </g>
-                        )}
-                    </g>
+                {/* DICE SECTION (center 15%: x=980..1190) — spinner + settled display */}
+                {state.lastRoll && state.lastRollType && (
+                    <DiceSpinner
+                        cx={1085} botY={BOT_Y}
+                        roll={state.lastRoll} rollType={state.lastRollType}
+                        triggerKey={rollKey}
+                        onAnimationComplete={handleDiceComplete}
+                        pitchRoll={state.lastPitchRoll}
+                        pitchControl={pitcher.control || 0}
+                        fatiguePenalty={state.fatiguePenalty || 0}
+                        controlModifier={state.controlModifier || 0}
+                        pitchTotal={state.lastPitchTotal}
+                        batterOnBase={batter.onBase}
+                        usedPitcherChart={state.usedPitcherChart}
+                        swingRoll={state.lastSwingRoll}
+                    />
                 )}
 
                 {/* RESULT SECTION (right 15%: x=1190..1400) — only show after dice animation */}
@@ -560,8 +556,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 })()}
             </svg>
 
-            {/* 3D Dice overlay — positioned over the dice section of the bottom bar */}
-            <DiceRoll roll={state.lastRoll} rollType={state.lastRollType} triggerKey={rollKey} onAnimationComplete={handleDiceComplete} />
+            {/* DiceSpinner now lives inside SVG — no external overlay needed */}
 
             {showGameLog && <GameLogOverlay gameLog={state.gameLog} onClose={() => setShowGameLog(false)} />}
             {showStats && (
