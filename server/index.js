@@ -297,7 +297,7 @@ function handleAction(ws, msg, userId, room) {
 async function saveState(gameId, state) {
     if (!supabase) return;
     try {
-        const update = { state };
+        const update = { state, status: 'in_progress' };
         if (state.isOver) {
             update.status = 'finished';
             update.winner_user_id = state.winnerId;
