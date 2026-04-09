@@ -128,7 +128,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const BASE_COORDS: Record<string, { x: number; y: number }> = {
         home: { x: HP.x - 38, y: HP.y - 53 }, first: { x: B1.x - 38, y: B1.y - 53 },
         second: { x: B2.x - 38, y: B2.y - 53 }, third: { x: B3.x - 38, y: B3.y - 53 },
-        scored: { x: HP.x - 38, y: HP.y - 53 },
+        scored: { x: HP.x - 38, y: HP.y - 53 }, out: { x: 0, y: 0 }, // out = fade in place
     };
     // Base path order for following the diamond
     const BASE_ORDER = ['home', 'first', 'second', 'third', 'scored'] as const;
@@ -159,6 +159,12 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         const anims: typeof runnerAnims = [];
         const movedIds = new Set<string>();
 
+        // Check if runs scored to distinguish scoring from outs
+        const side = state.halfInning === 'top' ? 'away' : 'home';
+        const oldScore = frozenRef.current.score[side];
+        const newScore = state.score[side];
+        let runsToAccount = newScore - oldScore;
+
         // Existing runners that moved
         for (const fromBase of BASE_KEYS) {
             const cardId = oldBases[fromBase];
@@ -167,8 +173,20 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             const toBase = BASE_KEYS.find(b => newBases[b] === cardId);
             const player = oldTeam.lineup.find(p => p.cardId === cardId);
             if (!player) continue;
-            const { segments } = buildBasePath(fromBase, toBase || 'scored');
-            anims.push({ id: cardId, imagePath: player.imagePath, fromBase, toBase: toBase || 'scored', segments: Math.max(segments, 1) });
+
+            if (toBase) {
+                // Runner advanced to another base
+                const { segments } = buildBasePath(fromBase, toBase);
+                anims.push({ id: cardId, imagePath: player.imagePath, fromBase, toBase, segments: Math.max(segments, 1) });
+            } else if (runsToAccount > 0) {
+                // Runner left all bases and score went up → scored
+                runsToAccount--;
+                const { segments } = buildBasePath(fromBase, 'scored');
+                anims.push({ id: cardId, imagePath: player.imagePath, fromBase, toBase: 'scored', segments: Math.max(segments, 1) });
+            } else {
+                // Runner left all bases but no score increase → out (fade in place)
+                anims.push({ id: cardId, imagePath: player.imagePath, fromBase, toBase: 'out', segments: 0 });
+            }
             movedIds.add(cardId);
         }
 
@@ -207,8 +225,8 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const animTargets = new Set(runnerAnims.map(a => a.toBase));
     const animSources = new Set(runnerAnims.map(a => a.fromBase));
     const getRunner = (base: 'first' | 'second' | 'third'): PlayerSlot | null => {
-        // Hide card at destination during animation (overlay handles the visual)
-        if (animTargets.has(base)) return null;
+        // Hide card at destination during animation, and at source for out animations
+        if (animTargets.has(base) || animSources.has(base)) return null;
         const id = displayBases[base];
         if (!id) return null;
         return displayTeam.lineup.find(p => p.cardId === id) || null;
@@ -600,9 +618,29 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 {/* Animated runner overlay — cards follow base paths */}
                 {runnerAnims.map(anim => {
                     const from = BASE_COORDS[anim.fromBase];
-                    const { path } = buildBasePath(anim.fromBase, anim.toBase);
-                    if (!from || !path) return null;
+                    if (!from) return null;
+                    const isOut = anim.toBase === 'out';
                     const scoring = anim.toBase === 'scored';
+
+                    // Out: fade in place with red flash
+                    if (isOut) {
+                        return (
+                            <g key={`anim-${anim.id}`}>
+                                <image href={anim.imagePath}
+                                    x={from.x + 3} y={from.y + 3} width={70} height={100}
+                                    preserveAspectRatio="xMidYMid slice">
+                                    <animate attributeName="opacity" from="1" to="0" dur="400ms" fill="freeze" />
+                                </image>
+                                <rect x={from.x} y={from.y} width={76} height={106} rx="6" fill="rgba(200,30,30,0.6)">
+                                    <animate attributeName="opacity" from="0.6" to="0" dur="400ms" fill="freeze" />
+                                </rect>
+                            </g>
+                        );
+                    }
+
+                    // Moving or scoring: follow base path
+                    const { path } = buildBasePath(anim.fromBase, anim.toBase);
+                    if (!path) return null;
                     const durMs = anim.segments * BASE_ANIM_MS;
                     return (
                         <g key={`anim-${anim.id}`}>
