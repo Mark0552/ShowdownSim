@@ -482,7 +482,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                         pitchRoll={state.lastPitchRoll}
                         pitchControl={pitcher.control || 0}
                         fatiguePenalty={state.fatiguePenalty || 0}
-                        controlModifier={state.controlModifier || 0}
+                        controlModifier={state.lastPitchControlMod || 0}
                         pitchTotal={state.lastPitchTotal}
                         batterOnBase={batter.onBase}
                         usedPitcherChart={state.usedPitcherChart}

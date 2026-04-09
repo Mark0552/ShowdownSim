@@ -235,6 +235,7 @@ export interface GameState {
     // Advanced rules state
     fatiguePenalty: number;
     controlModifier: number;            // from 20/RP icons
+    lastPitchControlMod: number;        // control modifier used for the last pitch (preserved before stripping)
     pendingDpResult: DpResult | null;
     extraBaseEligible: ExtraBaseCandidate[] | null;
     pendingExtraBaseResult: ExtraBaseResult | null;

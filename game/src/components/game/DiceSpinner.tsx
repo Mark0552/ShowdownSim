@@ -82,8 +82,8 @@ export default function DiceSpinner({
 
     if (!roll || !rollType) return null;
 
-    const color = rollType === 'pitch' ? '#e94560' : rollType === 'swing' ? '#4ade80' : '#d4a018';
-    const label = rollType === 'pitch' ? 'PITCH' : rollType === 'swing' ? 'SWING' : rollType?.toUpperCase() || '';
+    const color = rollType === 'pitch' ? '#e94560' : rollType === 'swing' ? '#4ade80' : rollType === 'fielding' ? '#60a5fa' : '#d4a018';
+    const label = rollType === 'pitch' ? 'PITCH' : rollType === 'swing' ? 'SWING' : rollType === 'fielding' ? 'FIELDING' : rollType?.toUpperCase() || '';
     const isPitch = rollType === 'pitch';
     const isSwing = rollType === 'swing';
 

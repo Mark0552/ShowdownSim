@@ -2,7 +2,7 @@
  * Extra base attempt phase handlers.
  */
 
-import { rollD20 } from '../dice.js';
+import { rollD20, getRollSequence } from '../dice.js';
 import { playerHasIcon, canUseIcon, recordIconUse } from '../icons.js';
 import { OUTFIELD_POSITIONS } from '../fielding.js';
 import { addBatterStat, updateWLTracker } from '../stats.js';
@@ -194,6 +194,7 @@ export function handleExtraBaseThrow(state, action) {
     let newState = {
         ...state, bases, outs, score: newScore, pendingExtraBaseResult,
         [fieldingSide]: fieldingTeam, [battingSide]: battingTeam,
+        lastRoll: roll, lastRollType: 'fielding', rollSequence: getRollSequence(),
         gameLog: [...state.gameLog, ...logs],
     };
 

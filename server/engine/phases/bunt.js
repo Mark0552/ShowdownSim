@@ -4,7 +4,7 @@
  * Roll on pitcher's chart: PU = out + runners hold, anything else = out + runners advance 1.
  */
 
-import { rollD20, resolveChart } from '../dice.js';
+import { rollD20, resolveChart, getRollSequence } from '../dice.js';
 import { addBatterStat, addPitcherStat } from '../stats.js';
 import { advanceBatter, endHalfInning } from './baserunning.js';
 
@@ -64,6 +64,7 @@ export function handleSacBunt(state) {
     let newState = {
         ...state, bases, outs, score: newScore, lastOutcome: 'SAC',
         [battingSide]: battingTeam, [fieldingSide]: fieldingTeamUpdated,
+        lastRoll: roll, lastRollType: 'fielding', rollSequence: getRollSequence(),
         gameLog: [...state.gameLog, ...logs],
     };
 

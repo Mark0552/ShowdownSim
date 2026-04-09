@@ -2,7 +2,7 @@
  * Ground ball decision phase handlers.
  */
 
-import { rollD20 } from '../dice.js';
+import { rollD20, getRollSequence } from '../dice.js';
 import { findAllGPlayers, recordIconUse, canUseIcon, playerHasIcon } from '../icons.js';
 import { INFIELD_POSITIONS } from '../fielding.js';
 import { addBatterStat, updateWLTracker } from '../stats.js';
@@ -171,11 +171,14 @@ export function handleGbDecision(state, action) {
         fieldingTeam.outsRecordedByCurrentPitcher = (fieldingTeam.outsRecordedByCurrentPitcher || 0) + outsThisPlay;
     }
 
+    // Track the roll for dice animation (dp and hold have actual d20 rolls)
+    const hadRoll = pendingDpResult && pendingDpResult.roll > 0;
     let newState = {
         ...state,
         bases, outs, score: newScore, pendingDpResult, gbOptions: null,
         [fieldingSide]: fieldingTeam, [battingSide]: battingTeam,
         gameLog: [...state.gameLog, ...logs],
+        ...(hadRoll ? { lastRoll: pendingDpResult.roll, lastRollType: 'fielding', rollSequence: getRollSequence() } : {}),
     };
 
     if (runs > 0) newState = updateWLTracker(newState, state.score.home, state.score.away);

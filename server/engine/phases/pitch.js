@@ -80,6 +80,7 @@ export function handlePitch(state, action) {
         phase: 'swing',
         lastPitchRoll: roll,
         lastPitchTotal: total,
+        lastPitchControlMod: controlMod,
         usedPitcherChart: usePitcherChart,
         lastOutcome: null,
         lastSwingRoll: 0,

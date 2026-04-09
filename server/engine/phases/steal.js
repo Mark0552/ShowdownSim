@@ -2,7 +2,7 @@
  * Steal phase handlers.
  */
 
-import { rollD20 } from '../dice.js';
+import { rollD20, getRollSequence } from '../dice.js';
 import { playerHasIcon, canUseIcon, recordIconUse } from '../icons.js';
 import { addBatterStat } from '../stats.js';
 import { enterPreAtBat } from './substitutions.js';
@@ -187,6 +187,7 @@ export function resolveSteal(state, goldGloveCardId) {
         [fieldingSide]: fieldingTeam,
         [battingSide]: battingTeam,
         pendingSteal: null, pendingStealResult,
+        lastRoll: roll, lastRollType: 'fielding', rollSequence: getRollSequence(),
         gameLog: [...state.gameLog, ...logs],
     };
 
