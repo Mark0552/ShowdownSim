@@ -1,19 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 interface DiceSpinnerProps {
-    /** Center x of the dice section */
     cx: number;
-    /** Top y of the bottom bar */
     botY: number;
-    /** The actual d20 roll result */
     roll: number | null;
-    /** 'pitch' | 'swing' | 'sp' | 'fielding' */
     rollType: string | null;
-    /** Changes when a new roll happens */
     triggerKey: string;
-    /** Called when spin animation is done */
     onAnimationComplete?: () => void;
-    /** Pitch-specific data for modifier display */
     pitchRoll?: number;
     pitchControl?: number;
     fatiguePenalty?: number;
@@ -22,12 +15,13 @@ interface DiceSpinnerProps {
     batterOnBase?: number;
     usedPitcherChart?: boolean;
     swingRoll?: number;
+    /** True if this client is the batting team */
+    iAmBatting?: boolean;
 }
 
 const SPIN_DURATION = 900;
 const SETTLE_PAUSE = 600;
 
-/** Render a d20 diamond shape with a number inside */
 function D20Diamond({ x, y, r, value, color, spinning }: { x: number; y: number; r: number; value: number; color: string; spinning: boolean }) {
     const w = r * 0.78;
     return (
@@ -44,11 +38,21 @@ function D20Diamond({ x, y, r, value, color, spinning }: { x: number; y: number;
     );
 }
 
+/** Build a linear equation string for pitch: "20 + 6(C) - 1(F) + 3(20) = 28" */
+function buildPitchEquation(roll: number, ctrl: number, fatigue: number, iconMod: number, total: number) {
+    let eq = `${roll} + ${ctrl}(C)`;
+    if (fatigue > 0) eq += ` \u2212 ${fatigue}(F)`;
+    if (iconMod > 0) eq += ` + ${iconMod}(I)`;
+    eq += ` = ${total}`;
+    return eq;
+}
+
 export default function DiceSpinner({
     cx, botY, roll, rollType, triggerKey,
     onAnimationComplete,
     pitchRoll, pitchControl = 0, fatiguePenalty = 0, controlModifier = 0,
     pitchTotal, batterOnBase, usedPitcherChart, swingRoll,
+    iAmBatting = false,
 }: DiceSpinnerProps) {
     const [displayValue, setDisplayValue] = useState<number>(roll || 1);
     const [spinning, setSpinning] = useState(false);
@@ -95,122 +99,100 @@ export default function DiceSpinner({
     const isSwing = rollType === 'swing';
     const hasPitchData = (pitchRoll ?? 0) > 0;
     const hasSwingData = (swingRoll ?? 0) > 0;
-    // Show dual pitch+swing after swing settles with both rolls available
     const showDual = isSwing && settled && !spinning && hasPitchData && hasSwingData;
 
     const rollColor = (type: string) =>
         type === 'pitch' ? '#e94560' : type === 'swing' ? '#4ade80' : type === 'fielding' ? '#60a5fa' : '#d4a018';
-    const rollLabel = (type: string) =>
-        type === 'pitch' ? 'PITCH' : type === 'swing' ? 'SWING' : type === 'fielding' ? 'FIELDING' : type.toUpperCase();
 
     const color = rollColor(rollType);
 
+    // Advantage colors: green = good for this user, red = bad
+    // Pitcher chart = pitcher advantage (good for fielding team)
+    // Batter chart = hitter advantage (good for batting team)
+    const pitcherAdvantage = usedPitcherChart === true;
+    const advantageText = pitcherAdvantage ? 'PITCHER ADVANTAGE' : 'HITTER ADVANTAGE';
+    // Green if advantage is for me
+    const advantageGreen = pitcherAdvantage ? !iAmBatting : iAmBatting;
+    const advantageColor = advantageGreen ? '#4ade80' : '#e94560';
+
+    // Bottom bar Y for the advantage indicator
+    const advY = botY + 158;
+
     // ======== DUAL PITCH + SWING LAYOUT (side by side) ========
     if (showDual) {
-        const dieR = 28;
-        const midY = botY + 78;     // vertical center of dice section
-        const pitchCX = cx - 90;    // pitch column center (left)
-        const swingCX = cx + 90;    // swing column center (right)
-        const pitchDieX = pitchCX - 20; // shift left for modifiers
-        const modX = pitchDieX + dieR * 0.78 + 6;
+        const dieR = 26;
+        const dieY = botY + 56;
+        const pitchCX = cx - 100;
+        const swingCX = cx + 100;
 
-        // Pitch modifier stack
-        const modLines: { text: string; color: string }[] = [];
-        modLines.push({ text: `+${pitchControl}`, color: '#8aade0' });
-        if (fatiguePenalty > 0) modLines.push({ text: `\u2212${fatiguePenalty}`, color: '#e94560' });
-        if (controlModifier > 0) modLines.push({ text: `+${controlModifier}`, color: '#d4a018' });
-        modLines.push({ text: `= ${pitchTotal}`, color: 'white' });
+        const equation = buildPitchEquation(pitchRoll!, pitchControl, fatiguePenalty, controlModifier, pitchTotal!);
 
         return (
             <g>
                 {/* Pitch column (left) */}
-                <text x={pitchCX} y={botY + 20} textAnchor="middle" fontSize="12" fill="#e94560"
+                <text x={pitchCX} y={botY + 18} textAnchor="middle" fontSize="12" fill="#e94560"
                     fontWeight="bold" fontFamily="Impact" letterSpacing="1">PITCH</text>
-                <D20Diamond x={pitchDieX} y={midY - 10} r={dieR} value={pitchRoll!} color="#e94560" spinning={false} />
-                {modLines.map((m, i) => (
-                    <text key={`pm-${i}`} x={modX} y={midY - 22 + i * 14} fontSize="12"
-                        fill={m.color} fontWeight="bold" fontFamily="monospace">{m.text}</text>
-                ))}
-                <text x={pitchCX} y={midY + dieR + 10} textAnchor="middle" fontSize="10" fill="#aaa" fontFamily="monospace">
-                    vs OB {batterOnBase}
+                <D20Diamond x={pitchCX} y={dieY} r={dieR} value={pitchRoll!} color="#e94560" spinning={false} />
+                {/* Equation below die */}
+                <text x={pitchCX} y={dieY + dieR + 16} textAnchor="middle" fontSize="11" fill="#ccc" fontWeight="bold" fontFamily="monospace">
+                    {equation}
                 </text>
-                <text x={pitchCX} y={midY + dieR + 24} textAnchor="middle" fontSize="10"
-                    fill={usedPitcherChart ? '#60a5fa' : '#4ade80'} fontWeight="bold" fontFamily="monospace">
-                    {'\u2192'} {usedPitcherChart ? 'Pitcher' : 'Batter'} chart
+                <text x={pitchCX} y={dieY + dieR + 32} textAnchor="middle" fontSize="11" fill="#aaa" fontFamily="monospace">
+                    vs OB {batterOnBase}
                 </text>
 
                 {/* Vertical divider */}
-                <line x1={cx} y1={botY + 16} x2={cx} y2={botY + 160} stroke="#d4a01830" strokeWidth="1" />
+                <line x1={cx} y1={botY + 12} x2={cx} y2={advY - 6} stroke="#d4a01830" strokeWidth="1" />
 
                 {/* Swing column (right) */}
-                <text x={swingCX} y={botY + 20} textAnchor="middle" fontSize="12" fill="#4ade80"
+                <text x={swingCX} y={botY + 18} textAnchor="middle" fontSize="12" fill="#4ade80"
                     fontWeight="bold" fontFamily="Impact" letterSpacing="1">SWING</text>
-                <D20Diamond x={swingCX} y={midY - 10} r={dieR} value={swingRoll!} color="#4ade80" spinning={false} />
-                <text x={swingCX} y={midY + dieR + 10} textAnchor="middle" fontSize="10"
-                    fill={usedPitcherChart ? '#60a5fa' : '#4ade80'} fontWeight="bold" fontFamily="monospace">
-                    on {usedPitcherChart ? 'Pitcher' : 'Batter'} chart
-                </text>
+                <D20Diamond x={swingCX} y={dieY} r={dieR} value={swingRoll!} color="#4ade80" spinning={false} />
+
+                {/* Advantage bar (full width, bottom) */}
+                <rect x={cx - 120} y={advY - 4} width="240" height="20" rx="4" fill={advantageColor} opacity="0.25" />
+                <text x={cx} y={advY + 11} textAnchor="middle" fontSize="12" fill={advantageColor}
+                    fontWeight="900" fontFamily="Impact" letterSpacing="1">{advantageText}</text>
             </g>
         );
     }
 
-    // ======== SINGLE ROLL LAYOUT (pitch-only, swing-animating, fielding, sp) ========
-    const dieX = isPitch ? cx - 30 : cx;
-    const dieY = botY + 68;
-    const dieR = 34;
-    const label = rollLabel(rollType);
+    // ======== SINGLE ROLL LAYOUT ========
+    const dieX = cx;
+    const dieY = botY + 64;
+    const dieR = 32;
+    const label = isPitch ? 'PITCH' : isSwing ? 'SWING' : rollType === 'fielding' ? 'FIELDING' : rollType!.toUpperCase();
 
     return (
         <g>
-            {/* Roll type label */}
-            <text x={cx} y={botY + 26} textAnchor="middle" fontSize="14" fill={color}
+            <text x={cx} y={botY + 22} textAnchor="middle" fontSize="14" fill={color}
                 fontWeight="bold" fontFamily="Impact" letterSpacing="2">{label}</text>
 
-            {/* D20 diamond */}
             <D20Diamond x={dieX} y={dieY} r={dieR} value={displayValue} color={color} spinning={spinning && !settled} />
 
-            {/* Pitch modifiers to right of die */}
+            {/* Pitch: equation + vs OB + advantage */}
             {isPitch && settled && !spinning && hasPitchData && (
                 <g>
-                    {(() => {
-                        const modX = dieX + dieR * 0.78 + 8;
-                        let yOff = dieY - 10;
-                        const lines: React.ReactElement[] = [];
-                        lines.push(<text key="ctrl" x={modX} y={yOff} fontSize="14" fill="#8aade0" fontWeight="bold" fontFamily="monospace">+{pitchControl}</text>);
-                        yOff += 16;
-                        if (fatiguePenalty > 0) {
-                            lines.push(<text key="ftg" x={modX} y={yOff} fontSize="13" fill="#e94560" fontWeight="bold" fontFamily="monospace">{'\u2212'}{fatiguePenalty}</text>);
-                            yOff += 16;
-                        }
-                        if (controlModifier > 0) {
-                            lines.push(<text key="mod" x={modX} y={yOff} fontSize="13" fill="#d4a018" fontWeight="bold" fontFamily="monospace">+{controlModifier}</text>);
-                            yOff += 16;
-                        }
-                        lines.push(<text key="total" x={modX} y={yOff} fontSize="16" fill="white" fontWeight="900" fontFamily="Impact">= {pitchTotal}</text>);
-                        return lines;
-                    })()}
-                </g>
-            )}
-
-            {/* Below die: vs OB and chart (pitch) */}
-            {isPitch && settled && !spinning && hasPitchData && (
-                <g>
-                    <text x={cx} y={botY + 120} textAnchor="middle" fontSize="12" fill="#aaa" fontFamily="monospace">
+                    <text x={cx} y={dieY + dieR + 18} textAnchor="middle" fontSize="12" fill="#ccc" fontWeight="bold" fontFamily="monospace">
+                        {buildPitchEquation(pitchRoll!, pitchControl, fatiguePenalty, controlModifier, pitchTotal!)}
+                    </text>
+                    <text x={cx} y={dieY + dieR + 36} textAnchor="middle" fontSize="12" fill="#aaa" fontFamily="monospace">
                         vs OB {batterOnBase}
                     </text>
-                    <text x={cx} y={botY + 138} textAnchor="middle" fontSize="12"
-                        fill={usedPitcherChart ? '#60a5fa' : '#4ade80'} fontWeight="bold" fontFamily="monospace">
-                        {'\u2192'} {usedPitcherChart ? 'Pitcher chart' : 'Batter chart'}
-                    </text>
+                    {/* Advantage bar */}
+                    <rect x={cx - 120} y={advY - 4} width="240" height="20" rx="4" fill={advantageColor} opacity="0.25" />
+                    <text x={cx} y={advY + 11} textAnchor="middle" fontSize="12" fill={advantageColor}
+                        fontWeight="900" fontFamily="Impact" letterSpacing="1">{advantageText}</text>
                 </g>
             )}
 
-            {/* Swing single: show which chart */}
+            {/* Swing single: chart + advantage */}
             {isSwing && settled && !spinning && !showDual && (
-                <text x={cx} y={botY + 120} textAnchor="middle" fontSize="12"
-                    fill={usedPitcherChart ? '#60a5fa' : '#4ade80'} fontWeight="bold" fontFamily="monospace">
-                    on {usedPitcherChart ? 'Pitcher' : 'Batter'} chart
-                </text>
+                <g>
+                    <rect x={cx - 120} y={advY - 4} width="240" height="20" rx="4" fill={advantageColor} opacity="0.25" />
+                    <text x={cx} y={advY + 11} textAnchor="middle" fontSize="12" fill={advantageColor}
+                        fontWeight="900" fontFamily="Impact" letterSpacing="1">{advantageText}</text>
+                </g>
             )}
         </g>
     );

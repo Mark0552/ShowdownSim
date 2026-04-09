@@ -3,7 +3,7 @@
  * Layout (viewBox 1400x950):
  *   Top bar:    y=0..50    [EXIT] ... centered scoreboard ... [LOG][SCORE]
  *   Main area:  y=52..748  [Away 0..360 | Diamond 360..1040 | Home 1040..1400]
- *   Bottom bar: y=750..948 [Actions 0..770 (55%) | Dice 770..1148 (27%) | Result 1148..1400 (18%)]
+ *   Bottom bar: y=750..948 [Actions 0..770 (55%) | Dice 770..1180 (29%) | Result 1180..1400 (16%)]
  */
 import { useState, useRef, useCallback, useEffect } from 'react';
 import type { GameState, GameAction, PlayerSlot } from '../../engine/gameEngine';
@@ -451,7 +451,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
 
                 {/* Section dividers */}
                 <line x1="770" y1={BOT_Y + 2} x2="770" y2="946" stroke="#d4a01840" strokeWidth="1"/>
-                <line x1="1148" y1={BOT_Y + 2} x2="1148" y2="946" stroke="#d4a01840" strokeWidth="1"/>
+                <line x1="1180" y1={BOT_Y + 2} x2="1180" y2="946" stroke="#d4a01840" strokeWidth="1"/>
 
                 {/* ACTION BUTTONS (left 55%) */}
                 <ActionButtons
@@ -467,10 +467,10 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     onShowSubPanel={() => setShowSubPanel(true)}
                 />
 
-                {/* DICE SECTION (27%: x=770..1148) — spinner + settled display */}
+                {/* DICE SECTION (29%: x=770..1180) — spinner + settled display */}
                 {state.lastRoll && state.lastRollType && (
                     <DiceSpinner
-                        cx={959} botY={BOT_Y}
+                        cx={975} botY={BOT_Y}
                         roll={state.lastRoll} rollType={state.lastRollType}
                         triggerKey={rollKey}
                         onAnimationComplete={handleDiceComplete}
@@ -482,85 +482,94 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                         batterOnBase={batter.onBase}
                         usedPitcherChart={state.usedPitcherChart}
                         swingRoll={state.lastSwingRoll}
+                        iAmBatting={iAmBatting}
                     />
                 )}
 
-                {/* RESULT SECTION (right 18%: x=1148..1400) — fills full area after dice animation */}
-                {!diceAnimating && state.lastOutcome && (
-                    <g>
-                        <rect x="1154" y={BOT_Y + 6} width="240" height={948 - BOT_Y - 12} rx="8" fill={
-                            ['SO','GB','FB','PU'].includes(state.lastOutcome) ? 'rgba(200,30,30,0.85)' :
-                            state.lastOutcome === 'HR' ? 'rgba(233,69,96,0.9)' : 'rgba(34,180,80,0.85)'
-                        }/>
-                        <text x="1274" y={BOT_Y + 56} textAnchor="middle" fontSize="24" fill="white" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="1">
-                            {outcomeNames[state.lastOutcome] || state.lastOutcome}
-                        </text>
-                        {/* Secondary result (DP, extra base, steal) below outcome */}
-                        {state.pendingDpResult && (() => {
-                            const dp = state.pendingDpResult;
-                            let label = 'BATTER SAFE';
-                            if (dp.isDP) label = 'DOUBLE PLAY!';
-                            else if (dp.choice === 'dp' && !dp.isDP) label = "FIELDER'S CHOICE";
-                            else if (dp.choice === 'hold' && dp.defenseTotal > dp.offenseSpeed) label = 'OUT AT 1ST';
-                            else if (dp.choice === 'hold') label = 'BATTER SAFE';
-                            else if (dp.choice === 'force_home') label = 'FORCE AT HOME';
-                            else if (dp.choice === 'advance') label = 'RUNNERS ADVANCE';
-                            const showRoll = dp.roll > 0 && dp.choice !== 'force_home' && dp.choice !== 'advance';
-                            return (
-                                <g>
-                                    <text x="1274" y={BOT_Y + 86} textAnchor="middle" fontSize="16" fill="white" fontWeight="bold" fontFamily="Impact">{label}</text>
-                                    {showRoll && (
-                                        <text x="1274" y={BOT_Y + 106} textAnchor="middle" fontSize="12" fill="rgba(255,255,255,0.85)" fontFamily="monospace">
-                                            d20({dp.roll})+IF({dp.defenseTotal - dp.roll})={dp.defenseTotal} vs Spd {dp.offenseSpeed}
+                {/* RESULT SECTION (right 16%: x=1180..1400) — full-height, user-perspective colors */}
+                {!diceAnimating && state.lastOutcome && (() => {
+                    const isOut = ['SO','GB','FB','PU'].includes(state.lastOutcome);
+                    // Green = good for me, Red = bad for me
+                    const goodForBatter = !isOut;
+                    const resultColor = (goodForBatter === iAmBatting) ? 'rgba(34,180,80,0.85)' : 'rgba(200,30,30,0.85)';
+                    const RX = 1186, RW = 208, RCX = 1290, RH = 948 - BOT_Y - 12;
+                    const hasSub = !!(state.pendingDpResult || state.pendingExtraBaseResult || state.pendingStealResult);
+                    const mainY = hasSub ? BOT_Y + 50 : BOT_Y + (RH / 2) + 6; // center vertically if no sub-result
+
+                    return (
+                        <g>
+                            <rect x={RX} y={BOT_Y + 6} width={RW} height={RH} rx="8" fill={resultColor} />
+                            <text x={RCX} y={mainY} textAnchor="middle" fontSize="22" fill="white" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="1">
+                                {outcomeNames[state.lastOutcome] || state.lastOutcome}
+                            </text>
+                            {state.pendingDpResult && (() => {
+                                const dp = state.pendingDpResult;
+                                let label = 'BATTER SAFE';
+                                if (dp.isDP) label = 'DOUBLE PLAY!';
+                                else if (dp.choice === 'dp' && !dp.isDP) label = "FIELDER'S CHOICE";
+                                else if (dp.choice === 'hold' && dp.defenseTotal > dp.offenseSpeed) label = 'OUT AT 1ST';
+                                else if (dp.choice === 'hold') label = 'BATTER SAFE';
+                                else if (dp.choice === 'force_home') label = 'FORCE AT HOME';
+                                else if (dp.choice === 'advance') label = 'RUNNERS ADVANCE';
+                                const showRoll = dp.roll > 0 && dp.choice !== 'force_home' && dp.choice !== 'advance';
+                                return (
+                                    <g>
+                                        <text x={RCX} y={BOT_Y + 80} textAnchor="middle" fontSize="14" fill="white" fontWeight="bold" fontFamily="Impact">{label}</text>
+                                        {showRoll && (
+                                            <text x={RCX} y={BOT_Y + 100} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.85)" fontFamily="monospace">
+                                                d20({dp.roll})+IF({dp.defenseTotal - dp.roll})={dp.defenseTotal} vs Spd {dp.offenseSpeed}
+                                            </text>
+                                        )}
+                                    </g>
+                                );
+                            })()}
+                            {state.pendingExtraBaseResult && (() => {
+                                const eb = state.pendingExtraBaseResult;
+                                return (
+                                    <g>
+                                        <text x={RCX} y={BOT_Y + 80} textAnchor="middle" fontSize="13" fill="white" fontWeight="bold" fontFamily="Impact">
+                                            {eb.safe ? `${eb.runnerName} SAFE` : `${eb.runnerName} OUT`}
                                         </text>
-                                    )}
-                                </g>
-                            );
-                        })()}
-                        {state.pendingExtraBaseResult && (() => {
-                            const eb = state.pendingExtraBaseResult;
-                            return (
-                                <g>
-                                    <text x="1274" y={BOT_Y + 86} textAnchor="middle" fontSize="14" fill="white" fontWeight="bold" fontFamily="Impact">
-                                        {eb.safe ? `${eb.runnerName} SAFE` : `${eb.runnerName} OUT`}
-                                    </text>
-                                    <text x="1274" y={BOT_Y + 106} textAnchor="middle" fontSize="12" fill="rgba(255,255,255,0.85)" fontFamily="monospace">
-                                        Spd {eb.runnerSpeed} vs d20({eb.roll})+OF={eb.defenseTotal}
-                                    </text>
-                                </g>
-                            );
-                        })()}
-                        {state.pendingStealResult && (() => {
-                            const sr = state.pendingStealResult;
-                            const isSbIcon = sr.roll === 0 && sr.defenseTotal === 0;
-                            return (
-                                <g>
-                                    <text x="1274" y={BOT_Y + 86} textAnchor="middle" fontSize="14" fill="white" fontWeight="bold" fontFamily="Impact">
-                                        {sr.safe ? (isSbIcon ? `${sr.runnerName} SB!` : `${sr.runnerName} STEALS!`) : `${sr.runnerName} CAUGHT!`}
-                                    </text>
-                                    {!isSbIcon && (
-                                        <text x="1274" y={BOT_Y + 106} textAnchor="middle" fontSize="12" fill="rgba(255,255,255,0.85)" fontFamily="monospace">
-                                            Spd {sr.runnerSpeed} vs d20({sr.roll})+Arm={sr.defenseTotal}
+                                        <text x={RCX} y={BOT_Y + 100} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.85)" fontFamily="monospace">
+                                            Tgt {eb.runnerSpeed} vs d20({eb.roll})+OF={eb.defenseTotal}
                                         </text>
-                                    )}
-                                </g>
-                            );
-                        })()}
-                    </g>
-                )}
-                {/* Standalone fielding results when no lastOutcome (steal/DP without at-bat outcome) */}
+                                    </g>
+                                );
+                            })()}
+                            {state.pendingStealResult && (() => {
+                                const sr = state.pendingStealResult;
+                                const isSbIcon = sr.roll === 0 && sr.defenseTotal === 0;
+                                return (
+                                    <g>
+                                        <text x={RCX} y={BOT_Y + 80} textAnchor="middle" fontSize="13" fill="white" fontWeight="bold" fontFamily="Impact">
+                                            {sr.safe ? (isSbIcon ? `${sr.runnerName} SB!` : `${sr.runnerName} STEALS!`) : `${sr.runnerName} CAUGHT!`}
+                                        </text>
+                                        {!isSbIcon && (
+                                            <text x={RCX} y={BOT_Y + 100} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.85)" fontFamily="monospace">
+                                                Spd {sr.runnerSpeed} vs d20({sr.roll})+Arm={sr.defenseTotal}
+                                            </text>
+                                        )}
+                                    </g>
+                                );
+                            })()}
+                        </g>
+                    );
+                })()}
+                {/* Standalone steal result (no at-bat outcome) */}
                 {!diceAnimating && !state.lastOutcome && state.pendingStealResult && (() => {
                     const sr = state.pendingStealResult;
                     const isSbIcon = sr.roll === 0 && sr.defenseTotal === 0;
                     const safe = sr.safe;
+                    const goodForBatter = safe;
+                    const resultColor = (goodForBatter === iAmBatting) ? 'rgba(34,180,80,0.85)' : 'rgba(200,30,30,0.85)';
                     return (
                         <g>
-                            <rect x="1154" y={BOT_Y + 6} width="240" height={948 - BOT_Y - 12} rx="8" fill={safe ? 'rgba(34,180,80,0.85)' : 'rgba(200,30,30,0.85)'}/>
-                            <text x="1274" y={BOT_Y + 56} textAnchor="middle" fontSize="18" fill="white" fontWeight="900" fontFamily="Impact">
+                            <rect x="1186" y={BOT_Y + 6} width="208" height={948 - BOT_Y - 12} rx="8" fill={resultColor} />
+                            <text x="1290" y={BOT_Y + 56} textAnchor="middle" fontSize="16" fill="white" fontWeight="900" fontFamily="Impact">
                                 {safe ? (isSbIcon ? `${sr.runnerName} SB!` : `${sr.runnerName} STEALS!`) : `${sr.runnerName} CAUGHT!`}
                             </text>
                             {!isSbIcon && (
-                                <text x="1274" y={BOT_Y + 86} textAnchor="middle" fontSize="12" fill="rgba(255,255,255,0.85)" fontFamily="monospace">
+                                <text x="1290" y={BOT_Y + 80} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.85)" fontFamily="monospace">
                                     Spd {sr.runnerSpeed} vs d20({sr.roll})+Arm={sr.defenseTotal}
                                 </text>
                             )}
