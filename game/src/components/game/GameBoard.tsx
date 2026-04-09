@@ -225,6 +225,8 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const displayOuts = frozenRef.current.outs;
     const displayScore = frozenRef.current.score;
     const displayTeam = frozenRef.current.battingTeam;
+    // Batter at home plate uses frozen team so next batter doesn't appear until at-bat starts
+    const displayBatter = displayTeam.lineup[displayTeam.currentBatterIndex] || batter;
     const animTargets = new Set(runnerAnims.map(a => a.toBase));
     const animSources = new Set(runnerAnims.map(a => a.fromBase));
     const getRunner = (base: 'first' | 'second' | 'third'): PlayerSlot | null => {
@@ -616,7 +618,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 <CardSlot x={B1.x - 38} y={B1.y - 53} label="1B" card={runner1} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                 <CardSlot x={B3.x - 38} y={B3.y - 53} label="3B" card={runner3} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                 <CardSlot x={MOUND.x - 38} y={MOUND.y - 53} label="P" card={pitcher} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
-                <CardSlot x={HP.x - 38} y={HP.y - 53} label="H" card={batter} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
+                <CardSlot x={HP.x - 38} y={HP.y - 53} label="H" card={displayBatter} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
 
                 {/* Animated runner overlay — cards follow base paths */}
                 {runnerAnims.map(anim => {
