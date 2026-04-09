@@ -14,8 +14,9 @@ interface ActionButtonsProps {
     onShowSubPanel: () => void;
 }
 
-// Layout constants for the bottom-left actions section (x=2..980, y=750..948)
-const CX = 490;       // center of actions section (70% of 1400)
+// Layout constants for the bottom-left actions section (x=2..770, y=750..948)
+const CX = 385;       // center of actions section (55% of 1400)
+const MAX_ACTION_W = 740; // usable width for button rows
 const BOT_TOP = 770;  // bottom bar top
 const BOT_H = 178;    // bottom bar height
 const ROW1_H = 78;    // button height — taller for big readable labels + math
@@ -72,12 +73,12 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 }
                 // Collect all buttons, then center them
                 const items: { type: string; width: number; data?: any }[] = [];
-                if (eligibleBench.length > 0) items.push({ type: 'pinch', width: 200 });
-                sbRunners.forEach(sb => items.push({ type: 'sb', width: 220, data: sb }));
-                if (state.bases.first && !state.bases.second) items.push({ type: 'steal2', width: 240 });
-                if (state.bases.second && !state.bases.third) items.push({ type: 'steal3', width: 240 });
-                items.push({ type: 'skip', width: 150 });
-                const gap = 12;
+                if (eligibleBench.length > 0) items.push({ type: 'pinch', width: 170 });
+                sbRunners.forEach(sb => items.push({ type: 'sb', width: 190, data: sb }));
+                if (state.bases.first && !state.bases.second) items.push({ type: 'steal2', width: 200 });
+                if (state.bases.second && !state.bases.third) items.push({ type: 'steal3', width: 200 });
+                items.push({ type: 'skip', width: 130 });
+                const gap = 10;
                 const totalW = items.reduce((s, it) => s + it.width, 0) + (items.length - 1) * gap;
                 let bx = CX - totalW / 2;
                 return (
@@ -154,19 +155,19 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 // Row 1: pitcher change options (if any)
                 // Row 2: IBB | ROLL PITCH (+ 20 option) — always shown
                 const row1Items: { type: string; width: number }[] = [];
-                if (canChangePitcher) row1Items.push({ type: 'change', width: 220 });
-                if (hasRP) row1Items.push({ type: 'rp', width: 220 });
+                if (canChangePitcher) row1Items.push({ type: 'change', width: 190 });
+                if (hasRP) row1Items.push({ type: 'rp', width: 190 });
 
                 const row2Items: { type: string; width: number }[] = [];
-                row2Items.push({ type: 'ibb', width: 230 });
+                row2Items.push({ type: 'ibb', width: 200 });
                 if (canBunt) {
-                    row2Items.push({ type: 'pitch_bunt', width: 220 }); // goes to bunt decision
+                    row2Items.push({ type: 'pitch_bunt', width: 190 }); // goes to bunt decision
                 } else {
-                    row2Items.push({ type: 'roll_pitch', width: 220 });
-                    if (has20) row2Items.push({ type: '20', width: 250 });
+                    row2Items.push({ type: 'roll_pitch', width: 200 });
+                    if (has20) row2Items.push({ type: '20', width: 220 });
                 }
 
-                const gap = 12;
+                const gap = 10;
                 const renderRow = (items: typeof row1Items, y: number) => {
                     const totalW = items.reduce((s, it) => s + it.width, 0) + (items.length - 1) * gap;
                     let bx = CX - totalW / 2;
@@ -239,13 +240,13 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 const canBunt = state.outs < 2 && (bases.first || bases.second) && !bases.third;
                 const has20 = !state.icon20UsedThisInning && fieldingTeam.pitcher.icons?.includes('20');
                 // Build button list and center it
-                const items: { type: string; w: number }[] = [{ type: 'ibb', w: 230 }];
-                if (canBunt) items.push({ type: 'pitch_bunt', w: 220 });
+                const items: { type: string; w: number }[] = [{ type: 'ibb', w: 200 }];
+                if (canBunt) items.push({ type: 'pitch_bunt', w: 190 });
                 else {
-                    items.push({ type: 'roll_pitch', w: 230 });
-                    if (has20) items.push({ type: '20', w: 260 });
+                    items.push({ type: 'roll_pitch', w: 200 });
+                    if (has20) items.push({ type: '20', w: 220 });
                 }
-                const ibgap = 12;
+                const ibgap = 10;
                 const ibTotal = items.reduce((s, it) => s + it.w, 0) + (items.length - 1) * ibgap;
                 let ibx = CX - ibTotal / 2;
                 return (
@@ -289,14 +290,14 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
             {!state.isOver && isMyTurn && state.phase === 'bunt_decision' && (
                 <g>
                     <g className="roll-button" onClick={() => onAction({ type: 'SAC_BUNT' })} cursor="pointer">
-                        <rect x={CX - 206} y={ROW1} width="220" height={ROW1_H} rx="6" fill="#8b5cf6" stroke="#a78bfa" strokeWidth="1.5"/>
-                        <text x={CX - 96} y={ROW1 + 32} textAnchor="middle" fontSize="22" fill="white" fontWeight="900" fontFamily="Impact">SAC BUNT</text>
-                        <text x={CX - 96} y={ROW1 + 58} textAnchor="middle" fontSize="15" fill="rgba(255,255,255,0.75)" fontFamily="Arial">Batter out, runners advance</text>
+                        <rect x={CX - 196} y={ROW1} width="190" height={ROW1_H} rx="6" fill="#8b5cf6" stroke="#a78bfa" strokeWidth="1.5"/>
+                        <text x={CX - 101} y={ROW1 + 32} textAnchor="middle" fontSize="22" fill="white" fontWeight="900" fontFamily="Impact">SAC BUNT</text>
+                        <text x={CX - 101} y={ROW1 + 58} textAnchor="middle" fontSize="15" fill="rgba(255,255,255,0.75)" fontFamily="Arial">Batter out, runners advance</text>
                     </g>
                     <g className="roll-button" onClick={() => onAction({ type: 'SKIP_BUNT' })} cursor="pointer">
-                        <rect x={CX + 26} y={ROW1} width="180" height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
-                        <text x={CX + 116} y={ROW1 + 32} textAnchor="middle" fontSize="22" fill="#ccc" fontWeight="900" fontFamily="Impact">NO BUNT</text>
-                        <text x={CX + 116} y={ROW1 + 58} textAnchor="middle" fontSize="15" fill="rgba(255,255,255,0.75)" fontFamily="Arial">Proceed to pitch</text>
+                        <rect x={CX + 6} y={ROW1} width="160" height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
+                        <text x={CX + 86} y={ROW1 + 32} textAnchor="middle" fontSize="22" fill="#ccc" fontWeight="900" fontFamily="Impact">NO BUNT</text>
+                        <text x={CX + 86} y={ROW1 + 58} textAnchor="middle" fontSize="15" fill="rgba(255,255,255,0.75)" fontFamily="Arial">Proceed to pitch</text>
                     </g>
                 </g>
             )}
@@ -308,21 +309,21 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                     return (
                         <g>
                             <g className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH' })} cursor="pointer">
-                                <rect x={CX - 266} y={ROW1} width="260" height={ROW1_H} rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
-                                <text x={CX - 136} y={ROW1 + 32} textAnchor="middle" fontSize="24" fill="white" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="2">ROLL PITCH</text>
-                                <text x={CX - 136} y={ROW1 + 58} textAnchor="middle" fontSize="14" fill="rgba(255,255,255,0.9)" fontFamily="monospace">{pitchMath}</text>
+                                <rect x={CX - 226} y={ROW1} width="220" height={ROW1_H} rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
+                                <text x={CX - 116} y={ROW1 + 32} textAnchor="middle" fontSize="24" fill="white" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="2">ROLL PITCH</text>
+                                <text x={CX - 116} y={ROW1 + 58} textAnchor="middle" fontSize="14" fill="rgba(255,255,255,0.9)" fontFamily="monospace">{pitchMath}</text>
                             </g>
                             <g className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH', useIcon20: true })} cursor="pointer">
-                                <rect x={CX + 6} y={ROW1} width="260" height={ROW1_H} rx="8" fill="#60a5fa" stroke="#93c5fd" strokeWidth="2"/>
-                                <text x={CX + 136} y={ROW1 + 32} textAnchor="middle" fontSize="22" fill="#002" fontWeight="900" fontFamily="Impact,sans-serif">USE 20 ICON</text>
-                                <text x={CX + 136} y={ROW1 + 58} textAnchor="middle" fontSize="14" fill="rgba(0,0,0,0.8)" fontFamily="monospace">{pitch20Math}</text>
+                                <rect x={CX + 6} y={ROW1} width="220" height={ROW1_H} rx="8" fill="#60a5fa" stroke="#93c5fd" strokeWidth="2"/>
+                                <text x={CX + 116} y={ROW1 + 32} textAnchor="middle" fontSize="22" fill="#002" fontWeight="900" fontFamily="Impact,sans-serif">USE 20 ICON</text>
+                                <text x={CX + 116} y={ROW1 + 58} textAnchor="middle" fontSize="14" fill="rgba(0,0,0,0.8)" fontFamily="monospace">{pitch20Math}</text>
                             </g>
                         </g>
                     );
                 }
                 return (
                     <g className="roll-button" onClick={() => onAction({ type: 'ROLL_PITCH' })} cursor="pointer">
-                        <rect x={CX - 140} y={ROW1} width="280" height={ROW1_H} rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
+                        <rect x={CX - 120} y={ROW1} width="240" height={ROW1_H} rx="8" fill="#e94560" stroke="#ff6b8a" strokeWidth="2"/>
                         <text x={CX} y={ROW1 + 32} textAnchor="middle" fontSize="24" fill="white" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="2">ROLL PITCH</text>
                         <text x={CX} y={ROW1 + 58} textAnchor="middle" fontSize="14" fill="rgba(255,255,255,0.9)" fontFamily="monospace">{pitchMath}</text>
                     </g>
@@ -332,7 +333,7 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
             {/* Swing phase */}
             {!state.isOver && isMyTurn && state.phase === 'swing' && (
                 <g className="roll-button" onClick={() => onAction({ type: 'ROLL_SWING' })} cursor="pointer">
-                    <rect x={CX - 140} y={ROW1} width="280" height={ROW1_H} rx="8" fill="#4ade80" stroke="#6bff9a" strokeWidth="2"/>
+                    <rect x={CX - 120} y={ROW1} width="240" height={ROW1_H} rx="8" fill="#4ade80" stroke="#6bff9a" strokeWidth="2"/>
                     <text x={CX} y={ROW1 + 32} textAnchor="middle" fontSize="24" fill="#002" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="2">ROLL SWING</text>
                     <text x={CX} y={ROW1 + 58} textAnchor="middle" fontSize="14" fill="rgba(0,0,0,0.8)" fontFamily="monospace">{swingMath}</text>
                 </g>
@@ -381,15 +382,15 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                     </text>
                     {(() => {
                         const runners = state.extraBaseEligible!;
-                        const btnW = 280;
-                        const sendAllW = 200;
-                        const holdW = 200;
-                        const gap = 12;
+                        const btnW = 230;
+                        const sendAllW = 170;
+                        const holdW = 170;
+                        const gap = 10;
                         const hasSendAll = runners.length > 1;
                         const truncate = (name: string, max: number) => name.length > max ? name.slice(0, max - 1) + '\u2026' : name;
                         // Try single row first; if too wide, wrap: runners on row 1, sendAll/hold on row 2
                         const singleRowW = runners.length * (btnW + gap) + (hasSendAll ? sendAllW + gap : 0) + holdW;
-                        const MAX_W = 960;
+                        const MAX_W = MAX_ACTION_W;
                         const wrap = singleRowW > MAX_W;
                         const rowGap = 6;
                         const totalH = wrap ? 2 * ROW1_H + rowGap : ROW1_H;
@@ -458,7 +459,7 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                     buttons.push({ label: 'LET ADVANCE', sub: 'Runners advance', choice: 'advance', color: '#334155', needsRoll: false });
                 }
                 const gPlayers = state.gbOptions.gPlayers || [];
-                const bw = 220, gap = 12;
+                const bw = 175, gap = 10;
                 const totalW = buttons.length * bw + (buttons.length - 1) * gap;
                 const startX = CX - totalW / 2;
                 return (
@@ -492,14 +493,14 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                         {state.pendingSteal.runnerName} stealing {state.pendingSteal.toBase} — Use SB icon for automatic safe?
                     </text>
                     <g className="roll-button" onClick={() => onAction({ type: 'STEAL_SB_DECISION', useSB: true })} cursor="pointer">
-                        <rect x={CX - 246} y={ROW1} width="240" height={ROW1_H} rx="6" fill="#4ade80" stroke="#6bff9a" strokeWidth="1.5"/>
-                        <text x={CX - 126} y={ROW1 + 32} textAnchor="middle" fontSize="20" fill="#002" fontWeight="900" fontFamily="Impact">USE SB (AUTO SAFE)</text>
-                        <text x={CX - 126} y={ROW1 + 58} textAnchor="middle" fontSize="14" fill="rgba(0,0,0,0.75)" fontFamily="Arial">Runner safe automatically</text>
+                        <rect x={CX - 206} y={ROW1} width="200" height={ROW1_H} rx="6" fill="#4ade80" stroke="#6bff9a" strokeWidth="1.5"/>
+                        <text x={CX - 106} y={ROW1 + 32} textAnchor="middle" fontSize="20" fill="#002" fontWeight="900" fontFamily="Impact">USE SB (AUTO SAFE)</text>
+                        <text x={CX - 106} y={ROW1 + 58} textAnchor="middle" fontSize="14" fill="rgba(0,0,0,0.75)" fontFamily="Arial">Runner safe automatically</text>
                     </g>
                     <g className="roll-button" onClick={() => onAction({ type: 'STEAL_SB_DECISION', useSB: false })} cursor="pointer">
-                        <rect x={CX + 6} y={ROW1} width="240" height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
-                        <text x={CX + 126} y={ROW1 + 32} textAnchor="middle" fontSize="20" fill="#ccc" fontWeight="900" fontFamily="Impact">NORMAL STEAL</text>
-                        <text x={CX + 126} y={ROW1 + 58} textAnchor="middle" fontSize="14" fill="rgba(204,204,204,0.85)" fontFamily="monospace">Spd {state.pendingSteal.runnerSpeed} vs d20+Arm({state.pendingSteal.catcherArm}){state.pendingSteal.stealThirdBonus ? `+${state.pendingSteal.stealThirdBonus}` : ''}</text>
+                        <rect x={CX + 6} y={ROW1} width="200" height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
+                        <text x={CX + 106} y={ROW1 + 32} textAnchor="middle" fontSize="20" fill="#ccc" fontWeight="900" fontFamily="Impact">NORMAL STEAL</text>
+                        <text x={CX + 106} y={ROW1 + 58} textAnchor="middle" fontSize="14" fill="rgba(204,204,204,0.85)" fontFamily="monospace">Spd {state.pendingSteal.runnerSpeed} vs d20+Arm({state.pendingSteal.catcherArm}){state.pendingSteal.stealThirdBonus ? `+${state.pendingSteal.stealThirdBonus}` : ''}</text>
                     </g>
                 </g>
             )}
@@ -512,9 +513,9 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 const baseDef = `d20+Arm(${arm})${bonus ? `+${bonus}(3rd)` : ''} vs Spd ${ps.runnerSpeed}`;
                 const gDef = `d20+Arm(${arm}+10)${bonus ? `+${bonus}(3rd)` : ''} vs Spd ${ps.runnerSpeed}`;
                 const catchers = ps.catcherGPlayers || [];
-                const btnW = 290;
-                const noGW = 220;
-                const gap = 12;
+                const btnW = 240;
+                const noGW = 200;
+                const gap = 10;
                 const totalW = catchers.length * (btnW + gap) + noGW;
                 let bx = CX - totalW / 2;
                 return (
@@ -555,11 +556,11 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                     .map((p: any) => ({ cardId: p.cardId, name: p.name, position: (p.assignedPosition || '').replace(/-\d+$/, '') }));
                 const runners = state.extraBaseEligible!;
                 const truncate = (name: string, max: number) => name.length > max ? name.slice(0, max - 1) + '\u2026' : name;
-                const btnW = 290;
-                const noThrowW = 200;
-                const gap = 12;
+                const btnW = 240;
+                const noThrowW = 170;
+                const gap = 10;
                 const singleRowW = runners.length * (btnW + gap) + noThrowW;
-                const MAX_W = 960;
+                const MAX_W = MAX_ACTION_W;
                 const wrap = singleRowW > MAX_W;
                 const rowGap = 6;
                 const totalH = wrap ? 2 * ROW1_H + rowGap : ROW1_H;
@@ -609,13 +610,31 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 );
             })()}
 
-            {/* Waiting for opponent — exclude sp_roll which has its own message */}
-            {!state.isOver && !isMyTurn && state.phase !== 'sp_roll' && (
-                <g>
-                    <rect x={CX - 160} y={ROW1} width="320" height={ROW1_H} rx="6" fill="rgba(0,0,0,0.6)"/>
-                    <text x={CX} y={ROW1 + 46} textAnchor="middle" fontSize="16" fill="#888" fontStyle="italic" fontFamily="Arial">Waiting for opponent...</text>
-                </g>
-            )}
+            {/* Waiting for opponent — phase-specific context */}
+            {!state.isOver && !isMyTurn && state.phase !== 'sp_roll' && (() => {
+                const waitMsg: Record<string, string> = {
+                    pre_atbat: 'Batter choosing action...',
+                    defense_sub: 'Pitcher choosing action...',
+                    ibb_decision: 'Pitcher choosing action...',
+                    pitch: 'Pitcher rolling...',
+                    swing: 'Batter swinging...',
+                    bunt_decision: 'Batter deciding bunt...',
+                    gb_decision: 'Defense making fielding play...',
+                    extra_base_offer: 'Offense deciding extra bases...',
+                    extra_base: 'Defense choosing throw...',
+                    steal_sb: 'Runner deciding steal...',
+                    steal_resolve: 'Defense deciding throw...',
+                    result_icons: 'Deciding on icon use...',
+                    offense_re: 'Batter choosing action...',
+                };
+                const msg = waitMsg[state.phase] || 'Waiting for opponent...';
+                return (
+                    <g>
+                        <rect x={CX - 160} y={ROW1} width="320" height={ROW1_H} rx="6" fill="rgba(0,0,0,0.6)"/>
+                        <text x={CX} y={ROW1 + 46} textAnchor="middle" fontSize="16" fill="#999" fontStyle="italic" fontFamily="Arial">{msg}</text>
+                    </g>
+                );
+            })()}
 
             {/* Game over */}
             {state.isOver && (() => {
