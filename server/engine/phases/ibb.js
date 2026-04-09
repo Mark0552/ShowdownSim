@@ -59,6 +59,7 @@ export function handleIntentionalWalk(state) {
         ...state,
         bases, score: newScore,
         lastOutcome: 'IBB',
+        lastRoll: null, lastRollType: null, lastPitchRoll: 0, lastSwingRoll: 0,
         halfInningClean: false,
         [battingSide]: battingTeam,
         [fieldingSide]: fieldingTeamUpdated,

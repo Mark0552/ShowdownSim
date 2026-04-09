@@ -5,7 +5,7 @@
  *   Main area:  y=52..748  [Away 0..360 | Diamond 360..1040 | Home 1040..1400]
  *   Bottom bar: y=750..948 [Actions 0..820 (59%) | Dice 820..1180 (26%) | Result 1180..1400 (16%)]
  */
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import type { GameState, GameAction, PlayerSlot } from '../../engine/gameEngine';
 import { getCurrentBatter, getCurrentPitcher } from '../../engine/gameEngine';
 import CardSlot from './CardSlot';
@@ -64,25 +64,16 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const [diceAnimating, setDiceAnimating] = useState(false);
     const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const prevRollKeyRef = useRef('');
-    const handleDiceComplete = useCallback(() => { setDiceAnimating(false); }, []);
-
-    // Delayed field state: only update after dice animation completes
-    // This prevents cards, score, and outs from jumping ahead while the die is still rolling
-    const [displayBases, setDisplayBases] = useState(state.bases);
-    const [displayOuts, setDisplayOuts] = useState(state.outs);
-    const [displayScore, setDisplayScore] = useState(state.score);
-    const displayBattingTeamRef = useRef(state.halfInning === 'top' ? state.awayTeam : state.homeTeam);
-    const displayBatterIdxRef = useRef((state.halfInning === 'top' ? state.awayTeam : state.homeTeam).currentBatterIndex);
-    useEffect(() => {
-        if (!diceAnimating) {
-            setDisplayBases(state.bases);
-            setDisplayOuts(state.outs);
-            setDisplayScore(state.score);
-            const bt = state.halfInning === 'top' ? state.awayTeam : state.homeTeam;
-            displayBattingTeamRef.current = bt;
-            displayBatterIdxRef.current = bt.currentBatterIndex;
-        }
-    }, [diceAnimating, state.bases, state.outs, state.score, state.halfInning, state.awayTeam, state.homeTeam]);
+    // Ref-based animation tracking — avoids useEffect timing race with setState
+    const animatingRef = useRef(false);
+    const frozenRef = useRef({
+        bases: state.bases, outs: state.outs, score: state.score,
+        battingTeam: state.halfInning === 'top' ? state.awayTeam : state.homeTeam,
+    });
+    const handleDiceComplete = useCallback(() => {
+        animatingRef.current = false;
+        setDiceAnimating(false);
+    }, []);
 
     if (!state.awayTeam?.lineup || !state.homeTeam?.lineup) {
         return <div className="game-board-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8aade0' }}>Loading game state...</div>;
@@ -93,17 +84,6 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const battingTeam = state.halfInning === 'top' ? state.awayTeam : state.homeTeam;
     const fieldingTeam = state.halfInning === 'top' ? state.homeTeam : state.awayTeam;
     const iAmBatting = (state.halfInning === 'top' && myRole === 'away') || (state.halfInning === 'bottom' && myRole === 'home');
-
-    // Use delayed bases for runner card positions (waits for dice animation to finish)
-    const displayTeam = displayBattingTeamRef.current;
-    const getRunner = (base: 'first' | 'second' | 'third'): PlayerSlot | null => {
-        const id = displayBases[base];
-        if (!id) return null;
-        return displayTeam.lineup.find(p => p.cardId === id) || null;
-    };
-    const runner1 = getRunner('first');
-    const runner2 = getRunner('second');
-    const runner3 = getRunner('third');
 
     const outcomeNames: Record<string, string> = {
         SO: 'STRIKEOUT', GB: 'GROUND OUT', FB: 'FLY OUT', PU: 'POPUP',
@@ -127,12 +107,36 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const fatiguePenalty = Math.max(0, inningsPitching - effectiveIp);
     const hasRunners = !!(state.bases.first || state.bases.second || state.bases.third);
 
-    // Use rollSequence (server-incremented only on actual d20 rolls) when available.
-    // Falls back to multi-field key if server hasn't been redeployed with rollSequence.
+    // Roll detection + freeze logic (ref-based to avoid useEffect timing race)
     const rollKey = state.rollSequence !== undefined
         ? `seq-${state.rollSequence}`
         : `${state.lastRollType}-${state.lastRoll}-${state.inning}-${state.halfInning}-${state.outs}-${battingTeam.currentBatterIndex}`;
-    if (state.lastRoll && rollKey !== prevRollKeyRef.current) { prevRollKeyRef.current = rollKey; if (!diceAnimating) setDiceAnimating(true); }
+    if (state.lastRoll && rollKey !== prevRollKeyRef.current) {
+        prevRollKeyRef.current = rollKey;
+        if (!animatingRef.current) {
+            animatingRef.current = true;
+            setDiceAnimating(true);
+            // frozenRef keeps its current (old) values — this is the freeze point
+        }
+    }
+    // Only update frozen display values when NOT animating
+    if (!animatingRef.current) {
+        frozenRef.current = { bases: state.bases, outs: state.outs, score: state.score, battingTeam };
+    }
+
+    // Frozen display values for field visuals during dice animation
+    const displayBases = frozenRef.current.bases;
+    const displayOuts = frozenRef.current.outs;
+    const displayScore = frozenRef.current.score;
+    const displayTeam = frozenRef.current.battingTeam;
+    const getRunner = (base: 'first' | 'second' | 'third'): PlayerSlot | null => {
+        const id = displayBases[base];
+        if (!id) return null;
+        return displayTeam.lineup.find(p => p.cardId === id) || null;
+    };
+    const runner1 = getRunner('first');
+    const runner2 = getRunner('second');
+    const runner3 = getRunner('third');
 
     const renderIcons = (player: PlayerSlot, team: typeof state.homeTeam, xPos: number, yPos: number) => {
         if (!player.icons || player.icons.length === 0) return null;
@@ -461,9 +465,9 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 <text x={PW / 2} y={MAIN_TOP + 54} textAnchor="middle" fontSize="16" fill="#d4a018" fontWeight="normal" letterSpacing="3" fontFamily="Impact">LINEUP</text>
                 {renderLineup(state.awayTeam, 0, false)}
                 {renderPitcher(state.awayTeam, 0)}
-                <g cursor="pointer" onClick={() => setShowAwayBullpen(!showAwayBullpen)}>
-                    <rect x="6" y={MAIN_BOT - 30} width={PW - 12} height="24" rx="3" fill="#0a1830" stroke="#d4a01840" strokeWidth="1"/>
-                    <text x={PW / 2} y={MAIN_BOT - 14} textAnchor="middle" fontSize="10" fill="#d4a018" fontWeight="normal" fontFamily="Arial">{showAwayBullpen ? '\u25B2 BULLPEN / BENCH' : '\u25BC BULLPEN / BENCH'}</text>
+                <g cursor="pointer" className="roll-button" onClick={() => setShowAwayBullpen(!showAwayBullpen)}>
+                    <rect x="6" y={MAIN_BOT - 40} width={PW - 12} height="34" rx="4" fill="#0a1830" stroke="#d4a018" strokeWidth="1"/>
+                    <text x={PW / 2} y={MAIN_BOT - 19} textAnchor="middle" fontSize="13" fill="#d4a018" fontWeight="normal" fontFamily="Impact" letterSpacing="1">{showAwayBullpen ? '\u25B2 BULLPEN / BENCH' : '\u25BC BULLPEN / BENCH'}</text>
                 </g>
 
                 {/* ====== RIGHT PANEL — HOME (x=1040..1400, y=52..748) ====== */}
@@ -473,9 +477,9 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 <text x={HX + PW / 2} y={MAIN_TOP + 54} textAnchor="middle" fontSize="16" fill="#d4a018" fontWeight="normal" letterSpacing="3" fontFamily="Impact">LINEUP</text>
                 {renderLineup(state.homeTeam, HX, true)}
                 {renderPitcher(state.homeTeam, HX)}
-                <g cursor="pointer" onClick={() => setShowHomeBullpen(!showHomeBullpen)}>
-                    <rect x={HX + 6} y={MAIN_BOT - 30} width={PW - 12} height="24" rx="3" fill="#0a1830" stroke="#d4a01840" strokeWidth="1"/>
-                    <text x={HX + PW / 2} y={MAIN_BOT - 14} textAnchor="middle" fontSize="10" fill="#d4a018" fontWeight="normal" fontFamily="Arial">{showHomeBullpen ? '\u25B2 BULLPEN / BENCH' : '\u25BC BULLPEN / BENCH'}</text>
+                <g cursor="pointer" className="roll-button" onClick={() => setShowHomeBullpen(!showHomeBullpen)}>
+                    <rect x={HX + 6} y={MAIN_BOT - 40} width={PW - 12} height="34" rx="4" fill="#0a1830" stroke="#d4a018" strokeWidth="1"/>
+                    <text x={HX + PW / 2} y={MAIN_BOT - 19} textAnchor="middle" fontSize="13" fill="#d4a018" fontWeight="normal" fontFamily="Impact" letterSpacing="1">{showHomeBullpen ? '\u25B2 BULLPEN / BENCH' : '\u25BC BULLPEN / BENCH'}</text>
                 </g>
 
                 {/* ====== DIAMOND FIELD (x=360..1040, y=52..748) ====== */}
@@ -572,12 +576,12 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     const resultColor = (goodForBatter === iAmBatting) ? 'rgba(34,180,80,0.85)' : 'rgba(200,30,30,0.85)';
                     const RX = 1186, RW = 208, RCX = 1290, RH = 948 - BOT_Y - 12;
                     const hasSub = !!(state.pendingDpResult || state.pendingExtraBaseResult || state.pendingStealResult);
-                    const mainY = hasSub ? BOT_Y + 50 : BOT_Y + (RH / 2) + 6; // center vertically if no sub-result
+                    const mainY = hasSub ? BOT_Y + 50 : BOT_Y + 6 + RH / 2;
 
                     return (
                         <g>
                             <rect x={RX} y={BOT_Y + 6} width={RW} height={RH} rx="8" fill={resultColor} />
-                            <text x={RCX} y={mainY} textAnchor="middle" fontSize="26" fill="white" fontWeight="normal" fontFamily="Impact,sans-serif" letterSpacing="1">
+                            <text x={RCX} y={mainY} textAnchor="middle" dominantBaseline="central" fontSize="26" fill="white" fontWeight="normal" fontFamily="Impact,sans-serif" letterSpacing="1">
                                 {outcomeNames[state.lastOutcome] || state.lastOutcome}
                             </text>
                             {state.pendingDpResult && (() => {
