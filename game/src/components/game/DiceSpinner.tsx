@@ -101,8 +101,11 @@ export default function DiceSpinner({
     const hasSwingData = (swingRoll ?? 0) > 0;
     const showDual = isSwing && settled && !spinning && hasPitchData && hasSwingData;
 
+    // User-perspective colors: green = my action, red = opponent's action
+    const pitchColor = iAmBatting ? '#e94560' : '#4ade80';  // pitcher's action: red if I'm batting, green if I'm pitching
+    const swingColor = iAmBatting ? '#4ade80' : '#e94560';  // batter's action: green if I'm batting, red if I'm pitching
     const rollColor = (type: string) =>
-        type === 'pitch' ? '#e94560' : type === 'swing' ? '#4ade80' : type === 'fielding' ? '#60a5fa' : '#d4a018';
+        type === 'pitch' ? pitchColor : type === 'swing' ? swingColor : type === 'fielding' ? '#60a5fa' : '#d4a018';
 
     const color = rollColor(rollType);
 
@@ -131,9 +134,9 @@ export default function DiceSpinner({
         return (
             <g>
                 {/* Pitch column (left) */}
-                <text x={pitchCX} y={botY + 18} textAnchor="middle" fontSize="12" fill="#e94560"
+                <text x={pitchCX} y={botY + 18} textAnchor="middle" fontSize="12" fill={pitchColor}
                     fontWeight="bold" fontFamily="Impact" letterSpacing="1">PITCH</text>
-                <D20Diamond x={pitchCX} y={dieY} r={dieR} value={pitchRoll!} color="#e94560" spinning={false} />
+                <D20Diamond x={pitchCX} y={dieY} r={dieR} value={pitchRoll!} color={pitchColor} spinning={false} />
                 {/* Equation below die */}
                 <text x={pitchCX} y={dieY + dieR + 16} textAnchor="middle" fontSize="11" fill="#ccc" fontWeight="bold" fontFamily="monospace">
                     {equation}
@@ -146,13 +149,13 @@ export default function DiceSpinner({
                 <line x1={cx} y1={botY + 12} x2={cx} y2={advY - 6} stroke="#d4a01830" strokeWidth="1" />
 
                 {/* Swing column (right) */}
-                <text x={swingCX} y={botY + 18} textAnchor="middle" fontSize="12" fill="#4ade80"
+                <text x={swingCX} y={botY + 18} textAnchor="middle" fontSize="12" fill={swingColor}
                     fontWeight="bold" fontFamily="Impact" letterSpacing="1">SWING</text>
-                <D20Diamond x={swingCX} y={dieY} r={dieR} value={swingRoll!} color="#4ade80" spinning={false} />
+                <D20Diamond x={swingCX} y={dieY} r={dieR} value={swingRoll!} color={swingColor} spinning={false} />
 
                 {/* Advantage bar (full width, solid, bottom) */}
                 <rect x={cx - 178} y={advY} width="356" height={advH} rx="4" fill={advantageColor} />
-                <text x={cx} y={advY + advH / 2 + 6} textAnchor="middle" fontSize="16" fill="white"
+                <text x={cx} y={advY + advH / 2 + 7} textAnchor="middle" fontSize="20" fill="white"
                     fontWeight="900" fontFamily="Impact" letterSpacing="2">{advantageText}</text>
             </g>
         );

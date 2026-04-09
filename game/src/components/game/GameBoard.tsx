@@ -523,7 +523,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     return (
                         <g>
                             <rect x={RX} y={BOT_Y + 6} width={RW} height={RH} rx="8" fill={resultColor} />
-                            <text x={RCX} y={mainY} textAnchor="middle" fontSize="22" fill="white" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="1">
+                            <text x={RCX} y={mainY} textAnchor="middle" fontSize="26" fill="white" fontWeight="900" fontFamily="Impact,sans-serif" letterSpacing="1">
                                 {outcomeNames[state.lastOutcome] || state.lastOutcome}
                             </text>
                             {state.pendingDpResult && (() => {
