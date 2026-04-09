@@ -5,7 +5,7 @@
  *   Main area:  y=52..748  [Away 0..360 | Diamond 360..1040 | Home 1040..1400]
  *   Bottom bar: y=750..948 [Actions 0..980 (70%) | Dice 980..1190 (15%) | Result 1190..1400 (15%)]
  */
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import type { GameState, GameAction, PlayerSlot } from '../../engine/gameEngine';
 import { getCurrentBatter, getCurrentPitcher } from '../../engine/gameEngine';
 import CardSlot from './CardSlot';
@@ -66,6 +66,16 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const prevRollKeyRef = useRef('');
     const handleDiceComplete = useCallback(() => { setDiceAnimating(false); }, []);
 
+    // Delayed bases: only update runner card positions after dice animation completes
+    const [displayBases, setDisplayBases] = useState(state.bases);
+    const displayBattingTeamRef = useRef(state.halfInning === 'top' ? state.awayTeam : state.homeTeam);
+    useEffect(() => {
+        if (!diceAnimating) {
+            setDisplayBases(state.bases);
+            displayBattingTeamRef.current = state.halfInning === 'top' ? state.awayTeam : state.homeTeam;
+        }
+    }, [diceAnimating, state.bases, state.halfInning, state.awayTeam, state.homeTeam]);
+
     if (!state.awayTeam?.lineup || !state.homeTeam?.lineup) {
         return <div className="game-board-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8aade0' }}>Loading game state...</div>;
     }
@@ -76,10 +86,12 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const fieldingTeam = state.halfInning === 'top' ? state.homeTeam : state.awayTeam;
     const iAmBatting = (state.halfInning === 'top' && myRole === 'away') || (state.halfInning === 'bottom' && myRole === 'home');
 
+    // Use delayed bases for runner card positions (waits for dice animation to finish)
+    const displayTeam = displayBattingTeamRef.current;
     const getRunner = (base: 'first' | 'second' | 'third'): PlayerSlot | null => {
-        const id = state.bases[base];
+        const id = displayBases[base];
         if (!id) return null;
-        return battingTeam.lineup.find(p => p.cardId === id) || null;
+        return displayTeam.lineup.find(p => p.cardId === id) || null;
     };
     const runner1 = getRunner('first');
     const runner2 = getRunner('second');

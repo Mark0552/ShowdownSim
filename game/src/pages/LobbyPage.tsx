@@ -350,7 +350,9 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
                                     <div key={game.id} className="game-row">
                                         <div className="game-info">
                                             <span className="game-opponent">vs {opp || '???'}</span>
-                                            <span className={`game-status status-${game.status}`}>{game.status.replace('_', ' ')}</span>
+                                            <span className={`game-status status-${game.status}`}>{game.status === 'in_progress' && game.state?.inning
+                            ? `${game.state.halfInning === 'top' ? '\u25B2' : '\u25BC'}${game.state.inning} | ${game.state.score?.away ?? 0}-${game.state.score?.home ?? 0}`
+                            : game.status.replace('_', ' ')}</span>
                                         </div>
                                         <div className="game-actions">
                                             <button className="game-resume" onClick={() => handleResumeGame(game)}>
