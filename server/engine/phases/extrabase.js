@@ -5,7 +5,7 @@
 import { rollD20, getRollSequence } from '../dice.js';
 import { playerHasIcon, canUseIcon, recordIconUse } from '../icons.js';
 import { OUTFIELD_POSITIONS } from '../fielding.js';
-import { addBatterStat, updateWLTracker } from '../stats.js';
+import { addBatterStat, addPitcherStat, updateWLTracker } from '../stats.js';
 import { advanceBatter, endHalfInning } from './baserunning.js';
 
 export function checkExtraBaseEligible(state, outcome) {
@@ -218,8 +218,14 @@ export function handleExtraBaseThrow(state, action) {
             logs.push(`${runner.runnerName} advances to ${runner.toBase} (no throw)`);
         }
     }
-    // Re-apply updated bases/score/battingTeam
-    newState = { ...newState, bases, score: newScore, [battingSide]: battingTeam, gameLog: [...newState.gameLog, ...logs] };
+    // Credit pitcher with all runs scored during extra base play
+    const totalRunsThisPlay = newScore[side] - (state.score[side] || 0);
+    if (totalRunsThisPlay > 0) {
+        fieldingTeam = addPitcherStat(fieldingTeam, fieldingTeam.pitcher.cardId, 'r', totalRunsThisPlay);
+    }
+
+    // Re-apply updated bases/score/teams
+    newState = { ...newState, bases, score: newScore, [fieldingSide]: fieldingTeam, [battingSide]: battingTeam, gameLog: [...newState.gameLog, ...logs] };
 
     if (newScore.home !== state.score.home || newScore.away !== state.score.away) {
         newState = updateWLTracker(newState, state.score.home, state.score.away);
@@ -276,7 +282,13 @@ export function handleSkipExtraBase(state) {
         }
     }
 
-    let newState = { ...state, bases, score: newScore, extraBaseEligible: null, [battingSide]: battingTeam, gameLog: [...state.gameLog, ...logs] };
+    // Credit pitcher with runs scored
+    const fieldingSide = state.halfInning === 'top' ? 'homeTeam' : 'awayTeam';
+    let fieldingTeamSkip = { ...state[fieldingSide] };
+    if (extraRuns > 0) {
+        fieldingTeamSkip = addPitcherStat(fieldingTeamSkip, fieldingTeamSkip.pitcher.cardId, 'r', extraRuns);
+    }
+    let newState = { ...state, bases, score: newScore, extraBaseEligible: null, [battingSide]: battingTeam, [fieldingSide]: fieldingTeamSkip, gameLog: [...state.gameLog, ...logs] };
     if (extraRuns > 0) newState = updateWLTracker(newState, state.score.home, state.score.away);
     if (state.inning >= 9 && state.halfInning === 'bottom' && newScore.home > newScore.away) {
         return { ...newState, phase: 'game_over', isOver: true, winnerId: state.homeTeam.userId, gameLog: [...newState.gameLog, 'Walk-off! Home team wins!'] };

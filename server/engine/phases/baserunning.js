@@ -29,10 +29,9 @@ export function applyResult(state, outcome, batterId) {
             break;
 
         case 'GB': {
-            // GB = batter out. With 2 outs already, this is the 3rd out — no decisions needed.
-            outs++;
-            if (outs >= 3) {
-                // 3rd out — runners don't advance, inning ends
+            // Check if this is the 3rd out (simple out, no decisions)
+            if (outs + 1 >= 3) {
+                outs++;
                 break;
             }
 
@@ -40,30 +39,27 @@ export function applyResult(state, outcome, batterId) {
             const gbOptions = buildGbOptions(state, bases);
 
             if (!gbOptions.canDP && !gbOptions.canHoldRunners && !gbOptions.canHoldThird && !gbOptions.canForceHome) {
-                // No runners or no special options — simple GB out
+                // No runners or no special options — simple GB out at 1st
+                outs++;
                 if (bases.third) { runs++; runnersScored.push(bases.third); logs.push('Runner scores from 3rd on groundout'); }
                 if (bases.second) { bases.third = bases.second; bases.second = null; }
                 break;
             }
 
-            // Enter gb_decision phase — defense gets to choose
+            // Enter gb_decision phase — outs NOT incremented yet (decision determines who is out)
             const battingTeam = { ...state[battingSide] };
             const rpi = [...battingTeam.runsPerInning];
             while (rpi.length < state.inning) rpi.push(0);
             battingTeam.runsPerInning = rpi;
 
-            const fieldingTeamGb = { ...state[fieldingSide] };
-            fieldingTeamGb.outsRecordedByCurrentPitcher = (fieldingTeamGb.outsRecordedByCurrentPitcher || 0) + 1;
-
             return {
                 ...state,
-                outs,
+                outs, // unchanged — no premature out
                 lastOutcome: outcome,
                 phase: 'gb_decision',
                 gbOptions,
                 gameLog: [...state.gameLog, `Ground Ball — defense decides...`],
                 [battingSide]: battingTeam,
-                [fieldingSide]: fieldingTeamGb,
             };
         }
 

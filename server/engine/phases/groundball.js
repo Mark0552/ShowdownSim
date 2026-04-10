@@ -5,7 +5,7 @@
 import { rollD20, getRollSequence } from '../dice.js';
 import { findAllGPlayers, recordIconUse, canUseIcon, playerHasIcon } from '../icons.js';
 import { INFIELD_POSITIONS } from '../fielding.js';
-import { addBatterStat, updateWLTracker } from '../stats.js';
+import { addBatterStat, addPitcherStat, updateWLTracker } from '../stats.js';
 import { advanceBatter, endHalfInning } from './baserunning.js';
 
 export function buildGbOptions(state, bases) {
@@ -35,9 +35,9 @@ export function handleGbDecision(state, action) {
     let fieldingTeam = { ...state[fieldingSide] };
     const batter = state[battingSide].lineup[state[battingSide].currentBatterIndex];
     const bases = { ...state.bases };
-    // state.outs includes +1 from applyResult (batter "out" by default on GB)
-    // Subtract it back — each choice manages its own outs
-    let outs = state.outs - 1;
+    // state.outs is unchanged from before the at-bat (no premature +1)
+    // Each choice adds its own outs
+    let outs = state.outs;
     let runs = 0;
     const logs = [];
     const side = state.halfInning === 'top' ? 'away' : 'home';
@@ -165,9 +165,14 @@ export function handleGbDecision(state, action) {
         battingTeam = addBatterStat(battingTeam, batter.cardId, 'gidp');
     }
 
+    // Credit pitcher with runs allowed during GB decision
+    if (runs > 0) {
+        const pitcherId = fieldingTeam.pitcher.cardId;
+        fieldingTeam = addPitcherStat(fieldingTeam, pitcherId, 'r', runs);
+    }
+
     // Track outs recorded by current pitcher for IP credit
-    // Use outsBeforeSwing (outs before the at-bat) since state.outs includes the premature +1 from applyResult
-    const outsThisPlay = outs - (state.outsBeforeSwing || 0);
+    const outsThisPlay = outs - state.outs;
     if (outsThisPlay > 0) {
         fieldingTeam.outsRecordedByCurrentPitcher = (fieldingTeam.outsRecordedByCurrentPitcher || 0) + outsThisPlay;
     }
