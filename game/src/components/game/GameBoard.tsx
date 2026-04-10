@@ -8,6 +8,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import type { GameState, GameAction, PlayerSlot } from '../../engine/gameEngine';
 import { getCurrentBatter, getCurrentPitcher } from '../../engine/gameEngine';
+import { playSound, preloadSounds } from '../../lib/sounds';
 import CardSlot from './CardSlot';
 import BullpenPanel from './BullpenPanel';
 import BoxScore from './BoxScore';
@@ -256,6 +257,49 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         if (runnerAnimTimerRef.current) clearTimeout(runnerAnimTimerRef.current);
         runnerAnimTimerRef.current = setTimeout(() => setRunnerAnims([]), totalMs + 100);
     }, [diceAnimating, pendingMovements]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Sound effects — play when outcome or fielding result changes
+    const prevOutcomeRef = useRef(state.lastOutcome);
+    const prevDpRef = useRef(state.pendingDpResult);
+    const prevEbRef = useRef(state.pendingExtraBaseResult);
+    const prevStealRef = useRef(state.pendingStealResult);
+    const playBallPlayedRef = useRef(false);
+    useEffect(() => {
+        preloadSounds();
+        // Play ball on first at-bat
+        if (!playBallPlayedRef.current && state.phase === 'pre_atbat' && state.inning === 1 && state.halfInning === 'top') {
+            playBallPlayedRef.current = true;
+            playSound('play-ball');
+        }
+        // At-bat outcome sounds
+        if (state.lastOutcome && state.lastOutcome !== prevOutcomeRef.current) {
+            const o = state.lastOutcome;
+            if (['S', 'SPlus', 'DB', 'TR', 'HR'].includes(o)) playSound('bat-crack');
+            else if (o === 'SO') playSound('strike-three');
+            else if (o === 'GB' || o === 'FB' || o === 'PU') playSound('glove-pop');
+            else if (o === 'W') playSound('ball-four');
+            // IBB intentionally no sound
+        }
+        prevOutcomeRef.current = state.lastOutcome;
+        // DP / fielding result sounds
+        if (state.pendingDpResult && state.pendingDpResult !== prevDpRef.current) {
+            if (state.pendingDpResult.isDP) playSound('out');
+            else if (state.pendingDpResult.choice === 'dp' && !state.pendingDpResult.isDP) playSound('safe');
+            else if (state.pendingDpResult.choice === 'hold' && state.pendingDpResult.defenseTotal > state.pendingDpResult.offenseSpeed) playSound('out');
+            else if (state.pendingDpResult.choice === 'hold') playSound('safe');
+        }
+        prevDpRef.current = state.pendingDpResult;
+        // Extra base result sounds
+        if (state.pendingExtraBaseResult && state.pendingExtraBaseResult !== prevEbRef.current) {
+            playSound(state.pendingExtraBaseResult.safe ? 'safe' : 'out');
+        }
+        prevEbRef.current = state.pendingExtraBaseResult;
+        // Steal result sounds
+        if (state.pendingStealResult && state.pendingStealResult !== prevStealRef.current) {
+            playSound(state.pendingStealResult.safe ? 'safe' : 'out');
+        }
+        prevStealRef.current = state.pendingStealResult;
+    });
 
     // Frozen display values for field visuals during dice animation
     const displayBases = frozenRef.current.bases;

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { playSound } from '../../lib/sounds';
 
 interface DiceSpinnerProps {
     cx: number;
@@ -76,6 +77,7 @@ export default function DiceSpinner({
         prevKeyRef.current = triggerKey;
         cleanup();
         setSpinning(true);
+        playSound('dice-roll');
         setSettled(false);
         intervalRef.current = setInterval(() => {
             setDisplayValue(Math.floor(Math.random() * 20) + 1);
