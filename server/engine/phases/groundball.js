@@ -35,7 +35,9 @@ export function handleGbDecision(state, action) {
     let fieldingTeam = { ...state[fieldingSide] };
     const batter = state[battingSide].lineup[state[battingSide].currentBatterIndex];
     const bases = { ...state.bases };
-    let outs = state.outs; // already incremented by 1 for batter out
+    // state.outs includes +1 from applyResult (batter "out" by default on GB)
+    // Subtract it back — each choice manages its own outs
+    let outs = state.outs - 1;
     let runs = 0;
     const logs = [];
     const side = state.halfInning === 'top' ? 'away' : 'home';
@@ -88,11 +90,12 @@ export function handleGbDecision(state, action) {
         }
 
         case 'force_home': {
-            // Bases loaded: force out at home (runner on 3rd out, no run scores)
+            // Bases loaded: throw home to get lead runner, batter reaches 1st (FC)
+            // The batter out from applyResult was premature — undo it, replace with runner out at home
+            // Net effect: same number of outs (1), but it's the runner not the batter
             bases.third = null;
-            outs++; // runner at home is out
-            logs.push('Force out at home! Run prevented.');
-            // Shift runners: 2nd→3rd, 1st→2nd, batter→1st
+            outs++; // runner at home is out (batter reaches 1st on FC)
+            logs.push('Force out at home! Run prevented. Batter reaches 1st (FC).');
             bases.third = bases.second;
             bases.second = bases.first;
             bases.first = batter.cardId;
@@ -163,7 +166,8 @@ export function handleGbDecision(state, action) {
     }
 
     // Track outs recorded by current pitcher for IP credit
-    const outsThisPlay = outs - state.outs;
+    // Use outsBeforeSwing (outs before the at-bat) since state.outs includes the premature +1 from applyResult
+    const outsThisPlay = outs - (state.outsBeforeSwing || 0);
     if (outsThisPlay > 0) {
         fieldingTeam.outsRecordedByCurrentPitcher = (fieldingTeam.outsRecordedByCurrentPitcher || 0) + outsThisPlay;
     }

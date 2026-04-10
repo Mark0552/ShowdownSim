@@ -107,8 +107,8 @@ export function computeRunnerMovements(oldState, newState) {
         const prevBatter = getPrevBatter();
         if (prevBatter && !movedIds.has(prevBatter.cardId) && !BASE_KEYS.some(b => newBases[b] === prevBatter.cardId)) {
             const outcome = newState.lastOutcome || oldState.lastOutcome;
-            // SO/PU/FB: fade at home (didn't run). GB/SAC/DP: run toward 1st and fade.
-            const isAtHomeOut = ['SO', 'PU', 'FB'].includes(outcome);
+            // SO only: fade at home (strikeout looking). Everything else: run toward 1st and fade.
+            const isAtHomeOut = outcome === 'SO';
             if (isAtHomeOut) {
                 movements.push({ cardId: prevBatter.cardId, imagePath: prevBatter.imagePath || '', fromBase: 'home', toBase: 'out', outTarget: 'home', segments: 0 });
             } else {
