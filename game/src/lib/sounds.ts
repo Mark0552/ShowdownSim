@@ -21,6 +21,7 @@ const SOUND_FILES: Record<string, string> = {
     'victory': 'sounds/rbi-baseball-3-15-undefeated.mp3',
     'rally-1': 'sounds/rbi-baseball-3-09-rally-5-spanish-dance.mp3',
     'rally-2': 'sounds/rbi-baseball-3-07-rally-3-chiapanecas.mp3',
+    'run-scored': 'sounds/taco-bell-bong-sfx.mp3',
 };
 
 const audioCache: Record<string, HTMLAudioElement> = {};

@@ -263,6 +263,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const prevDpRef = useRef(state.pendingDpResult);
     const prevEbRef = useRef(state.pendingExtraBaseResult);
     const prevStealRef = useRef(state.pendingStealResult);
+    const prevTotalRunsRef = useRef(state.score.home + state.score.away);
     const prevHalfRef = useRef(state.halfInning);
     const prevInningRef = useRef(state.inning);
     const gameStartedRef = useRef(false);
@@ -329,6 +330,13 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             playSound(state.pendingStealResult.safe ? 'safe' : 'out');
         }
         prevStealRef.current = state.pendingStealResult;
+
+        // Run scored — taco bell bong for each run
+        const totalRuns = state.score.home + state.score.away;
+        if (totalRuns > prevTotalRunsRef.current && gameStartedRef.current) {
+            playSound('run-scored');
+        }
+        prevTotalRunsRef.current = totalRuns;
     });
 
     // Frozen display values for field visuals during dice animation
