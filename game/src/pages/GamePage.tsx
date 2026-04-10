@@ -28,6 +28,7 @@ export default function GamePage({ gameId, onBack }: Props) {
     const [loading, setLoading] = useState(true);
     const [status, setStatus] = useState('Connecting...');
     const [opponentDisconnected, setOpponentDisconnected] = useState(false);
+    const [pendingMovements, setPendingMovements] = useState<any[]>([]);
     const wsRef = useRef<WebSocket | null>(null);
     const [gameRow, setGameRow] = useState<GameRow | null>(null);
     const statsSavedRef = useRef(false);
@@ -70,6 +71,7 @@ export default function GamePage({ gameId, onBack }: Props) {
                 case 'game_state':
                     setGameState(msg.state);
                     setMyTurn(msg.turn);
+                    if (msg.runnerMovements?.length > 0) setPendingMovements(msg.runnerMovements);
                     setLoading(false);
                     setStatus('');
                     setOpponentDisconnected(false);
@@ -219,6 +221,8 @@ export default function GamePage({ gameId, onBack }: Props) {
                 myRole={myRole}
                 isMyTurn={isMyTurn}
                 onAction={handleAction}
+                pendingMovements={pendingMovements}
+                onMovementsConsumed={() => setPendingMovements([])}
                 homeName={homeName}
                 awayName={awayName}
             />

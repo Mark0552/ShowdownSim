@@ -16,6 +16,15 @@ import ActionButtons from './ActionButtons';
 import DiceSpinner from './DiceSpinner';
 import './GameBoard.css';
 
+interface RunnerMovement {
+    cardId: string;
+    imagePath: string;
+    fromBase: string;
+    toBase: string;
+    outTarget?: string;
+    segments: number;
+}
+
 interface Props {
     state: GameState;
     myRole: 'home' | 'away';
@@ -23,6 +32,8 @@ interface Props {
     onAction: (action: GameAction) => void;
     homeName: string;
     awayName: string;
+    pendingMovements?: RunnerMovement[];
+    onMovementsConsumed?: () => void;
 }
 
 // Layout constants
@@ -53,7 +64,7 @@ const B2 = basePos(1349, 731);
 const B1 = basePos(1349, 1818);
 const MOUND = basePos(770, 1285);
 
-export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName, awayName }: Props) {
+export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName, awayName, pendingMovements = [], onMovementsConsumed }: Props) {
     const [hoveredPlayer, setHoveredPlayer] = useState<PlayerSlot | null>(null);
     const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
     const [showAwayBullpen, setShowAwayBullpen] = useState(false);
@@ -119,14 +130,11 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             // frozenRef keeps its current (old) values — this is the freeze point
         }
     }
-    // Runner animation state
-    const BASE_ANIM_MS = 400; // ms per base segment
-    type RunnerAnim = { id: string; imagePath: string; fromBase: string; toBase: string; outTarget?: string; segments: number };
-    const [runnerAnims, setRunnerAnims] = useState<RunnerAnim[]>([]);
+    // Runner animation — driven by server-computed movements
+    const BASE_ANIM_MS = 400;
+    const [runnerAnims, setRunnerAnims] = useState<RunnerMovement[]>([]);
     const runnerAnimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const [frozenVersion, setFrozenVersion] = useState(0);
 
-    // Base coordinates for card top-left corner
     const BASE_COORDS: Record<string, { x: number; y: number }> = {
         home: { x: HP.x - 38, y: HP.y - 53 }, first: { x: B1.x - 38, y: B1.y - 53 },
         second: { x: B2.x - 38, y: B2.y - 53 }, third: { x: B3.x - 38, y: B3.y - 53 },
@@ -147,91 +155,23 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         return { path: d, segments: toIdx - fromIdx };
     };
 
-    // Update frozen display values when NOT animating — track version for useEffect
+    // Update frozen display values when NOT animating
     if (!animatingRef.current) {
-        const oldBases = frozenRef.current.bases;
-        const newBases = state.bases;
-        const changed = oldBases !== newBases && (
-            oldBases.first !== newBases.first || oldBases.second !== newBases.second || oldBases.third !== newBases.third
-        );
-        if (changed) setFrozenVersion(v => v + 1);
         frozenRef.current = { bases: state.bases, outs: state.outs, score: state.score, battingTeam };
     }
 
-    // Detect runner movements via useEffect (not during render) to avoid React 18 issues
-    const prevBasesRef = useRef(frozenRef.current.bases);
-    const prevScoreRef = useRef(frozenRef.current.score);
-    const prevTeamRef = useRef(frozenRef.current.battingTeam);
+    // Consume server-driven movements: wait for dice to finish, then animate
     useEffect(() => {
-        const oldBases = prevBasesRef.current;
-        const oldTeam = prevTeamRef.current;
-        const oldScoreVal = prevScoreRef.current;
-        const newBases = frozenRef.current.bases;
-        const newScore = frozenRef.current.score;
-
-        prevBasesRef.current = newBases;
-        prevScoreRef.current = newScore;
-        prevTeamRef.current = frozenRef.current.battingTeam;
-
-        if (oldBases === newBases) return; // same reference = no change
-
-        const BASE_KEYS = ['first', 'second', 'third'] as const;
-        const anims: RunnerAnim[] = [];
-        const movedIds = new Set<string>();
-
-        // Use the half-inning from the OLD state for score comparison
-        // (after half-inning switch, the "side" changes)
-        const oldSide = oldTeam === state.awayTeam ? 'away' : oldTeam === state.homeTeam ? 'home' :
-            (state.halfInning === 'top' ? 'away' : 'home');
-        const scoreBefore = oldScoreVal[oldSide as 'home' | 'away'] || 0;
-        const scoreAfter = newScore[oldSide as 'home' | 'away'] || 0;
-        let runsToAccount = scoreAfter - scoreBefore;
-
-        for (const fromBase of BASE_KEYS) {
-            const cardId = oldBases[fromBase];
-            if (!cardId) continue;
-            if (newBases[fromBase] === cardId) continue;
-            const toBase = BASE_KEYS.find(b => newBases[b] === cardId);
-            const player = oldTeam.lineup.find(p => p.cardId === cardId);
-            if (!player) continue;
-
-            if (toBase) {
-                const { segments } = buildBasePath(fromBase, toBase);
-                anims.push({ id: cardId, imagePath: player.imagePath, fromBase, toBase, segments: Math.max(segments, 1) });
-            } else if (runsToAccount > 0) {
-                runsToAccount--;
-                const { segments } = buildBasePath(fromBase, 'scored');
-                anims.push({ id: cardId, imagePath: player.imagePath, fromBase, toBase: 'scored', segments: Math.max(segments, 1) });
-            } else {
-                const fromIdx = BASE_ORDER.indexOf(fromBase as any);
-                const nextBase = fromIdx >= 0 && fromIdx < BASE_ORDER.length - 1 ? BASE_ORDER[fromIdx + 1] : 'scored';
-                anims.push({ id: cardId, imagePath: player.imagePath, fromBase, toBase: 'out', outTarget: nextBase, segments: 1 });
-            }
-            movedIds.add(cardId);
-        }
-
-        // Batter reaching base
-        for (const toBase of BASE_KEYS) {
-            const cardId = newBases[toBase];
-            if (!cardId) continue;
-            if (movedIds.has(cardId)) continue;
-            const wasOnBase = BASE_KEYS.some(b => oldBases[b] === cardId);
-            if (wasOnBase) continue;
-            const player = oldTeam.lineup.find(p => p.cardId === cardId) || battingTeam.lineup.find(p => p.cardId === cardId);
-            if (!player) continue;
-            const { segments } = buildBasePath('home', toBase);
-            if (segments > 0) anims.push({ id: cardId, imagePath: player.imagePath, fromBase: 'home', toBase, segments });
-        }
-
-        if (anims.length > 0) {
-            const maxSegments = Math.max(...anims.map(a => a.segments));
-            const totalMs = maxSegments * BASE_ANIM_MS;
-            setRunnerAnims(anims);
-            if (runnerAnimTimerRef.current) clearTimeout(runnerAnimTimerRef.current);
-            runnerAnimTimerRef.current = setTimeout(() => setRunnerAnims([]), totalMs + 100);
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [frozenVersion]);
+        if (diceAnimating || pendingMovements.length === 0) return;
+        // Start animations from server-computed movements
+        const anims = pendingMovements;
+        const maxSegments = Math.max(...anims.map(a => a.segments || 1));
+        const totalMs = maxSegments * BASE_ANIM_MS;
+        setRunnerAnims(anims);
+        onMovementsConsumed?.();
+        if (runnerAnimTimerRef.current) clearTimeout(runnerAnimTimerRef.current);
+        runnerAnimTimerRef.current = setTimeout(() => setRunnerAnims([]), totalMs + 100);
+    }, [diceAnimating, pendingMovements]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Frozen display values for field visuals during dice animation
     const displayBases = frozenRef.current.bases;
@@ -653,7 +593,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                         const dy = (target.y - from.y) * 0.6;
                         const outDur = BASE_ANIM_MS;
                         return (
-                            <g key={`anim-${anim.id}`}>
+                            <g key={`anim-${anim.cardId}`}>
                                 <image href={anim.imagePath}
                                     x={from.x + 3} y={from.y + 3} width={70} height={100}
                                     preserveAspectRatio="xMidYMid slice">
@@ -685,7 +625,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     if (!path) return null;
                     const durMs = anim.segments * BASE_ANIM_MS;
                     return (
-                        <g key={`anim-${anim.id}`}>
+                        <g key={`anim-${anim.cardId}`}>
                             <image
                                 href={anim.imagePath}
                                 x={from.x + 3} y={from.y + 3} width={70} height={100}

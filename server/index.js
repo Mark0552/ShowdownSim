@@ -15,6 +15,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import cors from 'cors';
 import { createClient } from '@supabase/supabase-js';
 import { initializeGame, processAction, whoseTurn } from './engine/index.js';
+import { computeRunnerMovements } from './engine/movements.js';
 
 const PORT = process.env.PORT || 3001;
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://jdvgjiklswargnqrqiet.supabase.co';
@@ -274,14 +275,19 @@ function handleAction(ws, msg, userId, room) {
     }
 
     // Process the action (server rolls the dice)
+    const oldState = room.state;
     const newState = processAction(room.state, msg.action);
     room.state = newState;
+
+    // Compute runner movements for client animation
+    const runnerMovements = computeRunnerMovements(oldState, newState);
 
     // Broadcast new state to both players
     room.broadcast({
         type: 'game_state',
         state: newState,
         turn: whoseTurn(newState),
+        runnerMovements,
     });
 
     // Save to Supabase periodically (every new at-bat or on game over)
