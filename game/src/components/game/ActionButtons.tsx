@@ -476,12 +476,12 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 const batter = getCurrentBatter(state);
                 const ifField = fieldingTeam.totalInfieldFielding || 0;
                 const batSpd = batter.speed;
-                // Hold uses average speed of batter + runners (fast runners make the throw harder)
-                const runnerSpeeds: number[] = [];
-                if (state.bases.first) { const r = battingTeam.lineup.find(p => p.cardId === state.bases.first); if (r) runnerSpeeds.push(r.speed); }
-                if (state.bases.second) { const r = battingTeam.lineup.find(p => p.cardId === state.bases.second); if (r) runnerSpeeds.push(r.speed); }
-                if (state.bases.third) { const r = battingTeam.lineup.find(p => p.cardId === state.bases.third); if (r) runnerSpeeds.push(r.speed); }
-                const avgSpd = Math.round([batSpd, ...runnerSpeeds].reduce((a, b) => a + b, 0) / (1 + runnerSpeeds.length));
+                // Hold uses average of batter speed + lead runner speed
+                let leadRunnerSpd = 0;
+                if (state.bases.third) { const r = battingTeam.lineup.find(p => p.cardId === state.bases.third); if (r) leadRunnerSpd = r.speed; }
+                else if (state.bases.second) { const r = battingTeam.lineup.find(p => p.cardId === state.bases.second); if (r) leadRunnerSpd = r.speed; }
+                else if (state.bases.first) { const r = battingTeam.lineup.find(p => p.cardId === state.bases.first); if (r) leadRunnerSpd = r.speed; }
+                const avgSpd = leadRunnerSpd ? Math.round((batSpd + leadRunnerSpd) / 2) : batSpd;
                 const rollVs = `d20+IF(${ifField}) vs Spd ${batSpd}`;
                 const rollVsG = `d20+IF(${ifField}+10) vs Spd ${batSpd}`;
                 const holdRollVs = `d20+IF(${ifField}) vs AvgSpd ${avgSpd}`;
@@ -502,7 +502,7 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 return (
                     <g>
                         <text x={CX} y={LABEL_Y} textAnchor="middle" fontSize="14" fill="#e94560" fontWeight="normal" fontFamily="Arial">
-                            Ground Ball — IF: {ifField}  |  Batter Spd: {batSpd}{runnerSpeeds.length > 0 ? `  |  Avg Spd: ${avgSpd}` : ''}
+                            Ground Ball — IF: {ifField}  |  Batter Spd: {batSpd}{leadRunnerSpd ? `  |  Avg Spd: ${avgSpd}` : ''}
                         </text>
                         {buttons.map((btn, i) => (
                             <g key={`gb-${i}`}>

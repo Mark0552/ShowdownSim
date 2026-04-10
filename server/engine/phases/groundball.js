@@ -105,15 +105,16 @@ export function handleGbDecision(state, action) {
 
         case 'hold': {
             // Hold runners at their bases, throw to 1st for the batter
-            // Target speed = average of batter + all runners being held
-            // (fast runners force infielders to hold position, making the throw harder)
+            // Target = average of batter speed + lead runner speed
+            // The lead runner (furthest along) is who the infielder watches most
             const battingTeamObj = state[battingSide];
-            const runnerSpeeds = [];
-            if (bases.first) { const r = battingTeamObj.lineup.find(p => p.cardId === bases.first); if (r) runnerSpeeds.push(r.speed); }
-            if (bases.second) { const r = battingTeamObj.lineup.find(p => p.cardId === bases.second); if (r) runnerSpeeds.push(r.speed); }
-            if (bases.third) { const r = battingTeamObj.lineup.find(p => p.cardId === bases.third); if (r) runnerSpeeds.push(r.speed); }
-            const allSpeeds = [batter.speed, ...runnerSpeeds];
-            const avgSpeed = Math.round(allSpeeds.reduce((a, b) => a + b, 0) / allSpeeds.length);
+            let leadRunner = null;
+            if (bases.third) leadRunner = battingTeamObj.lineup.find(p => p.cardId === bases.third);
+            else if (bases.second) leadRunner = battingTeamObj.lineup.find(p => p.cardId === bases.second);
+            else if (bases.first) leadRunner = battingTeamObj.lineup.find(p => p.cardId === bases.first);
+            const avgSpeed = leadRunner
+                ? Math.round((batter.speed + leadRunner.speed) / 2)
+                : batter.speed;
 
             const roll = rollD20();
             const defenseTotal = roll + ifFielding;
