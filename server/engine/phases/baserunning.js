@@ -30,30 +30,29 @@ export function applyResult(state, outcome, batterId) {
 
         case 'GB': {
             // GB enters gb_decision phase for defense choices
-            outs++; // batter is always at least out
-
-            // With 3 outs (had 2 before), no decisions — inning over
-            if (outs >= 3) break;
+            // Don't add outs here — handleGbDecision manages outs based on the choice
+            // (force_home = runner out not batter, DP = runner + maybe batter, hold = maybe batter, advance = batter)
 
             const gbOptions = buildGbOptions(state, bases);
 
             if (!gbOptions.canDP && !gbOptions.canHoldRunners && !gbOptions.canHoldThird && !gbOptions.canForceHome) {
-                // No runners or no special options — simple GB out
-                // Runners on 2nd/3rd advance freely
+                // No runners or no special options — simple GB out (batter out at 1st)
+                outs++;
+                if (outs >= 3) break;
                 if (bases.third) { runs++; runnersScored.push(bases.third); logs.push('Runner scores from 3rd on groundout'); }
                 if (bases.second) { bases.third = bases.second; bases.second = null; }
                 break;
             }
+
+            // With 2 outs, a GB with decisions is still possible (force at home prevents run)
+            // But with 3+ outs already (shouldn't happen), end inning
+            if (outs >= 3) break;
 
             // Enter gb_decision phase — defense gets to choose
             const battingTeam = { ...state[battingSide] };
             const rpi = [...battingTeam.runsPerInning];
             while (rpi.length < state.inning) rpi.push(0);
             battingTeam.runsPerInning = rpi;
-
-            // Track the batter out for IP credit before entering gb_decision
-            const fieldingTeamGb = { ...state[fieldingSide] };
-            fieldingTeamGb.outsRecordedByCurrentPitcher = (fieldingTeamGb.outsRecordedByCurrentPitcher || 0) + 1;
 
             return {
                 ...state,
@@ -63,7 +62,6 @@ export function applyResult(state, outcome, batterId) {
                 gbOptions,
                 gameLog: [...state.gameLog, `Ground Ball — defense decides...`],
                 [battingSide]: battingTeam,
-                [fieldingSide]: fieldingTeamGb,
             };
         }
 

@@ -101,35 +101,34 @@ export function handleGbDecision(state, action) {
         }
 
         case 'hold': {
-            // Hold runners at their bases, make fielding play at 1st
+            // Hold runners at their bases, throw to 1st for the batter
             const roll = rollD20();
             const defenseTotal = roll + ifFielding;
 
             if (defenseTotal > batter.speed) {
-                // Batter out at 1st
+                // Batter out at 1st — runners held
+                outs++;
                 logs.push(`Batter out at 1st. d20(${roll}) + IF(${ifFielding}) = ${defenseTotal} > Speed ${batter.speed}. Runners held.`);
                 pendingDpResult = { roll, defenseTotal, offenseSpeed: batter.speed, isDP: false, goldGloveUsed, choice: 'hold' };
-                // If there was a runner on 1st (hold-third scenario), runner goes to 2nd
+                // If hold-third scenario with runner on 1st, that runner advances to 2nd (force)
                 if (state.gbOptions.canHoldThird && bases.first) {
                     bases.second = bases.first;
                     bases.first = null;
                 }
             } else {
-                // Batter safe at 1st — runners still held
+                // Batter beats throw — safe at 1st, runners held
+                // Force runner on 1st to 2nd to make room for batter
+                if (bases.first) { bases.second = bases.first; }
                 bases.first = batter.cardId;
                 logs.push(`Batter safe at 1st! d20(${roll}) + IF(${ifFielding}) = ${defenseTotal} <= Speed ${batter.speed}. Runners held.`);
                 pendingDpResult = { roll, defenseTotal, offenseSpeed: batter.speed, isDP: false, goldGloveUsed, choice: 'hold' };
-                // If hold-third scenario, runner on 1st goes to 2nd
-                if (state.gbOptions.canHoldThird && state.bases.first) {
-                    bases.second = state.bases.first;
-                    // batter already placed at first above
-                }
             }
             break;
         }
 
         case 'advance': {
-            // Let runners advance freely, batter is already out (no additional roll)
+            // Batter out at 1st, runners advance freely
+            outs++;
             if (bases.third) { runs++; runnersScored.push(bases.third); logs.push('Runner scores from 3rd on groundout'); }
             if (bases.second) { bases.third = bases.second; bases.second = null; logs.push('Runner on 2nd advances to 3rd'); }
             pendingDpResult = { roll: 0, defenseTotal: 0, offenseSpeed: 0, isDP: false, goldGloveUsed: false, choice: 'advance' };
@@ -164,8 +163,6 @@ export function handleGbDecision(state, action) {
     }
 
     // Track outs recorded by current pitcher for IP credit
-    // Note: outs already includes the +1 from batter out in applyResult,
-    // so additional outs here are: outs - state.outs (state.outs already has +1 from GB)
     const outsThisPlay = outs - state.outs;
     if (outsThisPlay > 0) {
         fieldingTeam.outsRecordedByCurrentPitcher = (fieldingTeam.outsRecordedByCurrentPitcher || 0) + outsThisPlay;
