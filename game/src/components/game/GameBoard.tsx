@@ -480,7 +480,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             <text x={innX + 68} y={sbY + 52} textAnchor="middle" fontSize="11" fill={state.halfInning === 'bottom' ? 'white' : '#2a4a70'} fontWeight="normal" fontFamily="Impact">BOT</text>
 
                             {/* Outs (right of TOP/BOT) */}
-                            <text x={innX + 100} y={sbY + 12} fontSize="8" fill="#d4a018" fontWeight="normal" letterSpacing="1" fontFamily="Arial Black">OUTS</text>
+                            <text x={innX + 128} y={sbY + 14} textAnchor="middle" fontSize="9" fill="#d4a018" fontWeight="normal" letterSpacing="2" fontFamily="Impact">OUTS</text>
                             {[0, 1, 2].map(i => (
                                 <g key={`out-${i}`}>
                                     <circle cx={innX + 100 + i * 28} cy={sbY + 36} r="10" fill={displayOuts > i ? '#cc2020' : '#140608'} stroke="#d4a018" strokeWidth="1.5"/>
@@ -723,18 +723,20 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             {state.pendingDpResult && (() => {
                                 const dp = state.pendingDpResult;
                                 let label = 'BATTER SAFE';
-                                if (dp.isDP) label = 'DOUBLE PLAY!';
-                                else if (dp.choice === 'dp' && !dp.isDP) label = "FIELDER'S CHOICE";
-                                else if (dp.choice === 'hold' && dp.defenseTotal > dp.offenseSpeed) label = 'OUT AT 1ST';
-                                else if (dp.choice === 'hold') label = 'BATTER SAFE';
-                                else if (dp.choice === 'force_home') label = 'FORCE AT HOME';
-                                else if (dp.choice === 'advance') label = 'RUNNERS ADVANCE';
+                                let detail = '';
+                                if (dp.isDP) { label = 'DOUBLE PLAY!'; detail = 'DP successful'; }
+                                else if (dp.choice === 'dp' && !dp.isDP) { label = 'DP FAILED'; detail = 'Batter safe at 1st (FC)'; }
+                                else if (dp.choice === 'hold' && dp.defenseTotal > dp.offenseSpeed) { label = 'OUT AT 1ST'; detail = 'Runners held'; }
+                                else if (dp.choice === 'hold') { label = 'SAFE AT 1ST'; detail = 'Runners held'; }
+                                else if (dp.choice === 'force_home') { label = 'FORCE AT HOME'; detail = 'Out at plate'; }
+                                else if (dp.choice === 'advance') { label = 'RUNNERS ADVANCE'; detail = 'Out at 1st'; }
                                 const showRoll = dp.roll > 0 && dp.choice !== 'force_home' && dp.choice !== 'advance';
                                 return (
                                     <g>
-                                        <text x={RCX} y={BOT_Y + 80} textAnchor="middle" fontSize="14" fill="white" fontWeight="normal" fontFamily="Impact">{label}</text>
+                                        <text x={RCX} y={BOT_Y + 76} textAnchor="middle" fontSize="13" fill="white" fontWeight="normal" fontFamily="Impact">{label}</text>
+                                        {detail && <text x={RCX} y={BOT_Y + 92} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.7)" fontFamily="Arial">{detail}</text>}
                                         {showRoll && (
-                                            <text x={RCX} y={BOT_Y + 100} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.85)" fontFamily="monospace">
+                                            <text x={RCX} y={BOT_Y + (detail ? 108 : 96)} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.85)" fontFamily="monospace">
                                                 d20({dp.roll})+IF({dp.defenseTotal - dp.roll})={dp.defenseTotal} vs Spd {dp.offenseSpeed}
                                             </text>
                                         )}
@@ -743,13 +745,17 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             })()}
                             {state.pendingExtraBaseResult && (() => {
                                 const eb = state.pendingExtraBaseResult;
+                                const gUsed = eb.goldGloveUsed ? ' +G' : '';
                                 return (
                                     <g>
-                                        <text x={RCX} y={BOT_Y + 80} textAnchor="middle" fontSize="13" fill="white" fontWeight="normal" fontFamily="Impact">
+                                        <text x={RCX} y={BOT_Y + 76} textAnchor="middle" fontSize="13" fill="white" fontWeight="normal" fontFamily="Impact">
                                             {eb.safe ? `${eb.runnerName} SAFE` : `${eb.runnerName} OUT`}
                                         </text>
-                                        <text x={RCX} y={BOT_Y + 100} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.85)" fontFamily="monospace">
-                                            Tgt {eb.runnerSpeed} vs d20({eb.roll})+OF={eb.defenseTotal}
+                                        <text x={RCX} y={BOT_Y + 92} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.7)" fontFamily="Arial">
+                                            {eb.safe ? 'Runner advances' : 'Thrown out'}
+                                        </text>
+                                        <text x={RCX} y={BOT_Y + 108} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.85)" fontFamily="monospace">
+                                            Tgt {eb.runnerSpeed} vs d20({eb.roll})+OF{gUsed}={eb.defenseTotal}
                                         </text>
                                     </g>
                                 );
@@ -757,14 +763,18 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             {state.pendingStealResult && (() => {
                                 const sr = state.pendingStealResult;
                                 const isSbIcon = sr.roll === 0 && sr.defenseTotal === 0;
+                                const gUsed = sr.goldGloveUsed ? ' +G' : '';
                                 return (
                                     <g>
-                                        <text x={RCX} y={BOT_Y + 80} textAnchor="middle" fontSize="13" fill="white" fontWeight="normal" fontFamily="Impact">
+                                        <text x={RCX} y={BOT_Y + 76} textAnchor="middle" fontSize="13" fill="white" fontWeight="normal" fontFamily="Impact">
                                             {sr.safe ? (isSbIcon ? `${sr.runnerName} SB!` : `${sr.runnerName} STEALS!`) : `${sr.runnerName} CAUGHT!`}
                                         </text>
+                                        <text x={RCX} y={BOT_Y + 92} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.7)" fontFamily="Arial">
+                                            {isSbIcon ? 'SB icon (auto safe)' : sr.safe ? 'Steal successful' : 'Caught stealing'}
+                                        </text>
                                         {!isSbIcon && (
-                                            <text x={RCX} y={BOT_Y + 100} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.85)" fontFamily="monospace">
-                                                Spd {sr.runnerSpeed} vs d20({sr.roll})+Arm={sr.defenseTotal}
+                                            <text x={RCX} y={BOT_Y + 108} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.85)" fontFamily="monospace">
+                                                Spd {sr.runnerSpeed} vs d20({sr.roll})+Arm{gUsed}={sr.defenseTotal}
                                             </text>
                                         )}
                                     </g>
@@ -780,15 +790,19 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     const safe = sr.safe;
                     const goodForBatter = safe;
                     const resultColor = (goodForBatter === iAmBatting) ? 'rgba(34,180,80,0.85)' : 'rgba(200,30,30,0.85)';
+                    const gUsed = sr.goldGloveUsed ? ' +G' : '';
                     return (
                         <g>
                             <rect x="1186" y={BOT_Y + 6} width="208" height={948 - BOT_Y - 12} rx="8" fill={resultColor} />
-                            <text x="1290" y={BOT_Y + 56} textAnchor="middle" fontSize="16" fill="white" fontWeight="normal" fontFamily="Impact">
+                            <text x="1290" y={BOT_Y + 48} textAnchor="middle" dominantBaseline="central" fontSize="16" fill="white" fontWeight="normal" fontFamily="Impact">
                                 {safe ? (isSbIcon ? `${sr.runnerName} SB!` : `${sr.runnerName} STEALS!`) : `${sr.runnerName} CAUGHT!`}
                             </text>
+                            <text x="1290" y={BOT_Y + 72} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.7)" fontFamily="Arial">
+                                {isSbIcon ? 'SB icon (auto safe)' : safe ? 'Steal successful' : 'Caught stealing'}
+                            </text>
                             {!isSbIcon && (
-                                <text x="1290" y={BOT_Y + 80} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.85)" fontFamily="monospace">
-                                    Spd {sr.runnerSpeed} vs d20({sr.roll})+Arm={sr.defenseTotal}
+                                <text x="1290" y={BOT_Y + 90} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.85)" fontFamily="monospace">
+                                    Spd {sr.runnerSpeed} vs d20({sr.roll})+Arm{gUsed}={sr.defenseTotal}
                                 </text>
                             )}
                         </g>
