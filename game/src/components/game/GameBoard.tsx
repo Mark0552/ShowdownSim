@@ -170,7 +170,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         }
     }
     // Runner animation — driven by server-computed movements
-    const BASE_ANIM_MS = 400;
+    const BASE_ANIM_MS = 800;
     const [runnerAnims, setRunnerAnims] = useState<RunnerMovement[]>([]);
     const runnerAnimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
