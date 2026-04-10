@@ -1,6 +1,6 @@
 /**
  * Compute runner movements by comparing old and new base states.
- * Returns an array of { cardId, imagePath, fromBase, toBase, segments } for the client to animate.
+ * Returns an array of { cardId, imagePath, fromBase, toBase, outTarget?, segments } for the client to animate.
  */
 
 const BASE_ORDER = ['home', 'first', 'second', 'third', 'scored'];
@@ -11,7 +11,6 @@ export function computeRunnerMovements(oldState, newState) {
 
     const oldBases = oldState.bases || {};
     const newBases = newState.bases || {};
-
     const basesChanged = oldBases.first !== newBases.first || oldBases.second !== newBases.second || oldBases.third !== newBases.third;
 
     const oldBattingSide = oldState.halfInning === 'top' ? 'awayTeam' : 'homeTeam';
@@ -20,7 +19,6 @@ export function computeRunnerMovements(oldState, newState) {
     const newTeam = newState[newBattingSide];
     if (!oldTeam?.lineup) return [];
 
-    // Score comparison to distinguish scoring from outs
     const side = oldState.halfInning === 'top' ? 'away' : 'home';
     const scoreBefore = oldState.score?.[side] || 0;
     const scoreAfter = newState.score?.[side] || 0;
@@ -41,15 +39,22 @@ export function computeRunnerMovements(oldState, newState) {
         return (fromIdx >= 0 && toIdx > fromIdx) ? toIdx - fromIdx : 1;
     };
 
-    // Get the batter who just acted (previous batter index, since currentBatterIndex advanced)
+    // Get the batter who just acted (previous batter, since currentBatterIndex may have advanced)
     const getPrevBatter = () => {
-        const team = newState[newBattingSide] || oldTeam;
-        const idx = (team.currentBatterIndex || 1) - 1;
-        return team.lineup[idx < 0 ? team.lineup.length - 1 : idx];
+        // Use the team from the same half-inning as the old state
+        const sameHalf = oldState.halfInning === newState.halfInning;
+        const team = sameHalf ? (newState[newBattingSide] || oldTeam) : oldTeam;
+        if (sameHalf) {
+            const idx = (team.currentBatterIndex || 1) - 1;
+            return team.lineup[idx < 0 ? team.lineup.length - 1 : idx];
+        }
+        // Half-inning switched — the batter was from the OLD batting team
+        const idx = (oldTeam.currentBatterIndex || 1) - 1;
+        return oldTeam.lineup[idx < 0 ? oldTeam.lineup.length - 1 : idx];
     };
 
+    // === SECTION 1: Existing runners that moved ===
     if (basesChanged) {
-        // Existing runners that moved
         for (const fromBase of BASE_KEYS) {
             const cardId = oldBases[fromBase];
             if (!cardId) continue;
@@ -71,7 +76,7 @@ export function computeRunnerMovements(oldState, newState) {
             movedIds.add(cardId);
         }
 
-        // Batter reaching base
+        // Batter reaching base (wasn't on any base before, now is)
         for (const toBase of BASE_KEYS) {
             const cardId = newBases[toBase];
             if (!cardId) continue;
@@ -82,23 +87,34 @@ export function computeRunnerMovements(oldState, newState) {
             const imagePath = player?.imagePath || '';
             const segments = countSegments('home', toBase);
             if (segments > 0) movements.push({ cardId, imagePath, fromBase: 'home', toBase, segments });
-        }
-
-        // Batter scoring (HR — full circuit)
-        if (runsToAccount > 0) {
-            const prevBatter = getPrevBatter();
-            if (prevBatter && !movedIds.has(prevBatter.cardId) && !BASE_KEYS.some(b => newBases[b] === prevBatter.cardId)) {
-                movements.push({ cardId: prevBatter.cardId, imagePath: prevBatter.imagePath || '', fromBase: 'home', toBase: 'scored', segments: 4 });
-            }
+            movedIds.add(cardId);
         }
     }
 
-    // Batter out at home (SO, PU, FB with no tag-up) — fade out from home plate
-    const outcome = newState.lastOutcome;
-    if (!basesChanged && ['SO', 'PU'].includes(outcome) && newState.outs > oldState.outs) {
+    // === SECTION 2: Batter scoring (HR — not on any base after, runs increased) ===
+    // This is OUTSIDE the basesChanged gate to handle solo HRs (empty bases before and after)
+    if (runsToAccount > 0) {
         const prevBatter = getPrevBatter();
-        if (prevBatter) {
-            movements.push({ cardId: prevBatter.cardId, imagePath: prevBatter.imagePath || '', fromBase: 'home', toBase: 'out', outTarget: 'home', segments: 0 });
+        if (prevBatter && !movedIds.has(prevBatter.cardId) && !BASE_KEYS.some(b => newBases[b] === prevBatter.cardId)) {
+            movements.push({ cardId: prevBatter.cardId, imagePath: prevBatter.imagePath || '', fromBase: 'home', toBase: 'scored', segments: 4 });
+            movedIds.add(prevBatter.cardId);
+        }
+    }
+
+    // === SECTION 3: Batter out (not on any base, outs increased) ===
+    // Handles: SO, PU, FB, GB (simple + all decisions), SAC bunt, DP batter out
+    if (newState.outs > oldState.outs || newState.halfInning !== oldState.halfInning) {
+        const prevBatter = getPrevBatter();
+        if (prevBatter && !movedIds.has(prevBatter.cardId) && !BASE_KEYS.some(b => newBases[b] === prevBatter.cardId)) {
+            const outcome = newState.lastOutcome || oldState.lastOutcome;
+            // SO/PU/FB: fade at home (didn't run). GB/SAC/DP: run toward 1st and fade.
+            const isAtHomeOut = ['SO', 'PU', 'FB'].includes(outcome);
+            if (isAtHomeOut) {
+                movements.push({ cardId: prevBatter.cardId, imagePath: prevBatter.imagePath || '', fromBase: 'home', toBase: 'out', outTarget: 'home', segments: 0 });
+            } else {
+                // GB/SAC/DP: batter ran toward 1st but was thrown out
+                movements.push({ cardId: prevBatter.cardId, imagePath: prevBatter.imagePath || '', fromBase: 'home', toBase: 'out', outTarget: 'first', segments: 1 });
+            }
         }
     }
 

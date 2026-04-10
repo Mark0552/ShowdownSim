@@ -88,15 +88,22 @@ function RunnerAnimOverlay({ anim, baseCoords, baseAnimMs }: {
     return (
         <foreignObject x={from.x} y={from.y} width="300" height="300" style={{ overflow: 'visible', pointerEvents: 'none' }}>
             <div style={{
-                width: 70, height: 100,
+                width: 70, height: 100, position: 'relative',
                 transform: moved ? `translate(${tx}px, ${ty}px)` : 'translate(0, 0)',
                 opacity: moved && (scoring || isOut) ? 0 : 1,
                 transition: `transform ${durMs}ms ease-out, opacity ${durMs * 0.3}ms ease-in ${durMs * 0.7}ms`,
             }}>
                 <img src={anim.imagePath} alt="" style={{
                     width: 70, height: 100, objectFit: 'cover', borderRadius: 4,
-                    border: isOut ? '2px solid rgba(220,30,30,0.8)' : 'none',
                 }} />
+                {/* Heavy red tint overlay for out animations */}
+                {isOut && (
+                    <div style={{
+                        position: 'absolute', top: 0, left: 0, width: 70, height: 100, borderRadius: 4,
+                        background: 'rgba(200, 20, 20, 0.7)',
+                        border: '3px solid rgba(255, 30, 30, 0.9)',
+                    }} />
+                )}
             </div>
         </foreignObject>
     );
