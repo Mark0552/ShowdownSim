@@ -476,13 +476,21 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 const batter = getCurrentBatter(state);
                 const ifField = fieldingTeam.totalInfieldFielding || 0;
                 const batSpd = batter.speed;
+                // Hold uses average speed of batter + runners (fast runners make the throw harder)
+                const runnerSpeeds: number[] = [];
+                if (state.bases.first) { const r = battingTeam.lineup.find(p => p.cardId === state.bases.first); if (r) runnerSpeeds.push(r.speed); }
+                if (state.bases.second) { const r = battingTeam.lineup.find(p => p.cardId === state.bases.second); if (r) runnerSpeeds.push(r.speed); }
+                if (state.bases.third) { const r = battingTeam.lineup.find(p => p.cardId === state.bases.third); if (r) runnerSpeeds.push(r.speed); }
+                const avgSpd = Math.round([batSpd, ...runnerSpeeds].reduce((a, b) => a + b, 0) / (1 + runnerSpeeds.length));
                 const rollVs = `d20+IF(${ifField}) vs Spd ${batSpd}`;
                 const rollVsG = `d20+IF(${ifField}+10) vs Spd ${batSpd}`;
-                const buttons: { label: string; sub: string; choice: string; color: string; needsRoll: boolean }[] = [];
+                const holdRollVs = `d20+IF(${ifField}) vs AvgSpd ${avgSpd}`;
+                const holdRollVsG = `d20+IF(${ifField}+10) vs AvgSpd ${avgSpd}`;
+                const buttons: { label: string; sub: string; choice: string; color: string; needsRoll: boolean; useHoldRoll?: boolean }[] = [];
                 if (state.gbOptions.canDP) buttons.push({ label: 'DOUBLE PLAY', sub: rollVs, choice: 'dp', color: '#e94560', needsRoll: true });
-                if (state.gbOptions.canForceHome) buttons.push({ label: 'FORCE HOME', sub: 'Out at home, no roll', choice: 'force_home', color: '#8b5cf6', needsRoll: false });
-                if (state.gbOptions.canHoldThird) buttons.push({ label: 'HOLD RUNNER', sub: rollVs, choice: 'hold', color: '#d4a018', needsRoll: true });
-                if (state.gbOptions.canHoldRunners) buttons.push({ label: 'HOLD RUNNERS', sub: rollVs, choice: 'hold', color: '#d4a018', needsRoll: true });
+                if (state.gbOptions.canForceHome) buttons.push({ label: 'FORCE HOME', sub: 'Out at home, batter to 1st', choice: 'force_home', color: '#8b5cf6', needsRoll: false });
+                if (state.gbOptions.canHoldThird) buttons.push({ label: 'HOLD RUNNER', sub: holdRollVs, choice: 'hold', color: '#d4a018', needsRoll: true, useHoldRoll: true });
+                if (state.gbOptions.canHoldRunners) buttons.push({ label: 'HOLD RUNNERS', sub: holdRollVs, choice: 'hold', color: '#d4a018', needsRoll: true, useHoldRoll: true });
                 if (state.gbOptions.canAdvanceRunners) buttons.push({ label: 'LET ADVANCE', sub: 'Runners advance, out at 1st', choice: 'advance', color: '#334155', needsRoll: false });
                 if (!state.gbOptions.canDP && !state.gbOptions.canHoldRunners && !state.gbOptions.canHoldThird && !state.gbOptions.canAdvanceRunners) {
                     buttons.push({ label: 'LET ADVANCE', sub: 'Runners advance', choice: 'advance', color: '#334155', needsRoll: false });
@@ -494,7 +502,7 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 return (
                     <g>
                         <text x={CX} y={LABEL_Y} textAnchor="middle" fontSize="14" fill="#e94560" fontWeight="normal" fontFamily="Arial">
-                            Ground Ball — IF total: {ifField}  |  Batter Spd: {batSpd}
+                            Ground Ball — IF: {ifField}  |  Batter Spd: {batSpd}{runnerSpeeds.length > 0 ? `  |  Avg Spd: ${avgSpd}` : ''}
                         </text>
                         {buttons.map((btn, i) => (
                             <g key={`gb-${i}`}>
@@ -507,7 +515,7 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                                     <g key={`gb-g-${i}-${gi}`} className="roll-button" onClick={() => onAction({ type: 'GB_DECISION', choice: btn.choice as any, goldGloveCardId: gp.cardId })} cursor="pointer">
                                         <rect x={startX + i * (bw + gap)} y={ROW2 + gi * 32} width={bw} height="28" rx="4" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
                                         <text x={startX + i * (bw + gap) + bw / 2} y={ROW2 + 12 + gi * 32} textAnchor="middle" fontSize="12" fill="#002" fontWeight="normal" fontFamily="Impact">USE G: {gp.name} ({gp.position})</text>
-                                        <text x={startX + i * (bw + gap) + bw / 2} y={ROW2 + 24 + gi * 32} textAnchor="middle" fontSize="10" fill="rgba(0,0,0,0.7)" fontFamily="monospace">{rollVsG}</text>
+                                        <text x={startX + i * (bw + gap) + bw / 2} y={ROW2 + 24 + gi * 32} textAnchor="middle" fontSize="10" fill="rgba(0,0,0,0.7)" fontFamily="monospace">{btn.useHoldRoll ? holdRollVsG : rollVsG}</text>
                                     </g>
                                 ))}
                             </g>

@@ -105,14 +105,24 @@ export function handleGbDecision(state, action) {
 
         case 'hold': {
             // Hold runners at their bases, throw to 1st for the batter
+            // Target speed = average of batter + all runners being held
+            // (fast runners force infielders to hold position, making the throw harder)
+            const battingTeamObj = state[battingSide];
+            const runnerSpeeds = [];
+            if (bases.first) { const r = battingTeamObj.lineup.find(p => p.cardId === bases.first); if (r) runnerSpeeds.push(r.speed); }
+            if (bases.second) { const r = battingTeamObj.lineup.find(p => p.cardId === bases.second); if (r) runnerSpeeds.push(r.speed); }
+            if (bases.third) { const r = battingTeamObj.lineup.find(p => p.cardId === bases.third); if (r) runnerSpeeds.push(r.speed); }
+            const allSpeeds = [batter.speed, ...runnerSpeeds];
+            const avgSpeed = Math.round(allSpeeds.reduce((a, b) => a + b, 0) / allSpeeds.length);
+
             const roll = rollD20();
             const defenseTotal = roll + ifFielding;
 
-            if (defenseTotal > batter.speed) {
+            if (defenseTotal > avgSpeed) {
                 // Batter out at 1st — runners held
                 outs++;
-                logs.push(`Batter out at 1st. d20(${roll}) + IF(${ifFielding}) = ${defenseTotal} > Speed ${batter.speed}. Runners held.`);
-                pendingDpResult = { roll, defenseTotal, offenseSpeed: batter.speed, isDP: false, goldGloveUsed, choice: 'hold' };
+                logs.push(`Batter out at 1st. d20(${roll}) + IF(${ifFielding}) = ${defenseTotal} > Avg Spd ${avgSpeed}. Runners held.`);
+                pendingDpResult = { roll, defenseTotal, offenseSpeed: avgSpeed, isDP: false, goldGloveUsed, choice: 'hold' };
                 // If hold-third scenario with runner on 1st, that runner advances to 2nd (force)
                 if (state.gbOptions.canHoldThird && bases.first) {
                     bases.second = bases.first;
@@ -123,8 +133,8 @@ export function handleGbDecision(state, action) {
                 // Force runner on 1st to 2nd to make room for batter
                 if (bases.first) { bases.second = bases.first; }
                 bases.first = batter.cardId;
-                logs.push(`Batter safe at 1st! d20(${roll}) + IF(${ifFielding}) = ${defenseTotal} <= Speed ${batter.speed}. Runners held.`);
-                pendingDpResult = { roll, defenseTotal, offenseSpeed: batter.speed, isDP: false, goldGloveUsed, choice: 'hold' };
+                logs.push(`Batter safe at 1st! d20(${roll}) + IF(${ifFielding}) = ${defenseTotal} <= Avg Spd ${avgSpeed}. Runners held.`);
+                pendingDpResult = { roll, defenseTotal, offenseSpeed: avgSpeed, isDP: false, goldGloveUsed, choice: 'hold' };
             }
             break;
         }
