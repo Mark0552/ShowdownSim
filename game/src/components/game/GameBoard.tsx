@@ -8,7 +8,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import type { GameState, GameAction, PlayerSlot } from '../../engine/gameEngine';
 import { getCurrentBatter, getCurrentPitcher } from '../../engine/gameEngine';
-import { playSound, preloadSounds } from '../../lib/sounds';
+import { playSound, playSoundDelayed, preloadSounds } from '../../lib/sounds';
 import CardSlot from './CardSlot';
 import BullpenPanel from './BullpenPanel';
 import BoxScore from './BoxScore';
@@ -258,29 +258,57 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         runnerAnimTimerRef.current = setTimeout(() => setRunnerAnims([]), totalMs + 100);
     }, [diceAnimating, pendingMovements]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Sound effects — play when outcome or fielding result changes
+    // Sound effects
     const prevOutcomeRef = useRef(state.lastOutcome);
     const prevDpRef = useRef(state.pendingDpResult);
     const prevEbRef = useRef(state.pendingExtraBaseResult);
     const prevStealRef = useRef(state.pendingStealResult);
-    const playBallPlayedRef = useRef(false);
+    const prevHalfRef = useRef(state.halfInning);
+    const prevInningRef = useRef(state.inning);
+    const gameStartedRef = useRef(false);
     useEffect(() => {
         preloadSounds();
-        // Play ball on first at-bat
-        if (!playBallPlayedRef.current && state.phase === 'pre_atbat' && state.inning === 1 && state.halfInning === 'top') {
-            playBallPlayedRef.current = true;
-            playSound('play-ball');
+
+        // Game start
+        if (!gameStartedRef.current && state.phase === 'pre_atbat' && state.inning === 1 && state.halfInning === 'top') {
+            gameStartedRef.current = true;
+            playSound('game-start');
         }
+
+        // Half-inning switch
+        if (prevHalfRef.current !== state.halfInning || prevInningRef.current !== state.inning) {
+            if (gameStartedRef.current && !state.isOver) {
+                // 7th inning stretch (between top and bottom of 7th)
+                if (state.inning === 7 && state.halfInning === 'bottom' && prevHalfRef.current === 'top') {
+                    playSound('seventh-inning');
+                } else {
+                    playSound('switch-sides');
+                }
+            }
+        }
+        prevHalfRef.current = state.halfInning;
+        prevInningRef.current = state.inning;
+
+        // Game over
+        if (state.isOver && state.winnerId) {
+            const iWon = state.winnerId === (myRole === 'home' ? state.homeTeam.userId : state.awayTeam.userId);
+            if (iWon) playSound('victory');
+        }
+
         // At-bat outcome sounds
         if (state.lastOutcome && state.lastOutcome !== prevOutcomeRef.current) {
             const o = state.lastOutcome;
-            if (['S', 'SPlus', 'DB', 'TR', 'HR'].includes(o)) playSound('bat-crack');
+            if (o === 'HR') { playSound('bathitball'); playSoundDelayed('homerun', 800); }
+            else if (['S', 'SPlus', 'DB', 'TR'].includes(o)) playSound('bathitball');
             else if (o === 'SO') playSound('strike-three');
             else if (o === 'GB' || o === 'FB' || o === 'PU') playSound('glove-pop');
-            else if (o === 'W') playSound('ball-four');
-            // IBB intentionally no sound
+            else if (o === 'W') {
+                // Walk on hitter's chart vs pitcher's chart
+                playSound(state.usedPitcherChart ? 'pitches-that-close' : 'just-a-bit-outside');
+            }
         }
         prevOutcomeRef.current = state.lastOutcome;
+
         // DP / fielding result sounds
         if (state.pendingDpResult && state.pendingDpResult !== prevDpRef.current) {
             if (state.pendingDpResult.isDP) playSound('out');
@@ -289,11 +317,13 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             else if (state.pendingDpResult.choice === 'hold') playSound('safe');
         }
         prevDpRef.current = state.pendingDpResult;
+
         // Extra base result sounds
         if (state.pendingExtraBaseResult && state.pendingExtraBaseResult !== prevEbRef.current) {
             playSound(state.pendingExtraBaseResult.safe ? 'safe' : 'out');
         }
         prevEbRef.current = state.pendingExtraBaseResult;
+
         // Steal result sounds
         if (state.pendingStealResult && state.pendingStealResult !== prevStealRef.current) {
             playSound(state.pendingStealResult.safe ? 'safe' : 'out');
