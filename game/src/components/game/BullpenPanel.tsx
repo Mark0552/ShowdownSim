@@ -25,9 +25,17 @@ export default function BullpenPanel({ team, side, onClose, onHover, onLeave }: 
     // sorted SP1 → SP4 by their assignedPosition (Starter-1, Starter-2, etc.)
     const inactiveStarters = (team.bullpen || []).filter(p => p.role === 'Starter');
     const activeIsStarter = team.pitcher.role === 'Starter';
-    const allStarters = activeIsStarter
-        ? [team.pitcher, ...inactiveStarters]
-        : inactiveStarters;
+    // Include used starters (subbed out this game) in the rotation, not in "not available"
+    const usedStarterIds = new Set<string>();
+    const usedStarters = (team.usedPlayers || [])
+        .map(id => [...team.lineup, ...(team.bullpen || []), ...(team.bench || []), team.pitcher].find(p => p.cardId === id))
+        .filter((p): p is PlayerSlot => !!p && p.role === 'Starter');
+    usedStarters.forEach(p => usedStarterIds.add(p.cardId));
+    const allStarters = [
+        ...(activeIsStarter ? [team.pitcher] : []),
+        ...inactiveStarters,
+        ...usedStarters,
+    ];
     const getSpNum = (p: PlayerSlot) => {
         const match = p.assignedPosition?.match(/Starter-(\d+)/);
         return match ? parseInt(match[1]) : 99;
@@ -48,7 +56,7 @@ export default function BullpenPanel({ team, side, onClose, onHover, onLeave }: 
         const found = allKnownPlayers.find(p => p.cardId === id);
         return { id, player: found || null };
     });
-    const usedBullpen = usedWithInfo.filter(u => u.player?.type === 'pitcher' || (!u.player && !team.lineup.some(p => p.cardId === u.id)));
+    const usedBullpen = usedWithInfo.filter(u => !usedStarterIds.has(u.id) && (u.player?.type === 'pitcher' || (!u.player && !team.lineup.some(p => p.cardId === u.id))));
     const usedBench = usedWithInfo.filter(u => u.player?.type === 'hitter' || (!u.player && team.lineup.some(p => p.cardId === u.id)));
     // Any that couldn't be classified go into bullpen section
     const usedUnknown = usedWithInfo.filter(u => !usedBullpen.includes(u) && !usedBench.includes(u));
@@ -99,18 +107,19 @@ export default function BullpenPanel({ team, side, onClose, onHover, onLeave }: 
                         <div className="bp-section-label" style={{ color: '#4a7a9a' }}>STARTING ROTATION ({startingRotation.length})</div>
                         {startingRotation.map((p, i) => {
                             const isActive = p.cardId === activePitcherId;
+                            const isUsed = usedStarterIds.has(p.cardId);
                             const spNum = getSpNum(p);
                             return (
                                 <div key={`sp-${i}`} className="bp-card" style={{
-                                    opacity: isActive ? 1 : 0.6,
-                                    border: isActive ? '1px solid #4ade80' : 'none',
-                                    borderRadius: isActive ? '4px' : undefined,
-                                    background: isActive ? 'rgba(74, 222, 128, 0.08)' : undefined,
+                                    opacity: isActive ? 1 : isUsed ? 0.45 : 0.6,
+                                    border: isActive ? '1px solid #4ade80' : isUsed ? '1px solid #e94560' : 'none',
+                                    borderRadius: (isActive || isUsed) ? '4px' : undefined,
+                                    background: isActive ? 'rgba(74, 222, 128, 0.08)' : isUsed ? 'rgba(233, 69, 96, 0.08)' : undefined,
                                 }} onMouseEnter={(e) => onHover(p, e)} onMouseLeave={onLeave}>
                                     <img src={p.imagePath} alt="" />
                                     <div className="bp-card-info">
-                                        <span className="bp-card-name" style={{ color: isActive ? '#4ade80' : '#4a7a9a' }}>
-                                            SP{spNum} — {p.name}{isActive ? ' ★' : ''}
+                                        <span className="bp-card-name" style={{ color: isActive ? '#4ade80' : isUsed ? '#e94560' : '#4a7a9a' }}>
+                                            SP{spNum} — {p.name}{isActive ? ' ★' : isUsed ? ' (used)' : ''}
                                         </span>
                                     </div>
                                 </div>

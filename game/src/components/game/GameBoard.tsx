@@ -80,6 +80,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const frozenRef = useRef({
         bases: state.bases, outs: state.outs, score: state.score,
         battingTeam: state.halfInning === 'top' ? state.awayTeam : state.homeTeam,
+        fieldingTeam: state.halfInning === 'top' ? state.homeTeam : state.awayTeam,
     });
     const handleDiceComplete = useCallback(() => {
         animatingRef.current = false;
@@ -157,7 +158,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
 
     // Update frozen display values when NOT animating
     if (!animatingRef.current) {
-        frozenRef.current = { bases: state.bases, outs: state.outs, score: state.score, battingTeam };
+        frozenRef.current = { bases: state.bases, outs: state.outs, score: state.score, battingTeam, fieldingTeam };
     }
 
     // Consume server-driven movements: wait for dice to finish, then animate
@@ -178,8 +179,10 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const displayOuts = frozenRef.current.outs;
     const displayScore = frozenRef.current.score;
     const displayTeam = frozenRef.current.battingTeam;
-    // Batter at home plate uses frozen team so next batter doesn't appear until at-bat starts
+    const displayFieldingTeam = frozenRef.current.fieldingTeam;
+    // Batter and pitcher use frozen teams so they don't swap during animation
     const displayBatter = displayTeam.lineup[displayTeam.currentBatterIndex] || batter;
+    const displayPitcher = displayFieldingTeam.pitcher || pitcher;
     const animTargets = new Set(runnerAnims.map(a => a.toBase));
     const animSources = new Set(runnerAnims.map(a => a.fromBase));
     const getRunner = (base: 'first' | 'second' | 'third'): PlayerSlot | null => {
@@ -572,7 +575,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                         <CardSlot x={B2.x - 38} y={B2.y - 53} label="2B" card={runner2} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                         <CardSlot x={B1.x - 38} y={B1.y - 53} label="1B" card={runner1} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                         <CardSlot x={B3.x - 38} y={B3.y - 53} label="3B" card={runner3} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
-                        <CardSlot x={MOUND.x - 38} y={MOUND.y - 53} label="P" card={pitcher} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
+                        <CardSlot x={MOUND.x - 38} y={MOUND.y - 53} label="P" card={displayPitcher} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                         <CardSlot x={HP.x - 38} y={HP.y - 53} label="H" card={displayBatter} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                     </>
                 )}
