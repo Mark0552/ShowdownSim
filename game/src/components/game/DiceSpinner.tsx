@@ -22,17 +22,21 @@ interface DiceSpinnerProps {
 const SPIN_DURATION = 900;
 const SETTLE_PAUSE = 600;
 
-function D20Diamond({ x, y, r, value, color, spinning }: { x: number; y: number; r: number; value: number; color: string; spinning: boolean }) {
-    const w = r * 0.78;
+function D20Hex({ x, y, r, value, color, spinning }: { x: number; y: number; r: number; value: number; color: string; spinning: boolean }) {
+    // Regular hexagon (flat-top) — 6 points
+    const pts = Array.from({ length: 6 }, (_, i) => {
+        const angle = (Math.PI / 3) * i - Math.PI / 6; // start at -30deg for flat top
+        return `${x + r * Math.cos(angle)},${y + r * Math.sin(angle)}`;
+    }).join(' ');
     return (
         <g>
             <polygon
-                points={`${x},${y - r} ${x + w},${y} ${x},${y + r} ${x - w},${y}`}
+                points={pts}
                 fill="#040c1a" stroke={spinning ? '#888' : color} strokeWidth="2.5" strokeLinejoin="round"
             >
                 {spinning && <animate attributeName="stroke" values={`${color};#fff;${color}`} dur="0.3s" repeatCount="indefinite" />}
             </polygon>
-            <text x={x} y={y + r * 0.3} textAnchor="middle" fontSize={r * 0.9}
+            <text x={x} y={y + r * 0.28} textAnchor="middle" fontSize={r * 0.85}
                 fill={spinning ? '#aaa' : 'white'} fontWeight="normal" fontFamily="Impact">{value}</text>
         </g>
     );
@@ -136,7 +140,7 @@ export default function DiceSpinner({
                 {/* Pitch column (left) */}
                 <text x={pitchCX} y={botY + 18} textAnchor="middle" fontSize="16" fill={pitchColor}
                     fontWeight="normal" fontFamily="Impact" letterSpacing="1">PITCH</text>
-                <D20Diamond x={pitchCX} y={dieY} r={dieR} value={pitchRoll!} color={pitchColor} spinning={false} />
+                <D20Hex x={pitchCX} y={dieY} r={dieR} value={pitchRoll!} color={pitchColor} spinning={false} />
                 {/* Equation below die */}
                 <text x={pitchCX} y={dieY + dieR + 16} textAnchor="middle" fontSize="13" fill="#ddd" fontWeight="normal" fontFamily="monospace">
                     {equation}
@@ -151,7 +155,7 @@ export default function DiceSpinner({
                 {/* Swing column (right) */}
                 <text x={swingCX} y={botY + 18} textAnchor="middle" fontSize="16" fill={swingColor}
                     fontWeight="normal" fontFamily="Impact" letterSpacing="1">SWING</text>
-                <D20Diamond x={swingCX} y={dieY} r={dieR} value={swingRoll!} color={swingColor} spinning={false} />
+                <D20Hex x={swingCX} y={dieY} r={dieR} value={swingRoll!} color={swingColor} spinning={false} />
 
                 {/* Advantage bar (full width, solid, bottom) */}
                 <rect x={cx - 178} y={advY} width="356" height={advH} rx="4" fill={advantageColor} />
@@ -172,7 +176,7 @@ export default function DiceSpinner({
             <text x={cx} y={botY + 22} textAnchor="middle" fontSize="18" fill={color}
                 fontWeight="normal" fontFamily="Impact" letterSpacing="2">{label}</text>
 
-            <D20Diamond x={dieX} y={dieY} r={dieR} value={displayValue} color={color} spinning={spinning && !settled} />
+            <D20Hex x={dieX} y={dieY} r={dieR} value={displayValue} color={color} spinning={spinning && !settled} />
 
             {/* Pitch: equation + vs OB + advantage */}
             {isPitch && settled && !spinning && hasPitchData && (

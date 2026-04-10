@@ -232,15 +232,16 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             const y = MAIN_TOP + 66 + i * 58;
             const isAtBat = (isHome ? state.halfInning === 'bottom' : state.halfInning === 'top') && i === team.currentBatterIndex;
             const isOnDeck = (isHome ? state.halfInning === 'top' : state.halfInning === 'bottom') && i === team.currentBatterIndex;
-            const pos = player.assignedPosition ? player.assignedPosition.replace(/-\d+$/, '') : '';
-            const fld = `+${pos === 'C' ? (player.arm ?? 0) : (player.fielding ?? 0)}`;
+            const rawPos = player.assignedPosition ? player.assignedPosition.replace(/-\d+$/, '') : '';
+            const pos = rawPos === 'bench' ? '' : rawPos; // don't show "bench" as position
+            const fld = pos ? `+${pos === 'C' ? (player.arm ?? 0) : (player.fielding ?? 0)}` : '';
             return (
                 <g key={`${isHome ? 'h' : 'a'}-${i}`} cursor="pointer" onMouseEnter={(e) => handlePlayerHover(player, e.nativeEvent as any)} onMouseLeave={handlePlayerLeave}>
                     <rect x={panelX + 6} y={y} width={w} height="52" rx="3" fill={isAtBat ? '#1a2858' : isOnDeck ? '#0e1a30' : '#081428'} stroke={isAtBat ? '#e94560' : isOnDeck ? '#60a5fa' : '#1a3040'} strokeWidth={isAtBat ? 2.5 : isOnDeck ? 1.5 : 0.5}/>
                     <text x={panelX + 20} y={y + 32} fontSize="15" fill={isAtBat ? '#e94560' : isOnDeck ? '#60a5fa' : '#a0c0e0'} fontWeight="normal" fontFamily="Arial">{i + 1}.</text>
                     {player.imagePath && <image href={player.imagePath} x={panelX + 40} y={y + 3} width="34" height="46" preserveAspectRatio="xMidYMid slice"/>}
                     <text x={panelX + 82} y={y + 22} fontSize="15" fill={isAtBat ? 'white' : '#a0c0e0'} fontWeight="normal" fontFamily="Arial">{player.name.length > 18 ? player.name.slice(0, 17) + '\u2026' : player.name}</text>
-                    {pos && <text x={panelX + w} y={y + 22} textAnchor="end" fontSize="13" fill="#a0c0e0" fontWeight="normal" fontFamily="Arial">{pos} {fld}</text>}
+                    {pos && fld && <text x={panelX + w} y={y + 22} textAnchor="end" fontSize="13" fill="#a0c0e0" fontWeight="normal" fontFamily="Arial">{pos} {fld}</text>}
                     {player.icons && player.icons.length > 0 && renderIcons(player, team, panelX + 82, y + 40)}
                 </g>
             );

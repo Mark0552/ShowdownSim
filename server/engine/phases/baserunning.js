@@ -276,8 +276,9 @@ export function endHalfInning(state) {
 
     const away = { ...s.awayTeam, runsPerInning: [...s.awayTeam.runsPerInning] };
     const home = { ...s.homeTeam, runsPerInning: [...s.homeTeam.runsPerInning] };
+    // Only pad the away team (about to bat in top of next inning)
+    // Home team's next inning stays undefined until they actually bat
     while (away.runsPerInning.length < state.inning + 1) away.runsPerInning.push(0);
-    while (home.runsPerInning.length < state.inning + 1) home.runsPerInning.push(0);
 
     const rpCarriesOver = s.rpActiveInning === state.inning + 1 && s.rpActiveTeam === 'away';
     const newControlMod = rpCarriesOver ? s.controlModifier : 0;
