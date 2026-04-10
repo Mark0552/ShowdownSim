@@ -48,13 +48,15 @@ export function checkExtraBaseEligible(state, outcome) {
     }
 
     if (outcome === 'FB' && state.outs < 3) {
-        // Tag-up: use current outs (after FB) for 2-out bonus — runners go on contact with 2 outs
-        const fbOuts = state.outs;
+        // Tag-up: 2-out bonus uses outs BEFORE the fly ball (outsBeforeSwing), not after.
+        // The FB itself adds an out, so with 1 out before → 2 outs now, but the tag-up
+        // shouldn't get the 2-out bonus since there were only 1 out when the ball was hit.
+        const outsBeforeFB = state.outsBeforeSwing || 0;
         // Runner on 3rd can try to score
         if (bases.third) {
             const runner = battingTeam.lineup.find(p => p.cardId === bases.third);
             if (runner) {
-                const target = runner.speed + 5 + (fbOuts >= 2 ? 5 : 0);
+                const target = runner.speed + 5 + (outsBeforeFB >= 2 ? 5 : 0);
                 eligible.push({ runnerId: runner.cardId, runnerName: runner.name, fromBase: 'third', toBase: 'home', runnerSpeed: runner.speed, targetWithBonuses: target });
             }
         }
@@ -62,7 +64,7 @@ export function checkExtraBaseEligible(state, outcome) {
         if (bases.second) {
             const runner = battingTeam.lineup.find(p => p.cardId === bases.second);
             if (runner) {
-                const target = runner.speed + (fbOuts >= 2 ? 5 : 0);
+                const target = runner.speed + (outsBeforeFB >= 2 ? 5 : 0);
                 eligible.push({ runnerId: runner.cardId, runnerName: runner.name, fromBase: 'second', toBase: 'third', runnerSpeed: runner.speed, targetWithBonuses: target });
             }
         }
