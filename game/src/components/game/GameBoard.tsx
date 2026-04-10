@@ -64,7 +64,7 @@ const B2 = basePos(1349, 731);
 const B1 = basePos(1349, 1818);
 const MOUND = basePos(770, 1285);
 
-/** Animated runner card: steps through each base waypoint along the path */
+/** Animated runner card — pure SVG with requestAnimationFrame interpolation */
 function RunnerAnimOverlay({ anim, baseCoords, baseAnimMs }: {
     anim: RunnerMovement; baseCoords: Record<string, { x: number; y: number }>; baseAnimMs: number;
 }) {
@@ -73,66 +73,75 @@ function RunnerAnimOverlay({ anim, baseCoords, baseAnimMs }: {
     const scoring = anim.toBase === 'scored';
     const from = baseCoords[anim.fromBase];
 
-    // Build waypoint list as absolute positions
-    const waypoints: { x: number; y: number }[] = [];
+    // Build waypoint positions in SVG coordinates
+    const positions: { x: number; y: number }[] = [{ x: from?.x || 0, y: from?.y || 0 }];
     if (isOut) {
         const target = baseCoords[anim.outTarget || 'home'];
         if (from && target) {
-            waypoints.push({ x: from.x + (target.x - from.x) * 0.6, y: from.y + (target.y - from.y) * 0.6 });
+            positions.push({ x: from.x + (target.x - from.x) * 0.6, y: from.y + (target.y - from.y) * 0.6 });
         }
-    } else {
+    } else if (from) {
         const fromIdx = PATH_ORDER.indexOf(anim.fromBase);
         const toIdx = PATH_ORDER.indexOf(anim.toBase);
         if (fromIdx >= 0 && toIdx > fromIdx) {
             for (let i = fromIdx + 1; i <= toIdx; i++) {
                 const wp = baseCoords[PATH_ORDER[i]];
-                if (wp) waypoints.push({ x: wp.x, y: wp.y });
+                if (wp) positions.push({ x: wp.x, y: wp.y });
             }
         }
     }
 
-    const [step, setStep] = useState(-1); // -1 = at start, 0..n = at waypoint
-    const totalSteps = waypoints.length;
+    const totalSegs = positions.length - 1;
     const segMs = Math.max(baseAnimMs, 400);
+    const [pos, setPos] = useState(positions[0]);
+    const [opacity, setOpacity] = useState(1);
 
     useEffect(() => {
-        // Start first step on next frame after mount
-        const raf = requestAnimationFrame(() => { requestAnimationFrame(() => setStep(0)); });
+        if (totalSegs <= 0) return;
+        const totalDur = totalSegs * segMs;
+        const startTime = performance.now();
+        let raf: number;
+
+        const tick = (now: number) => {
+            const elapsed = now - startTime;
+            const progress = Math.min(elapsed / totalDur, 1);
+
+            // Find which segment we're in and how far along it
+            const segFloat = progress * totalSegs;
+            const segIdx = Math.min(Math.floor(segFloat), totalSegs - 1);
+            const segProgress = segFloat - segIdx;
+
+            // Ease in-out per segment
+            const eased = segProgress < 0.5
+                ? 2 * segProgress * segProgress
+                : 1 - Math.pow(-2 * segProgress + 2, 2) / 2;
+
+            const p0 = positions[segIdx];
+            const p1 = positions[segIdx + 1];
+            setPos({ x: p0.x + (p1.x - p0.x) * eased, y: p0.y + (p1.y - p0.y) * eased });
+
+            // Fade out on last 30% if scoring or out
+            if ((scoring || isOut) && progress > 0.7) {
+                setOpacity(1 - (progress - 0.7) / 0.3);
+            }
+
+            if (progress < 1) raf = requestAnimationFrame(tick);
+        };
+        raf = requestAnimationFrame(tick);
         return () => cancelAnimationFrame(raf);
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    useEffect(() => {
-        if (step < 0 || step >= totalSteps - 1) return; // done or not started
-        const timer = setTimeout(() => setStep(s => s + 1), segMs);
-        return () => clearTimeout(timer);
-    }, [step, totalSteps, segMs]);
-
-    if (!from || waypoints.length === 0) return null;
-    const startPos = { x: from.x, y: from.y };
-    const currentPos = step >= 0 && step < totalSteps ? waypoints[step] : startPos;
-    const atFinal = step >= totalSteps - 1;
-    const shouldFade = atFinal && (scoring || isOut);
+    if (!from || totalSegs <= 0) return null;
 
     return (
-        <foreignObject x="0" y="0" width="1400" height="950" style={{ overflow: 'visible', pointerEvents: 'none' }}>
-            <div style={{
-                width: 70, height: 100, position: 'absolute',
-                left: currentPos.x, top: currentPos.y,
-                opacity: shouldFade ? 0 : 1,
-                transition: `left ${segMs}ms ease-in-out, top ${segMs}ms ease-in-out, opacity ${segMs * 0.4}ms ease-in ${shouldFade ? segMs * 0.6 + 'ms' : '0ms'}`,
-            }}>
-                <img src={anim.imagePath} alt="" style={{
-                    width: 70, height: 100, objectFit: 'cover', borderRadius: 4,
-                }} />
-                {isOut && (
-                    <div style={{
-                        position: 'absolute', top: 0, left: 0, width: 70, height: 100, borderRadius: 4,
-                        background: 'rgba(200, 20, 20, 0.7)',
-                        border: '3px solid rgba(255, 30, 30, 0.9)',
-                    }} />
-                )}
-            </div>
-        </foreignObject>
+        <g opacity={opacity} style={{ pointerEvents: 'none' }}>
+            <image href={anim.imagePath} x={pos.x + 3} y={pos.y + 3} width={64} height={94}
+                preserveAspectRatio="xMidYMid slice" />
+            {isOut && (
+                <rect x={pos.x} y={pos.y} width={70} height={100} rx="4"
+                    fill="rgba(200, 20, 20, 0.7)" stroke="rgba(255, 30, 30, 0.9)" strokeWidth="3" />
+            )}
+        </g>
     );
 }
 
@@ -654,7 +663,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                         <CardSlot x={B1.x - 38} y={B1.y - 53} label="1B" card={runner1} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                         <CardSlot x={B3.x - 38} y={B3.y - 53} label="3B" card={runner3} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                         <CardSlot x={MOUND.x - 38} y={MOUND.y - 53} label="P" card={displayPitcher} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
-                        <CardSlot x={HP.x - 38} y={HP.y - 53} label="H" card={displayBatter} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
+                        <CardSlot x={HP.x - 38} y={HP.y - 53} label="H" card={runnerAnims.length > 0 ? null : displayBatter} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                     </>
                 )}
 
