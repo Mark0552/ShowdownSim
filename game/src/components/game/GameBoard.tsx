@@ -64,39 +64,66 @@ const B2 = basePos(1349, 731);
 const B1 = basePos(1349, 1818);
 const MOUND = basePos(770, 1285);
 
-/** Animated runner card: mounts at start position, transitions to end */
+/** Animated runner card: steps through each base waypoint along the path */
 function RunnerAnimOverlay({ anim, baseCoords, baseAnimMs }: {
     anim: RunnerMovement; baseCoords: Record<string, { x: number; y: number }>; baseAnimMs: number;
 }) {
-    const [moved, setMoved] = useState(false);
-    const from = baseCoords[anim.fromBase];
+    const PATH_ORDER = ['home', 'first', 'second', 'third', 'scored'];
     const isOut = anim.toBase === 'out';
     const scoring = anim.toBase === 'scored';
-    const to = isOut ? baseCoords[anim.outTarget || 'home'] : baseCoords[anim.toBase];
-    const durMs = Math.max((anim.segments || 1) * baseAnimMs, 400);
+    const from = baseCoords[anim.fromBase];
+
+    // Build waypoint list as absolute positions
+    const waypoints: { x: number; y: number }[] = [];
+    if (isOut) {
+        const target = baseCoords[anim.outTarget || 'home'];
+        if (from && target) {
+            waypoints.push({ x: from.x + (target.x - from.x) * 0.6, y: from.y + (target.y - from.y) * 0.6 });
+        }
+    } else {
+        const fromIdx = PATH_ORDER.indexOf(anim.fromBase);
+        const toIdx = PATH_ORDER.indexOf(anim.toBase);
+        if (fromIdx >= 0 && toIdx > fromIdx) {
+            for (let i = fromIdx + 1; i <= toIdx; i++) {
+                const wp = baseCoords[PATH_ORDER[i]];
+                if (wp) waypoints.push({ x: wp.x, y: wp.y });
+            }
+        }
+    }
+
+    const [step, setStep] = useState(-1); // -1 = at start, 0..n = at waypoint
+    const totalSteps = waypoints.length;
+    const segMs = Math.max(baseAnimMs, 400);
 
     useEffect(() => {
-        // Trigger transition on next frame after mount (element starts at from position)
-        const raf = requestAnimationFrame(() => { requestAnimationFrame(() => setMoved(true)); });
+        // Start first step on next frame after mount
+        const raf = requestAnimationFrame(() => { requestAnimationFrame(() => setStep(0)); });
         return () => cancelAnimationFrame(raf);
     }, []);
 
-    if (!from || !to) return null;
-    const tx = isOut ? (to.x - from.x) * 0.6 : to.x - from.x;
-    const ty = isOut ? (to.y - from.y) * 0.6 : to.y - from.y;
+    useEffect(() => {
+        if (step < 0 || step >= totalSteps - 1) return; // done or not started
+        const timer = setTimeout(() => setStep(s => s + 1), segMs);
+        return () => clearTimeout(timer);
+    }, [step, totalSteps, segMs]);
+
+    if (!from || waypoints.length === 0) return null;
+    const startPos = { x: from.x, y: from.y };
+    const currentPos = step >= 0 && step < totalSteps ? waypoints[step] : startPos;
+    const atFinal = step >= totalSteps - 1;
+    const shouldFade = atFinal && (scoring || isOut);
 
     return (
-        <foreignObject x={from.x} y={from.y} width="300" height="300" style={{ overflow: 'visible', pointerEvents: 'none' }}>
+        <foreignObject x="0" y="0" width="1400" height="950" style={{ overflow: 'visible', pointerEvents: 'none' }}>
             <div style={{
-                width: 70, height: 100, position: 'relative',
-                transform: moved ? `translate(${tx}px, ${ty}px)` : 'translate(0, 0)',
-                opacity: moved && (scoring || isOut) ? 0 : 1,
-                transition: `transform ${durMs}ms ease-out, opacity ${durMs * 0.3}ms ease-in ${durMs * 0.7}ms`,
+                width: 70, height: 100, position: 'absolute',
+                left: currentPos.x, top: currentPos.y,
+                opacity: shouldFade ? 0 : 1,
+                transition: `left ${segMs}ms ease-in-out, top ${segMs}ms ease-in-out, opacity ${segMs * 0.4}ms ease-in ${shouldFade ? segMs * 0.6 + 'ms' : '0ms'}`,
             }}>
                 <img src={anim.imagePath} alt="" style={{
                     width: 70, height: 100, objectFit: 'cover', borderRadius: 4,
                 }} />
-                {/* Heavy red tint overlay for out animations */}
                 {isOut && (
                     <div style={{
                         position: 'absolute', top: 0, left: 0, width: 70, height: 100, borderRadius: 4,
@@ -126,6 +153,8 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         bases: state.bases, outs: state.outs, score: state.score,
         battingTeam: state.halfInning === 'top' ? state.awayTeam : state.homeTeam,
         fieldingTeam: state.halfInning === 'top' ? state.homeTeam : state.awayTeam,
+        halfInning: state.halfInning as string,
+        inning: state.inning,
     });
     const handleDiceComplete = useCallback(() => {
         animatingRef.current = false;
@@ -203,7 +232,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
 
     // Update frozen display values when NOT animating
     if (!animatingRef.current) {
-        frozenRef.current = { bases: state.bases, outs: state.outs, score: state.score, battingTeam, fieldingTeam };
+        frozenRef.current = { bases: state.bases, outs: state.outs, score: state.score, battingTeam, fieldingTeam, halfInning: state.halfInning, inning: state.inning };
     }
 
     // Consume server-driven movements: wait for dice to finish, then animate
@@ -225,6 +254,8 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const displayScore = frozenRef.current.score;
     const displayTeam = frozenRef.current.battingTeam;
     const displayFieldingTeam = frozenRef.current.fieldingTeam;
+    const displayHalfInning = frozenRef.current.halfInning;
+    const displayInning = frozenRef.current.inning;
     // Batter and pitcher use frozen teams so they don't swap during animation
     const displayBatter = displayTeam.lineup[displayTeam.currentBatterIndex] || batter;
     const displayPitcher = displayFieldingTeam.pitcher || pitcher;
@@ -275,8 +306,9 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         const w = PW - 12;
         return team.lineup.map((player, i) => {
             const y = MAIN_TOP + 66 + i * 58;
-            const isAtBat = (isHome ? state.halfInning === 'bottom' : state.halfInning === 'top') && i === team.currentBatterIndex;
-            const isOnDeck = (isHome ? state.halfInning === 'top' : state.halfInning === 'bottom') && i === team.currentBatterIndex;
+            const dHalf = frozenRef.current.halfInning;
+            const isAtBat = (isHome ? dHalf === 'bottom' : dHalf === 'top') && i === team.currentBatterIndex;
+            const isOnDeck = (isHome ? dHalf === 'top' : dHalf === 'bottom') && i === team.currentBatterIndex;
             const rawPos = player.assignedPosition ? player.assignedPosition.replace(/-\d+$/, '') : '';
             const pos = rawPos === 'bench' ? '' : rawPos; // don't show "bench" as position
             const fld = pos ? `+${pos === 'C' ? (player.arm ?? 0) : (player.fielding ?? 0)}` : '';
@@ -459,9 +491,9 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     const hdrH = 20, rowH = 22;
                     const sbY = 6; // top padding
 
-                    const curInnIdx = state.inning - 1; // 0-based index of current inning
+                    const curInnIdx = displayInning - 1; // 0-based index using frozen inning
                     const isBattingTeam = (team: typeof state.awayTeam) =>
-                        (state.halfInning === 'top' && team === state.awayTeam) || (state.halfInning === 'bottom' && team === state.homeTeam);
+                        (displayHalfInning === 'top' && team === state.awayTeam) || (displayHalfInning === 'bottom' && team === state.homeTeam);
 
                     const renderRow = (team: typeof state.awayTeam, teamName: string, ry: number) => (
                         <g>
@@ -518,11 +550,11 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
 
                             {/* Inning indicator (right of scoreboard table) */}
                             <rect x={innX} y={sbY + 4} width="46" height="58" rx="5" fill="#040c1a" stroke="#d4a018" strokeWidth="1.5"/>
-                            <text x={innX + 23} y={sbY + 42} textAnchor="middle" fontSize="32" fill="white" fontWeight="normal" fontFamily="Impact">{state.inning}</text>
-                            <rect x={innX + 50} y={sbY + 4} width="36" height="27" rx="3" fill={state.halfInning === 'top' ? '#002868' : '#0a1428'} stroke={state.halfInning === 'top' ? '#d4a018' : '#d4a01860'} strokeWidth="1"/>
-                            <text x={innX + 68} y={sbY + 22} textAnchor="middle" fontSize="11" fill={state.halfInning === 'top' ? 'white' : '#2a4a70'} fontWeight="normal" fontFamily="Impact">TOP</text>
-                            <rect x={innX + 50} y={sbY + 34} width="36" height="27" rx="3" fill={state.halfInning === 'bottom' ? '#002868' : '#0a1428'} stroke={state.halfInning === 'bottom' ? '#d4a018' : '#d4a01860'} strokeWidth="1"/>
-                            <text x={innX + 68} y={sbY + 52} textAnchor="middle" fontSize="11" fill={state.halfInning === 'bottom' ? 'white' : '#2a4a70'} fontWeight="normal" fontFamily="Impact">BOT</text>
+                            <text x={innX + 23} y={sbY + 42} textAnchor="middle" fontSize="32" fill="white" fontWeight="normal" fontFamily="Impact">{displayInning}</text>
+                            <rect x={innX + 50} y={sbY + 4} width="36" height="27" rx="3" fill={displayHalfInning === 'top' ? '#002868' : '#0a1428'} stroke={displayHalfInning === 'top' ? '#d4a018' : '#d4a01860'} strokeWidth="1"/>
+                            <text x={innX + 68} y={sbY + 22} textAnchor="middle" fontSize="11" fill={displayHalfInning === 'top' ? 'white' : '#2a4a70'} fontWeight="normal" fontFamily="Impact">TOP</text>
+                            <rect x={innX + 50} y={sbY + 34} width="36" height="27" rx="3" fill={displayHalfInning === 'bottom' ? '#002868' : '#0a1428'} stroke={displayHalfInning === 'bottom' ? '#d4a018' : '#d4a01860'} strokeWidth="1"/>
+                            <text x={innX + 68} y={sbY + 52} textAnchor="middle" fontSize="11" fill={displayHalfInning === 'bottom' ? 'white' : '#2a4a70'} fontWeight="normal" fontFamily="Impact">BOT</text>
 
                             {/* Outs (right of TOP/BOT) */}
                             <text x={innX + 128} y={sbY + 14} textAnchor="middle" fontSize="9" fill="#d4a018" fontWeight="normal" letterSpacing="2" fontFamily="Impact">OUTS</text>
