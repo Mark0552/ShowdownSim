@@ -64,6 +64,44 @@ const B2 = basePos(1349, 731);
 const B1 = basePos(1349, 1818);
 const MOUND = basePos(770, 1285);
 
+/** Animated runner card: mounts at start position, transitions to end */
+function RunnerAnimOverlay({ anim, baseCoords, baseAnimMs }: {
+    anim: RunnerMovement; baseCoords: Record<string, { x: number; y: number }>; baseAnimMs: number;
+}) {
+    const [moved, setMoved] = useState(false);
+    const from = baseCoords[anim.fromBase];
+    const isOut = anim.toBase === 'out';
+    const scoring = anim.toBase === 'scored';
+    const to = isOut ? baseCoords[anim.outTarget || 'home'] : baseCoords[anim.toBase];
+    const durMs = Math.max((anim.segments || 1) * baseAnimMs, 400);
+
+    useEffect(() => {
+        // Trigger transition on next frame after mount (element starts at from position)
+        const raf = requestAnimationFrame(() => { requestAnimationFrame(() => setMoved(true)); });
+        return () => cancelAnimationFrame(raf);
+    }, []);
+
+    if (!from || !to) return null;
+    const tx = isOut ? (to.x - from.x) * 0.6 : to.x - from.x;
+    const ty = isOut ? (to.y - from.y) * 0.6 : to.y - from.y;
+
+    return (
+        <foreignObject x={from.x} y={from.y} width="300" height="300" style={{ overflow: 'visible', pointerEvents: 'none' }}>
+            <div style={{
+                width: 70, height: 100,
+                transform: moved ? `translate(${tx}px, ${ty}px)` : 'translate(0, 0)',
+                opacity: moved && (scoring || isOut) ? 0 : 1,
+                transition: `transform ${durMs}ms ease-out, opacity ${durMs * 0.3}ms ease-in ${durMs * 0.7}ms`,
+            }}>
+                <img src={anim.imagePath} alt="" style={{
+                    width: 70, height: 100, objectFit: 'cover', borderRadius: 4,
+                    border: isOut ? '2px solid rgba(220,30,30,0.8)' : 'none',
+                }} />
+            </div>
+        </foreignObject>
+    );
+}
+
 export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName, awayName, pendingMovements = [], onMovementsConsumed }: Props) {
     const [hoveredPlayer, setHoveredPlayer] = useState<PlayerSlot | null>(null);
     const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
@@ -581,74 +619,10 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     </>
                 )}
 
-                {/* Animated runner overlay — cards follow base paths */}
-                {runnerAnims.map(anim => {
-                    const from = BASE_COORDS[anim.fromBase];
-                    if (!from) return null;
-                    const isOut = anim.toBase === 'out';
-                    const scoring = anim.toBase === 'scored';
-
-                    // Out: slide partway toward next base, turn red, fade before arriving
-                    if (isOut) {
-                        const target = BASE_COORDS[anim.outTarget || 'home'];
-                        if (!target) return null;
-                        // Slide 60% of the way to the next base
-                        const dx = (target.x - from.x) * 0.6;
-                        const dy = (target.y - from.y) * 0.6;
-                        const outDur = BASE_ANIM_MS;
-                        return (
-                            <g key={`anim-${anim.cardId}`}>
-                                <image href={anim.imagePath}
-                                    x={from.x + 3} y={from.y + 3} width={70} height={100}
-                                    preserveAspectRatio="xMidYMid slice">
-                                    <animateMotion
-                                        path={`M 0 0 L ${dx} ${dy}`}
-                                        dur={`${outDur}ms`} fill="freeze"
-                                        calcMode="spline" keySplines="0.4 0 1 1"
-                                        keyTimes="0;1"
-                                    />
-                                    <animate attributeName="opacity" from="1" to="0"
-                                        begin={`${outDur * 0.4}ms`} dur={`${outDur * 0.6}ms`} fill="freeze" />
-                                </image>
-                                {/* Red tint overlay that follows the same path */}
-                                <rect x={from.x} y={from.y} width={76} height={106} rx="6" fill="rgba(220,30,30,0.5)">
-                                    <animateMotion
-                                        path={`M 0 0 L ${dx} ${dy}`}
-                                        dur={`${outDur}ms`} fill="freeze"
-                                        calcMode="spline" keySplines="0.4 0 1 1"
-                                        keyTimes="0;1"
-                                    />
-                                    <animate attributeName="opacity" values="0;0.5;0" dur={`${outDur}ms`} fill="freeze" />
-                                </rect>
-                            </g>
-                        );
-                    }
-
-                    // Moving or scoring: follow base path
-                    const { path } = buildBasePath(anim.fromBase, anim.toBase);
-                    if (!path) return null;
-                    const durMs = anim.segments * BASE_ANIM_MS;
-                    return (
-                        <g key={`anim-${anim.cardId}`}>
-                            <image
-                                href={anim.imagePath}
-                                x={from.x + 3} y={from.y + 3} width={70} height={100}
-                                preserveAspectRatio="xMidYMid slice"
-                            >
-                                <animateMotion
-                                    path={path} dur={`${durMs}ms`} fill="freeze"
-                                    calcMode="spline"
-                                    keySplines={Array(anim.segments).fill('0.25 0.1 0.25 1').join(';')}
-                                    keyTimes={Array.from({ length: anim.segments + 1 }, (_, i) => i / anim.segments).join(';')}
-                                />
-                                {scoring && (
-                                    <animate attributeName="opacity" from="1" to="0"
-                                        begin={`${durMs * 0.7}ms`} dur={`${durMs * 0.3}ms`} fill="freeze" />
-                                )}
-                            </image>
-                        </g>
-                    );
-                })}
+                {/* Animated runner overlay — CSS transition via foreignObject */}
+                {runnerAnims.map(anim => (
+                    <RunnerAnimOverlay key={`ra-${anim.cardId}`} anim={anim} baseCoords={BASE_COORDS} baseAnimMs={BASE_ANIM_MS} />
+                ))}
 
                 {/* IP / Fatigue near pitcher — hidden during SP roll */}
                 {state.phase !== 'sp_roll' && (
