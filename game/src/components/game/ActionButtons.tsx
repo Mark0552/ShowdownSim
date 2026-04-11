@@ -433,12 +433,13 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                             bx += btnW + gap;
                             const target = (runner as any).targetWithBonuses ?? runner.runnerSpeed;
                             const homeBonus = runner.toBase === 'home' ? 5 : 0;
-                            const twoOutBonus = (state.outs >= 2) ? 5 : 0;
+                            // Derive 2-out bonus from server's target (which uses outsBeforeSwing correctly)
+                            const twoOutBonus = target - runner.runnerSpeed - homeBonus;
                             const fb = runner.fromBase === 'second' ? '2nd' : runner.fromBase === 'third' ? '3rd' : '1st';
                             const tb = runner.toBase === 'home' ? 'H' : runner.toBase === 'third' ? '3rd' : '2nd';
                             const parts = [`${runner.runnerSpeed}`];
                             if (homeBonus) parts.push('+5h');
-                            if (twoOutBonus) parts.push('+5(2o)');
+                            if (twoOutBonus > 0) parts.push(`+${twoOutBonus}(2o)`);
                             const bonusText = `${fb}\u2192${tb} Spd ${parts.join('')}=${target}`;
                             return (
                                 <g key={`ebo-${i}`} className="roll-button" onClick={() => onAction({ type: 'SEND_RUNNERS', runnerIds: [runner.runnerId] })} cursor="pointer">

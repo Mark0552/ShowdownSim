@@ -304,15 +304,22 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             if (iWon) playSound('victory');
         }
 
-        // At-bat outcome sounds
+        // At-bat outcome sounds — only on first outcome, not icon upgrades
         if (state.lastOutcome && state.lastOutcome !== prevOutcomeRef.current) {
             const o = state.lastOutcome;
-            if (o === 'HR') { playSound('bathitball'); playSoundDelayed('homerun', 800); }
-            else if (['S', 'SPlus', 'DB', 'TR'].includes(o)) playSound('bathitball');
-            else if (o === 'SO') playSound('strike-three');
-            else if (o === 'GB' || o === 'FB' || o === 'PU') playSound('glove-pop');
-            else if (o === 'W') {
-                playSound(state.usedPitcherChart ? 'pitches-that-close' : 'just-a-bit-outside');
+            const wasHit = prevOutcomeRef.current && ['S', 'SPlus', 'DB', 'TR', 'HR'].includes(prevOutcomeRef.current);
+            const isUpgrade = wasHit && ['S', 'SPlus', 'DB', 'TR', 'HR'].includes(o);
+            if (isUpgrade) {
+                // Icon upgrade (S→DB via S icon, DB→HR via HR icon) — play homerun fanfare if upgraded to HR, no bat sound
+                if (o === 'HR') playSoundDelayed('homerun', 300);
+            } else {
+                if (o === 'HR') { playSound('bathitball'); playSoundDelayed('homerun', 800); }
+                else if (['S', 'SPlus', 'DB', 'TR'].includes(o)) playSound('bathitball');
+                else if (o === 'SO') playSound('strike-three');
+                else if (o === 'GB' || o === 'FB' || o === 'PU') playSound('glove-pop');
+                else if (o === 'W') {
+                    playSound(state.usedPitcherChart ? 'pitches-that-close' : 'just-a-bit-outside');
+                }
             }
         }
         prevOutcomeRef.current = state.lastOutcome;
@@ -408,8 +415,11 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         return team.lineup.map((player, i) => {
             const y = MAIN_TOP + 66 + i * 58;
             const dHalf = frozenRef.current.halfInning;
-            const isAtBat = (isHome ? dHalf === 'bottom' : dHalf === 'top') && i === team.currentBatterIndex;
-            const isOnDeck = (isHome ? dHalf === 'top' : dHalf === 'bottom') && i === team.currentBatterIndex;
+            // Use frozen team's batter index so highlighting doesn't advance during animation
+            const frozenBatIdx = (isHome ? dHalf === 'bottom' : dHalf === 'top')
+                ? displayTeam.currentBatterIndex : displayFieldingTeam.currentBatterIndex;
+            const isAtBat = (isHome ? dHalf === 'bottom' : dHalf === 'top') && i === frozenBatIdx;
+            const isOnDeck = (isHome ? dHalf === 'top' : dHalf === 'bottom') && i === frozenBatIdx;
             const rawPos = player.assignedPosition ? player.assignedPosition.replace(/-\d+$/, '') : '';
             const pos = rawPos === 'bench' ? '' : rawPos; // don't show "bench" as position
             const fld = pos ? `+${pos === 'C' ? (player.arm ?? 0) : (player.fielding ?? 0)}` : '';
@@ -756,7 +766,9 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                         <CardSlot x={B3.x - 38} y={B3.y - 53} label="3B" card={runner3} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                         <CardSlot x={MOUND.x - 38} y={MOUND.y - 53} label="P" card={displayPitcher} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                         <CardSlot x={HP.x - 38} y={HP.y - 53} label="H" card={
-                            runnerAnims.length > 0 || pendingMovements.some(m => m.fromBase === 'home') ? null : displayBatter
+                            diceAnimating ? displayBatter :
+                            (runnerAnims.length === 0 && pendingMovements.length === 0) ? displayBatter :
+                            null
                         } onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                     </>
                 )}
