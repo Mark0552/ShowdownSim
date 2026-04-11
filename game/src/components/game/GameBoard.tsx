@@ -840,6 +840,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                         usedPitcherChart={state.usedPitcherChart}
                         swingRoll={state.lastSwingRoll}
                         iAmBatting={iAmBatting}
+                        pitcherCardId={pitcher.cardId}
                     />
                 )}
 

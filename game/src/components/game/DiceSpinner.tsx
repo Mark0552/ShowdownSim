@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { playSound } from '../../lib/sounds';
+import { playSound, getPitchRollSound } from '../../lib/sounds';
 
 interface DiceSpinnerProps {
     cx: number;
@@ -18,6 +18,8 @@ interface DiceSpinnerProps {
     swingRoll?: number;
     /** True if this client is the batting team */
     iAmBatting?: boolean;
+    /** Current pitcher's cardId for custom roll sounds */
+    pitcherCardId?: string;
 }
 
 const SPIN_DURATION = 900;
@@ -58,6 +60,7 @@ export default function DiceSpinner({
     pitchRoll, pitchControl = 0, fatiguePenalty = 0, controlModifier = 0,
     pitchTotal, batterOnBase, usedPitcherChart, swingRoll,
     iAmBatting = false,
+    pitcherCardId,
 }: DiceSpinnerProps) {
     const [displayValue, setDisplayValue] = useState<number>(roll || 1);
     const [spinning, setSpinning] = useState(false);
@@ -77,7 +80,7 @@ export default function DiceSpinner({
         prevKeyRef.current = triggerKey;
         cleanup();
         setSpinning(true);
-        playSound('dice-roll');
+        playSound(rollType === 'pitch' && pitcherCardId ? getPitchRollSound(pitcherCardId) : 'dice-roll');
         setSettled(false);
         intervalRef.current = setInterval(() => {
             setDisplayValue(Math.floor(Math.random() * 20) + 1);

@@ -24,6 +24,7 @@ const SOUND_FILES: Record<string, string> = {
     'rally-2': 'sounds/rbi-baseball-3-07-rally-3-chiapanecas.mp3',
     'run-scored': 'sounds/taco-bell-bong-sfx.mp3',
     'rack-discipline': 'sounds/you-rack-drisipline.mp3',
+    'pitch-roll-radke': 'sounds/radkepitchroll.mp3',
 };
 
 const audioCache: Record<string, HTMLAudioElement> = {};
@@ -82,6 +83,15 @@ export function queueSound(name: string, delayMs: number = 0) {
 
 export function playSoundDelayed(name: string, delayMs: number) {
     queueSound(name, delayMs);
+}
+
+// Custom pitch roll sounds per card
+const PITCHER_ROLL_SOUNDS: Record<string, string> = {
+    "Brad Radke|'04|UL|204|Twins": 'pitch-roll-radke',
+};
+
+export function getPitchRollSound(cardId: string): string {
+    return PITCHER_ROLL_SOUNDS[cardId] || 'dice-roll';
 }
 
 let preloaded = false;
