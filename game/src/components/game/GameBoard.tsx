@@ -13,7 +13,6 @@ import GameToast from './GameToast';
 import CardSlot from './CardSlot';
 import BullpenPanel from './BullpenPanel';
 import BoxScore from './BoxScore';
-import GameLogOverlay from './GameLogOverlay';
 import ActionButtons from './ActionButtons';
 import DiceSpinner from './DiceSpinner';
 import './GameBoard.css';
@@ -153,7 +152,6 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const [showAwayBullpen, setShowAwayBullpen] = useState(false);
     const [showHomeBullpen, setShowHomeBullpen] = useState(false);
     const [showSubPanel, setShowSubPanel] = useState(false);
-    const [showGameLog, setShowGameLog] = useState(false);
     const [showStats, setShowStats] = useState(false);
     const [diceAnimating, setDiceAnimating] = useState(false);
     const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -277,24 +275,15 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const victoryPlayedRef = useRef(false);
     useEffect(() => {
         preloadSounds();
-
-        // Game start — plays when the game first loads (sp_roll or first pre_atbat)
-        if (!gameStartedRef.current && state.inning === 1 && state.halfInning === 'top') {
-            gameStartedRef.current = true;
-            playSound('game-start');
-        }
+        if (!gameStartedRef.current && state.inning >= 1) gameStartedRef.current = true;
 
         // Everything below waits for dice to finish
         if (diceAnimating) return;
 
-        // Half-inning switch — queued so it plays after the outcome sound finishes
+        // Half-inning switch — queued after outcome sound
         if (prevHalfRef.current !== state.halfInning || prevInningRef.current !== state.inning) {
             if (gameStartedRef.current && !state.isOver) {
-                if (state.inning === 7 && state.halfInning === 'bottom' && prevHalfRef.current === 'top') {
-                    queueSound('seventh-inning', 500);
-                } else {
-                    queueSound('switch-sides', 500);
-                }
+                queueSound('switch-sides', 500);
             }
         }
         prevHalfRef.current = state.halfInning;
@@ -307,16 +296,15 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             if (iWon) playSound('victory');
         }
 
-        // At-bat outcome sounds — only on first outcome, not icon upgrades
+        // At-bat outcome sounds
         if (state.lastOutcome && state.lastOutcome !== prevOutcomeRef.current) {
             const o = state.lastOutcome;
             const wasHit = prevOutcomeRef.current && ['S', 'SPlus', 'DB', 'TR', 'HR'].includes(prevOutcomeRef.current);
             const isUpgrade = wasHit && ['S', 'SPlus', 'DB', 'TR', 'HR'].includes(o);
             if (isUpgrade) {
-                // Icon upgrade — 1up already plays from icon detection, add HR sound if upgraded to HR
-                if (o === 'HR') { playSoundDelayed('ssbhomerun', 500); playSoundDelayed('homerun', 1200); }
+                if (o === 'HR') { playSound('ssbhomerun'); queueSound('homerun', 200); }
             } else {
-                if (o === 'HR') { playSound('ssbhomerun'); playSoundDelayed('homerun', 800); }
+                if (o === 'HR') { playSound('ssbhomerun'); queueSound('homerun', 200); }
                 else if (['S', 'SPlus', 'DB', 'TR'].includes(o)) playSound('bathitball');
                 else if (o === 'SO') playSound('strike-three');
                 else if (o === 'GB' || o === 'FB' || o === 'PU') playSound('glove-pop');
@@ -351,19 +339,18 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         }
         prevStealKeyRef.current = curStKey;
 
-        // Track game log length (used for future sound triggers)
         prevGameLogLenRef.current = state.gameLog?.length || 0;
 
-        // Pitcher fatigue — you rack discipline when penalty increases
+        // Pitcher fatigue
         if (fatiguePenalty > prevFatiguePenaltyRef.current && fatiguePenalty > 0) {
             queueSound('rack-discipline', 300);
         }
         prevFatiguePenaltyRef.current = fatiguePenalty;
 
-        // Run scored — taco bell bong
+        // Run scored — queued so it doesn't interrupt HR fanfare
         const totalRuns = state.score.home + state.score.away;
         if (totalRuns > prevTotalRunsRef.current && gameStartedRef.current) {
-            playSound('run-scored');
+            queueSound('run-scored', 100);
         }
         prevTotalRunsRef.current = totalRuns;
     });
@@ -700,19 +687,8 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     );
                 })()}
 
-                {/* Game Log / Box Score — top right, stacked two-line labels */}
-                <g cursor="pointer" onClick={() => { setShowGameLog(!showGameLog); setShowStats(false); }}>
-                    <rect x="1280" y="8" width="54" height="40" rx="4" fill="#0a1428" stroke="#d4a018" strokeWidth="1"/>
-                    {showGameLog ? (
-                        <text x="1307" y="33" textAnchor="middle" fontSize="12" fill="#d4a018" fontWeight="normal" fontFamily="Arial">CLOSE</text>
-                    ) : (
-                        <>
-                            <text x="1307" y="24" textAnchor="middle" fontSize="11" fill="#d4a018" fontWeight="normal" fontFamily="Arial">GAME</text>
-                            <text x="1307" y="40" textAnchor="middle" fontSize="11" fill="#d4a018" fontWeight="normal" fontFamily="Arial">LOG</text>
-                        </>
-                    )}
-                </g>
-                <g cursor="pointer" onClick={() => { setShowStats(!showStats); setShowGameLog(false); }}>
+                {/* Box Score — top right */}
+                <g cursor="pointer" onClick={() => { setShowStats(!showStats); }}>
                     <rect x="1338" y="8" width="54" height="40" rx="4" fill="#0a1428" stroke="#d4a018" strokeWidth="1"/>
                     {showStats ? (
                         <text x="1365" y="33" textAnchor="middle" fontSize="12" fill="#d4a018" fontWeight="normal" fontFamily="Arial">CLOSE</text>
@@ -889,7 +865,6 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             {/* Toast notifications */}
             <GameToast gameLog={state.gameLog} phase={state.phase} isMyTurn={isMyTurn} isOver={state.isOver} />
 
-            {showGameLog && <GameLogOverlay gameLog={state.gameLog} onClose={() => setShowGameLog(false)} />}
             {showStats && (
                 <div className="overlay-panel" style={{ minWidth: 'min(1200px, 95vw)', maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto', overflowX: 'auto' }}>
                     <div className="overlay-panel-header">
