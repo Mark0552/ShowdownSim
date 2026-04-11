@@ -286,13 +286,13 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         // Everything below waits for dice to finish
         if (diceAnimating) return;
 
-        // Half-inning switch
+        // Half-inning switch — queued so it plays after the outcome sound finishes
         if (prevHalfRef.current !== state.halfInning || prevInningRef.current !== state.inning) {
             if (gameStartedRef.current && !state.isOver) {
                 if (state.inning === 7 && state.halfInning === 'bottom' && prevHalfRef.current === 'top') {
-                    playSound('seventh-inning');
+                    queueSound('seventh-inning', 500);
                 } else {
-                    playSound('switch-sides');
+                    queueSound('switch-sides', 500);
                 }
             }
         }

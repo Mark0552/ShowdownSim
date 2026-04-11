@@ -254,7 +254,7 @@ export function endHalfInning(state) {
         }
         const bottomState = {
             ...s, halfInning: 'bottom', outs: 0, bases: { first: null, second: null, third: null },
-            lastOutcome: null, pendingDpResult: null, extraBaseEligible: null, pendingExtraBaseResult: null,
+            pendingDpResult: null, extraBaseEligible: null, pendingExtraBaseResult: null,
             iconPrompt: null, halfInningClean: true, icon20UsedThisInning: false, gbOptions: null,
             pendingSteal: null, pendingStealResult: null,
             controlModifier: (s.rpActiveInning === state.inning && s.rpActiveTeam === 'home') ? s.controlModifier : 0,
@@ -283,7 +283,7 @@ export function endHalfInning(state) {
         ...s, awayTeam: away, homeTeam: home,
         inning: state.inning + 1, halfInning: 'top',
         outs: 0, bases: { first: null, second: null, third: null },
-        lastOutcome: null, pendingDpResult: null, extraBaseEligible: null, pendingExtraBaseResult: null,
+        pendingDpResult: null, extraBaseEligible: null, pendingExtraBaseResult: null,
         iconPrompt: null, halfInningClean: true, icon20UsedThisInning: false,
         controlModifier: newControlMod, rpActivePitcherId: rpCarriesOver ? s.rpActivePitcherId : null, gbOptions: null,
         pendingSteal: null, pendingStealResult: null,
