@@ -263,14 +263,11 @@ function handleAction(ws, msg, userId, room) {
         return;
     }
 
-    // Validate action is valid for current phase
+    // Validate action is valid for current phase (silently ignore race conditions)
     const actionType = msg.action?.type;
     const allowed = VALID_ACTIONS[room.state.phase] || [];
     if (!allowed.includes(actionType)) {
-        ws.send(JSON.stringify({
-            type: 'error',
-            message: `Invalid action '${actionType}' for phase '${room.state.phase}'`,
-        }));
+        console.log(`Ignored invalid action '${actionType}' for phase '${room.state.phase}' (likely race condition)`);
         return;
     }
 
