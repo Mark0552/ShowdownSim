@@ -319,3 +319,9 @@
     padding-bottom: 4px;
     border-bottom: 1px solid #1a3060;
 }
+
+/* Toast notification slide down from top */
+@keyframes toastSlideDown {
+    from { transform: translateY(-40px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}

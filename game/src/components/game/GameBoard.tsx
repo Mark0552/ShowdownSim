@@ -9,6 +9,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import type { GameState, GameAction, PlayerSlot } from '../../engine/gameEngine';
 import { getCurrentBatter, getCurrentPitcher } from '../../engine/gameEngine';
 import { playSound, playSoundDelayed, queueSound, preloadSounds } from '../../lib/sounds';
+import GameToast from './GameToast';
 import CardSlot from './CardSlot';
 import BullpenPanel from './BullpenPanel';
 import BoxScore from './BoxScore';
@@ -851,113 +852,42 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     />
                 )}
 
-                {/* RESULT SECTION (right 16%: x=1180..1400) — full-height, user-perspective colors */}
-                {!diceAnimating && state.lastOutcome && (() => {
-                    const isOut = ['SO','GB','FB','PU'].includes(state.lastOutcome);
-                    // Green = good for me, Red = bad for me
-                    const goodForBatter = !isOut;
-                    const resultColor = (goodForBatter === iAmBatting) ? 'rgba(34,180,80,0.85)' : 'rgba(200,30,30,0.85)';
-                    const RX = 1186, RW = 208, RCX = 1290, RH = 948 - BOT_Y - 12;
-                    const hasSub = !!(state.pendingDpResult || state.pendingExtraBaseResult || state.pendingStealResult);
-                    const mainY = hasSub ? BOT_Y + 50 : BOT_Y + 6 + RH / 2;
-
-                    return (
-                        <g>
-                            <rect x={RX} y={BOT_Y + 6} width={RW} height={RH} rx="8" fill={resultColor} />
-                            <text x={RCX} y={mainY} textAnchor="middle" dominantBaseline="central" fontSize="26" fill="white" fontWeight="normal" fontFamily="Impact,sans-serif" letterSpacing="1">
-                                {outcomeNames[state.lastOutcome] || state.lastOutcome}
-                            </text>
-                            {state.pendingDpResult && (() => {
-                                const dp = state.pendingDpResult;
-                                let label = 'BATTER SAFE';
-                                let detail = '';
-                                if (dp.isDP) { label = 'DOUBLE PLAY!'; detail = 'DP successful'; }
-                                else if (dp.choice === 'dp' && !dp.isDP) { label = 'DP FAILED'; detail = 'Batter safe at 1st (FC)'; }
-                                else if (dp.choice === 'hold' && dp.defenseTotal > dp.offenseSpeed) { label = 'OUT AT 1ST'; detail = 'Runners held'; }
-                                else if (dp.choice === 'hold') { label = 'SAFE AT 1ST'; detail = 'Runners held'; }
-                                else if (dp.choice === 'force_home') { label = 'FORCE AT HOME'; detail = 'Out at plate'; }
-                                else if (dp.choice === 'advance') { label = 'RUNNERS ADVANCE'; detail = 'Out at 1st'; }
-                                const showRoll = dp.roll > 0 && dp.choice !== 'force_home' && dp.choice !== 'advance';
-                                return (
-                                    <g>
-                                        <text x={RCX} y={BOT_Y + 76} textAnchor="middle" fontSize="13" fill="white" fontWeight="normal" fontFamily="Impact">{label}</text>
-                                        {detail && <text x={RCX} y={BOT_Y + 92} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.7)" fontFamily="Arial">{detail}</text>}
-                                        {showRoll && (
-                                            <text x={RCX} y={BOT_Y + (detail ? 108 : 96)} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.85)" fontFamily="monospace">
-                                                d20({dp.roll})+IF({dp.defenseTotal - dp.roll})={dp.defenseTotal} vs Spd {dp.offenseSpeed}
-                                            </text>
-                                        )}
-                                    </g>
-                                );
-                            })()}
-                            {state.pendingExtraBaseResult && (() => {
-                                const eb = state.pendingExtraBaseResult;
-                                const gUsed = eb.goldGloveUsed ? ' +G' : '';
-                                return (
-                                    <g>
-                                        <text x={RCX} y={BOT_Y + 76} textAnchor="middle" fontSize="13" fill="white" fontWeight="normal" fontFamily="Impact">
-                                            {eb.safe ? `${eb.runnerName} SAFE` : `${eb.runnerName} OUT`}
-                                        </text>
-                                        <text x={RCX} y={BOT_Y + 92} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.7)" fontFamily="Arial">
-                                            {eb.safe ? 'Runner advances' : 'Thrown out'}
-                                        </text>
-                                        <text x={RCX} y={BOT_Y + 108} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.85)" fontFamily="monospace">
-                                            Tgt {eb.runnerSpeed} vs d20({eb.roll})+OF{gUsed}={eb.defenseTotal}
-                                        </text>
-                                    </g>
-                                );
-                            })()}
-                            {state.pendingStealResult && (() => {
-                                const sr = state.pendingStealResult;
-                                const isSbIcon = sr.roll === 0 && sr.defenseTotal === 0;
-                                const gUsed = sr.goldGloveUsed ? ' +G' : '';
-                                return (
-                                    <g>
-                                        <text x={RCX} y={BOT_Y + 76} textAnchor="middle" fontSize="13" fill="white" fontWeight="normal" fontFamily="Impact">
-                                            {sr.safe ? (isSbIcon ? `${sr.runnerName} SB!` : `${sr.runnerName} STEALS!`) : `${sr.runnerName} CAUGHT!`}
-                                        </text>
-                                        <text x={RCX} y={BOT_Y + 92} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.7)" fontFamily="Arial">
-                                            {isSbIcon ? 'SB icon (auto safe)' : sr.safe ? 'Steal successful' : 'Caught stealing'}
-                                        </text>
-                                        {!isSbIcon && (
-                                            <text x={RCX} y={BOT_Y + 108} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.85)" fontFamily="monospace">
-                                                Spd {sr.runnerSpeed} vs d20({sr.roll})+Arm{gUsed}={sr.defenseTotal}
-                                            </text>
-                                        )}
-                                    </g>
-                                );
-                            })()}
-                        </g>
-                    );
-                })()}
-                {/* Standalone steal result (no at-bat outcome) */}
-                {!diceAnimating && !state.lastOutcome && state.pendingStealResult && (() => {
-                    const sr = state.pendingStealResult;
-                    const isSbIcon = sr.roll === 0 && sr.defenseTotal === 0;
-                    const safe = sr.safe;
-                    const goodForBatter = safe;
-                    const resultColor = (goodForBatter === iAmBatting) ? 'rgba(34,180,80,0.85)' : 'rgba(200,30,30,0.85)';
-                    const gUsed = sr.goldGloveUsed ? ' +G' : '';
-                    return (
-                        <g>
-                            <rect x="1186" y={BOT_Y + 6} width="208" height={948 - BOT_Y - 12} rx="8" fill={resultColor} />
-                            <text x="1290" y={BOT_Y + 48} textAnchor="middle" dominantBaseline="central" fontSize="16" fill="white" fontWeight="normal" fontFamily="Impact">
-                                {safe ? (isSbIcon ? `${sr.runnerName} SB!` : `${sr.runnerName} STEALS!`) : `${sr.runnerName} CAUGHT!`}
-                            </text>
-                            <text x="1290" y={BOT_Y + 72} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.7)" fontFamily="Arial">
-                                {isSbIcon ? 'SB icon (auto safe)' : safe ? 'Steal successful' : 'Caught stealing'}
-                            </text>
-                            {!isSbIcon && (
-                                <text x="1290" y={BOT_Y + 90} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.85)" fontFamily="monospace">
-                                    Spd {sr.runnerSpeed} vs d20({sr.roll})+Arm{gUsed}={sr.defenseTotal}
-                                </text>
-                            )}
-                        </g>
-                    );
-                })()}
+                {/* RUNNING GAME LOG (right 16%: x=1180..1400) */}
+                <foreignObject x="1182" y={BOT_Y + 2} width="216" height={948 - BOT_Y - 4}>
+                    <div ref={(el) => { if (el) el.scrollTop = el.scrollHeight; }} style={{
+                        width: '100%', height: '100%', overflowY: 'auto', overflowX: 'hidden',
+                        padding: '4px 6px', boxSizing: 'border-box',
+                        display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+                        scrollbarWidth: 'thin', scrollbarColor: '#d4a01840 transparent',
+                    }}>
+                        {(state.gameLog || []).slice(-12).map((entry: string, i: number) => {
+                            const isInning = /^--- /.test(entry);
+                            const isIcon = /icon/i.test(entry);
+                            const isScore = /scores|homer|run/i.test(entry);
+                            const isOut = /strikeout|ground|fly|popup|Double Play|DP|caught|thrown out|Batter out|Force out/i.test(entry);
+                            let color = '#8aade0';
+                            if (isInning) color = '#d4a018';
+                            else if (isIcon) color = '#4ade80';
+                            else if (isScore) color = '#e94560';
+                            else if (isOut) color = '#ff6060';
+                            return (
+                                <div key={`gl-${i}`} style={{
+                                    fontSize: isInning ? '11px' : '10px',
+                                    color, fontFamily: 'Arial, sans-serif',
+                                    padding: '1px 0', lineHeight: '1.3',
+                                    borderTop: isInning ? '1px solid #d4a01840' : 'none',
+                                    marginTop: isInning ? '3px' : '0',
+                                }}>
+                                    {entry}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </foreignObject>
             </svg>
 
-            {/* DiceSpinner now lives inside SVG — no external overlay needed */}
+            {/* Toast notifications */}
+            <GameToast gameLog={state.gameLog} phase={state.phase} isMyTurn={isMyTurn} isOver={state.isOver} />
 
             {showGameLog && <GameLogOverlay gameLog={state.gameLog} onClose={() => setShowGameLog(false)} />}
             {showStats && (
