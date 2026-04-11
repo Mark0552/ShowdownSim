@@ -822,10 +822,8 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 />
 
                 {/* DICE SECTION (26%: x=820..1180) — spinner + settled display */}
-                {/* Hide stale dice between half-innings (pre_atbat/defense_sub with no outcome = fresh start) */}
-                {state.lastRoll && state.lastRollType && !(
-                    !state.lastOutcome && !diceAnimating && ['pre_atbat', 'defense_sub', 'sp_roll', 'ibb_decision'].includes(state.phase)
-                ) && (
+                {/* Persist dice/results between half-innings so the last play is visible */}
+                {state.lastRoll && state.lastRollType && state.phase !== 'sp_roll' && (
                     <DiceSpinner
                         cx={1000} botY={BOT_Y}
                         roll={state.lastRoll} rollType={state.lastRollType}
