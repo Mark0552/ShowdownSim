@@ -350,15 +350,8 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         }
         prevStealKeyRef.current = curStKey;
 
-        // Icon used — 1up sound for offensive/defensive icons (not 20 or CY)
-        const logLen = state.gameLog?.length || 0;
-        if (logLen > prevGameLogLenRef.current) {
-            const newEntries = state.gameLog.slice(prevGameLogLenRef.current);
-            if (newEntries.some((e: string) => /icon/i.test(e) && !/20 icon/i.test(e) && !/CY icon/i.test(e))) {
-                playSound('icon-used');
-            }
-        }
-        prevGameLogLenRef.current = logLen;
+        // Track game log length (used for future sound triggers)
+        prevGameLogLenRef.current = state.gameLog?.length || 0;
 
         // Pitcher fatigue — you rack discipline when penalty increases
         if (fatiguePenalty > prevFatiguePenaltyRef.current && fatiguePenalty > 0) {
