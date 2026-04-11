@@ -302,9 +302,9 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             const wasHit = prevOutcomeRef.current && ['S', 'SPlus', 'DB', 'TR', 'HR'].includes(prevOutcomeRef.current);
             const isUpgrade = wasHit && ['S', 'SPlus', 'DB', 'TR', 'HR'].includes(o);
             if (isUpgrade) {
-                if (o === 'HR') { playSound('ssbhomerun'); queueSound('homerun', 200); }
+                if (o === 'HR') { playSound('ssbhomerun'); }
             } else {
-                if (o === 'HR') { playSound('ssbhomerun'); queueSound('homerun', 200); }
+                if (o === 'HR') { playSound('ssbhomerun'); }
                 else if (['S', 'SPlus', 'DB', 'TR'].includes(o)) playSound('bathitball');
                 else if (o === 'SO') playSound('strike-three');
                 else if (o === 'GB' || o === 'FB' || o === 'PU') playSound('glove-pop');

@@ -8,7 +8,6 @@ const BASE = import.meta.env.BASE_URL || '/';
 const SOUND_FILES: Record<string, string> = {
     'dice-roll': 'sounds/dice-roll.mp3',
     'bathitball': 'sounds/bathitball.mp3',
-    'homerun': 'sounds/rbi-baseball-homerun-nes.mp3',
     'ssbhomerun': 'sounds/ssbhomerun.mp3',
     'strike-three': 'sounds/strike-three.mp3',
     'glove-pop': 'sounds/glove-pop.mp3',
