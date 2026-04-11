@@ -9,6 +9,7 @@ const SOUND_FILES: Record<string, string> = {
     'dice-roll': 'sounds/dice-roll.mp3',
     'bathitball': 'sounds/bathitball.mp3',
     'homerun': 'sounds/rbi-baseball-homerun-nes.mp3',
+    'ssbhomerun': 'sounds/ssbhomerun.mp3',
     'strike-three': 'sounds/strike-three.mp3',
     'glove-pop': 'sounds/glove-pop.mp3',
     'just-a-bit-outside': 'sounds/just-a-bit-outside_MChbyOK.mp3',
@@ -22,6 +23,7 @@ const SOUND_FILES: Record<string, string> = {
     'rally-1': 'sounds/rbi-baseball-3-09-rally-5-spanish-dance.mp3',
     'rally-2': 'sounds/rbi-baseball-3-07-rally-3-chiapanecas.mp3',
     'run-scored': 'sounds/taco-bell-bong-sfx.mp3',
+    'icon-used': 'sounds/mario-1up_eSTTTOB.mp3',
 };
 
 const audioCache: Record<string, HTMLAudioElement> = {};

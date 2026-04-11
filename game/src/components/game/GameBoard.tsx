@@ -268,6 +268,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const prevEbKeyRef = useRef(ebKey(state.pendingExtraBaseResult));
     const prevStealKeyRef = useRef(stKey(state.pendingStealResult));
     const prevTotalRunsRef = useRef(state.score.home + state.score.away);
+    const prevGameLogLenRef = useRef(state.gameLog?.length || 0);
     const prevHalfRef = useRef(state.halfInning);
     const prevInningRef = useRef(state.inning);
     const gameStartedRef = useRef(false);
@@ -310,10 +311,10 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             const wasHit = prevOutcomeRef.current && ['S', 'SPlus', 'DB', 'TR', 'HR'].includes(prevOutcomeRef.current);
             const isUpgrade = wasHit && ['S', 'SPlus', 'DB', 'TR', 'HR'].includes(o);
             if (isUpgrade) {
-                // Icon upgrade (S→DB via S icon, DB→HR via HR icon) — play homerun fanfare if upgraded to HR, no bat sound
-                if (o === 'HR') playSoundDelayed('homerun', 300);
+                // Icon upgrade — 1up already plays from icon detection, add HR sound if upgraded to HR
+                if (o === 'HR') { playSoundDelayed('ssbhomerun', 500); playSoundDelayed('homerun', 1200); }
             } else {
-                if (o === 'HR') { playSound('bathitball'); playSoundDelayed('homerun', 800); }
+                if (o === 'HR') { playSound('ssbhomerun'); playSoundDelayed('homerun', 800); }
                 else if (['S', 'SPlus', 'DB', 'TR'].includes(o)) playSound('bathitball');
                 else if (o === 'SO') playSound('strike-three');
                 else if (o === 'GB' || o === 'FB' || o === 'PU') playSound('glove-pop');
@@ -347,6 +348,16 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             playSound(state.pendingStealResult.safe ? 'safe' : 'out');
         }
         prevStealKeyRef.current = curStKey;
+
+        // Icon used — check for new game log entries containing "icon"
+        const logLen = state.gameLog?.length || 0;
+        if (logLen > prevGameLogLenRef.current) {
+            const newEntries = state.gameLog.slice(prevGameLogLenRef.current);
+            if (newEntries.some((e: string) => /icon/i.test(e))) {
+                playSound('icon-used');
+            }
+        }
+        prevGameLogLenRef.current = logLen;
 
         // Run scored — taco bell bong
         const totalRuns = state.score.home + state.score.away;
