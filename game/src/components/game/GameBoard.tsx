@@ -258,28 +258,35 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         runnerAnimTimerRef.current = setTimeout(() => setRunnerAnims([]), totalMs + 100);
     }, [diceAnimating, pendingMovements]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Sound effects
+    // Sound effects — all gated behind !diceAnimating so sounds play after dice settles
     const prevOutcomeRef = useRef(state.lastOutcome);
-    const prevDpRef = useRef(state.pendingDpResult);
-    const prevEbRef = useRef(state.pendingExtraBaseResult);
-    const prevStealRef = useRef(state.pendingStealResult);
+    // Use content-based keys to avoid re-triggering on new object references
+    const dpKey = (d: any) => d ? `${d.choice}-${d.roll}-${d.isDP}` : '';
+    const ebKey = (e: any) => e ? `${e.runnerId}-${e.roll}-${e.safe}` : '';
+    const stKey = (s: any) => s ? `${s.runnerId}-${s.roll}-${s.safe}` : '';
+    const prevDpKeyRef = useRef(dpKey(state.pendingDpResult));
+    const prevEbKeyRef = useRef(ebKey(state.pendingExtraBaseResult));
+    const prevStealKeyRef = useRef(stKey(state.pendingStealResult));
     const prevTotalRunsRef = useRef(state.score.home + state.score.away);
     const prevHalfRef = useRef(state.halfInning);
     const prevInningRef = useRef(state.inning);
     const gameStartedRef = useRef(false);
+    const victoryPlayedRef = useRef(false);
     useEffect(() => {
         preloadSounds();
 
-        // Game start
+        // Game start (no dice gate — plays immediately)
         if (!gameStartedRef.current && state.phase === 'pre_atbat' && state.inning === 1 && state.halfInning === 'top') {
             gameStartedRef.current = true;
             playSound('game-start');
         }
 
+        // Everything below waits for dice to finish
+        if (diceAnimating) return;
+
         // Half-inning switch
         if (prevHalfRef.current !== state.halfInning || prevInningRef.current !== state.inning) {
             if (gameStartedRef.current && !state.isOver) {
-                // 7th inning stretch (between top and bottom of 7th)
                 if (state.inning === 7 && state.halfInning === 'bottom' && prevHalfRef.current === 'top') {
                     playSound('seventh-inning');
                 } else {
@@ -290,8 +297,9 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         prevHalfRef.current = state.halfInning;
         prevInningRef.current = state.inning;
 
-        // Game over
-        if (state.isOver && state.winnerId) {
+        // Game over (play once only)
+        if (state.isOver && state.winnerId && !victoryPlayedRef.current) {
+            victoryPlayedRef.current = true;
             const iWon = state.winnerId === (myRole === 'home' ? state.homeTeam.userId : state.awayTeam.userId);
             if (iWon) playSound('victory');
         }
@@ -304,34 +312,36 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             else if (o === 'SO') playSound('strike-three');
             else if (o === 'GB' || o === 'FB' || o === 'PU') playSound('glove-pop');
             else if (o === 'W') {
-                // Walk on hitter's chart vs pitcher's chart
                 playSound(state.usedPitcherChart ? 'pitches-that-close' : 'just-a-bit-outside');
             }
         }
         prevOutcomeRef.current = state.lastOutcome;
 
         // DP / fielding result sounds
-        if (state.pendingDpResult && state.pendingDpResult !== prevDpRef.current) {
+        const curDpKey = dpKey(state.pendingDpResult);
+        if (state.pendingDpResult && curDpKey !== prevDpKeyRef.current) {
             if (state.pendingDpResult.isDP) playSound('out');
             else if (state.pendingDpResult.choice === 'dp' && !state.pendingDpResult.isDP) playSound('safe');
             else if (state.pendingDpResult.choice === 'hold' && state.pendingDpResult.defenseTotal > state.pendingDpResult.offenseSpeed) playSound('out');
             else if (state.pendingDpResult.choice === 'hold') playSound('safe');
         }
-        prevDpRef.current = state.pendingDpResult;
+        prevDpKeyRef.current = curDpKey;
 
         // Extra base result sounds
-        if (state.pendingExtraBaseResult && state.pendingExtraBaseResult !== prevEbRef.current) {
+        const curEbKey = ebKey(state.pendingExtraBaseResult);
+        if (state.pendingExtraBaseResult && curEbKey !== prevEbKeyRef.current) {
             playSound(state.pendingExtraBaseResult.safe ? 'safe' : 'out');
         }
-        prevEbRef.current = state.pendingExtraBaseResult;
+        prevEbKeyRef.current = curEbKey;
 
         // Steal result sounds
-        if (state.pendingStealResult && state.pendingStealResult !== prevStealRef.current) {
+        const curStKey = stKey(state.pendingStealResult);
+        if (state.pendingStealResult && curStKey !== prevStealKeyRef.current) {
             playSound(state.pendingStealResult.safe ? 'safe' : 'out');
         }
-        prevStealRef.current = state.pendingStealResult;
+        prevStealKeyRef.current = curStKey;
 
-        // Run scored — taco bell bong for each run
+        // Run scored — taco bell bong
         const totalRuns = state.score.home + state.score.away;
         if (totalRuns > prevTotalRunsRef.current && gameStartedRef.current) {
             playSound('run-scored');
@@ -745,7 +755,9 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                         <CardSlot x={B1.x - 38} y={B1.y - 53} label="1B" card={runner1} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                         <CardSlot x={B3.x - 38} y={B3.y - 53} label="3B" card={runner3} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                         <CardSlot x={MOUND.x - 38} y={MOUND.y - 53} label="P" card={displayPitcher} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
-                        <CardSlot x={HP.x - 38} y={HP.y - 53} label="H" card={runnerAnims.length > 0 ? null : displayBatter} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
+                        <CardSlot x={HP.x - 38} y={HP.y - 53} label="H" card={
+                            runnerAnims.length > 0 || pendingMovements.some(m => m.fromBase === 'home') ? null : displayBatter
+                        } onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                     </>
                 )}
 
