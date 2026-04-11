@@ -13,6 +13,7 @@ import LobbyPage from './pages/LobbyPage';
 import GamePage from './pages/GamePage';
 import StatsPage from './pages/StatsPage';
 import TeamBuilder from './pages/TeamBuilder';
+import MusicPlayer from './components/MusicPlayer';
 
 type Page = 'login' | 'menu' | 'lineups' | 'builder' | 'lobby' | 'game' | 'stats';
 
@@ -140,7 +141,7 @@ export default function App() {
         );
     }
 
-    switch (page) {
+    const renderPage = () => { switch (page) {
         case 'login':
             return <LoginPage onLogin={handleLogin} />;
         case 'menu':
@@ -189,5 +190,12 @@ export default function App() {
                     onBack={() => { setActiveGameId(null); setPage('lobby'); }}
                 />
             );
-    }
+    } };
+
+    return (
+        <>
+            {renderPage()}
+            {page !== 'login' && <MusicPlayer />}
+        </>
+    );
 }
