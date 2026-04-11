@@ -378,6 +378,15 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     // Batter and pitcher use frozen teams so they don't swap during animation
     const displayBatter = displayTeam.lineup[displayTeam.currentBatterIndex] || batter;
     const displayPitcher = displayFieldingTeam.pitcher || pitcher;
+    // Frozen IP/fatigue display — uses frozen fielding team and inning
+    const dPitcher = displayPitcher;
+    const dCardIp = dPitcher.ip || 0;
+    const dPitcherRuns = displayFieldingTeam.pitcherStats?.[dPitcher.cardId]?.r || 0;
+    const dCyBonus = displayFieldingTeam.cyBonusInnings || 0;
+    const dEffectiveIp = Math.max(0, dCardIp - Math.floor(dPitcherRuns / 3) + dCyBonus);
+    const dInningsPitching = displayInning - (displayFieldingTeam.pitcherEntryInning || 1) + 1;
+    const dFatigueActive = dInningsPitching > dEffectiveIp;
+    const dFatiguePenalty = Math.max(0, dInningsPitching - dEffectiveIp);
     const animTargets = new Set(runnerAnims.map(a => a.toBase));
     const animSources = new Set(runnerAnims.map(a => a.fromBase));
     const getRunner = (base: 'first' | 'second' | 'third'): PlayerSlot | null => {
@@ -793,8 +802,8 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 {state.phase !== 'sp_roll' && (
                     <>
                         <rect x={MOUND.x - 42} y={MOUND.y + 56} width="84" height="20" rx="4" fill="rgba(0,0,0,0.75)"/>
-                        <text x={MOUND.x} y={MOUND.y + 70} textAnchor="middle" fontSize="10" fill={fatigueActive ? '#ff6060' : '#8aade0'} fontWeight="normal" fontFamily="monospace">
-                            IP: {inningsPitching}/{effectiveIp}{fatigueActive ? ` (-${fatiguePenalty})` : ''}
+                        <text x={MOUND.x} y={MOUND.y + 70} textAnchor="middle" fontSize="10" fill={dFatigueActive ? '#ff6060' : '#8aade0'} fontWeight="normal" fontFamily="monospace">
+                            IP: {dInningsPitching}/{dEffectiveIp}{dFatigueActive ? ` (-${dFatiguePenalty})` : ''}
                         </text>
                     </>
                 )}
