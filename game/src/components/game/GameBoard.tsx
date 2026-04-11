@@ -275,8 +275,8 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     useEffect(() => {
         preloadSounds();
 
-        // Game start (no dice gate — plays immediately)
-        if (!gameStartedRef.current && state.phase === 'pre_atbat' && state.inning === 1 && state.halfInning === 'top') {
+        // Game start — plays when the game first loads (sp_roll or first pre_atbat)
+        if (!gameStartedRef.current && state.inning === 1 && state.halfInning === 'top') {
             gameStartedRef.current = true;
             playSound('game-start');
         }
