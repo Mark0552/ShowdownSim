@@ -10,6 +10,7 @@ import type { GameState, GameAction, PlayerSlot } from '../../engine/gameEngine'
 import { getCurrentBatter, getCurrentPitcher } from '../../engine/gameEngine';
 import { playSound, playSoundDelayed, queueSound, preloadSounds } from '../../lib/sounds';
 import GameToast from './GameToast';
+import GameLogOverlay from './GameLogOverlay';
 import CardSlot from './CardSlot';
 import BullpenPanel from './BullpenPanel';
 import BoxScore from './BoxScore';
@@ -153,6 +154,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const [showHomeBullpen, setShowHomeBullpen] = useState(false);
     const [showSubPanel, setShowSubPanel] = useState(false);
     const [showStats, setShowStats] = useState(false);
+    const [showFullLog, setShowFullLog] = useState(false);
     const [diceAnimating, setDiceAnimating] = useState(false);
     const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const prevRollKeyRef = useRef('');
@@ -864,6 +866,16 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
 
             {/* Toast notifications */}
             <GameToast gameLog={state.gameLog} phase={state.phase} isMyTurn={isMyTurn} isOver={state.isOver} />
+
+            {/* Expand log button — positioned over the bottom-right log area */}
+            <div onClick={() => setShowFullLog(true)} style={{
+                position: 'absolute', bottom: 4, right: 4, zIndex: 600,
+                background: '#0a1428', border: '1px solid #d4a018', borderRadius: 4,
+                padding: '2px 8px', cursor: 'pointer', fontSize: 10, color: '#d4a018',
+                fontFamily: 'Arial',
+            }}>EXPAND</div>
+
+            {showFullLog && <GameLogOverlay gameLog={state.gameLog} onClose={() => setShowFullLog(false)} />}
 
             {showStats && (
                 <div className="overlay-panel" style={{ minWidth: 'min(1200px, 95vw)', maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto', overflowX: 'auto' }}>

@@ -14,7 +14,7 @@ interface GameToastProps {
 }
 
 let toastId = 0;
-const TOAST_DURATION = 3000;
+const TOAST_DURATION = 6000;
 
 function classifyEntry(entry: string): Toast['type'] {
     if (/icon/i.test(entry)) return 'action';
@@ -58,7 +58,8 @@ export default function GameToast({ gameLog, phase, isMyTurn, isOver }: GameToas
         }
 
         if (newToasts.length > 0) {
-            setToasts(prev => [...prev, ...newToasts].slice(-3));
+            // Replace all existing toasts — only show the latest batch
+            setToasts(newToasts.slice(-1));
             const ids = newToasts.map(t => t.id);
             setTimeout(() => setToasts(prev => prev.filter(t => !ids.includes(t.id))), TOAST_DURATION);
         }
@@ -71,8 +72,8 @@ export default function GameToast({ gameLog, phase, isMyTurn, isOver }: GameToas
         if (isOver) return;
         if (isMyTurn && ['pre_atbat', 'defense_sub', 'pitch', 'swing', 'gb_decision', 'extra_base_offer', 'extra_base', 'steal_sb', 'steal_resolve', 'result_icons', 'bunt_decision'].includes(phase)) {
             const t: Toast = { id: ++toastId, message: 'Your turn', type: 'action' };
-            setToasts(prev => [...prev, t].slice(-3));
-            setTimeout(() => setToasts(prev => prev.filter(x => x.id !== t.id)), 2000);
+            setToasts([t]);
+            setTimeout(() => setToasts(prev => prev.filter(x => x.id !== t.id)), 4000);
         }
     }, [phase, isMyTurn, isOver]);
 
@@ -94,14 +95,14 @@ export default function GameToast({ gameLog, phase, isMyTurn, isOver }: GameToas
             {toasts.map(toast => (
                 <div key={toast.id} style={{
                     background: 'rgba(4,12,26,0.95)',
-                    border: `2px solid ${typeColors[toast.type] || '#d4a018'}`,
-                    borderRadius: 8, padding: '10px 40px',
+                    border: `3px solid ${typeColors[toast.type] || '#d4a018'}`,
+                    borderRadius: 10, padding: '16px 60px',
                     color: typeColors[toast.type] || '#d4a018',
-                    fontSize: 20, fontFamily: 'Impact, sans-serif',
-                    letterSpacing: 1, textAlign: 'center',
-                    boxShadow: '0 6px 24px rgba(0,0,0,0.7)',
+                    fontSize: 32, fontFamily: 'Impact, sans-serif',
+                    letterSpacing: 2, textAlign: 'center',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.8)',
                     animation: 'toastSlideDown 0.3s ease-out',
-                    minWidth: 300,
+                    minWidth: 400,
                 }}>
                     {toast.message}
                 </div>
