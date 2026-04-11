@@ -8,7 +8,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import type { GameState, GameAction, PlayerSlot } from '../../engine/gameEngine';
 import { getCurrentBatter, getCurrentPitcher } from '../../engine/gameEngine';
-import { playSound, playSoundDelayed, preloadSounds } from '../../lib/sounds';
+import { playSound, playSoundDelayed, queueSound, preloadSounds } from '../../lib/sounds';
 import CardSlot from './CardSlot';
 import BullpenPanel from './BullpenPanel';
 import BoxScore from './BoxScore';
@@ -269,6 +269,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const prevStealKeyRef = useRef(stKey(state.pendingStealResult));
     const prevTotalRunsRef = useRef(state.score.home + state.score.away);
     const prevGameLogLenRef = useRef(state.gameLog?.length || 0);
+    const prevFatiguePenaltyRef = useRef(fatiguePenalty);
     const prevHalfRef = useRef(state.halfInning);
     const prevInningRef = useRef(state.inning);
     const gameStartedRef = useRef(false);
@@ -358,6 +359,12 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             }
         }
         prevGameLogLenRef.current = logLen;
+
+        // Pitcher fatigue — you rack discipline when penalty increases
+        if (fatiguePenalty > prevFatiguePenaltyRef.current && fatiguePenalty > 0) {
+            queueSound('rack-discipline', 300);
+        }
+        prevFatiguePenaltyRef.current = fatiguePenalty;
 
         // Run scored — taco bell bong
         const totalRuns = state.score.home + state.score.away;
