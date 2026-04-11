@@ -17,7 +17,7 @@ const SOUND_FILES: Record<string, string> = {
     'safe': 'sounds/safe.mp3',
     'out': 'sounds/out.mp3',
     'game-start': 'sounds/rbi-baseball-game-start-nes.mp3',
-    'switch-sides': 'sounds/rbi-baseball-switch-sides-nes.mp3',
+    'switch-sides': 'sounds/south-park-guitar-transition-strums-collection-mp3cut.mp3',
     'seventh-inning': 'sounds/rbi-baseball-3-14-seventh-inning-stretch.mp3',
     'victory': 'sounds/rbi-baseball-3-15-undefeated.mp3',
     'rally-1': 'sounds/rbi-baseball-3-09-rally-5-spanish-dance.mp3',
