@@ -146,6 +146,19 @@ export function enterPreAtBat(state) {
     const offSide = state.halfInning === 'top' ? 'awayTeam' : 'homeTeam';
     const defSide = state.halfInning === 'top' ? 'homeTeam' : 'awayTeam';
 
+    // Log matchup once per at-bat (not on re-entries from steal etc.)
+    if (!state.matchupLogged) {
+        const batter = state[offSide].lineup[state[offSide].currentBatterIndex];
+        const pitcher = state[defSide].pitcher;
+        if (batter && pitcher) {
+            state = {
+                ...state,
+                matchupLogged: true,
+                gameLog: [...state.gameLog, `${batter.name} vs ${pitcher.name}`],
+            };
+        }
+    }
+
     // Filter bench: backups can't PH before 7th (home bottom of 6th exception)
     // With DH, backups can never PH for pitcher, so they can't PH at all before 7th
     const isHomeBatting = offSide === 'homeTeam';

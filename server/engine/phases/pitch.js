@@ -62,7 +62,7 @@ export function handlePitch(state, action) {
     const usePitcherChart = total > batter.onBase;
     const chartOwner = usePitcherChart ? pitcher.name : batter.name;
 
-    const logs = [`${batter.name} vs ${pitcher.name}`];
+    const logs = [];
     let controlStr = `${roll} + ${baseControl}`;
     if (fatiguePenalty > 0) controlStr += ` - ${fatiguePenalty}(fatigue)`;
     if (controlMod > 0) controlStr += ` + ${controlMod}(icon)`;

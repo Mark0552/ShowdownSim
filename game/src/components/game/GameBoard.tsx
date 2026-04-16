@@ -166,6 +166,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         fieldingTeam: state.halfInning === 'top' ? state.homeTeam : state.awayTeam,
         halfInning: state.halfInning as string,
         inning: state.inning,
+        phase: state.phase as string,
     });
     const handleDiceComplete = useCallback(() => {
         animatingRef.current = false;
@@ -243,7 +244,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
 
     // Update frozen display values when NOT animating
     if (!animatingRef.current) {
-        frozenRef.current = { bases: state.bases, outs: state.outs, score: state.score, battingTeam, fieldingTeam, halfInning: state.halfInning, inning: state.inning };
+        frozenRef.current = { bases: state.bases, outs: state.outs, score: state.score, battingTeam, fieldingTeam, halfInning: state.halfInning, inning: state.inning, phase: state.phase };
     }
 
     // Consume server-driven movements: wait for dice to finish, then animate
@@ -371,6 +372,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const displayFieldingTeam = frozenRef.current.fieldingTeam;
     const displayHalfInning = frozenRef.current.halfInning;
     const displayInning = frozenRef.current.inning;
+    const displayPhase = frozenRef.current.phase;
     // Batter and pitcher use frozen teams so they don't swap during animation
     const displayBatter = displayTeam.lineup[displayTeam.currentBatterIndex] || batter;
     const displayPitcher = displayFieldingTeam.pitcher || pitcher;
@@ -762,7 +764,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 {runner3 && <text x={B3.x} y={B3.y - 58} textAnchor="middle" fontSize="18" fill="white" fontWeight="normal" fontFamily="Impact">Speed: {runner3.speed}</text>}
 
                 {/* Card slots centered on bases — hidden during SP roll */}
-                {state.phase !== 'sp_roll' && (
+                {displayPhase !== 'sp_roll' && (
                     <>
                         <CardSlot x={B2.x - 38} y={B2.y - 53} label="2B" card={runner2} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                         <CardSlot x={B1.x - 38} y={B1.y - 53} label="1B" card={runner1} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
@@ -772,8 +774,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             diceAnimating ? displayBatter :
                             (runnerAnims.length === 0 &&
                              pendingMovements.length === 0 &&
-                             !['extra_base_offer','extra_base','gb_decision','result_icons','bunt_decision'].includes(state.phase) &&
-                             !state.pendingDpResult && !state.pendingExtraBaseResult && !state.pendingStealResult)
+                             !['extra_base_offer','extra_base'].includes(state.phase))
                                 ? displayBatter : null
                         } onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                     </>
@@ -785,7 +786,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 ))}
 
                 {/* IP / Fatigue near pitcher — hidden during SP roll */}
-                {state.phase !== 'sp_roll' && (
+                {displayPhase !== 'sp_roll' && (
                     <>
                         <rect x={MOUND.x - 42} y={MOUND.y + 56} width="84" height="20" rx="4" fill="rgba(0,0,0,0.75)"/>
                         <text x={MOUND.x} y={MOUND.y + 70} textAnchor="middle" fontSize="10" fill={dFatigueActive ? '#ff6060' : '#8aade0'} fontWeight="normal" fontFamily="monospace">

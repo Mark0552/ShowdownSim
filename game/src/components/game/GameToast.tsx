@@ -27,11 +27,9 @@ function classifyEntry(entry: string): Toast['type'] {
 }
 
 function shouldToast(entry: string): boolean {
-    // Skip only the noisy math lines — everything else is shown
+    // Skip only pure-math pitch lines — everything else (including Swing + outcome) shows
     if (/^Pitch: \d/.test(entry)) return false;
-    if (/^Swing: \d/.test(entry)) return false;
     if (/^Pitch Roll:/.test(entry)) return false;
-    if (/^Swing Roll:/.test(entry)) return false;
     return true;
 }
 
