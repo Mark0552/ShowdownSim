@@ -217,7 +217,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         }
     }
     // Runner animation — driven by server-computed movements
-    const BASE_ANIM_MS = 800;
+    const BASE_ANIM_MS = 1600;
     const [runnerAnims, setRunnerAnims] = useState<RunnerMovement[]>([]);
     const runnerAnimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -282,15 +282,6 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         // Everything below waits for dice to finish
         if (diceAnimating) return;
 
-        // Half-inning switch — queued after outcome sound
-        if (prevHalfRef.current !== state.halfInning || prevInningRef.current !== state.inning) {
-            if (gameStartedRef.current && !state.isOver) {
-                queueSound('switch-sides', 500);
-            }
-        }
-        prevHalfRef.current = state.halfInning;
-        prevInningRef.current = state.inning;
-
         // Game over (play once only)
         if (state.isOver && state.winnerId && !victoryPlayedRef.current) {
             victoryPlayedRef.current = true;
@@ -349,13 +340,28 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         }
         prevFatiguePenaltyRef.current = fatiguePenalty;
 
-        // Run scored — queued so it doesn't interrupt HR fanfare
+        // Run scored — queue one 'run-scored' per run so grand slams cascade
         const totalRuns = state.score.home + state.score.away;
-        if (totalRuns > prevTotalRunsRef.current && gameStartedRef.current) {
-            queueSound('run-scored', 100);
+        const runsDelta = totalRuns - prevTotalRunsRef.current;
+        if (runsDelta > 0 && gameStartedRef.current) {
+            for (let i = 0; i < runsDelta; i++) {
+                queueSound('run-scored', i === 0 ? 200 : 0);
+            }
         }
         prevTotalRunsRef.current = totalRuns;
     });
+
+    // Half-inning switch — separate effect runs after main sound effect so queueSound appends
+    useEffect(() => {
+        if (diceAnimating) return;
+        if (prevHalfRef.current !== state.halfInning || prevInningRef.current !== state.inning) {
+            if (gameStartedRef.current && !state.isOver) {
+                queueSound('switch-sides', 400);
+            }
+            prevHalfRef.current = state.halfInning;
+            prevInningRef.current = state.inning;
+        }
+    }, [state.halfInning, state.inning, diceAnimating, state.isOver]);
 
     // Frozen display values for field visuals during dice animation
     const displayBases = frozenRef.current.bases;
@@ -605,7 +611,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 {(() => {
                     const colW = 40, teamW = 100, rhW = 44;
                     const sbTableW = teamW + 9 * colW + rhW; // scoreboard table width (no H column)
-                    const innW = 190; // inning + top/bot + outs section
+                    const innW = 96; // outs section only (inning/halfInning indicated on scoreboard itself)
                     const gapBetween = 16;
                     const unitW = sbTableW + gapBetween + innW;
                     const unitX = (1400 - unitW) / 2;
@@ -623,9 +629,15 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             {innings.slice(0, 9).map((inn, i) => {
                                 const isCurInning = i === curInnIdx && !state.isOver;
                                 const isBatting = isBattingTeam(team) && isCurInning;
-                                // Show live score: current inning for batting team shows 0 if undefined
+                                // Team has batted (or is batting) in inning i+1?
+                                const hasBatted = i < curInnIdx || (i === curInnIdx && (
+                                    team === state.awayTeam ||
+                                    (team === state.homeTeam && displayHalfInning === 'bottom')
+                                ));
                                 const val = team.runsPerInning[i];
-                                const displayVal = (isBatting && val === undefined) ? 0 : val;
+                                const displayVal = !hasBatted
+                                    ? undefined
+                                    : (isBatting && val === undefined ? 0 : val);
                                 const cellFill = isBatting ? 'rgba(212,160,24,0.35)' : (i % 2 === 0 ? '#0a1830' : '#071024');
                                 const textFill = displayVal !== undefined ? (isBatting ? '#fff' : '#c8d8f8') : '#1e3a7a';
                                 return (
@@ -669,20 +681,12 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                                     fill="none" stroke="#d4a018" strokeWidth="2" rx="2" />
                             )}
 
-                            {/* Inning indicator (right of scoreboard table) */}
-                            <rect x={innX} y={sbY + 4} width="46" height="58" rx="5" fill="#040c1a" stroke="#d4a018" strokeWidth="1.5"/>
-                            <text x={innX + 23} y={sbY + 42} textAnchor="middle" fontSize="32" fill="white" fontWeight="normal" fontFamily="Impact">{displayInning}</text>
-                            <rect x={innX + 50} y={sbY + 4} width="36" height="27" rx="3" fill={displayHalfInning === 'top' ? '#002868' : '#0a1428'} stroke={displayHalfInning === 'top' ? '#d4a018' : '#d4a01860'} strokeWidth="1"/>
-                            <text x={innX + 68} y={sbY + 22} textAnchor="middle" fontSize="11" fill={displayHalfInning === 'top' ? 'white' : '#2a4a70'} fontWeight="normal" fontFamily="Impact">TOP</text>
-                            <rect x={innX + 50} y={sbY + 34} width="36" height="27" rx="3" fill={displayHalfInning === 'bottom' ? '#002868' : '#0a1428'} stroke={displayHalfInning === 'bottom' ? '#d4a018' : '#d4a01860'} strokeWidth="1"/>
-                            <text x={innX + 68} y={sbY + 52} textAnchor="middle" fontSize="11" fill={displayHalfInning === 'bottom' ? 'white' : '#2a4a70'} fontWeight="normal" fontFamily="Impact">BOT</text>
-
-                            {/* Outs (right of TOP/BOT) */}
-                            <text x={innX + 128} y={sbY + 14} textAnchor="middle" fontSize="9" fill="#d4a018" fontWeight="normal" letterSpacing="2" fontFamily="Impact">OUTS</text>
+                            {/* Outs — label centered over middle ball */}
+                            <text x={innX + 48} y={sbY + 14} textAnchor="middle" fontSize="9" fill="#d4a018" fontWeight="normal" letterSpacing="2" fontFamily="Impact">OUTS</text>
                             {[0, 1, 2].map(i => (
                                 <g key={`out-${i}`}>
-                                    <circle cx={innX + 100 + i * 28} cy={sbY + 36} r="10" fill={displayOuts > i ? '#cc2020' : '#140608'} stroke="#d4a018" strokeWidth="1.5"/>
-                                    <circle cx={innX + 100 + i * 28} cy={sbY + 36} r="6" fill={displayOuts > i ? '#ff3030' : '#0e0408'}/>
+                                    <circle cx={innX + 20 + i * 28} cy={sbY + 36} r="10" fill={displayOuts > i ? '#cc2020' : '#140608'} stroke="#d4a018" strokeWidth="1.5"/>
+                                    <circle cx={innX + 20 + i * 28} cy={sbY + 36} r="6" fill={displayOuts > i ? '#ff3030' : '#0e0408'}/>
                                 </g>
                             ))}
                         </g>
@@ -766,8 +770,11 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                         <CardSlot x={MOUND.x - 38} y={MOUND.y - 53} label="P" card={displayPitcher} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                         <CardSlot x={HP.x - 38} y={HP.y - 53} label="H" card={
                             diceAnimating ? displayBatter :
-                            (runnerAnims.length === 0 && pendingMovements.length === 0) ? displayBatter :
-                            null
+                            (runnerAnims.length === 0 &&
+                             pendingMovements.length === 0 &&
+                             !['extra_base_offer','extra_base','gb_decision','result_icons','bunt_decision'].includes(state.phase) &&
+                             !state.pendingDpResult && !state.pendingExtraBaseResult && !state.pendingStealResult)
+                                ? displayBatter : null
                         } onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                     </>
                 )}
@@ -865,7 +872,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             </svg>
 
             {/* Toast notifications */}
-            <GameToast gameLog={state.gameLog} phase={state.phase} isMyTurn={isMyTurn} isOver={state.isOver} />
+            <GameToast gameLog={state.gameLog} diceAnimating={diceAnimating} />
 
             {/* Expand log button — positioned over the bottom-right log area */}
             <div onClick={() => setShowFullLog(true)} style={{
