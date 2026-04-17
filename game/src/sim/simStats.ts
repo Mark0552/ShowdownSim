@@ -16,7 +16,7 @@ export interface HitterFinal {
     walks: number; strikeouts: number; popups: number; flyballs: number; groundballs: number;
     atBats: number;
     Vused: number; Sused: number; HRused: number;
-    ryUsed: number; rAdjustmentAbs: number;
+    ryUsed: number; rAdjustmentAbs: number; rAdjustmentNet: number;
     singles: number;
     battingAverage: number; onBasePercentage: number; sluggingPercentage: number;
     iso: number; ops: number; woba: number;
@@ -100,7 +100,9 @@ export function calculateFinalStats(stats: HitterState, weights: SimConfig['WEIG
         popups: stats.popups, flyballs: stats.flyballs, groundballs: stats.groundballs,
         atBats: stats.atBats,
         Vused: stats.Vused, Sused: stats.Sused, HRused: stats.HRused,
-        ryUsed: stats.ryUsed, rAdjustmentAbs: stats.rAdjustmentAbs,
+        ryUsed: stats.ryUsed,
+        rAdjustmentAbs: stats.rAdjustmentAbs,
+        rAdjustmentNet: stats.rAdjustmentNet,
         singles,
         battingAverage, onBasePercentage, sluggingPercentage,
         iso, ops: onBasePercentage + sluggingPercentage, woba,

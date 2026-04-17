@@ -183,6 +183,7 @@ export interface PitcherState {
     hasR: boolean; hasRY: boolean;
     // Enhanced-mode tracking
     rAdjustmentAbs: number;   // sum of |adjustment| across all rolls (magnitude of R variance)
+    rAdjustmentNet: number;   // signed sum of adjustments (positive = R helped, negative = hurt)
     ryUsed: number;            // count of RY activations
     iconImpact: {
         K: { hrsBlocked: number; tbSaved: number };
@@ -205,6 +206,7 @@ export interface HitterState {
     Vused: number; Sused: number; HRused: number;
     // Enhanced-mode tracking
     rAdjustmentAbs: number;
+    rAdjustmentNet: number;
     ryUsed: number;
     iconImpact: {
         V: { outsAvoided: number; hitsGained: number; extrasGained: number };
@@ -245,6 +247,7 @@ export function initializePitcher(pitcher: PreparedPitcher): PitcherState {
         hasR: iconListIncludes(pitcher.Icons, 'R'),
         hasRY: iconListIncludes(pitcher.Icons, 'RY'),
         rAdjustmentAbs: 0,
+        rAdjustmentNet: 0,
         ryUsed: 0,
         iconImpact: {
             K: { hrsBlocked: 0, tbSaved: 0 },
@@ -285,6 +288,7 @@ export function createHitterStats(hitter: PreparedHitter): HitterState {
         atBats: 0, gameAbCount: 0, gameVuses: 0, gameSused: false, gameHRused: false, gameRYused: false,
         Vused: 0, Sused: 0, HRused: 0,
         rAdjustmentAbs: 0,
+        rAdjustmentNet: 0,
         ryUsed: 0,
         iconImpact: {
             V: { outsAvoided: 0, hitsGained: 0, extrasGained: 0 },
@@ -364,12 +368,15 @@ export function simulateAtBat(
         stats.gameRYused = false;
     }
 
+    // Sign convention for rAdjustmentNet: positive = roll went UP, which helps this player.
+    // Pitcher: higher pitch roll → more likely to flip to pitcher chart (pitcher's advantage).
+    // Hitter:  higher swing roll → moves up the chart toward hits/walks (hitter's advantage).
     let basePitchDie = rollDie();
-    // R icon on pitcher: hidden ±3 on the die result itself
     if (enhanced && pitcher.hasR) {
         const adj = rAdjust();
         basePitchDie += adj;
         pitcher.rAdjustmentAbs += Math.abs(adj);
+        pitcher.rAdjustmentNet += adj;
     }
     const baseRoll = basePitchDie + pitcher.Control;
     let pitcherRoll = baseRoll;
@@ -378,6 +385,7 @@ export function simulateAtBat(
         const adj = rAdjust();
         hitterRoll += adj;
         stats.rAdjustmentAbs += Math.abs(adj);
+        stats.rAdjustmentNet += adj;
     }
 
     const wouldUsePitcherChartWithoutIcons = baseRoll > hitter.onBase;

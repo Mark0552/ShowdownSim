@@ -61,7 +61,8 @@ const HITTER_VIEW_COLS: ViewCol<HitterFinal>[] = [
     { key: 'Sused', label: 'S', decimals: 0, desc: 'S (Speed) icon uses — singles upgraded to doubles (once per 5-AB game).' },
     { key: 'HRused', label: 'HR*', decimals: 0, desc: 'HR (Power) icon uses — doubles/triples upgraded to HRs (once per 5-AB game).' },
     { key: 'totalIconWobaImpact', label: 'Ico+', decimals: 3, colorCode: 'positive-good', desc: 'Total icon wOBA impact — estimated wOBA boost from all icons combined.' },
-    { key: 'rAdjustmentAbs', label: 'RVar', decimals: 0, desc: 'R icon variance magnitude — sum of |±3| applied to swing rolls (Enhanced mode only).' },
+    { key: 'rAdjustmentAbs', label: 'RVar', decimals: 0, desc: 'R icon variance magnitude — cumulative sum of |±3| applied to swing rolls. Linear with PA count for hitters with R; expected ≈ 1.71 × PA. 0 if hitter lacks R.' },
+    { key: 'rAdjustmentNet', label: 'RNet', decimals: 0, colorCode: 'positive-good', desc: 'R icon net luck — signed sum of all ±3 adjustments. Positive (green) = R helped this hitter (rolls ran high); negative (red) = R hurt them. Should average ~0 across many sims.' },
     { key: 'ryUsed', label: 'RY', decimals: 0, desc: 'RY icon uses — +3 swing bonuses applied on hitter-chart PAs (once per 5 ABs, Enhanced mode only).' },
 ];
 
@@ -89,7 +90,8 @@ const PITCHER_VIEW_COLS: ViewCol<PitcherFinal>[] = [
     { key: 'kIconHRsBlocked', label: 'K*', decimals: 0, desc: 'K icon uses — HRs converted to strikeouts (once per 9 innings).' },
     { key: 'twentyIconAdvantageSwings', label: '20*', decimals: 0, desc: '20 icon advantage swings — +3 control bonus flipped from hitter to pitcher chart.' },
     { key: 'rpIconAdvantageSwings', label: 'RP*', decimals: 0, desc: 'RP icon advantage swings — first-inning +3 control bonus flipped chart.' },
-    { key: 'rAdjustmentAbs', label: 'RVar', decimals: 0, desc: 'R icon variance magnitude — sum of |±3| applied to pitch rolls (Enhanced mode only).' },
+    { key: 'rAdjustmentAbs', label: 'RVar', decimals: 0, desc: 'R icon variance magnitude — cumulative sum of |±3| applied to pitch rolls. Linear with BF for pitchers with R; expected ≈ 1.71 × BF. 0 if pitcher lacks R.' },
+    { key: 'rAdjustmentNet', label: 'RNet', decimals: 0, colorCode: 'positive-good', desc: 'R icon net luck — signed sum of all ±3 adjustments. Positive (green) = R helped this pitcher (rolls ran high → more pitcher-chart matchups); negative (red) = R hurt them. Should average ~0 across many sims.' },
     { key: 'ryUsed', label: 'RY', decimals: 0, desc: 'RY icon uses — +3 pitch bonuses applied (once per 27 outs, Enhanced mode only).' },
 ];
 
