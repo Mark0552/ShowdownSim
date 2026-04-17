@@ -281,11 +281,24 @@
 /* When showing the GameLogOverlay inside the modal it's positioned static, not absolute */
 .stats-game-modal-body .overlay-panel {
     position: static;
+    transform: none;
+    top: auto;
+    left: auto;
     width: 100%;
+    max-width: none;
+    min-width: 0;
+    max-height: none;
     height: 100%;
+    padding: 0;
     box-shadow: none;
     border: none;
     background: transparent;
+    overflow: visible;
+}
+
+/* The overlay's built-in header duplicates the modal header — hide it */
+.stats-game-modal-body .overlay-panel-header {
+    display: none;
 }
 
 
