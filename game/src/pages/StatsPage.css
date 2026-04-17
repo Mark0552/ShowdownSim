@@ -159,3 +159,149 @@
     color: var(--accent);
     background: rgba(212, 160, 24, 0.1);
 }
+
+
+/* View button on game-history rows */
+.stats-view-btn {
+    background: rgba(212, 160, 24, 0.1);
+    border: 1px solid var(--accent-dim);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 14px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.stats-view-btn:hover {
+    background: rgba(212, 160, 24, 0.25);
+    border-color: var(--accent);
+}
+
+/* Game-detail modal */
+.stats-game-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.stats-game-modal-content {
+    background: var(--bg-primary);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    width: 100%;
+    max-width: 1200px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.stats-game-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-secondary);
+}
+
+.stats-game-modal-title {
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.stats-game-modal-date {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.stats-game-modal-close {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 6px 14px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    cursor: pointer;
+}
+
+.stats-game-modal-close:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.stats-game-modal-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 10px 20px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.stats-game-modal-tab {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 18px;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+}
+
+.stats-game-modal-tab:hover {
+    color: var(--text);
+}
+
+.stats-game-modal-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+.stats-game-modal-body {
+    flex: 1;
+    overflow: auto;
+    padding: 16px 20px;
+    position: relative;
+}
+
+/* When showing the GameLogOverlay inside the modal it's positioned static, not absolute */
+.stats-game-modal-body .overlay-panel {
+    position: static;
+    width: 100%;
+    height: 100%;
+    box-shadow: none;
+    border: none;
+    background: transparent;
+}
+
+
+
+/* Hoverable card-name cells */
+.stats-card-hover {
+    cursor: pointer;
+    transition: color 0.1s;
+}
+.stats-card-hover:hover {
+    color: var(--accent);
+}
+.box-card-hover {
+    cursor: pointer;
+}
+.box-card-hover:hover {
+    color: var(--accent);
+}
+

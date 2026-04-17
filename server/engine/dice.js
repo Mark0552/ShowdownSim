@@ -13,6 +13,14 @@ export function getRollSequence() {
     return _rollSequence;
 }
 
+/** Bump the sequence without rolling — used by icon paths that change outcome
+ *  but don't roll a new die (K, HR, S, skip-icons). The client uses this to
+ *  trigger a display freeze so highlights don't jump before the result settles. */
+export function bumpRollSequence() {
+    _rollSequence++;
+    return _rollSequence;
+}
+
 export function parseRange(range) {
     if (!range) return null;
     if (range.includes('-')) {

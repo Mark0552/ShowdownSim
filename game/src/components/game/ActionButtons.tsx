@@ -145,8 +145,7 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 const battingSideKey = state.halfInning === 'top' ? 'away' : 'home';
                 const runsAgainst = state.score[battingSideKey];
                 const canChangePitcher = hasRelievers && (!isStarter || state.inning >= 5 || runsAgainst >= 10);
-                const currentFieldingTeamId = state.halfInning === 'top' ? 'home' : 'away';
-                const rpAlreadyUsed = state.rpActiveInning === state.inning && state.rpActiveTeam === currentFieldingTeamId;
+                const rpAlreadyUsed = !!fieldingTeam.iconUsage?.[fieldingTeam.pitcher.cardId]?.['RP'];
                 const hasRP = state.inning > 6 && !rpAlreadyUsed && fieldingTeam.pitcher.icons?.includes('RP');
                 const has20 = !state.icon20UsedThisInning && fieldingTeam.pitcher.icons?.includes('20');
                 const bases = state.bases;
@@ -239,8 +238,7 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 const bases = state.bases;
                 const canBunt = state.outs < 2 && (bases.first || bases.second) && !bases.third;
                 const has20 = !state.icon20UsedThisInning && fieldingTeam.pitcher.icons?.includes('20');
-                const currentFieldingTeamId2 = state.halfInning === 'top' ? 'home' : 'away';
-                const rpUsed2 = state.rpActiveInning === state.inning && state.rpActiveTeam === currentFieldingTeamId2;
+                const rpUsed2 = !!fieldingTeam.iconUsage?.[fieldingTeam.pitcher.cardId]?.['RP'];
                 const hasRP2 = state.inning > 6 && !rpUsed2 && fieldingTeam.pitcher.icons?.includes('RP');
                 // Build button list and center it
                 const items: { type: string; w: number }[] = [{ type: 'ibb', w: 200 }];
@@ -316,8 +314,7 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
             {/* Pitch phase — with optional 20/RP icons */}
             {!state.isOver && isMyTurn && state.phase === 'pitch' && (() => {
                 const has20 = !state.icon20UsedThisInning && fieldingTeam.pitcher.icons?.includes('20');
-                const pCurrentFieldingTeamId = state.halfInning === 'top' ? 'home' : 'away';
-                const pRpUsed = state.rpActiveInning === state.inning && state.rpActiveTeam === pCurrentFieldingTeamId;
+                const pRpUsed = !!fieldingTeam.iconUsage?.[fieldingTeam.pitcher.cardId]?.['RP'];
                 const hasRP = state.inning > 6 && !pRpUsed && fieldingTeam.pitcher.icons?.includes('RP');
                 const items: { type: string; w: number }[] = [];
                 items.push({ type: 'roll_pitch', w: 200 });
@@ -658,14 +655,14 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
             {/* Game over */}
             {state.isOver && (() => {
                 const iWon = state.winnerId === (myRole === 'home' ? state.homeTeam.userId : state.awayTeam.userId);
-                const winnerName = state.winnerId === state.homeTeam.userId ? 'HOME' : 'AWAY';
+                const color = iWon ? '#4ade80' : '#e94560';
                 return (
                     <g>
-                        <rect x={CX - 200} y={ROW1 - 10} width="400" height="66" rx="10" fill="rgba(0,0,0,0.9)" stroke={iWon ? '#4ade80' : '#e94560'} strokeWidth="2"/>
-                        <text x={CX} y={ROW1 + 16} textAnchor="middle" fontSize="26" fill={iWon ? '#4ade80' : '#e94560'} fontWeight="normal" fontFamily="Impact,sans-serif" letterSpacing="3">
-                            {iWon ? 'YOU WIN!' : `${winnerName} WINS!`}
+                        <rect x={CX - 200} y={ROW1 - 10} width="400" height="86" rx="10" fill="rgba(0,0,0,0.9)" stroke={color} strokeWidth="2"/>
+                        <text x={CX} y={ROW1 + 22} textAnchor="middle" fontSize="30" fill={color} fontWeight="normal" fontFamily="Impact,sans-serif" letterSpacing="3">
+                            {iWon ? 'YOU WIN!' : 'YOU LOSE!'}
                         </text>
-                        <text x={CX} y={ROW1 + 58} textAnchor="middle" fontSize="20" fill="white" fontWeight="normal" fontFamily="Impact,sans-serif" letterSpacing="2">
+                        <text x={CX} y={ROW1 + 58} textAnchor="middle" fontSize="22" fill="white" fontWeight="normal" fontFamily="Impact,sans-serif" letterSpacing="2">
                             {state.score.away} {'\u2013'} {state.score.home}
                         </text>
                     </g>

@@ -271,7 +271,10 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const prevStealKeyRef = useRef(stKey(state.pendingStealResult));
     const prevTotalRunsRef = useRef(state.score.home + state.score.away);
     const prevGameLogLenRef = useRef(state.gameLog?.length || 0);
-    const prevFatiguePenaltyRef = useRef(fatiguePenalty);
+    const prevRunIpLossRef = useRef<{ pitcherId: string; loss: number }>({
+        pitcherId: pitcher.cardId,
+        loss: Math.floor((fieldingTeam.pitcherStats?.[pitcher.cardId]?.r || 0) / 3),
+    });
     const prevHalfRef = useRef(state.halfInning);
     const prevInningRef = useRef(state.inning);
     const gameStartedRef = useRef(false);
@@ -335,11 +338,14 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
 
         prevGameLogLenRef.current = state.gameLog?.length || 0;
 
-        // Pitcher fatigue
-        if (fatiguePenalty > prevFatiguePenaltyRef.current && fatiguePenalty > 0) {
+        // Rack-discipline sound — every 3 runs allowed by current pitcher (-1 effective IP)
+        const curRuns = fieldingTeam.pitcherStats?.[pitcher.cardId]?.r || 0;
+        const curRunIpLoss = Math.floor(curRuns / 3);
+        const prev = prevRunIpLossRef.current;
+        if (prev.pitcherId === pitcher.cardId && curRunIpLoss > prev.loss) {
             queueSound('rack-discipline', 300);
         }
-        prevFatiguePenaltyRef.current = fatiguePenalty;
+        prevRunIpLossRef.current = { pitcherId: pitcher.cardId, loss: curRunIpLoss };
 
         // Run scored — queue one 'run-scored' per run so grand slams cascade
         const totalRuns = state.score.home + state.score.away;

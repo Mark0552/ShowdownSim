@@ -1,8 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { getGameHistory, getCareerBattingStats, getCareerPitchingStats } from '../lib/stats';
 import { supabase } from '../lib/supabase';
 import { getUser } from '../lib/auth';
 import type { GameRow } from '../types/game';
+import type { Card } from '../types/cards';
+import { loadCards } from '../data/cardData';
+import BoxScore from '../components/game/BoxScore';
+import GameLogOverlay from '../components/game/GameLogOverlay';
+import CardTooltip from '../components/cards/CardTooltip';
 import './StatsPage.css';
 
 interface Props {
@@ -21,6 +26,23 @@ export default function StatsPage({ onBack }: Props) {
 
     // History
     const [games, setGames] = useState<GameRow[]>([]);
+    const [selectedGame, setSelectedGame] = useState<GameRow | null>(null);
+    const [detailTab, setDetailTab] = useState<'box' | 'log'>('box');
+
+    // Card lookup for hover tooltip — cached load
+    const [cardsList, setCardsList] = useState<Card[]>([]);
+    const [hoveredCard, setHoveredCard] = useState<Card | null>(null);
+    useEffect(() => { loadCards().then(({ all }) => setCardsList(all)); }, []);
+    const cardsMap = useMemo(() => {
+        const m = new Map<string, Card>();
+        for (const c of cardsList) m.set(c.id, c);
+        return m;
+    }, [cardsList]);
+    const showCard = (cardId: string) => {
+        const c = cardsMap.get(cardId);
+        if (c) setHoveredCard(c);
+    };
+    const hideCard = () => setHoveredCard(null);
 
     // Career
     const [battingStats, setBattingStats] = useState<any[]>([]);
@@ -120,6 +142,7 @@ export default function StatsPage({ onBack }: Props) {
                                             <th>Opponent</th>
                                             <th>Result</th>
                                             <th>Lineup</th>
+                                            <th></th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -131,6 +154,7 @@ export default function StatsPage({ onBack }: Props) {
                                             const homeScore = game.state?.score?.home ?? '?';
                                             const awayScore = game.state?.score?.away ?? '?';
                                             const score = isHome ? `${homeScore}-${awayScore}` : `${awayScore}-${homeScore}`;
+                                            const hasState = !!game.state?.homeTeam && !!game.state?.awayTeam;
                                             return (
                                                 <tr key={game.id}>
                                                     <td>{new Date(game.created_at).toLocaleDateString()}</td>
@@ -141,6 +165,13 @@ export default function StatsPage({ onBack }: Props) {
                                                         </span>
                                                     </td>
                                                     <td>{myLineup || '-'}</td>
+                                                    <td>
+                                                        {hasState && (
+                                                            <button className="stats-view-btn" onClick={() => { setSelectedGame(game); setDetailTab('box'); }}>
+                                                                View
+                                                            </button>
+                                                        )}
+                                                    </td>
                                                 </tr>
                                             );
                                         })}
@@ -177,6 +208,7 @@ export default function StatsPage({ onBack }: Props) {
                                                 <th className="sortable" onClick={() => handleSort('rbi')}>RBI{sortIndicator('rbi')}</th>
                                                 <th className="sortable" onClick={() => handleSort('sb')}>SB{sortIndicator('sb')}</th>
                                                 <th className="sortable" onClick={() => handleSort('bb')}>BB{sortIndicator('bb')}</th>
+                                                <th className="sortable" onClick={() => handleSort('ibb')}>IBB{sortIndicator('ibb')}</th>
                                                 <th className="sortable" onClick={() => handleSort('so')}>SO{sortIndicator('so')}</th>
                                                 <th className="sortable" onClick={() => handleSort('avg')}>AVG{sortIndicator('avg')}</th>
                                                 <th className="sortable" onClick={() => handleSort('obp')}>OBP{sortIndicator('obp')}</th>
@@ -187,7 +219,9 @@ export default function StatsPage({ onBack }: Props) {
                                         <tbody>
                                             {sortedBatting.map(s => (
                                                 <tr key={s.card_id}>
-                                                    <td className="stats-player-name">{s.card_name}</td>
+                                                    <td className="stats-player-name stats-card-hover"
+                                                        onMouseEnter={() => showCard(s.card_id)}
+                                                        onMouseLeave={hideCard}>{s.card_name}</td>
                                                     <td>{s.games}</td>
                                                     <td>{s.pa}</td>
                                                     <td>{s.ab}</td>
@@ -199,6 +233,7 @@ export default function StatsPage({ onBack }: Props) {
                                                     <td>{s.rbi}</td>
                                                     <td>{s.sb}</td>
                                                     <td>{s.bb}</td>
+                                                    <td>{s.ibb}</td>
                                                     <td>{s.so}</td>
                                                     <td>{fmtAvg(s.h, s.ab)}</td>
                                                     <td>{fmtObp(s)}</td>
@@ -228,6 +263,7 @@ export default function StatsPage({ onBack }: Props) {
                                                 <th className="sortable" onClick={() => handleSort('h')}>H{sortIndicator('h')}</th>
                                                 <th className="sortable" onClick={() => handleSort('r')}>R{sortIndicator('r')}</th>
                                                 <th className="sortable" onClick={() => handleSort('bb')}>BB{sortIndicator('bb')}</th>
+                                                <th className="sortable" onClick={() => handleSort('ibb')}>IBB{sortIndicator('ibb')}</th>
                                                 <th className="sortable" onClick={() => handleSort('so')}>SO{sortIndicator('so')}</th>
                                                 <th className="sortable" onClick={() => handleSort('hr')}>HR{sortIndicator('hr')}</th>
                                                 <th className="sortable" onClick={() => handleSort('bf')}>BF{sortIndicator('bf')}</th>
@@ -238,7 +274,9 @@ export default function StatsPage({ onBack }: Props) {
                                         <tbody>
                                             {sortedPitching.map(s => (
                                                 <tr key={s.card_id}>
-                                                    <td className="stats-player-name">{s.card_name}</td>
+                                                    <td className="stats-player-name stats-card-hover"
+                                                        onMouseEnter={() => showCard(s.card_id)}
+                                                        onMouseLeave={hideCard}>{s.card_name}</td>
                                                     <td>{s.games}</td>
                                                     <td>{s.wins}</td>
                                                     <td>{s.losses}</td>
@@ -247,6 +285,7 @@ export default function StatsPage({ onBack }: Props) {
                                                     <td>{s.h}</td>
                                                     <td>{s.r}</td>
                                                     <td>{s.bb}</td>
+                                                    <td>{s.ibb}</td>
                                                     <td>{s.so}</td>
                                                     <td>{s.hr}</td>
                                                     <td>{s.bf}</td>
@@ -262,6 +301,47 @@ export default function StatsPage({ onBack }: Props) {
                     </div>
                 )}
             </div>
+
+            {hoveredCard && <CardTooltip card={hoveredCard} />}
+
+            {selectedGame && selectedGame.state?.homeTeam && selectedGame.state?.awayTeam && (
+                <div className="stats-game-modal" onClick={() => setSelectedGame(null)}>
+                    <div className="stats-game-modal-content" onClick={(e) => e.stopPropagation()}>
+                        <div className="stats-game-modal-header">
+                            <div className="stats-game-modal-title">
+                                {selectedGame.away_user_email || 'Away'} {selectedGame.state.score.away}
+                                {' \u2013 '}
+                                {selectedGame.state.score.home} {selectedGame.home_user_email || 'Home'}
+                                <span className="stats-game-modal-date">
+                                    {new Date(selectedGame.created_at).toLocaleDateString()}
+                                </span>
+                            </div>
+                            <button className="stats-game-modal-close" onClick={() => setSelectedGame(null)}>CLOSE</button>
+                        </div>
+                        <div className="stats-game-modal-tabs">
+                            <button className={`stats-game-modal-tab ${detailTab === 'box' ? 'active' : ''}`} onClick={() => setDetailTab('box')}>Box Score</button>
+                            <button className={`stats-game-modal-tab ${detailTab === 'log' ? 'active' : ''}`} onClick={() => setDetailTab('log')}>Game Log</button>
+                        </div>
+                        <div className="stats-game-modal-body">
+                            {detailTab === 'box' ? (
+                                <BoxScore
+                                    awayTeam={selectedGame.state.awayTeam}
+                                    homeTeam={selectedGame.state.homeTeam}
+                                    awayName={selectedGame.away_lineup_name || 'Away'}
+                                    homeName={selectedGame.home_lineup_name || 'Home'}
+                                    onCardHover={showCard}
+                                    onCardLeave={hideCard}
+                                />
+                            ) : (
+                                <GameLogOverlay
+                                    gameLog={selectedGame.state.gameLog || []}
+                                    onClose={() => setSelectedGame(null)}
+                                />
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

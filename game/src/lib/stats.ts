@@ -141,6 +141,9 @@ export async function getCareerPitchingStats() {
 
     const map = new Map<string, any>();
     for (const row of data || []) {
+        // Skip phantom rows: pitcher never faced a batter (BF=0). Old games saved
+        // before the bf-filter could insert these, polluting W/L for unused starters.
+        if (!row.bf || row.bf === 0) continue;
         if (!map.has(row.card_id)) {
             map.set(row.card_id, { card_id: row.card_id, card_name: row.card_name, games: 0, ip: 0, h: 0, r: 0, bb: 0, ibb: 0, so: 0, hr: 0, bf: 0, wins: 0, losses: 0, saves: 0 });
         }

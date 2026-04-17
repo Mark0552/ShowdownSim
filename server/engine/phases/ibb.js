@@ -44,14 +44,12 @@ export function handleIntentionalWalk(state) {
     rpi[state.inning - 1] = (rpi[state.inning - 1] || 0) + runs;
     battingTeam.runsPerInning = rpi;
 
-    // Record stats: IBB (not a regular BB, not an AB, but is a PA)
+    // Record stats: IBB tracked strictly separately from BB (not double-counted)
     battingTeam = addBatterStat(battingTeam, batter.cardId, 'pa');
     battingTeam = addBatterStat(battingTeam, batter.cardId, 'ibb');
-    battingTeam = addBatterStat(battingTeam, batter.cardId, 'bb'); // also counts as total BB
     if (runs > 0) battingTeam = addBatterStat(battingTeam, batter.cardId, 'rbi', runs);
     if (scoringRunnerId) battingTeam = addBatterStat(battingTeam, scoringRunnerId, 'r');
     fieldingTeamUpdated = addPitcherStat(fieldingTeamUpdated, pitcher.cardId, 'ibb');
-    fieldingTeamUpdated = addPitcherStat(fieldingTeamUpdated, pitcher.cardId, 'bb');
     fieldingTeamUpdated = addPitcherStat(fieldingTeamUpdated, pitcher.cardId, 'bf');
     if (runs > 0) fieldingTeamUpdated = addPitcherStat(fieldingTeamUpdated, pitcher.cardId, 'r', runs);
 

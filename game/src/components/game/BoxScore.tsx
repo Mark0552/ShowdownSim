@@ -6,6 +6,9 @@ interface BoxScoreProps {
     homeTeam: TeamState;
     awayName: string;
     homeName: string;
+    /** Optional: when provided, player-name cells become hoverable and emit cardId */
+    onCardHover?: (cardId: string) => void;
+    onCardLeave?: () => void;
 }
 
 const emptyBat: BatterStats = { pa: 0, ab: 0, h: 0, r: 0, rbi: 0, bb: 0, ibb: 0, so: 0, hr: 0, db: 0, tr: 0, tb: 0, sb: 0, cs: 0, gidp: 0, sh: 0, sf: 0 };
@@ -32,7 +35,14 @@ const fmtEra = (r: number, ip: number) => ip === 0 ? '-' : ((r * 9) / (ip / 3)).
 const fmtWhip = (s: PitcherStats) => s.ip === 0 ? '-' : ((s.h + s.bb) / (s.ip / 3)).toFixed(2);
 
 /** Box Score component — full baseball-reference batting and pitching stats */
-export default function BoxScore({ awayTeam, homeTeam, awayName, homeName }: BoxScoreProps) {
+export default function BoxScore({ awayTeam, homeTeam, awayName, homeName, onCardHover, onCardLeave }: BoxScoreProps) {
+    const hoverable = !!onCardHover;
+    const nameCellProps = (cardId: string) => hoverable ? {
+        className: 'box-card-hover',
+        onMouseEnter: () => onCardHover?.(cardId),
+        onMouseLeave: () => onCardLeave?.(),
+    } : {};
+
     const renderBattingTable = (team: TeamState, label: string) => {
         const stats = team.batterStats || {};
         const rows = team.lineup.map((p, i) => {
@@ -59,17 +69,17 @@ export default function BoxScore({ awayTeam, homeTeam, awayName, homeName }: Box
                             <th>PLAYER</th>
                             <th>PA</th><th>AB</th><th>H</th><th>2B</th><th>3B</th><th>HR</th>
                             <th>R</th><th>RBI</th><th>SB</th><th>CS</th>
-                            <th>BB</th><th>SO</th><th>GIDP</th><th>SH</th><th>SF</th>
+                            <th>BB</th><th>IBB</th><th>SO</th><th>GIDP</th><th>SH</th><th>SF</th>
                             <th>AVG</th><th>OBP</th><th>SLG</th><th>OPS</th>
                         </tr>
                     </thead>
                     <tbody>
                         {rows.map(({ p, s, i }) => (
                             <tr key={`bat-${i}`}>
-                                <td>{p.name}</td>
+                                <td {...nameCellProps(p.cardId)}>{p.name}</td>
                                 <td>{s.pa}</td><td>{s.ab}</td><td>{s.h}</td><td>{s.db}</td><td>{s.tr}</td><td>{s.hr}</td>
                                 <td>{s.r}</td><td>{s.rbi}</td><td>{s.sb}</td><td>{s.cs}</td>
-                                <td>{s.bb}</td><td>{s.so}</td><td>{s.gidp}</td><td>{s.sh}</td><td>{s.sf}</td>
+                                <td>{s.bb}</td><td>{s.ibb}</td><td>{s.so}</td><td>{s.gidp}</td><td>{s.sh}</td><td>{s.sf}</td>
                                 <td>{fmtAvg(s.h, s.ab)}</td>
                                 <td>{fmtObp(s)}</td>
                                 <td>{fmtSlg(s)}</td>
@@ -80,7 +90,7 @@ export default function BoxScore({ awayTeam, homeTeam, awayName, homeName }: Box
                             <td style={{ color: '#d4a018' }}>TOTALS</td>
                             <td>{totals.pa}</td><td>{totals.ab}</td><td>{totals.h}</td><td>{totals.db}</td><td>{totals.tr}</td><td>{totals.hr}</td>
                             <td>{totals.r}</td><td>{totals.rbi}</td><td>{totals.sb}</td><td>{totals.cs}</td>
-                            <td>{totals.bb}</td><td>{totals.so}</td><td>{totals.gidp}</td><td>{totals.sh}</td><td>{totals.sf}</td>
+                            <td>{totals.bb}</td><td>{totals.ibb}</td><td>{totals.so}</td><td>{totals.gidp}</td><td>{totals.sh}</td><td>{totals.sf}</td>
                             <td>{fmtAvg(totals.h, totals.ab)}</td>
                             <td>{fmtObp(totals)}</td>
                             <td>{fmtSlg(totals)}</td>
@@ -118,7 +128,7 @@ export default function BoxScore({ awayTeam, homeTeam, awayName, homeName }: Box
                             const name = p?.name || id;
                             return (
                                 <tr key={`pit-${i}`}>
-                                    <td>{name}</td>
+                                    <td {...nameCellProps(id)}>{name}</td>
                                     <td>{fmtIp(s.ip)}</td>
                                     <td>{s.h}</td><td>{s.r}</td><td>{s.bb}</td><td>{s.ibb}</td><td>{s.so}</td>
                                     <td>{s.hr}</td><td>{s.bf}</td>

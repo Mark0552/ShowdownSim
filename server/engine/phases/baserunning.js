@@ -165,6 +165,8 @@ export function applyResult(state, outcome, batterId) {
     if (outcome === 'TR') { battingTeam = addBatterStat(battingTeam, batterId, 'tr'); battingTeam = addBatterStat(battingTeam, batterId, 'tb', 3); }
     if (outcome === 'DB') { battingTeam = addBatterStat(battingTeam, batterId, 'db'); battingTeam = addBatterStat(battingTeam, batterId, 'tb', 2); }
     if (outcome === 'S' || outcome === 'SPlus') battingTeam = addBatterStat(battingTeam, batterId, 'tb', 1);
+    // S+ auto-steal: batter is now on 2nd → credit a stolen base
+    if (outcome === 'SPlus' && bases.second === batterId) battingTeam = addBatterStat(battingTeam, batterId, 'sb');
     if (runs > 0) battingTeam = addBatterStat(battingTeam, batterId, 'rbi', runs);
     for (const runnerId of runnersScored) {
         battingTeam = addBatterStat(battingTeam, runnerId, 'r');
