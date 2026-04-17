@@ -32,11 +32,21 @@ function escapeHtml(s: unknown): string {
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+/** Prefix relative imagePath (e.g. "cards\2004-Base\349374.jpg") with absolute deploy URL
+ *  so exported HTML files find images when opened outside the app. */
+const CARD_URL_BASE = 'https://mark0552.github.io/ShowdownSim/';
+function absoluteImageUrl(imagePath: string | undefined | null): string {
+    if (!imagePath) return '';
+    const normalized = String(imagePath).replace(/\\/g, '/').replace(/^\/+/, '');
+    if (/^https?:\/\//.test(normalized)) return normalized;
+    return CARD_URL_BASE + normalized;
+}
+
 function tooltipHtml(row: any, isHitter: boolean): string {
     const chart = row.chart;
     if (!chart) return '';
     const imgTag = row.imagePath
-        ? `<div class='tt-img'><img src='${escapeHtml(row.imagePath)}' alt='card'></div>`
+        ? `<div class='tt-img'><img src='${escapeHtml(absoluteImageUrl(row.imagePath))}' alt='card'></div>`
         : '';
     if (isHitter) {
         const pos = escapeHtml(row.Position || '-');
@@ -129,85 +139,85 @@ function renderTable(data: any[], columns: Column[], isHitter: boolean): string 
 }
 
 const HITTER_COLUMNS: Column[] = [
-    { key: 'valueRating', label: 'Value', decimals: 0, desc: 'Value Rating (0-100). Combined z-score of OPS and wOBA deviation, scaled to 0-100.' },
-    { key: 'name', label: 'Name', desc: 'Player. Hover for card details.' },
-    { key: 'points', label: 'Pts', decimals: 0 },
-    { key: 'onBase', label: 'OB', decimals: 0 },
-    { key: 'Speed', label: 'Spd', decimals: 0 },
-    { key: 'Position', label: 'Pos' },
-    { key: 'hand', label: 'Hand' },
-    { key: 'icons', label: 'Icons' },
-    { key: 'battingAverage', label: 'AVG', decimals: 3 },
-    { key: 'onBasePercentage', label: 'OBP', decimals: 3 },
-    { key: 'sluggingPercentage', label: 'SLG', decimals: 3 },
-    { key: 'ops', label: 'OPS', decimals: 3 },
-    { key: 'woba', label: 'wOBA', decimals: 3 },
-    { key: 'iso', label: 'ISO', decimals: 3 },
-    { key: 'babip', label: 'BABIP', decimals: 3 },
-    { key: 'kPct', label: 'K%', decimals: 3 },
-    { key: 'bbPct', label: 'BB%', decimals: 3 },
-    { key: 'hrPct', label: 'HR%', decimals: 3 },
-    { key: 'gbFbRatio', label: 'GB/FB', decimals: 2 },
-    { key: 'opsPercentile', label: 'OPS%', decimals: 0 },
-    { key: 'wobaPercentile', label: 'wOBA%', decimals: 0 },
-    { key: 'opsDeviation', label: 'OPS Dev', decimals: 3, colorCode: 'positive-good' },
-    { key: 'wobaDeviation', label: 'wOBA Dev', decimals: 3, colorCode: 'positive-good' },
-    { key: 'atBats', label: 'PA', decimals: 0 },
-    { key: 'hits', label: 'H', decimals: 0 },
-    { key: 'singles', label: '1B', decimals: 0 },
-    { key: 'singleplus', label: '1B+', decimals: 0 },
-    { key: 'doubles', label: '2B', decimals: 0 },
-    { key: 'triples', label: '3B', decimals: 0 },
-    { key: 'homeRuns', label: 'HR', decimals: 0 },
-    { key: 'walks', label: 'BB', decimals: 0 },
-    { key: 'strikeouts', label: 'SO', decimals: 0 },
-    { key: 'groundballs', label: 'GB', decimals: 0 },
-    { key: 'flyballs', label: 'FB', decimals: 0 },
-    { key: 'popups', label: 'PU', decimals: 0 },
-    { key: 'Vused', label: 'V Used', decimals: 0 },
-    { key: 'Sused', label: 'S Used', decimals: 0 },
-    { key: 'HRused', label: 'HR Used', decimals: 0 },
-    { key: 'totalIconSlgImpact', label: 'Icon SLG+', decimals: 3, colorCode: 'positive-good' },
-    { key: 'totalIconWobaImpact', label: 'Icon wOBA+', decimals: 3, colorCode: 'positive-good' },
+    { key: 'valueRating', label: 'Value', decimals: 0, desc: 'Value Rating (0-100). Combined z-score of OPS and wOBA deviation from regression, scaled to 0-100 centered at 50. Higher = better value for the card\'s point cost.' },
+    { key: 'name', label: 'Name', desc: 'Player name, year, edition, card number, team. Hover for full card details.' },
+    { key: 'points', label: 'Pts', decimals: 0, desc: 'Card point cost for team building. Higher points = stronger card.' },
+    { key: 'onBase', label: 'OB', decimals: 0, desc: 'On-Base number. Pitcher must roll d20 + Control > this to use pitcher\'s chart. Higher = better hitter.' },
+    { key: 'Speed', label: 'Spd', decimals: 0, desc: 'Speed rating. Used for stolen bases and fielding.' },
+    { key: 'Position', label: 'Pos', desc: 'Fielding position(s). +N is the fielding bonus.' },
+    { key: 'hand', label: 'Hand', desc: 'Batting hand. L = Left, R = Right, S = Switch.' },
+    { key: 'icons', label: 'Icons', desc: 'Special ability icons. V = Vision (reroll outs), S = Speed (upgrade 1B to 2B), HR = Power (upgrade 2B/3B to HR), SB = Stolen Base.' },
+    { key: 'battingAverage', label: 'AVG', decimals: 3, desc: 'Batting Average = H / AB. Measures how often the hitter gets a hit per at-bat (excludes walks).' },
+    { key: 'onBasePercentage', label: 'OBP', decimals: 3, desc: 'On-Base Percentage = (H + BB) / PA. Fraction of plate appearances reaching base.' },
+    { key: 'sluggingPercentage', label: 'SLG', decimals: 3, desc: 'Slugging Percentage = Total Bases / AB. Measures power.' },
+    { key: 'ops', label: 'OPS', decimals: 3, desc: 'On-base Plus Slugging = OBP + SLG. Combined measure of reaching base and hitting for power.' },
+    { key: 'woba', label: 'wOBA', decimals: 3, desc: 'Weighted On-Base Average = (0.69×BB + 0.88×1B + 1.08×1B+ + 1.24×2B + 1.56×3B + 1.95×HR) / PA. Weights each outcome by its run value.' },
+    { key: 'iso', label: 'ISO', decimals: 3, desc: 'Isolated Power = SLG - AVG. Raw extra-base power independent of batting average.' },
+    { key: 'babip', label: 'BABIP', decimals: 3, desc: 'Batting Average on Balls In Play = (H - HR) / (AB - SO - HR).' },
+    { key: 'kPct', label: 'K%', decimals: 3, desc: 'Strikeout Rate = SO / PA. Fraction of plate appearances ending in a strikeout.' },
+    { key: 'bbPct', label: 'BB%', decimals: 3, desc: 'Walk Rate = BB / PA. Fraction of plate appearances ending in a walk.' },
+    { key: 'hrPct', label: 'HR%', decimals: 3, desc: 'Home Run Rate = HR / AB. Fraction of at-bats resulting in a home run.' },
+    { key: 'gbFbRatio', label: 'GB/FB', decimals: 2, desc: 'Ground Ball to Fly Ball Ratio = GB / FB.' },
+    { key: 'opsPercentile', label: 'OPS%', decimals: 0, desc: 'OPS Percentile (0-100) within this position group.' },
+    { key: 'wobaPercentile', label: 'wOBA%', decimals: 0, desc: 'wOBA Percentile (0-100) within this position group.' },
+    { key: 'opsDeviation', label: 'OPS Dev', decimals: 3, colorCode: 'positive-good', desc: 'OPS Deviation from regression of OPS vs Points within position group. Positive (green) = overperforming for cost.' },
+    { key: 'wobaDeviation', label: 'wOBA Dev', decimals: 3, colorCode: 'positive-good', desc: 'wOBA Deviation from regression of wOBA vs Points within position group. Positive (green) = overperforming for cost.' },
+    { key: 'atBats', label: 'PA', decimals: 0, desc: 'Plate Appearances. Total times this hitter batted across all matchups.' },
+    { key: 'hits', label: 'H', decimals: 0, desc: 'Hits. Total hits (1B + 1B+ + 2B + 3B + HR).' },
+    { key: 'singles', label: '1B', decimals: 0, desc: 'Singles (1 base).' },
+    { key: 'singleplus', label: '1B+', decimals: 0, desc: 'Singles Plus. Enhanced singles worth ~1.5 bases in weighted stats.' },
+    { key: 'doubles', label: '2B', decimals: 0, desc: 'Doubles (2 bases).' },
+    { key: 'triples', label: '3B', decimals: 0, desc: 'Triples (3 bases).' },
+    { key: 'homeRuns', label: 'HR', decimals: 0, desc: 'Home Runs (4 bases).' },
+    { key: 'walks', label: 'BB', decimals: 0, desc: 'Walks (base on balls). Reaches base but does not count as an at-bat.' },
+    { key: 'strikeouts', label: 'SO', decimals: 0, desc: 'Strikeouts. Out, does not put ball in play.' },
+    { key: 'groundballs', label: 'GB', decimals: 0, desc: 'Ground Ball outs.' },
+    { key: 'flyballs', label: 'FB', decimals: 0, desc: 'Fly Ball outs.' },
+    { key: 'popups', label: 'PU', decimals: 0, desc: 'Popup outs.' },
+    { key: 'Vused', label: 'V Used', decimals: 0, desc: 'V (Vision) icon uses. Times the V icon rerolled an out (max 2 per 5-AB game, hitter chart only).' },
+    { key: 'Sused', label: 'S Used', decimals: 0, desc: 'S (Speed) icon uses. Times the S icon upgraded a 1B/1B+ to a double (once per 5-AB game).' },
+    { key: 'HRused', label: 'HR Used', decimals: 0, desc: 'HR (Power) icon uses. Times the HR icon upgraded a 2B/3B to a home run (once per 5-AB game).' },
+    { key: 'totalIconSlgImpact', label: 'Icon SLG+', decimals: 3, colorCode: 'positive-good', desc: 'Icon SLG Impact = (S icon TB gained + HR icon TB gained) / AB. Estimated SLG boost from S and HR icon upgrades.' },
+    { key: 'totalIconWobaImpact', label: 'Icon wOBA+', decimals: 3, colorCode: 'positive-good', desc: 'Icon wOBA Impact. Estimated wOBA boost from all icons (V rerolls, S upgrades, HR upgrades) using linear weights.' },
 ];
 
 const PITCHER_COLUMNS: Column[] = [
-    { key: 'valueRating', label: 'Value', decimals: 0 },
-    { key: 'name', label: 'Name' },
-    { key: 'points', label: 'Pts', decimals: 0 },
-    { key: 'Control', label: 'Ctrl', decimals: 0 },
-    { key: 'IP', label: 'IP', decimals: 0 },
-    { key: 'hand', label: 'Hand' },
-    { key: 'Icons', label: 'Icons' },
-    { key: 'whip', label: 'WHIP', decimals: 3 },
-    { key: 'mWHIP', label: 'mWHIP', decimals: 3 },
-    { key: 'oppAvg', label: 'Opp AVG', decimals: 3 },
-    { key: 'oppOps', label: 'Opp OPS', decimals: 3 },
-    { key: 'kPct', label: 'K%', decimals: 3 },
-    { key: 'bbPct', label: 'BB%', decimals: 3 },
-    { key: 'kBbRatio', label: 'K/BB', decimals: 2 },
-    { key: 'hr9', label: 'HR/9', decimals: 2 },
-    { key: 'gbPct', label: 'GB%', decimals: 3 },
-    { key: 'whipPercentile', label: 'WHIP%', decimals: 0 },
-    { key: 'mWHIPPercentile', label: 'mWHIP%', decimals: 0 },
-    { key: 'whipDeviation', label: 'WHIP Dev', decimals: 3, colorCode: 'negative-good' },
-    { key: 'mWHIPDeviation', label: 'mWHIP Dev', decimals: 3, colorCode: 'negative-good' },
-    { key: 'battersFaced', label: 'BF', decimals: 0 },
-    { key: 'outs', label: 'Outs', decimals: 0 },
-    { key: 'strikeouts', label: 'SO', decimals: 0 },
-    { key: 'walks', label: 'BB', decimals: 0 },
-    { key: 'singles', label: '1B', decimals: 0 },
-    { key: 'singlepluses', label: '1B+', decimals: 0 },
-    { key: 'doubles', label: '2B', decimals: 0 },
-    { key: 'triples', label: '3B', decimals: 0 },
-    { key: 'homeruns', label: 'HR', decimals: 0 },
-    { key: 'groundballs', label: 'GB', decimals: 0 },
-    { key: 'flyballs', label: 'FB', decimals: 0 },
-    { key: 'popups', label: 'PU', decimals: 0 },
-    { key: 'kIconHRsBlocked', label: 'K HRs', decimals: 0 },
-    { key: 'kIconSlgImpact', label: 'K SLG-', decimals: 3 },
-    { key: 'twentyIconAdvantageSwings', label: '20 Swings', decimals: 0 },
-    { key: 'rpIconAdvantageSwings', label: 'RP Swings', decimals: 0 },
+    { key: 'valueRating', label: 'Value', decimals: 0, desc: 'Value Rating (0-100). Combined z-score of WHIP and mWHIP deviation from regression, scaled to 0-100 centered at 50.' },
+    { key: 'name', label: 'Name', desc: 'Pitcher name, year, edition, card number, team. Hover for card details.' },
+    { key: 'points', label: 'Pts', decimals: 0, desc: 'Card point cost for team building.' },
+    { key: 'Control', label: 'Ctrl', decimals: 0, desc: 'Control. Added to the pitcher\'s d20 roll. Higher Control = more likely to use pitcher\'s chart.' },
+    { key: 'IP', label: 'IP', decimals: 0, desc: 'Innings Pitched capacity on the card.' },
+    { key: 'hand', label: 'Hand', desc: 'Throwing hand.' },
+    { key: 'Icons', label: 'Icons', desc: 'Special abilities. K = block HR, 20 = +3 control once per inning, RP = +3 control first inning.' },
+    { key: 'whip', label: 'WHIP', decimals: 3, desc: 'Walks + Hits per Inning Pitched = (BB + H) / IP. Lower = better.' },
+    { key: 'mWHIP', label: 'mWHIP', decimals: 3, desc: 'Modified WHIP. Weights baserunners by damage using linear weights. Lower = better.' },
+    { key: 'oppAvg', label: 'Opp AVG', decimals: 3, desc: 'Opponent Batting Average = H allowed / AB against. Lower = better.' },
+    { key: 'oppOps', label: 'Opp OPS', decimals: 3, desc: 'Opponent OPS = Opp OBP + Opp SLG. Lower = better.' },
+    { key: 'kPct', label: 'K%', decimals: 3, desc: 'Strikeout Rate = SO / BF. Higher = better.' },
+    { key: 'bbPct', label: 'BB%', decimals: 3, desc: 'Walk Rate = BB / BF. Lower = better.' },
+    { key: 'kBbRatio', label: 'K/BB', decimals: 2, desc: 'Strikeout-to-Walk Ratio = SO / BB. Higher = better.' },
+    { key: 'hr9', label: 'HR/9', decimals: 2, desc: 'Home Runs per 9 Innings = (HR / IP) × 9. Lower = better.' },
+    { key: 'gbPct', label: 'GB%', decimals: 3, desc: 'Ground Ball Percentage = GB / (BF - BB).' },
+    { key: 'whipPercentile', label: 'WHIP%', decimals: 0, desc: 'WHIP Percentile (0-100) within role group.' },
+    { key: 'mWHIPPercentile', label: 'mWHIP%', decimals: 0, desc: 'mWHIP Percentile (0-100) within role group.' },
+    { key: 'whipDeviation', label: 'WHIP Dev', decimals: 3, colorCode: 'negative-good', desc: 'WHIP Deviation from regression. Negative (green) = better than expected for cost.' },
+    { key: 'mWHIPDeviation', label: 'mWHIP Dev', decimals: 3, colorCode: 'negative-good', desc: 'mWHIP Deviation from regression. Negative (green) = better than expected.' },
+    { key: 'battersFaced', label: 'BF', decimals: 0, desc: 'Batters Faced across all matchups.' },
+    { key: 'outs', label: 'Outs', decimals: 0, desc: 'Total outs recorded (SO + GB + FB + PU).' },
+    { key: 'strikeouts', label: 'SO', decimals: 0, desc: 'Strikeouts.' },
+    { key: 'walks', label: 'BB', decimals: 0, desc: 'Walks allowed.' },
+    { key: 'singles', label: '1B', decimals: 0, desc: 'Singles allowed.' },
+    { key: 'singlepluses', label: '1B+', decimals: 0, desc: 'Singles Plus allowed.' },
+    { key: 'doubles', label: '2B', decimals: 0, desc: 'Doubles allowed.' },
+    { key: 'triples', label: '3B', decimals: 0, desc: 'Triples allowed.' },
+    { key: 'homeruns', label: 'HR', decimals: 0, desc: 'Home Runs allowed.' },
+    { key: 'groundballs', label: 'GB', decimals: 0, desc: 'Ground Ball outs.' },
+    { key: 'flyballs', label: 'FB', decimals: 0, desc: 'Fly Ball outs.' },
+    { key: 'popups', label: 'PU', decimals: 0, desc: 'Popup outs.' },
+    { key: 'kIconHRsBlocked', label: 'K HRs', decimals: 0, desc: 'K Icon uses. Times the K icon converted a HR into a strikeout (once per 9 innings).' },
+    { key: 'kIconSlgImpact', label: 'K SLG-', decimals: 3, desc: 'K Icon SLG Reduction = TB saved / BF.' },
+    { key: 'twentyIconAdvantageSwings', label: '20 Swings', decimals: 0, desc: '20 Icon: times the +3 control bonus flipped from hitter to pitcher chart.' },
+    { key: 'rpIconAdvantageSwings', label: 'RP Swings', decimals: 0, desc: 'RP Icon: times the +3 relief bonus flipped from hitter to pitcher chart (first inning only).' },
 ];
 
 function buildTabs(
@@ -280,13 +290,16 @@ h1, h2 { color: #fff; } h1 { margin-bottom: 5px; }
 .tab { padding: 8px 16px; border: none; background: #16213e; color: #eee; cursor: pointer; border-radius: 5px 5px 0 0; font-size: 14px; }
 .tab:hover { background: #1f4068; } .tab.active { background: #1f4068; font-weight: bold; }
 .tab-content { display: none; } .tab-content.active { display: block; }
-table { border-collapse: collapse; width: 100%; background: #16213e; margin-bottom: 30px; font-size: 13px; }
-th, td { padding: 6px 10px; text-align: left; border: 1px solid #1f4068; white-space: nowrap; }
-th { background: #1f4068; cursor: pointer; user-select: none; position: sticky; top: 0; z-index: 11; font-size: 12px; }
+table { border-collapse: collapse; width: 100%; background: #16213e; margin-bottom: 30px; font-size: 11px; table-layout: auto; }
+th, td { padding: 3px 5px; text-align: right; border: 1px solid #1f4068; white-space: nowrap; }
+th { background: #1f4068; cursor: pointer; user-select: none; position: sticky; top: 0; z-index: 11; font-size: 10px; }
 th:hover { background: #e94560; } th[title] { cursor: help; }
 tr:nth-child(even) { background: #1a1a2e; } tr:hover { background: #0f3460; }
 .section { margin-bottom: 40px; } .table-container { overflow-x: auto; max-height: 700px; overflow-y: auto; }
 td:first-child { font-weight: bold; }
+/* Name cell: left align, max-width with ellipsis */
+td.name-cell { text-align: left; max-width: 240px; overflow: hidden; text-overflow: ellipsis; font-weight: normal; }
+th[data-col="1"] { text-align: left; }
 .val-good { color: #4ade80; } .val-bad { color: #f87171; } .name-cell { cursor: help; }
 .mode-toggle { display: flex; gap: 0; margin-bottom: 20px; }
 .mode-btn { padding: 10px 24px; border: 2px solid #1f4068; background: #16213e; color: #eee; cursor: pointer; font-size: 15px; font-weight: 600; }

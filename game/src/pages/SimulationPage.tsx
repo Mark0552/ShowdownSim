@@ -25,47 +25,86 @@ const HITTER_POSITIONS = ['All Hitters', 'C', '1B', '2B', '3B', 'SS', 'LF-RF', '
 const PITCHER_ROLES = ['Starters', 'Relievers+Closers'];
 
 // Columns to show in the in-app viewer (compact subset; export has the full set)
-const HITTER_VIEW_COLS: { key: keyof HitterFinal; label: string; decimals?: number }[] = [
-    { key: 'valueRating', label: 'Value', decimals: 0 },
-    { key: 'name', label: 'Name' },
-    { key: 'points', label: 'Pts' },
-    { key: 'onBase', label: 'OB' },
-    { key: 'Speed', label: 'Spd' },
-    { key: 'Position', label: 'Pos' },
-    { key: 'battingAverage', label: 'AVG', decimals: 3 },
-    { key: 'onBasePercentage', label: 'OBP', decimals: 3 },
-    { key: 'sluggingPercentage', label: 'SLG', decimals: 3 },
-    { key: 'ops', label: 'OPS', decimals: 3 },
-    { key: 'woba', label: 'wOBA', decimals: 3 },
-    { key: 'opsDeviation', label: 'OPS Dev', decimals: 3 },
-    { key: 'hits', label: 'H', decimals: 0 },
-    { key: 'homeRuns', label: 'HR', decimals: 0 },
-    { key: 'walks', label: 'BB', decimals: 0 },
-    { key: 'strikeouts', label: 'SO', decimals: 0 },
+interface ViewCol<T> {
+    key: keyof T;
+    label: string;
+    decimals?: number;
+    desc?: string;
+    colorCode?: 'positive-good' | 'negative-good';
+}
+const HITTER_VIEW_COLS: ViewCol<HitterFinal>[] = [
+    { key: 'valueRating', label: 'Val', decimals: 0, desc: 'Value Rating (0-100). Combined z-score of OPS and wOBA deviation vs points, scaled 0-100. 50 = average for cost, higher = better value.' },
+    { key: 'name', label: 'Name', desc: 'Player name, year, edition, card number, team.' },
+    { key: 'points', label: 'Pts', decimals: 0, desc: 'Card point cost for team building.' },
+    { key: 'onBase', label: 'OB', decimals: 0, desc: 'On-Base number. Pitcher must roll d20 + Control > OB to use pitcher chart.' },
+    { key: 'Speed', label: 'Spd', decimals: 0, desc: 'Speed rating.' },
+    { key: 'Position', label: 'Pos', desc: 'Fielding position(s) with +N fielding bonus.' },
+    { key: 'icons', label: 'Ico', desc: 'Icons on this card (V, S, HR, SB, etc.).' },
+    { key: 'battingAverage', label: 'AVG', decimals: 3, desc: 'Batting Average = H / AB.' },
+    { key: 'onBasePercentage', label: 'OBP', decimals: 3, desc: 'On-Base Pct = (H + BB) / PA.' },
+    { key: 'sluggingPercentage', label: 'SLG', decimals: 3, desc: 'Slugging Pct = Total Bases / AB.' },
+    { key: 'ops', label: 'OPS', decimals: 3, desc: 'OPS = OBP + SLG.' },
+    { key: 'woba', label: 'wOBA', decimals: 3, desc: 'Weighted On-Base Avg — weights each outcome by run value: (0.69·BB + 0.88·1B + 1.08·1B+ + 1.24·2B + 1.56·3B + 1.95·HR) / PA.' },
+    { key: 'iso', label: 'ISO', decimals: 3, desc: 'Isolated Power = SLG - AVG.' },
+    { key: 'kPct', label: 'K%', decimals: 3, desc: 'Strikeout rate = SO / PA.' },
+    { key: 'bbPct', label: 'BB%', decimals: 3, desc: 'Walk rate = BB / PA.' },
+    { key: 'hrPct', label: 'HR%', decimals: 3, desc: 'HR rate = HR / AB.' },
+    { key: 'opsDeviation', label: 'OPS±', decimals: 3, colorCode: 'positive-good', desc: 'OPS deviation from points regression within position. Positive (green) = overperforming for cost.' },
+    { key: 'wobaDeviation', label: 'wOBA±', decimals: 3, colorCode: 'positive-good', desc: 'wOBA deviation from points regression. Positive (green) = overperforming for cost.' },
+    { key: 'hits', label: 'H', decimals: 0, desc: 'Hits = 1B + 1B+ + 2B + 3B + HR.' },
+    { key: 'doubles', label: '2B', decimals: 0, desc: 'Doubles.' },
+    { key: 'triples', label: '3B', decimals: 0, desc: 'Triples.' },
+    { key: 'homeRuns', label: 'HR', decimals: 0, desc: 'Home runs.' },
+    { key: 'walks', label: 'BB', decimals: 0, desc: 'Walks.' },
+    { key: 'strikeouts', label: 'SO', decimals: 0, desc: 'Strikeouts.' },
+    { key: 'Vused', label: 'V', decimals: 0, desc: 'V (Vision) icon uses — rerolls of outs on hitter chart (max 2 per 5-AB game).' },
+    { key: 'Sused', label: 'S', decimals: 0, desc: 'S (Speed) icon uses — singles upgraded to doubles (once per 5-AB game).' },
+    { key: 'HRused', label: 'HR*', decimals: 0, desc: 'HR (Power) icon uses — doubles/triples upgraded to HRs (once per 5-AB game).' },
+    { key: 'totalIconWobaImpact', label: 'Ico+', decimals: 3, colorCode: 'positive-good', desc: 'Total icon wOBA impact — estimated wOBA boost from all icons combined.' },
 ];
 
-const PITCHER_VIEW_COLS: { key: keyof PitcherFinal; label: string; decimals?: number }[] = [
-    { key: 'valueRating', label: 'Value', decimals: 0 },
-    { key: 'name', label: 'Name' },
-    { key: 'points', label: 'Pts' },
-    { key: 'Control', label: 'Ctrl' },
-    { key: 'IP', label: 'IP' },
-    { key: 'whip', label: 'WHIP', decimals: 3 },
-    { key: 'mWHIP', label: 'mWHIP', decimals: 3 },
-    { key: 'oppAvg', label: 'Opp AVG', decimals: 3 },
-    { key: 'oppOps', label: 'Opp OPS', decimals: 3 },
-    { key: 'kPct', label: 'K%', decimals: 3 },
-    { key: 'bbPct', label: 'BB%', decimals: 3 },
-    { key: 'hr9', label: 'HR/9', decimals: 2 },
-    { key: 'whipDeviation', label: 'WHIP Dev', decimals: 3 },
-    { key: 'battersFaced', label: 'BF', decimals: 0 },
-    { key: 'strikeouts', label: 'SO', decimals: 0 },
+const PITCHER_VIEW_COLS: ViewCol<PitcherFinal>[] = [
+    { key: 'valueRating', label: 'Val', decimals: 0, desc: 'Value Rating (0-100). Combined z-score of WHIP and mWHIP deviation vs points.' },
+    { key: 'name', label: 'Name', desc: 'Pitcher name, year, edition, card number, team.' },
+    { key: 'points', label: 'Pts', decimals: 0, desc: 'Card point cost.' },
+    { key: 'Control', label: 'Ctrl', decimals: 0, desc: 'Control — added to pitcher d20 roll.' },
+    { key: 'IP', label: 'IP', decimals: 0, desc: 'Innings Pitched capacity.' },
+    { key: 'Icons', label: 'Ico', desc: 'Icons (K, 20, RP).' },
+    { key: 'whip', label: 'WHIP', decimals: 3, desc: 'Walks + Hits per IP = (BB + H) / IP. Lower = better.' },
+    { key: 'mWHIP', label: 'mWHIP', decimals: 3, desc: 'Modified WHIP weighting baserunners by run value. Lower = better.' },
+    { key: 'oppAvg', label: 'OppAVG', decimals: 3, desc: 'Opponent batting avg against this pitcher. Lower = better.' },
+    { key: 'oppOps', label: 'OppOPS', decimals: 3, desc: 'Opponent OPS against this pitcher. Lower = better.' },
+    { key: 'kPct', label: 'K%', decimals: 3, desc: 'Strikeout rate = SO / BF. Higher = better.' },
+    { key: 'bbPct', label: 'BB%', decimals: 3, desc: 'Walk rate = BB / BF. Lower = better.' },
+    { key: 'kBbRatio', label: 'K/BB', decimals: 2, desc: 'Strikeout-to-walk ratio.' },
+    { key: 'hr9', label: 'HR/9', decimals: 2, desc: 'Home runs per 9 IP.' },
+    { key: 'whipDeviation', label: 'WHIP±', decimals: 3, colorCode: 'negative-good', desc: 'WHIP deviation from regression. Negative (green) = better than expected for cost.' },
+    { key: 'mWHIPDeviation', label: 'mWHIP±', decimals: 3, colorCode: 'negative-good', desc: 'mWHIP deviation from regression. Negative (green) = better than expected.' },
+    { key: 'battersFaced', label: 'BF', decimals: 0, desc: 'Batters Faced.' },
+    { key: 'strikeouts', label: 'SO', decimals: 0, desc: 'Strikeouts.' },
+    { key: 'walks', label: 'BB', decimals: 0, desc: 'Walks.' },
+    { key: 'homeruns', label: 'HR', decimals: 0, desc: 'Home runs allowed.' },
+    { key: 'kIconHRsBlocked', label: 'K*', decimals: 0, desc: 'K icon uses — HRs converted to strikeouts (once per 9 innings).' },
+    { key: 'twentyIconAdvantageSwings', label: '20*', decimals: 0, desc: '20 icon advantage swings — +3 control bonus flipped from hitter to pitcher chart.' },
+    { key: 'rpIconAdvantageSwings', label: 'RP*', decimals: 0, desc: 'RP icon advantage swings — first-inning +3 control bonus flipped chart.' },
 ];
 
 function formatCell(val: unknown, decimals?: number): string {
     if (val === null || val === undefined) return '';
     if (typeof val === 'number') return decimals !== undefined ? val.toFixed(decimals) : String(val);
     return String(val);
+}
+
+function cellClass<T>(col: ViewCol<T>, val: unknown): string {
+    if (!col.colorCode || typeof val !== 'number') return '';
+    if (col.colorCode === 'positive-good') {
+        if (val > 0.02) return 'sim-val-good';
+        if (val < -0.02) return 'sim-val-bad';
+    } else if (col.colorCode === 'negative-good') {
+        if (val < -0.02) return 'sim-val-good';
+        if (val > 0.02) return 'sim-val-bad';
+    }
+    return '';
 }
 
 function groupHittersByPosition(hitters: HitterFinal[]): Record<string, HitterFinal[]> {
@@ -330,14 +369,21 @@ export default function SimulationPage({ onBack }: Props) {
                                 <div className="sim-table-wrap">
                                     <table className="sim-table">
                                         <thead>
-                                            <tr>{HITTER_VIEW_COLS.map(c => <th key={c.key as string}>{c.label}</th>)}</tr>
+                                            <tr>{HITTER_VIEW_COLS.map(c => (
+                                                <th key={c.key as string} title={c.desc}>{c.label}</th>
+                                            ))}</tr>
                                         </thead>
                                         <tbody>
                                             {hittersGrouped[viewPosition].map(p => (
                                                 <tr key={p.name}>
-                                                    {HITTER_VIEW_COLS.map(c => (
-                                                        <td key={c.key as string}>{formatCell(p[c.key], c.decimals)}</td>
-                                                    ))}
+                                                    {HITTER_VIEW_COLS.map(c => {
+                                                        const val = p[c.key];
+                                                        return (
+                                                            <td key={c.key as string} className={cellClass(c, val)}>
+                                                                {formatCell(val, c.decimals)}
+                                                            </td>
+                                                        );
+                                                    })}
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -358,14 +404,21 @@ export default function SimulationPage({ onBack }: Props) {
                                 <div className="sim-table-wrap">
                                     <table className="sim-table">
                                         <thead>
-                                            <tr>{PITCHER_VIEW_COLS.map(c => <th key={c.key as string}>{c.label}</th>)}</tr>
+                                            <tr>{PITCHER_VIEW_COLS.map(c => (
+                                                <th key={c.key as string} title={c.desc}>{c.label}</th>
+                                            ))}</tr>
                                         </thead>
                                         <tbody>
                                             {pitchersGrouped[viewRole].map(p => (
                                                 <tr key={p.name}>
-                                                    {PITCHER_VIEW_COLS.map(c => (
-                                                        <td key={c.key as string}>{formatCell(p[c.key], c.decimals)}</td>
-                                                    ))}
+                                                    {PITCHER_VIEW_COLS.map(c => {
+                                                        const val = p[c.key];
+                                                        return (
+                                                            <td key={c.key as string} className={cellClass(c, val)}>
+                                                                {formatCell(val, c.decimals)}
+                                                            </td>
+                                                        );
+                                                    })}
                                                 </tr>
                                             ))}
                                         </tbody>

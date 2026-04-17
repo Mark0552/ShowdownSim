@@ -5,7 +5,7 @@
 }
 
 .sim-container {
-    max-width: 1400px;
+    max-width: 100%;
     margin: 0 auto;
 }
 
@@ -248,24 +248,33 @@
     width: 100%;
     border-collapse: collapse;
     font-family: 'Consolas', monospace;
-    font-size: 12px;
+    font-size: 11px;
+    table-layout: auto;
 }
 
 .sim-table th {
     background: var(--bg-secondary);
     color: var(--accent);
-    padding: 6px 8px;
+    padding: 4px 4px;
     border-bottom: 2px solid var(--accent);
-    text-align: left;
+    text-align: right;
     position: sticky;
     top: 0;
     z-index: 1;
     white-space: nowrap;
+    font-size: 10px;
+    font-weight: 600;
+    cursor: help;
+}
+
+.sim-table th[title]:hover {
+    background: rgba(212, 160, 24, 0.15);
 }
 
 .sim-table td {
-    padding: 4px 8px;
+    padding: 3px 4px;
     border-bottom: 1px solid var(--border);
+    text-align: right;
     white-space: nowrap;
 }
 
@@ -277,7 +286,26 @@
     background: rgba(212, 160, 24, 0.08);
 }
 
+/* Name column wider + left-aligned, can truncate */
+.sim-table th:nth-child(2),
+.sim-table td:nth-child(2) {
+    text-align: left;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 .sim-table td:nth-child(2) {
     color: var(--text);
     font-weight: 600;
 }
+
+/* Position/Icons columns — left align, compact */
+.sim-table th:nth-child(6),
+.sim-table td:nth-child(6),
+.sim-table th:nth-child(7),
+.sim-table td:nth-child(7) {
+    text-align: left;
+}
+
+.sim-val-good { color: var(--success, #4ade80); }
+.sim-val-bad { color: var(--error, #f87171); }
