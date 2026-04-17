@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { GameState, GameAction } from '../engine/gameEngine';
-import { getGame, getMyRole, getSeries } from '../lib/games';
+import { getGame, getMyRole, getSeries, createNextSeriesGame, updateSeries, getSeriesGames } from '../lib/games';
 import { getLineups } from '../lib/lineups';
 import { saveGameStats } from '../lib/stats';
 import { getUser } from '../lib/auth';
@@ -20,6 +20,7 @@ interface Props {
 
 export default function GamePage({ gameId, onBack }: Props) {
     const [gameState, setGameState] = useState<GameState | null>(null);
+    const [seriesRow, setSeriesRow] = useState<import('../types/game').SeriesRow | null>(null);
     const [myRole, setMyRole] = useState<PlayerRole | null>(null);
     const [myTurn, setMyTurn] = useState<string | null>(null);
     const [homeName, setHomeName] = useState('Home');
@@ -148,15 +149,18 @@ export default function GamePage({ gameId, onBack }: Props) {
                 }
 
                 let seriesContext = undefined;
-                if (game.series_id && game.game_number > 1) {
+                if (game.series_id) {
                     try {
                         const series = await getSeries(game.series_id);
-                        seriesContext = {
-                            gameNumber: game.game_number,
-                            homeStarterOffset: series.starter_offset || 1,
-                            awayStarterOffset: series.starter_offset || 1,
-                            relieverHistory: series.reliever_history || { home: {}, away: {} },
-                        };
+                        setSeriesRow(series);
+                        if (game.game_number > 1) {
+                            seriesContext = {
+                                gameNumber: game.game_number,
+                                homeStarterOffset: series.starter_offset || 1,
+                                awayStarterOffset: series.starter_offset || 1,
+                                relieverHistory: series.reliever_history || { home: {}, away: {} },
+                            };
+                        }
                     } catch (e) { /* series context optional */ }
                 }
 
@@ -181,19 +185,58 @@ export default function GamePage({ gameId, onBack }: Props) {
         };
     }, [gameId, connectWs]);
 
-    // Save stats when game ends
+    // Save stats when game ends + bump series win count for the winner
+    const seriesWinSavedRef = useRef(false);
     useEffect(() => {
-        if (gameState?.isOver && !statsSavedRef.current) {
+        if (!gameState?.isOver) return;
+        if (!statsSavedRef.current) {
             statsSavedRef.current = true;
             saveGameStats(gameId, gameRow?.series_id || null, gameState).catch(console.error);
         }
-    }, [gameState?.isOver, gameId, gameRow?.series_id]);
+        // Bump series win count for the winning team
+        if (gameRow?.series_id && seriesRow && !seriesWinSavedRef.current && gameState.winnerId) {
+            seriesWinSavedRef.current = true;
+            const winnerIsHome = gameState.winnerId === gameState.homeTeam.userId;
+            const newHomeWins = (seriesRow.home_wins || 0) + (winnerIsHome ? 1 : 0);
+            const newAwayWins = (seriesRow.away_wins || 0) + (winnerIsHome ? 0 : 1);
+            const seriesDecided = Math.max(newHomeWins, newAwayWins) > seriesRow.best_of / 2;
+            const updates: Partial<import('../types/game').SeriesRow> = {
+                home_wins: newHomeWins,
+                away_wins: newAwayWins,
+            };
+            if (seriesDecided) {
+                updates.status = 'finished';
+                updates.winner_user_id = winnerIsHome ? gameState.homeTeam.userId : gameState.awayTeam.userId;
+            }
+            updateSeries(gameRow.series_id, updates)
+                .then(() => setSeriesRow({ ...seriesRow, ...updates } as import('../types/game').SeriesRow))
+                .catch(console.error);
+        }
+    }, [gameState?.isOver, gameId, gameRow?.series_id, seriesRow, gameState]);
 
     const handleAction = useCallback((action: GameAction) => {
         if (wsRef.current?.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({ type: 'action', action }));
         }
     }, []);
+
+    const handleNextSeriesGame = useCallback(async () => {
+        if (!gameRow?.series_id || !seriesRow || !gameState) return;
+        try {
+            const games = await getSeriesGames(gameRow.series_id);
+            const nextNumber = (games[games.length - 1]?.game_number || 1) + 1;
+            const next = await createNextSeriesGame(
+                gameRow.series_id, nextNumber,
+                gameRow.home_user_id, gameRow.away_user_id || '',
+                gameRow.home_user_email || '', gameRow.away_user_email || '',
+            );
+            // Navigate to the new game via hash routing
+            window.location.hash = `game/${next.id}`;
+            window.location.reload();
+        } catch (e) {
+            console.error('Failed to create next series game', e);
+        }
+    }, [gameRow, seriesRow, gameState]);
 
     if (error) {
         return (
@@ -225,6 +268,13 @@ export default function GamePage({ gameId, onBack }: Props) {
                 onMovementsConsumed={() => setPendingMovements([])}
                 homeName={homeName}
                 awayName={awayName}
+                seriesInfo={seriesRow ? {
+                    gameNumber: gameRow?.game_number || 1,
+                    bestOf: seriesRow.best_of,
+                    homeWins: seriesRow.home_wins || 0,
+                    awayWins: seriesRow.away_wins || 0,
+                } : undefined}
+                onNextSeriesGame={seriesRow && myRole === 'home' ? handleNextSeriesGame : undefined}
             />
             {opponentDisconnected && !gameState.isOver && (
                 <div style={{

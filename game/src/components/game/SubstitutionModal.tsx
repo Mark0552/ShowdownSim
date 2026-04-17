@@ -9,9 +9,12 @@
  * Only opens during pre_atbat / defense_sub (rule: no subs after pitch roll).
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { GameState, GameAction, PlayerSlot, TeamState } from '../../engine/gameEngine';
+import type { Card } from '../../types/cards';
 import { fieldingPenalty } from '../../lib/fielding';
+import { loadCards } from '../../data/cardData';
+import CardTooltip from '../cards/CardTooltip';
 import './SubstitutionModal.css';
 
 interface Props {
@@ -21,14 +24,13 @@ interface Props {
     onClose: () => void;
 }
 
-type SubTab = 'PH' | 'PR' | 'PC' | 'DS' | 'DSwitch';
+type SubTab = 'PH' | 'PR' | 'PC' | 'DS';
 
 const ALL_TABS: { key: SubTab; label: string; phases: GameState['phase'][] }[] = [
     { key: 'PH', label: 'Pinch Hit', phases: ['pre_atbat'] },
     { key: 'PR', label: 'Pinch Run', phases: ['pre_atbat'] },
     { key: 'PC', label: 'Pitching Change', phases: ['defense_sub'] },
     { key: 'DS', label: 'Defensive Sub', phases: ['pre_atbat', 'defense_sub'] },
-    { key: 'DSwitch', label: 'Double Switch', phases: ['defense_sub'] },
 ];
 
 function renderPenalty(penalty: number, valid: boolean): { text: string; cls: string } {
@@ -49,6 +51,21 @@ export default function SubstitutionModal({ state, myRole, onAction, onClose }: 
     const availableTabs = ALL_TABS.filter(t => t.phases.includes(phase));
     const [tab, setTab] = useState<SubTab>(() => availableTabs[0]?.key || 'PH');
 
+    // Card lookup for hover tooltip — cached load
+    const [cardsList, setCardsList] = useState<Card[]>([]);
+    const [hoveredCard, setHoveredCard] = useState<Card | null>(null);
+    useEffect(() => { loadCards().then(({ all }) => setCardsList(all)); }, []);
+    const cardsMap = useMemo(() => {
+        const m = new Map<string, Card>();
+        for (const c of cardsList) m.set(c.id, c);
+        return m;
+    }, [cardsList]);
+    const showCard = (cardId: string) => {
+        const c = cardsMap.get(cardId);
+        if (c) setHoveredCard(c);
+    };
+    const hideCard = () => setHoveredCard(null);
+
     if (phase !== 'pre_atbat' && phase !== 'defense_sub') {
         return (
             <Overlay onClose={onClose}>
@@ -57,6 +74,7 @@ export default function SubstitutionModal({ state, myRole, onAction, onClose }: 
         );
     }
 
+    const tabProps = { showCard, hideCard };
     return (
         <Overlay onClose={onClose}>
             <div className="sm-header">
@@ -71,15 +89,17 @@ export default function SubstitutionModal({ state, myRole, onAction, onClose }: 
                 ))}
             </div>
             <div className="sm-body">
-                {tab === 'PH' && <PinchHitTab team={myTeam} onAction={onAction} onClose={onClose} />}
-                {tab === 'PR' && <PinchRunTab state={state} team={myTeam} onAction={onAction} onClose={onClose} />}
-                {tab === 'PC' && <PitchingChangeTab team={myTeam} onAction={onAction} onClose={onClose} />}
-                {tab === 'DS' && <DefensiveSubTab team={myTeam} onAction={onAction} onClose={onClose} />}
-                {tab === 'DSwitch' && <DoubleSwitchTab team={myTeam} onAction={onAction} onClose={onClose} />}
+                {tab === 'PH' && <PinchHitTab team={myTeam} onAction={onAction} onClose={onClose} {...tabProps} />}
+                {tab === 'PR' && <PinchRunTab state={state} team={myTeam} onAction={onAction} onClose={onClose} {...tabProps} />}
+                {tab === 'PC' && <PitchingChangeTab team={myTeam} onAction={onAction} onClose={onClose} {...tabProps} />}
+                {tab === 'DS' && <DefensiveSubTab team={myTeam} onAction={onAction} onClose={onClose} {...tabProps} />}
             </div>
+            {hoveredCard && <CardTooltip card={hoveredCard} />}
         </Overlay>
     );
 }
+
+interface HoverProps { showCard: (cardId: string) => void; hideCard: () => void }
 
 function Overlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
     return (
@@ -94,7 +114,7 @@ function Overlay({ children, onClose }: { children: React.ReactNode; onClose: ()
 // ============================================================================
 // PINCH HIT
 // ============================================================================
-function PinchHitTab({ team, onAction, onClose }: { team: TeamState; onAction: (a: GameAction) => void; onClose: () => void }) {
+function PinchHitTab({ team, onAction, onClose, showCard, hideCard }: { team: TeamState; onAction: (a: GameAction) => void; onClose: () => void } & HoverProps) {
     const [benchCardId, setBenchCardId] = useState<string>('');
     const [lineupIndex, setLineupIndex] = useState<number>(team.currentBatterIndex);
 
@@ -107,10 +127,10 @@ function PinchHitTab({ team, onAction, onClose }: { team: TeamState; onAction: (
     return (
         <div className="sm-grid">
             <Section title="1. Pick a bench player">
-                <PlayerList players={team.bench} selected={benchCardId} onSelect={setBenchCardId} role="hitter" />
+                <PlayerList players={team.bench} selected={benchCardId} onSelect={setBenchCardId} role="hitter" showCard={showCard} hideCard={hideCard} />
             </Section>
             <Section title="2. Pick a lineup slot">
-                <LineupList lineup={team.lineup} selected={lineupIndex} onSelect={setLineupIndex} />
+                <LineupList lineup={team.lineup} selected={lineupIndex} onSelect={setLineupIndex} showCard={showCard} hideCard={hideCard} />
             </Section>
             <Section title="3. Confirm">
                 <PreviewSwap
@@ -128,7 +148,7 @@ function PinchHitTab({ team, onAction, onClose }: { team: TeamState; onAction: (
 // ============================================================================
 // PINCH RUN
 // ============================================================================
-function PinchRunTab({ state, team, onAction, onClose }: { state: GameState; team: TeamState; onAction: (a: GameAction) => void; onClose: () => void }) {
+function PinchRunTab({ state, team, onAction, onClose, showCard, hideCard }: { state: GameState; team: TeamState; onAction: (a: GameAction) => void; onClose: () => void } & HoverProps) {
     const [benchCardId, setBenchCardId] = useState<string>('');
     const [base, setBase] = useState<'first' | 'second' | 'third'>('first');
 
@@ -157,7 +177,7 @@ function PinchRunTab({ state, team, onAction, onClose }: { state: GameState; tea
                 </div>
             </Section>
             <Section title="2. Pick a bench player">
-                <PlayerList players={team.bench} selected={benchCardId} onSelect={setBenchCardId} role="hitter" />
+                <PlayerList players={team.bench} selected={benchCardId} onSelect={setBenchCardId} role="hitter" showCard={showCard} hideCard={hideCard} />
             </Section>
             <Section title="3. Confirm">
                 <PreviewSwap
@@ -175,7 +195,7 @@ function PinchRunTab({ state, team, onAction, onClose }: { state: GameState; tea
 // ============================================================================
 // PITCHING CHANGE
 // ============================================================================
-function PitchingChangeTab({ team, onAction, onClose }: { team: TeamState; onAction: (a: GameAction) => void; onClose: () => void }) {
+function PitchingChangeTab({ team, onAction, onClose, showCard, hideCard }: { team: TeamState; onAction: (a: GameAction) => void; onClose: () => void } & HoverProps) {
     const [bullpenCardId, setBullpenCardId] = useState<string>('');
     const reliefAvailable = team.bullpen.filter(p => p.role !== 'Starter');
 
@@ -189,7 +209,7 @@ function PitchingChangeTab({ team, onAction, onClose }: { team: TeamState; onAct
         <div className="sm-grid">
             <Section title="1. Pick a reliever">
                 {reliefAvailable.length === 0 && <div className="sm-empty">No relievers available.</div>}
-                <PlayerList players={reliefAvailable} selected={bullpenCardId} onSelect={setBullpenCardId} role="pitcher" />
+                <PlayerList players={reliefAvailable} selected={bullpenCardId} onSelect={setBullpenCardId} role="pitcher" showCard={showCard} hideCard={hideCard} />
             </Section>
             <Section title="2. Confirm">
                 <PreviewSwap
@@ -208,7 +228,7 @@ function PitchingChangeTab({ team, onAction, onClose }: { team: TeamState; onAct
 // DEFENSIVE SUB
 // ============================================================================
 const FIELD_SLOTS = ['C', '1B', '2B', '3B', 'SS', 'LF-RF-1', 'CF', 'LF-RF-2'];
-function DefensiveSubTab({ team, onAction, onClose }: { team: TeamState; onAction: (a: GameAction) => void; onClose: () => void }) {
+function DefensiveSubTab({ team, onAction, onClose, showCard, hideCard }: { team: TeamState; onAction: (a: GameAction) => void; onClose: () => void } & HoverProps) {
     const [benchCardId, setBenchCardId] = useState<string>('');
     const [position, setPosition] = useState<string>('');
 
@@ -242,7 +262,7 @@ function DefensiveSubTab({ team, onAction, onClose }: { team: TeamState; onActio
                 </div>
             </Section>
             <Section title="2. Pick a bench player">
-                <PlayerList players={team.bench} selected={benchCardId} onSelect={setBenchCardId} role="hitter" position={position || undefined} />
+                <PlayerList players={team.bench} selected={benchCardId} onSelect={setBenchCardId} role="hitter" position={position || undefined} showCard={showCard} hideCard={hideCard} />
             </Section>
             <Section title="3. Confirm">
                 <PreviewSwap incoming={incoming} outgoing={outgoing} />
@@ -253,59 +273,6 @@ function DefensiveSubTab({ team, onAction, onClose }: { team: TeamState; onActio
                 )}
                 <button className="sm-btn-primary" onClick={submit} disabled={!benchCardId || !position || (penalty?.valid === false)}>
                     Confirm Defensive Sub
-                </button>
-            </Section>
-        </div>
-    );
-}
-
-// ============================================================================
-// DOUBLE SWITCH
-// ============================================================================
-function DoubleSwitchTab({ team, onAction, onClose }: { team: TeamState; onAction: (a: GameAction) => void; onClose: () => void }) {
-    const [bullpenCardId, setBullpenCardId] = useState<string>('');
-    const [pitcherSlot, setPitcherSlot] = useState<number>(-1);
-    const [swapSlot, setSwapSlot] = useState<number>(-1);
-    const [benchCardId, setBenchCardId] = useState<string>('');
-    const reliefAvailable = team.bullpen.filter(p => p.role !== 'Starter');
-
-    const pitcherCurrentSlot = team.lineup.findIndex(p => p.assignedPosition === 'P' || p.cardId === team.pitcher.cardId);
-
-    const submit = () => {
-        if (!bullpenCardId || pitcherSlot < 0 || swapSlot < 0 || pitcherSlot === swapSlot) return;
-        const action: GameAction = {
-            type: 'DOUBLE_SWITCH',
-            bullpenCardId,
-            pitcherLineupSlot: pitcherSlot,
-            swappedPlayerLineupSlot: swapSlot,
-        };
-        if (benchCardId) (action as any).benchCardId = benchCardId;
-        onAction(action);
-        onClose();
-    };
-
-    return (
-        <div className="sm-grid">
-            <Section title="1. New reliever">
-                {reliefAvailable.length === 0 && <div className="sm-empty">No relievers available.</div>}
-                <PlayerList players={reliefAvailable} selected={bullpenCardId} onSelect={setBullpenCardId} role="pitcher" />
-            </Section>
-            <Section title="2. Lineup slot for new pitcher">
-                <LineupList lineup={team.lineup} selected={pitcherSlot} onSelect={setPitcherSlot} highlight={pitcherCurrentSlot} />
-            </Section>
-            <Section title="3. Lineup slot to swap (position player moves)">
-                <LineupList lineup={team.lineup} selected={swapSlot} onSelect={setSwapSlot} disabled={pitcherSlot} />
-            </Section>
-            <Section title="4. Optional: replacement position player from bench">
-                <PlayerList players={team.bench} selected={benchCardId} onSelect={setBenchCardId} role="hitter" allowEmpty />
-            </Section>
-            <Section title="5. Confirm">
-                <button
-                    className="sm-btn-primary"
-                    onClick={submit}
-                    disabled={!bullpenCardId || pitcherSlot < 0 || swapSlot < 0 || pitcherSlot === swapSlot}
-                >
-                    Confirm Double Switch
                 </button>
             </Section>
         </div>
@@ -325,14 +292,16 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function PlayerList({
-    players, selected, onSelect, role, position, allowEmpty,
+    players, selected, onSelect, role, position, allowEmpty, showCard, hideCard,
 }: {
     players: PlayerSlot[]; selected: string; onSelect: (id: string) => void;
     role?: 'hitter' | 'pitcher'; position?: string; allowEmpty?: boolean;
-}) {
+} & Partial<HoverProps>) {
     if (players.length === 0 && !allowEmpty) {
         return <div className="sm-empty">No players available.</div>;
     }
+    const onEnter = (cardId: string) => () => showCard?.(cardId);
+    const onLeave = () => hideCard?.();
     return (
         <div className="sm-player-list">
             {allowEmpty && (
@@ -343,7 +312,13 @@ function PlayerList({
             {players.map(p => {
                 const pen = position ? fieldingPenalty(asCard(p), position) : null;
                 return (
-                    <button key={p.cardId} className={`sm-player-row ${selected === p.cardId ? 'active' : ''}`} onClick={() => onSelect(p.cardId)}>
+                    <button
+                        key={p.cardId}
+                        className={`sm-player-row ${selected === p.cardId ? 'active' : ''}`}
+                        onClick={() => onSelect(p.cardId)}
+                        onMouseEnter={onEnter(p.cardId)}
+                        onMouseLeave={onLeave}
+                    >
                         <span className="sm-player-name">{p.name}</span>
                         <span className="sm-player-meta">
                             {role === 'hitter' && `OB ${p.onBase} | Spd ${p.speed}`}
@@ -365,11 +340,11 @@ function PlayerList({
 }
 
 function LineupList({
-    lineup, selected, onSelect, highlight, disabled,
+    lineup, selected, onSelect, highlight, disabled, showCard, hideCard,
 }: {
     lineup: PlayerSlot[]; selected: number; onSelect: (idx: number) => void;
     highlight?: number; disabled?: number;
-}) {
+} & Partial<HoverProps>) {
     return (
         <div className="sm-lineup-list">
             {lineup.map((p, i) => (
@@ -378,6 +353,8 @@ function LineupList({
                     className={`sm-lineup-row ${selected === i ? 'active' : ''} ${highlight === i ? 'highlight' : ''}`}
                     onClick={() => i !== disabled && onSelect(i)}
                     disabled={i === disabled}
+                    onMouseEnter={() => showCard?.(p.cardId)}
+                    onMouseLeave={() => hideCard?.()}
                 >
                     <span className="sm-lineup-num">{i + 1}.</span>
                     <span className="sm-lineup-name">{p.name}</span>

@@ -5,8 +5,14 @@
 import { playerHasIcon, canUseIcon, recordIconUse } from '../icons.js';
 import { applyResult } from './baserunning.js';
 import { handleSkipSub } from './substitutions.js';
-import { bumpRollSequence } from '../dice.js';
 import { addBatterStat } from '../stats.js';
+
+/** Bump iconChangeSequence so the client briefly freezes the lineup highlight
+ *  during an icon-driven outcome change WITHOUT spinning the dice again
+ *  (the dice already settled on its real value). */
+function bumpIconChange(state) {
+    return (state.iconChangeSequence || 0) + 1;
+}
 
 export function getPostResultIcons(state, outcome) {
     const fieldingSide = state.halfInning === 'top' ? 'homeTeam' : 'awayTeam';
@@ -61,7 +67,7 @@ export function handleUseIcon(state, action) {
     switch (icon) {
         case 'K': {
             let team = recordIconUse(state[fieldingSide], cardId, 'K');
-            let newState = { ...state, [fieldingSide]: team, lastOutcome: 'SO', iconPrompt: null, rollSequence: bumpRollSequence() };
+            let newState = { ...state, [fieldingSide]: team, lastOutcome: 'SO', iconPrompt: null, iconChangeSequence: bumpIconChange(state) };
             newState.gameLog = [...state.gameLog, `K icon used! Result changed to Strikeout`];
             const battingTeam = newState[battingSide];
             if (playerHasIcon(batter, 'V') && canUseIcon(battingTeam, batter.cardId, 'V')) {
@@ -76,7 +82,7 @@ export function handleUseIcon(state, action) {
 
         case 'HR': {
             let team = recordIconUse(state[battingSide], cardId, 'HR');
-            let newState = { ...state, [battingSide]: team, lastOutcome: 'HR', iconPrompt: null, rollSequence: bumpRollSequence() };
+            let newState = { ...state, [battingSide]: team, lastOutcome: 'HR', iconPrompt: null, iconChangeSequence: bumpIconChange(state) };
             newState.gameLog = [...state.gameLog, `HR icon used! Result upgraded to Home Run!`];
             return applyResult(newState, 'HR', batter.cardId);
         }
@@ -91,7 +97,7 @@ export function handleUseIcon(state, action) {
         case 'S': {
             // S and HR cannot be used on the same result
             let team = recordIconUse(state[battingSide], cardId, 'S');
-            let newState = { ...state, [battingSide]: team, lastOutcome: 'DB', iconPrompt: null, rollSequence: bumpRollSequence() };
+            let newState = { ...state, [battingSide]: team, lastOutcome: 'DB', iconPrompt: null, iconChangeSequence: bumpIconChange(state) };
             newState.gameLog = [...state.gameLog, `S (Silver Slugger) icon! Single upgraded to Double`];
             return applyResult(newState, 'DB', batter.cardId);
         }
@@ -106,7 +112,7 @@ export function handleSkipIcons(state) {
     const battingSide = state.halfInning === 'top' ? 'awayTeam' : 'homeTeam';
     const batter = state[battingSide].lineup[state[battingSide].currentBatterIndex];
     // Bump rollSequence so the client freezes display while applyResult advances the batter
-    return applyResult({ ...state, iconPrompt: null, rollSequence: bumpRollSequence() }, state.lastOutcome, batter.cardId);
+    return applyResult({ ...state, iconPrompt: null, iconChangeSequence: bumpIconChange(state) }, state.lastOutcome, batter.cardId);
 }
 
 export function handlePrePitchIcon(state, action) {

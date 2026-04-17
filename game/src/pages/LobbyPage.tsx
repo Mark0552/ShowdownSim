@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import type { GameRow } from '../types/game';
+import type { GameRow, SeriesRow } from '../types/game';
 import type { SavedLineup } from '../lib/lineups';
-import { createGame, getOpenGames, getMyGames, joinGame, selectLineup, deleteGame, subscribeToGame, subscribeToLobby, getMyRole, createSeries } from '../lib/games';
+import { createGame, getOpenGames, getMyGames, joinGame, selectLineup, deleteGame, subscribeToGame, subscribeToLobby, getMyRole, createSeries, getSeries } from '../lib/games';
 import { getLineups } from '../lib/lineups';
 import { validateTeam } from '../logic/teamRules';
 import { supabase } from '../lib/supabase';
@@ -17,6 +17,8 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
     const [openGames, setOpenGames] = useState<GameRow[]>([]);
     const [myGames, setMyGames] = useState<GameRow[]>([]);
     const [myLineups, setMyLineups] = useState<SavedLineup[]>([]);
+    /** seriesId → series row, for tagging series games in the My Games list */
+    const [seriesById, setSeriesById] = useState<Record<string, SeriesRow>>({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [userId, setUserId] = useState('');
@@ -42,6 +44,14 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
                 setOpenGames(open);
                 setMyGames(mine);
                 setMyLineups(lineups);
+                // Pre-fetch series data for any games tied to a series
+                const seriesIds = Array.from(new Set([...open, ...mine].map(g => g.series_id).filter(Boolean) as string[]));
+                if (seriesIds.length > 0) {
+                    const rows = await Promise.all(seriesIds.map(id => getSeries(id).catch(() => null)));
+                    const map: Record<string, SeriesRow> = {};
+                    for (const row of rows) { if (row) map[row.id] = row; }
+                    setSeriesById(map);
+                }
             } catch (err: any) {
                 setError(err.message);
             } finally {
@@ -346,6 +356,7 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
                                 const role = getMyRole(game, userId);
                                 const opp = role === 'home' ? game.away_user_email : game.home_user_email;
                                 const isCreator = game.home_user_id === userId;
+                                const series = game.series_id ? seriesById[game.series_id] : null;
                                 return (
                                     <div key={game.id} className="game-row">
                                         <div className="game-info">
@@ -355,6 +366,15 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
                                                     : `vs ${game.away_user_email || 'Away'}`
                                                 }
                                             </span>
+                                            {series && (
+                                                <span style={{
+                                                    fontSize: 11, color: '#d4a018', background: 'rgba(212,160,24,0.12)',
+                                                    padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(212,160,24,0.3)',
+                                                    fontWeight: 600,
+                                                }}>
+                                                    SERIES — Game {game.game_number} of {series.best_of} ({series.home_user_email || 'Home'} {series.home_wins || 0}{'\u2013'}{series.away_wins || 0} {series.away_user_email || 'Away'})
+                                                </span>
+                                            )}
                                             <span className={`game-status status-${game.status}`}>{game.status === 'in_progress' && game.state?.inning
                                                 ? `${game.state.halfInning === 'top' ? '\u25B2' : '\u25BC'}${game.state.inning} | ${game.state.score?.away ?? 0} - ${game.state.score?.home ?? 0}`
                                                 : game.status.replace('_', ' ')}</span>

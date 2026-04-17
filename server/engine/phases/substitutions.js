@@ -12,6 +12,24 @@ function syncAlignment(team) {
     team.roster = buildRoster(team);
 }
 
+/**
+ * Backup-player entry rule (DH-only game, no PH-for-pitcher exception):
+ *   Home backup may enter starting bottom of the 6th (or any inning ≥ 7).
+ *   Away backup may enter starting top of the 7th (any inning ≥ 7).
+ * Applies uniformly to all sub types (PH, PR, DS).
+ */
+function canBackupEnter(state, isHomeTeam) {
+    if (state.inning >= 7) return true;
+    if (isHomeTeam && state.inning === 6 && state.halfInning === 'bottom') return true;
+    return false;
+}
+
+function backupRejection(isHomeTeam) {
+    return isHomeTeam
+        ? 'Backup players cannot enter until the bottom of the 6th inning'
+        : 'Backup players cannot enter until the top of the 7th inning';
+}
+
 export function handlePinchHit(state, action) {
     if (state.phase !== 'pre_atbat') return state;
     const battingSide = state.halfInning === 'top' ? 'awayTeam' : 'homeTeam';
@@ -26,19 +44,9 @@ export function handlePinchHit(state, action) {
     const oldPlayer = lineup[idx];
     const newPlayer = { ...bench[benchIdx] };
 
-    // Backup player restrictions
-    if (newPlayer.isBackup) {
-        if (state.inning < 5) {
-            return { ...state, gameLog: [...state.gameLog, `Backup players cannot pinch hit until after the 4th inning`] };
-        }
-        const isHome = battingSide === 'homeTeam';
-        const canFieldNext = isHome ? state.inning >= 6 : state.inning >= 7;
-        if (!canFieldNext) {
-            const msg = isHome
-                ? `Backup players cannot take the field before the 7th inning (home team can PH from bottom of 6th)`
-                : `Backup players cannot take the field before the 7th inning`;
-            return { ...state, gameLog: [...state.gameLog, msg] };
-        }
+    // Backup player entry rule (unified)
+    if (newPlayer.isBackup && !canBackupEnter(state, battingSide === 'homeTeam')) {
+        return { ...state, gameLog: [...state.gameLog, backupRejection(battingSide === 'homeTeam')] };
     }
 
     newPlayer.assignedPosition = oldPlayer.assignedPosition;
@@ -124,9 +132,12 @@ export function handlePitchingChange(state, action) {
 }
 
 // ============================================================================
-// PHASE 2: New atomic substitution operations
-// PINCH_RUN, DEFENSIVE_SUB, DOUBLE_SWITCH
+// Atomic substitution operations
+// PINCH_RUN, DEFENSIVE_SUB
 // All only allowed during pre_atbat / defense_sub (before pitch roll).
+// (Double Switch intentionally not implemented — DH-only game makes the
+// traditional double-switch tactic unnecessary; the only edge case where
+// it'd matter is DH-forfeit, which we don't model.)
 // ============================================================================
 
 /** Pinch run: replace the runner on `base` with a player from the bench.
@@ -151,16 +162,8 @@ export function handlePinchRun(state, action) {
     }
     const newRunner = { ...bench[benchIdx] };
 
-    // Backup restrictions (same as PH)
-    if (newRunner.isBackup) {
-        if (state.inning < 5) {
-            return { ...state, gameLog: [...state.gameLog, 'Backup players cannot enter the game until after the 4th inning'] };
-        }
-        const isHome = battingSide === 'homeTeam';
-        const canFieldNext = isHome ? state.inning >= 6 : state.inning >= 7;
-        if (!canFieldNext) {
-            return { ...state, gameLog: [...state.gameLog, 'Backup players cannot take the field before the 7th inning'] };
-        }
+    if (newRunner.isBackup && !canBackupEnter(state, battingSide === 'homeTeam')) {
+        return { ...state, gameLog: [...state.gameLog, backupRejection(battingSide === 'homeTeam')] };
     }
 
     // Find the runner in the lineup and swap them out
@@ -234,16 +237,8 @@ export function handleDefensiveSub(state, action) {
     const oldPlayer = lineup[replacedIdx];
     const newPlayer = { ...bench[benchIdx] };
 
-    // Backup restrictions
-    if (newPlayer.isBackup) {
-        if (state.inning < 5) {
-            return { ...state, gameLog: [...state.gameLog, 'Backup players cannot enter until after the 4th inning'] };
-        }
-        const isHome = teamSide === 'homeTeam';
-        const canFieldNext = isHome ? state.inning >= 6 : state.inning >= 7;
-        if (!canFieldNext) {
-            return { ...state, gameLog: [...state.gameLog, 'Backup players cannot take the field before the 7th inning'] };
-        }
+    if (newPlayer.isBackup && !canBackupEnter(state, teamSide === 'homeTeam')) {
+        return { ...state, gameLog: [...state.gameLog, backupRejection(teamSide === 'homeTeam')] };
     }
 
     // Determine target lineup slot (allows position swap with another lineup spot)
@@ -297,115 +292,6 @@ export function handleDefensiveSub(state, action) {
         ...state,
         [teamSide]: team,
         gameLog: [...state.gameLog, `Defensive sub: ${newPlayer.name} replaces ${oldPlayer.name} at ${slot}`],
-    };
-}
-
-/** Double switch: change pitcher AND move/swap a position-player simultaneously.
- *  Typical use: bring in a new pitcher AND put them lower in the batting order
- *  by swapping their lineup spot with another position-player.
- *  action: {
- *    type:'DOUBLE_SWITCH',
- *    bullpenCardId: string,         // new pitcher
- *    benchCardId?: string,          // optional new position player from bench
- *    pitcherLineupSlot: number,     // batting-order slot for the new pitcher
- *    swappedPlayerLineupSlot: number // batting-order slot for the position player
- *  }
- *  Validates: same constraints as pitching change (5+ inning rule), plus
- *  the two slots must be different. */
-export function handleDoubleSwitch(state, action) {
-    if (state.phase !== 'defense_sub') return state;
-    const fieldingSide = state.halfInning === 'top' ? 'homeTeam' : 'awayTeam';
-    let team = { ...state[fieldingSide] };
-    const bullpen = [...team.bullpen];
-    const bench = [...team.bench];
-    const lineup = [...team.lineup];
-
-    const bpIdx = bullpen.findIndex(p => p.cardId === action.bullpenCardId);
-    if (bpIdx === -1) return { ...state, gameLog: [...state.gameLog, 'Reliever not in bullpen'] };
-    const newPitcherCandidate = bullpen[bpIdx];
-    if (newPitcherCandidate.role === 'Starter') {
-        return { ...state, gameLog: [...state.gameLog, 'Can only bring in relievers or closers'] };
-    }
-    const battingSide = state.halfInning === 'top' ? 'away' : 'home';
-    const isStarter = team.pitcher.role === 'Starter' && team.pitcherEntryInning === 1;
-    if (isStarter && state.inning < 5 && state.score[battingSide] < 10) {
-        return { ...state, gameLog: [...state.gameLog, "Starter can't be removed before inning 5"] };
-    }
-
-    const pitcherSlot = action.pitcherLineupSlot;
-    const swappedSlot = action.swappedPlayerLineupSlot;
-    if (pitcherSlot === swappedSlot) {
-        return { ...state, gameLog: [...state.gameLog, 'Double switch slots must differ'] };
-    }
-    const swappedExisting = lineup[swappedSlot];
-    if (!swappedExisting) return state;
-
-    const oldPitcher = team.pitcher;
-    const newPitcher = { ...bullpen[bpIdx] };
-    bullpen.splice(bpIdx, 1);
-
-    // Credit departing pitcher with outs this half-inning
-    const outsRecorded = team.outsRecordedByCurrentPitcher || 0;
-    if (outsRecorded > 0) team = addPitcherStat(team, oldPitcher.cardId, 'ip', outsRecorded);
-
-    // The pitcher always bats DH-or-pitcher slot; here we put them in pitcherSlot
-    // with assignedPosition='P' (pitchers don't field a position other than P)
-    newPitcher.assignedPosition = 'P';
-    newPitcher.fielding = 0;
-    newPitcher.arm = 0;
-
-    // The swapped position player: if a benchCardId given, use them; else swap existing
-    let removedFromLineup;
-    if (action.benchCardId) {
-        const benchIdx = bench.findIndex(p => p.cardId === action.benchCardId);
-        if (benchIdx === -1) return { ...state, gameLog: [...state.gameLog, 'Bench player not found'] };
-        const newPosPlayer = { ...bench[benchIdx] };
-        bench.splice(benchIdx, 1);
-        if (newPosPlayer.isBackup && state.inning < 5) {
-            return { ...state, gameLog: [...state.gameLog, 'Backups cannot enter until after the 4th inning'] };
-        }
-        // Take the swappedExisting's defensive position
-        const targetPos = swappedExisting.assignedPosition;
-        newPosPlayer.assignedPosition = targetPos;
-        const norm = (targetPos || '').replace(/-\d+$/, '');
-        const isCatcher = norm === 'C';
-        const rawFielding = getFieldingFromSlot(newPosPlayer.positions || [], targetPos);
-        newPosPlayer.fielding = isCatcher ? 0 : rawFielding;
-        newPosPlayer.arm = isCatcher ? rawFielding : 0;
-        removedFromLineup = swappedExisting.cardId;
-        lineup[swappedSlot] = newPosPlayer;
-    }
-    // Place new pitcher (replaces whoever is at pitcherSlot)
-    const removedAtPitcherSlot = lineup[pitcherSlot]?.cardId;
-    lineup[pitcherSlot] = newPitcher;
-
-    team.pitcher = newPitcher;
-    team.bullpen = bullpen;
-    team.bench = bench;
-    team.lineup = lineup;
-    const used = [...team.usedPlayers, oldPitcher.cardId];
-    if (removedFromLineup) used.push(removedFromLineup);
-    if (removedAtPitcherSlot && removedAtPitcherSlot !== oldPitcher.cardId) used.push(removedAtPitcherSlot);
-    team.usedPlayers = used;
-    team.inningsPitched = 0;
-    team.pitcherEntryInning = state.inning;
-    team.outsRecordedByCurrentPitcher = 0;
-    team.cyBonusInnings = 0;
-
-    const { totalInfieldFielding, totalOutfieldFielding, catcherArm } = computeFieldingTotals(lineup);
-    team.totalInfieldFielding = totalInfieldFielding;
-    team.totalOutfieldFielding = totalOutfieldFielding;
-    team.catcherArm = catcherArm;
-    syncAlignment(team);
-
-    const rpCleared = state.rpActivePitcherId === oldPitcher.cardId;
-    return {
-        ...state,
-        [fieldingSide]: team,
-        gameLog: [...state.gameLog, `Double switch: ${newPitcher.name} replaces ${oldPitcher.name} (slot ${pitcherSlot + 1}, lineup swap with slot ${swappedSlot + 1})`],
-        controlModifier: 0,
-        rpActivePitcherId: rpCleared ? null : state.rpActivePitcherId,
-        phase: 'pre_atbat', subPhaseStep: 'offense_re',
     };
 }
 

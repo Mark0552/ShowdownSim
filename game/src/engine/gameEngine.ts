@@ -260,6 +260,7 @@ export interface GameState {
     rpActiveInning: number | null;      // RP icon: which inning it's active for
     rpActiveTeam?: string | null;       // RP icon: which team activated it ('home' | 'away')
     rollSequence?: number;              // server-side counter incremented on each d20 roll
+    iconChangeSequence?: number;        // server-side counter for icon-driven outcome changes (freezes lineup highlight w/o spinning dice)
     wlTracker?: { homeWP: string | null; awayWP: string | null; homeLP: string | null; awayLP: string | null };
     // GB and steal state
     gbOptions: GbOptions | null;
@@ -282,7 +283,6 @@ export type GameAction =
     | { type: 'PITCHING_CHANGE'; bullpenCardId: string }
     | { type: 'PINCH_RUN'; base: 'first' | 'second' | 'third'; benchCardId: string }
     | { type: 'DEFENSIVE_SUB'; position: string; benchCardId: string; lineupSlot?: number }
-    | { type: 'DOUBLE_SWITCH'; bullpenCardId: string; benchCardId?: string; pitcherLineupSlot: number; swappedPlayerLineupSlot: number }
     | { type: 'USE_ICON'; cardId: string; icon: string; targetId?: string }
     | { type: 'SEND_RUNNERS'; runnerIds: string[] }
     | { type: 'HOLD_RUNNERS' }

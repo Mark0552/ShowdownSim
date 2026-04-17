@@ -37,6 +37,15 @@ interface Props {
     awayName: string;
     pendingMovements?: RunnerMovement[];
     onMovementsConsumed?: () => void;
+    /** Series context (when game is part of a multi-game series) */
+    seriesInfo?: {
+        gameNumber: number;
+        bestOf: number;
+        homeWins: number;
+        awayWins: number;
+    };
+    /** Click handler to advance to the next game in the series; only used when isOver. */
+    onNextSeriesGame?: () => void;
 }
 
 // Layout constants
@@ -148,7 +157,7 @@ function RunnerAnimOverlay({ anim, baseCoords, baseAnimMs }: {
     );
 }
 
-export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName, awayName, pendingMovements = [], onMovementsConsumed }: Props) {
+export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName, awayName, pendingMovements = [], onMovementsConsumed, seriesInfo, onNextSeriesGame }: Props) {
     const [hoveredPlayer, setHoveredPlayer] = useState<PlayerSlot | null>(null);
     const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
     const [showAwayBullpen, setShowAwayBullpen] = useState(false);
@@ -157,6 +166,11 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const [showStats, setShowStats] = useState(false);
     const [showFullLog, setShowFullLog] = useState(false);
     const [diceAnimating, setDiceAnimating] = useState(false);
+    // Soft freeze for icon-driven outcome changes (no dice spin) — locks the
+    // lineup highlight + frozenRef long enough for the user to see the change.
+    const [iconFreezeActive, setIconFreezeActive] = useState(false);
+    const prevIconChangeSeqRef = useRef(state.iconChangeSequence ?? 0);
+    const iconFreezeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const prevRollKeyRef = useRef('');
     // Ref-based animation tracking — avoids useEffect timing race with setState
@@ -216,6 +230,22 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             animatingRef.current = true;
             setDiceAnimating(true);
             // frozenRef keeps its current (old) values — this is the freeze point
+        }
+    }
+    // Icon-change soft freeze: when iconChangeSequence increments, freeze the
+    // lineup/state for ~700ms so the user sees the icon-driven change before
+    // the highlight jumps to the next batter. No dice re-spin.
+    const curIconSeq = state.iconChangeSequence ?? 0;
+    if (curIconSeq !== prevIconChangeSeqRef.current) {
+        prevIconChangeSeqRef.current = curIconSeq;
+        if (!animatingRef.current) {
+            animatingRef.current = true;
+            setIconFreezeActive(true);
+            if (iconFreezeTimerRef.current) clearTimeout(iconFreezeTimerRef.current);
+            iconFreezeTimerRef.current = setTimeout(() => {
+                animatingRef.current = false;
+                setIconFreezeActive(false);
+            }, 700);
         }
     }
     // Runner animation — driven by server-computed movements
@@ -380,6 +410,16 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const displayHalfInning = frozenRef.current.halfInning;
     const displayInning = frozenRef.current.inning;
     const displayPhase = frozenRef.current.phase;
+
+    // Freeze the running game log while dice is animating or icon-soft-freeze
+    // is active so new log entries don't spoil the result before the dice
+    // settles. Mirrors the toast logic.
+    const displayedLogLenRef = useRef(state.gameLog?.length || 0);
+    const inSoftFreeze = diceAnimating || iconFreezeActive;
+    if (!inSoftFreeze) {
+        displayedLogLenRef.current = state.gameLog?.length || 0;
+    }
+    const displayedGameLog = (state.gameLog || []).slice(0, displayedLogLenRef.current);
     // Batter and pitcher use frozen teams so they don't swap during animation
     const displayBatter = displayTeam.lineup[displayTeam.currentBatterIndex] || batter;
     const displayPitcher = displayFieldingTeam.pitcher || pitcher;
@@ -594,6 +634,19 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     <text x="48" y="30" textAnchor="middle" fontSize="12" fill="#e94560" fontWeight="normal" fontFamily="Arial">EXIT GAME</text>
                 </g>
 
+                {/* Series indicator — left, below exit (when in a series) */}
+                {seriesInfo && (
+                    <g>
+                        <rect x="8" y="46" width="200" height="30" rx="4" fill="#0a1428" stroke="#d4a018" strokeWidth="1"/>
+                        <text x="108" y="59" textAnchor="middle" fontSize="10" fill="#d4a018" fontWeight="normal" letterSpacing="1" fontFamily="Impact">
+                            SERIES — GAME {seriesInfo.gameNumber} of {seriesInfo.bestOf}
+                        </text>
+                        <text x="108" y="71" textAnchor="middle" fontSize="11" fill="#fff" fontWeight="normal" fontFamily="Arial">
+                            {homeName} {seriesInfo.homeWins} {'\u2013'} {seriesInfo.awayWins} {awayName}
+                        </text>
+                    </g>
+                )}
+
                 {/* Centered scoreboard + inning + outs as one unit */}
                 {(() => {
                     const colW = 40, teamW = 100, rhW = 44;
@@ -744,12 +797,12 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 <line x1={HX} y1={MAIN_TOP} x2={HX} y2={MAIN_BOT} stroke="#d4a018" strokeWidth="1.5"/>
 
                 {/* Runner speed labels — centered above each base card */}
-                {runner1 && <text x={B1.x} y={B1.y - 58} textAnchor="middle" fontSize="18" fill="white" fontWeight="normal" fontFamily="Impact">Speed: {runner1.speed}</text>}
-                {runner2 && <text x={B2.x} y={B2.y - 58} textAnchor="middle" fontSize="18" fill="white" fontWeight="normal" fontFamily="Impact">Speed: {runner2.speed}</text>}
-                {runner3 && <text x={B3.x} y={B3.y - 58} textAnchor="middle" fontSize="18" fill="white" fontWeight="normal" fontFamily="Impact">Speed: {runner3.speed}</text>}
+                {!state.isOver && runner1 && <text x={B1.x} y={B1.y - 58} textAnchor="middle" fontSize="18" fill="white" fontWeight="normal" fontFamily="Impact">Speed: {runner1.speed}</text>}
+                {!state.isOver && runner2 && <text x={B2.x} y={B2.y - 58} textAnchor="middle" fontSize="18" fill="white" fontWeight="normal" fontFamily="Impact">Speed: {runner2.speed}</text>}
+                {!state.isOver && runner3 && <text x={B3.x} y={B3.y - 58} textAnchor="middle" fontSize="18" fill="white" fontWeight="normal" fontFamily="Impact">Speed: {runner3.speed}</text>}
 
-                {/* Card slots centered on bases — hidden during SP roll */}
-                {displayPhase !== 'sp_roll' && (
+                {/* Card slots centered on bases — hidden during SP roll AND after game over (players leave field) */}
+                {displayPhase !== 'sp_roll' && !state.isOver && (
                     <>
                         <CardSlot x={B2.x - 38} y={B2.y - 53} label="2B" card={runner2} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                         <CardSlot x={B1.x - 38} y={B1.y - 53} label="1B" card={runner1} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
@@ -770,8 +823,8 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     <RunnerAnimOverlay key={`ra-${anim.cardId}`} anim={anim} baseCoords={BASE_COORDS} baseAnimMs={BASE_ANIM_MS} />
                 ))}
 
-                {/* IP / Fatigue near pitcher — hidden during SP roll */}
-                {displayPhase !== 'sp_roll' && (
+                {/* IP / Fatigue near pitcher — hidden during SP roll AND game over */}
+                {displayPhase !== 'sp_roll' && !state.isOver && (
                     <>
                         <rect x={MOUND.x - 42} y={MOUND.y + 56} width="84" height="20" rx="4" fill="rgba(0,0,0,0.75)"/>
                         <text x={MOUND.x} y={MOUND.y + 70} textAnchor="middle" fontSize="10" fill={dFatigueActive ? '#ff6060' : '#8aade0'} fontWeight="normal" fontFamily="monospace">
@@ -800,6 +853,11 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     hasRunners={hasRunners}
                     outcomeNames={outcomeNames}
                     onShowSubPanel={() => setShowSubPanel(true)}
+                    onNextSeriesGame={onNextSeriesGame}
+                    seriesStatus={seriesInfo
+                        ? (Math.max(seriesInfo.homeWins, seriesInfo.awayWins) > seriesInfo.bestOf / 2
+                           ? 'complete' : 'in-progress')
+                        : undefined}
                 />
 
                 {/* DICE SECTION (26%: x=820..1180) — spinner + settled display */}
@@ -825,48 +883,48 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
 
                 {/* RUNNING GAME LOG (right 16%: x=1180..1400) */}
                 <foreignObject x="1182" y={BOT_Y + 2} width="216" height={948 - BOT_Y - 4}>
-                    <div ref={(el) => { if (el) el.scrollTop = el.scrollHeight; }} style={{
-                        width: '100%', height: '100%', overflowY: 'auto', overflowX: 'hidden',
-                        padding: '4px 6px', boxSizing: 'border-box',
-                        display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-                        scrollbarWidth: 'thin', scrollbarColor: '#d4a01840 transparent',
-                    }}>
-                        {(state.gameLog || []).slice(-12).map((entry: string, i: number) => {
-                            const isInning = /^--- /.test(entry);
-                            const isIcon = /icon/i.test(entry);
-                            const isScore = /scores|homer|run/i.test(entry);
-                            const isOut = /strikeout|ground|fly|popup|Double Play|DP|caught|thrown out|Batter out|Force out/i.test(entry);
-                            let color = '#8aade0';
-                            if (isInning) color = '#d4a018';
-                            else if (isIcon) color = '#4ade80';
-                            else if (isScore) color = '#e94560';
-                            else if (isOut) color = '#ff6060';
-                            return (
-                                <div key={`gl-${i}`} style={{
-                                    fontSize: isInning ? '11px' : '10px',
-                                    color, fontFamily: 'Arial, sans-serif',
-                                    padding: '1px 0', lineHeight: '1.3',
-                                    borderTop: isInning ? '1px solid #d4a01840' : 'none',
-                                    marginTop: isInning ? '3px' : '0',
-                                }}>
-                                    {entry}
-                                </div>
-                            );
-                        })}
+                    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                        <button onClick={() => setShowFullLog(true)} title="Expand log" style={{
+                            position: 'absolute', top: 2, right: 2, zIndex: 2,
+                            background: 'rgba(10, 20, 40, 0.85)', border: '1px solid #d4a018', borderRadius: 3,
+                            padding: '1px 6px', cursor: 'pointer', fontSize: 9, color: '#d4a018',
+                            fontFamily: 'Arial', fontWeight: 600, letterSpacing: 1,
+                        }}>EXPAND</button>
+                        <div ref={(el) => { if (el) el.scrollTop = el.scrollHeight; }} style={{
+                            width: '100%', height: '100%', overflowY: 'auto', overflowX: 'hidden',
+                            padding: '4px 6px', boxSizing: 'border-box',
+                            display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+                            scrollbarWidth: 'thin', scrollbarColor: '#d4a01840 transparent',
+                        }}>
+                            {displayedGameLog.slice(-12).map((entry: string, i: number) => {
+                                const isInning = /^--- /.test(entry);
+                                const isIcon = /icon/i.test(entry);
+                                const isScore = /scores|homer|run/i.test(entry);
+                                const isOut = /strikeout|ground|fly|popup|Double Play|DP|caught|thrown out|Batter out|Force out/i.test(entry);
+                                let color = '#8aade0';
+                                if (isInning) color = '#d4a018';
+                                else if (isIcon) color = '#4ade80';
+                                else if (isScore) color = '#e94560';
+                                else if (isOut) color = '#ff6060';
+                                return (
+                                    <div key={`gl-${i}`} style={{
+                                        fontSize: isInning ? '11px' : '10px',
+                                        color, fontFamily: 'Arial, sans-serif',
+                                        padding: '1px 0', lineHeight: '1.3',
+                                        borderTop: isInning ? '1px solid #d4a01840' : 'none',
+                                        marginTop: isInning ? '3px' : '0',
+                                    }}>
+                                        {entry}
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 </foreignObject>
             </svg>
 
             {/* Toast notifications */}
             <GameToast gameLog={state.gameLog} diceAnimating={diceAnimating} />
-
-            {/* Expand log button — positioned over the bottom-right log area */}
-            <div onClick={() => setShowFullLog(true)} style={{
-                position: 'absolute', bottom: 4, right: 4, zIndex: 600,
-                background: '#0a1428', border: '1px solid #d4a018', borderRadius: 4,
-                padding: '2px 8px', cursor: 'pointer', fontSize: 10, color: '#d4a018',
-                fontFamily: 'Arial',
-            }}>EXPAND</div>
 
             {showFullLog && <GameLogOverlay gameLog={state.gameLog} onClose={() => setShowFullLog(false)} />}
 

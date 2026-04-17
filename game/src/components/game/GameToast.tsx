@@ -37,15 +37,30 @@ export default function GameToast({ gameLog, diceAnimating }: GameToastProps) {
     const [toasts, setToasts] = useState<Toast[]>([]);
     const prevLogLenRef = useRef(gameLog?.length || 0);
     const pendingQueueRef = useRef<Toast[]>([]);
+    // Dedupe: track messages shown in the last 5 seconds so identical entries
+    // (e.g., a defensive play that emits the same line twice via different
+    // server paths) don't toast multiple times.
+    const recentMessagesRef = useRef<Map<string, number>>(new Map());
+    const DEDUPE_WINDOW_MS = 5000;
 
     // Collect new log entries; flush when dice not animating
     useEffect(() => {
         const logLen = gameLog?.length || 0;
         if (logLen > prevLogLenRef.current) {
             const newEntries = gameLog.slice(prevLogLenRef.current);
+            const now = Date.now();
+            // Prune expired dedupe entries
+            for (const [msg, ts] of recentMessagesRef.current) {
+                if (now - ts > DEDUPE_WINDOW_MS) recentMessagesRef.current.delete(msg);
+            }
             for (const entry of newEntries) {
                 if (!shouldToast(entry)) continue;
                 const msg = entry.replace(/^---\s*/, '').replace(/\s*---$/, '');
+                // Skip if same message already pending
+                if (pendingQueueRef.current.some(t => t.message === msg)) continue;
+                // Skip if same message was shown within dedupe window
+                if (recentMessagesRef.current.has(msg)) continue;
+                recentMessagesRef.current.set(msg, now);
                 pendingQueueRef.current.push({
                     id: ++toastId,
                     message: msg,

@@ -12,6 +12,10 @@ interface ActionButtonsProps {
     hasRunners: boolean;
     outcomeNames: Record<string, string>;
     onShowSubPanel: () => void;
+    /** Series-end callback: when set, the game-over screen shows a NEXT GAME
+     *  button (or SERIES COMPLETE if the series is decided). */
+    onNextSeriesGame?: () => void;
+    seriesStatus?: 'in-progress' | 'complete';
 }
 
 // Layout constants for the bottom-left actions section (x=2..820, y=750..948)
@@ -25,7 +29,7 @@ const ROW2 = ROW1 + ROW1_H + 4; // secondary row (G sub-buttons) below buttons
 const LABEL_Y = ROW1 - 6;  // context label above buttons
 
 /** All phase-specific action button groups rendered as an SVG <g> element */
-export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onAction, battingTeam, fieldingTeam, hasRunners, outcomeNames, onShowSubPanel }: ActionButtonsProps) {
+export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onAction, battingTeam, fieldingTeam, hasRunners, outcomeNames, onShowSubPanel, onNextSeriesGame, seriesStatus }: ActionButtonsProps) {
     const curBatter = getCurrentBatter(state);
     const curPitcher = getCurrentPitcher(state);
     const ctrl = curPitcher.control || 0;
@@ -89,8 +93,8 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                         if (item.type === 'pinch') return (
                             <g key="pinch" className="roll-button" onClick={() => onShowSubPanel()} cursor="pointer">
                                 <rect x={x} y={ROW1} width={item.width} height={ROW1_H} rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
-                                <text x={x + item.width / 2} y={ROW1 + 32} textAnchor="middle" fontSize="22" fill="#002" fontWeight="normal" fontFamily="Impact">PINCH HIT</text>
-                                <text x={x + item.width / 2} y={ROW1 + 58} textAnchor="middle" fontSize="15" fill="rgba(0,0,0,0.7)" fontFamily="Arial">Replace current batter</text>
+                                <text x={x + item.width / 2} y={ROW1 + 32} textAnchor="middle" fontSize="22" fill="#002" fontWeight="normal" fontFamily="Impact">MAKE SUBSTITUTIONS</text>
+                                <text x={x + item.width / 2} y={ROW1 + 58} textAnchor="middle" fontSize="15" fill="rgba(0,0,0,0.7)" fontFamily="Arial">Pinch hit, pinch run, defensive sub</text>
                             </g>
                         );
                         if (item.type === 'sb') {
@@ -177,8 +181,8 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                             case 'change': return (
                                 <g key="change" className="roll-button" onClick={() => onShowSubPanel()} cursor="pointer">
                                     <rect x={x} y={y} width={item.width} height={ROW1_H} rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
-                                    <text x={x + item.width / 2} y={y + 32} textAnchor="middle" fontSize="22" fill="#002" fontWeight="normal" fontFamily="Impact">CHANGE PITCHER</text>
-                                    <text x={x + item.width / 2} y={y + 58} textAnchor="middle" fontSize="15" fill="rgba(0,0,0,0.7)" fontFamily="Arial">Bring in reliever</text>
+                                    <text x={x + item.width / 2} y={y + 32} textAnchor="middle" fontSize="22" fill="#002" fontWeight="normal" fontFamily="Impact">MAKE SUBSTITUTIONS</text>
+                                    <text x={x + item.width / 2} y={y + 58} textAnchor="middle" fontSize="15" fill="rgba(0,0,0,0.7)" fontFamily="Arial">Pitching change, defensive sub</text>
                                 </g>
                             );
                             case 'rp': return (
@@ -665,6 +669,21 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                         <text x={CX} y={ROW1 + 58} textAnchor="middle" fontSize="22" fill="white" fontWeight="normal" fontFamily="Impact,sans-serif" letterSpacing="2">
                             {state.score.away} {'\u2013'} {state.score.home}
                         </text>
+                        {/* Series progression button */}
+                        {onNextSeriesGame && seriesStatus === 'in-progress' && (
+                            <g cursor="pointer" className="roll-button" onClick={onNextSeriesGame}>
+                                <rect x={CX + 210} y={ROW1 - 10} width="180" height="86" rx="10" fill="#d4a018" stroke="#f0c840" strokeWidth="2"/>
+                                <text x={CX + 300} y={ROW1 + 32} textAnchor="middle" fontSize="20" fill="#002" fontWeight="normal" fontFamily="Impact,sans-serif" letterSpacing="2">NEXT GAME</text>
+                                <text x={CX + 300} y={ROW1 + 58} textAnchor="middle" fontSize="13" fill="rgba(0,0,0,0.7)" fontFamily="Arial">Continue series</text>
+                            </g>
+                        )}
+                        {seriesStatus === 'complete' && (
+                            <g>
+                                <rect x={CX + 210} y={ROW1 - 10} width="180" height="86" rx="10" fill="rgba(212,160,24,0.15)" stroke="#d4a018" strokeWidth="2"/>
+                                <text x={CX + 300} y={ROW1 + 32} textAnchor="middle" fontSize="20" fill="#d4a018" fontWeight="normal" fontFamily="Impact,sans-serif" letterSpacing="2">SERIES OVER</text>
+                                <text x={CX + 300} y={ROW1 + 58} textAnchor="middle" fontSize="13" fill="#fff" fontFamily="Arial">Best-of complete</text>
+                            </g>
+                        )}
                     </g>
                 );
             })()}
