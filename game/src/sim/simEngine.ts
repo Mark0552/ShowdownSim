@@ -178,8 +178,12 @@ export interface PitcherState {
     strikeouts: number; popups: number; groundballs: number; flyballs: number;
     walks: number; singles: number; singlepluses: number; doubles: number; triples: number; homeruns: number;
     kused: number; twentyUsed: number; RPused: number;
-    iconCounts: { '20': number; K: number; RP: number };
+    iconCounts: { '20': number; K: number; RP: number; RY: number };
     hasRP: boolean; has20: boolean; hasK: boolean;
+    hasR: boolean; hasRY: boolean;
+    // Enhanced-mode tracking
+    rAdjustmentAbs: number;   // sum of |adjustment| across all rolls (magnitude of R variance)
+    ryUsed: number;            // count of RY activations
     iconImpact: {
         K: { hrsBlocked: number; tbSaved: number };
         twenty: { advantageSwings: number };
@@ -197,8 +201,11 @@ export interface HitterState {
     chart: Record<string, string>;
     hits: number; singleplus: number; doubles: number; triples: number; homeRuns: number;
     walks: number; strikeouts: number; popups: number; flyballs: number; groundballs: number;
-    atBats: number; gameAbCount: number; gameVuses: number; gameSused: boolean; gameHRused: boolean;
+    atBats: number; gameAbCount: number; gameVuses: number; gameSused: boolean; gameHRused: boolean; gameRYused: boolean;
     Vused: number; Sused: number; HRused: number;
+    // Enhanced-mode tracking
+    rAdjustmentAbs: number;
+    ryUsed: number;
     iconImpact: {
         V: { outsAvoided: number; hitsGained: number; extrasGained: number };
         S: { doublesFromSingles: number; tbGained: number };
@@ -206,6 +213,7 @@ export interface HitterState {
     };
     iconList: string[];
     hasV: boolean; hasS: boolean; hasHR: boolean;
+    hasR: boolean; hasRY: boolean;
 }
 
 export function initializePitcher(pitcher: PreparedPitcher): PitcherState {
@@ -230,16 +238,26 @@ export function initializePitcher(pitcher: PreparedPitcher): PitcherState {
         strikeouts: 0, popups: 0, groundballs: 0, flyballs: 0,
         walks: 0, singles: 0, singlepluses: 0, doubles: 0, triples: 0, homeruns: 0,
         kused: 0, twentyUsed: 0, RPused: 0,
-        iconCounts: { '20': 0, K: 0, RP: 0 },
+        iconCounts: { '20': 0, K: 0, RP: 0, RY: 0 },
         hasRP: pitcher.Icons?.includes('RP') || false,
         has20: pitcher.Icons?.includes('20') || false,
         hasK: pitcher.Icons?.includes('K') || false,
+        hasR: iconListIncludes(pitcher.Icons, 'R'),
+        hasRY: iconListIncludes(pitcher.Icons, 'RY'),
+        rAdjustmentAbs: 0,
+        ryUsed: 0,
         iconImpact: {
             K: { hrsBlocked: 0, tbSaved: 0 },
             twenty: { advantageSwings: 0 },
             RP: { advantageSwings: 0 },
         },
     };
+}
+
+/** Check for exact-token match so "RY" in "HR RY" doesn't trigger on "HR" etc. */
+function iconListIncludes(icons: string | null | undefined, name: string): boolean {
+    if (!icons) return false;
+    return icons.split(/\s+/).includes(name);
 }
 
 export function createHitterStats(hitter: PreparedHitter): HitterState {
@@ -264,8 +282,10 @@ export function createHitterStats(hitter: PreparedHitter): HitterState {
         },
         hits: 0, singleplus: 0, doubles: 0, triples: 0, homeRuns: 0,
         walks: 0, strikeouts: 0, popups: 0, flyballs: 0, groundballs: 0,
-        atBats: 0, gameAbCount: 0, gameVuses: 0, gameSused: false, gameHRused: false,
+        atBats: 0, gameAbCount: 0, gameVuses: 0, gameSused: false, gameHRused: false, gameRYused: false,
         Vused: 0, Sused: 0, HRused: 0,
+        rAdjustmentAbs: 0,
+        ryUsed: 0,
         iconImpact: {
             V: { outsAvoided: 0, hitsGained: 0, extrasGained: 0 },
             S: { doublesFromSingles: 0, tbGained: 0 },
@@ -275,6 +295,8 @@ export function createHitterStats(hitter: PreparedHitter): HitterState {
         hasV: icons.includes('V'),
         hasS: icons.includes('S'),
         hasHR: icons.includes('HR'),
+        hasR: icons.includes('R'),
+        hasRY: icons.includes('RY'),
     };
 }
 
@@ -291,8 +313,10 @@ function determineOutcome(player: { ranges: Record<string, Range | null> }, roll
     return OUTCOME.FLYBALL;
 }
 
-function applyHitterIcons(outcome: OutcomeName, stats: HitterState, usingHitterChart: boolean, iconsEnabled: boolean): OutcomeName | null {
-    if (!iconsEnabled) return outcome;
+export type IconsMode = 'on' | 'off' | 'enhanced';
+
+function applyHitterIcons(outcome: OutcomeName, stats: HitterState, usingHitterChart: boolean, mode: IconsMode): OutcomeName | null {
+    if (mode === 'off') return outcome;
     if (stats.hasV && stats.gameVuses < 2 && usingHitterChart && OUT_OUTCOMES.includes(outcome)) {
         stats.gameVuses++;
         stats.Vused++;
@@ -323,19 +347,38 @@ function applyHitterIcons(outcome: OutcomeName, stats: HitterState, usingHitterC
 
 export function simulateAtBat(
     hitter: PreparedHitter, pitcher: PitcherState, stats: HitterState,
-    rollDie: () => number, iconsEnabled: boolean
+    rollDie: () => number, rng: () => number, mode: IconsMode
 ): OutcomeName {
+    const iconsEnabled = mode !== 'off';
+    const enhanced = mode === 'enhanced';
+
+    // R adjustment helper: random integer [-3, +3] inclusive (7 values, includes 0)
+    const rAdjust = () => Math.floor(rng() * 7) - 3;
+
     stats.gameAbCount++;
     if (stats.gameAbCount > 5) {
         stats.gameAbCount = 1;
         stats.gameVuses = 0;
         stats.gameSused = false;
         stats.gameHRused = false;
+        stats.gameRYused = false;
     }
 
-    const baseRoll = rollDie() + pitcher.Control;
+    let basePitchDie = rollDie();
+    // R icon on pitcher: hidden ±3 on the die result itself
+    if (enhanced && pitcher.hasR) {
+        const adj = rAdjust();
+        basePitchDie += adj;
+        pitcher.rAdjustmentAbs += Math.abs(adj);
+    }
+    const baseRoll = basePitchDie + pitcher.Control;
     let pitcherRoll = baseRoll;
-    const hitterRoll = rollDie();
+    let hitterRoll = rollDie();
+    if (enhanced && stats.hasR) {
+        const adj = rAdjust();
+        hitterRoll += adj;
+        stats.rAdjustmentAbs += Math.abs(adj);
+    }
 
     const wouldUsePitcherChartWithoutIcons = baseRoll > hitter.onBase;
 
@@ -362,15 +405,33 @@ export function simulateAtBat(
         }
     }
 
+    // RY icon on pitcher: once per 27 outs (one per full game), +3 to pitch roll
+    if (enhanced && pitcher.hasRY && pitcher.iconCounts.RY === 0) {
+        pitcherRoll += 3;
+        pitcher.iconCounts.RY = 1;
+        pitcher.ryUsed++;
+    }
+
     const usePitcherChart = pitcherRoll > hitter.onBase;
     const usingHitterChart = !usePitcherChart;
-    let outcome: OutcomeName | null;
 
+    // RY icon on hitter: once per 5 ABs, +3 to swing roll — ONLY on hitter chart
+    if (enhanced && stats.hasRY && !stats.gameRYused && usingHitterChart) {
+        hitterRoll += 3;
+        stats.gameRYused = true;
+        stats.ryUsed++;
+    }
+
+    // Clamp swing roll to 1..20 for chart lookup so extreme R/RY adjustments don't
+    // silently bucket into the FB default.
+    const clampedHitterRoll = Math.max(1, Math.min(20, hitterRoll));
+
+    let outcome: OutcomeName | null;
     do {
         const raw = usePitcherChart
-            ? determineOutcome(pitcher, hitterRoll, false)
-            : determineOutcome(hitter, hitterRoll, true);
-        outcome = applyHitterIcons(raw, stats, usingHitterChart, iconsEnabled);
+            ? determineOutcome(pitcher, clampedHitterRoll, false)
+            : determineOutcome(hitter, clampedHitterRoll, true);
+        outcome = applyHitterIcons(raw, stats, usingHitterChart, mode);
     } while (outcome === null);
 
     if (iconsEnabled && outcome === OUTCOME.HOMERUN && pitcher.hasK && pitcher.iconCounts.K < 1) {
@@ -384,6 +445,7 @@ export function simulateAtBat(
     if (pitcher.outs > 0 && pitcher.outs % 27 === 0) {
         pitcher.iconCounts.K = 0;
         pitcher.iconCounts.RP = 0;
+        pitcher.iconCounts.RY = 0;
     }
     if (pitcher.outs > 0 && pitcher.outs % 3 === 0) {
         pitcher.iconCounts['20'] = 0;

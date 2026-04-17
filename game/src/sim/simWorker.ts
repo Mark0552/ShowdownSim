@@ -4,7 +4,7 @@
  * Messages:
  *   → from main: { type: 'run'; config: SimConfig; hitters: RawHitter[]; pitchers: RawPitcher[] }
  *   → from main: { type: 'cancel' }
- *   ← from worker: { type: 'progress'; phase: 'icons-on' | 'icons-off'; done: number; total: number; elapsedMs: number }
+ *   ← from worker: { type: 'progress'; phase: 'icons-on' | 'icons-off' | 'enhanced'; done: number; total: number; elapsedMs: number }
  *   ← from worker: { type: 'done'; data: SimExportData; elapsedMs: number }
  *   ← from worker: { type: 'error'; message: string }
  */
@@ -15,7 +15,7 @@ import seedrandom from 'seedrandom';
 import {
     precomputeRanges, initializePitcher, createHitterStats,
     simulateAtBat, updateHitterStats, updatePitcherStats,
-    type SimConfig, type RawHitter, type RawPitcher,
+    type IconsMode, type SimConfig, type RawHitter, type RawPitcher,
     type PreparedHitter, type PreparedPitcher, type PitcherState,
 } from './simEngine';
 import { calculateFinalStats, calculatePitcherFinalStats, type HitterFinal, type PitcherFinal } from './simStats';
@@ -29,6 +29,8 @@ interface RunMsg {
 }
 interface CancelMsg { type: 'cancel' }
 type InMsg = RunMsg | CancelMsg;
+
+type PhaseName = 'icons-on' | 'icons-off' | 'enhanced';
 
 let cancelled = false;
 
@@ -47,9 +49,10 @@ self.onmessage = (e: MessageEvent<InMsg>) => {
 
 function runPhase(
     hitters: PreparedHitter[], pitchers: PreparedPitcher[],
-    config: SimConfig, rollDie: () => number, iconsEnabled: boolean,
-    phase: 'icons-on' | 'icons-off', startTime: number,
+    config: SimConfig, rng: () => number, mode: IconsMode,
+    phase: PhaseName, startTime: number,
 ): { hitters: HitterFinal[]; pitchers: PitcherFinal[] } | null {
+    const rollDie = () => Math.floor(rng() * 20) + 1;
     const pitcherData: PitcherState[] = pitchers.map(initializePitcher);
     const hitterResults: HitterFinal[] = [];
     const total = hitters.length;
@@ -61,16 +64,15 @@ function runPhase(
         const stats = createHitterStats(hitter);
 
         for (const pitcher of pitcherData) {
-            pitcher.iconCounts = { '20': 0, K: 0, RP: 0 };
+            pitcher.iconCounts = { '20': 0, K: 0, RP: 0, RY: 0 };
             for (let ab = 0; ab < config.AT_BATS_PER_MATCHUP; ab++) {
-                const outcome = simulateAtBat(hitter, pitcher, stats, rollDie, iconsEnabled);
+                const outcome = simulateAtBat(hitter, pitcher, stats, rollDie, rng, mode);
                 updateHitterStats(stats, outcome);
                 updatePitcherStats(pitcher, outcome, config.WEIGHTS);
             }
         }
         hitterResults.push(calculateFinalStats(stats, config.WEIGHTS));
 
-        // Post progress roughly every 100ms to avoid flooding the main thread
         const now = Date.now();
         if (now - lastPost > 100 || i === total - 1) {
             (self as any).postMessage({
@@ -94,28 +96,33 @@ function runSimulation(msg: RunMsg) {
     const hitters = msg.hitters as PreparedHitter[];
     const pitchers = msg.pitchers as PreparedPitcher[];
 
-    // Mutates in place: adds `ranges` to each player
     precomputeRanges(hitters, ['SO', 'GB', 'FB', 'W', 'S', 'SPlus', 'DB', 'TR', 'HR']);
     precomputeRanges(pitchers, ['PU', 'SO', 'GB', 'FB', 'W', 'S', 'DB', 'HR']);
 
     const seed = msg.config.SEED || String(Date.now());
-    const rng1 = seedrandom(seed);
-    const rollDie1 = () => Math.floor(rng1() * 20) + 1;
-    const onResults = runPhase(hitters, pitchers, msg.config, rollDie1, true, 'icons-on', startTime);
-    if (!onResults) return; // cancelled
 
-    const rng2 = seedrandom(seed);
-    const rollDie2 = () => Math.floor(rng2() * 20) + 1;
-    const offResults = runPhase(hitters, pitchers, msg.config, rollDie2, false, 'icons-off', startTime);
+    // Same seed across the three modes so outcomes are directly comparable.
+    const rngOn = seedrandom(seed);
+    const onResults = runPhase(hitters, pitchers, msg.config, rngOn, 'on', 'icons-on', startTime);
+    if (!onResults) return;
+
+    const rngOff = seedrandom(seed);
+    const offResults = runPhase(hitters, pitchers, msg.config, rngOff, 'off', 'icons-off', startTime);
     if (!offResults) return;
+
+    const rngEnhanced = seedrandom(seed);
+    const enhResults = runPhase(hitters, pitchers, msg.config, rngEnhanced, 'enhanced', 'enhanced', startTime);
+    if (!enhResults) return;
 
     const data: SimExportData = {
         hittersOn: onResults.hitters,
         pitchersOn: onResults.pitchers,
         hittersOff: offResults.hitters,
         pitchersOff: offResults.pitchers,
+        hittersEnhanced: enhResults.hitters,
+        pitchersEnhanced: enhResults.pitchers,
     };
     (self as any).postMessage({ type: 'done', data, elapsedMs: Date.now() - startTime });
 }
 
-export {}; // make this a module
+export {};

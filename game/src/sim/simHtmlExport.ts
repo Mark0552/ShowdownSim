@@ -179,6 +179,8 @@ const HITTER_COLUMNS: Column[] = [
     { key: 'HRused', label: 'HR Used', decimals: 0, desc: 'HR (Power) icon uses. Times the HR icon upgraded a 2B/3B to a home run (once per 5-AB game).' },
     { key: 'totalIconSlgImpact', label: 'Icon SLG+', decimals: 3, colorCode: 'positive-good', desc: 'Icon SLG Impact = (S icon TB gained + HR icon TB gained) / AB. Estimated SLG boost from S and HR icon upgrades.' },
     { key: 'totalIconWobaImpact', label: 'Icon wOBA+', decimals: 3, colorCode: 'positive-good', desc: 'Icon wOBA Impact. Estimated wOBA boost from all icons (V rerolls, S upgrades, HR upgrades) using linear weights.' },
+    { key: 'rAdjustmentAbs', label: 'R Var', decimals: 0, desc: 'R Icon variance magnitude — sum of |adjustment| applied to swing rolls for hitters with the R icon (Enhanced mode only). 0 if hitter lacks R.' },
+    { key: 'ryUsed', label: 'RY Used', decimals: 0, desc: 'RY Icon uses — times the +3 swing bonus was applied on a hitter-chart PA (once per 5-AB game, Enhanced mode only). 0 if hitter lacks RY.' },
 ];
 
 const PITCHER_COLUMNS: Column[] = [
@@ -218,6 +220,8 @@ const PITCHER_COLUMNS: Column[] = [
     { key: 'kIconSlgImpact', label: 'K SLG-', decimals: 3, desc: 'K Icon SLG Reduction = TB saved / BF.' },
     { key: 'twentyIconAdvantageSwings', label: '20 Swings', decimals: 0, desc: '20 Icon: times the +3 control bonus flipped from hitter to pitcher chart.' },
     { key: 'rpIconAdvantageSwings', label: 'RP Swings', decimals: 0, desc: 'RP Icon: times the +3 relief bonus flipped from hitter to pitcher chart (first inning only).' },
+    { key: 'rAdjustmentAbs', label: 'R Var', decimals: 0, desc: 'R Icon variance magnitude — sum of |adjustment| applied to pitch rolls for pitchers with the R icon (Enhanced mode only).' },
+    { key: 'ryUsed', label: 'RY Used', decimals: 0, desc: 'RY Icon uses — times the +3 pitch bonus was applied (once per 27-out game, Enhanced mode only).' },
 ];
 
 function buildTabs(
@@ -276,11 +280,13 @@ function buildTabs(
 export interface SimExportData {
     hittersOn: HitterFinal[]; pitchersOn: PitcherFinal[];
     hittersOff: HitterFinal[]; pitchersOff: PitcherFinal[];
+    hittersEnhanced: HitterFinal[]; pitchersEnhanced: PitcherFinal[];
 }
 
 export function buildHtmlReport(data: SimExportData, config: SimConfig): string {
     const on = buildTabs(data.hittersOn, data.pitchersOn, 'on');
     const off = buildTabs(data.hittersOff, data.pitchersOff, 'off');
+    const enh = buildTabs(data.hittersEnhanced, data.pitchersEnhanced, 'enh');
 
     const style = `* { box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: #1a1a2e; color: #eee; }
@@ -424,6 +430,7 @@ document.addEventListener('mouseout', (e) => {
 <div class="mode-toggle">
     <button class="mode-btn active" onclick="switchMode('on')">With Icons</button>
     <button class="mode-btn" onclick="switchMode('off')">Without Icons</button>
+    <button class="mode-btn" onclick="switchMode('enh')">Enhanced (R/RY)</button>
 </div>
 <div id="tooltip"></div>
 <div id="mode-on" class="mode-panel active">
@@ -451,6 +458,20 @@ document.addEventListener('mouseout', (e) => {
         <h2>Pitchers (No Icons) <button class="clear-filters" onclick="clearFilters('off-pitcher-section')">Clear Filters</button></h2>
         <div class="tabs">${off.pitcherTabs}</div>
         <div class="table-container">${off.pitcherContent}</div>
+        <div class="match-count"></div>
+    </div>
+</div>
+<div id="mode-enh" class="mode-panel">
+    <div class="section" id="enh-hitter-section">
+        <h2>Hitters (Enhanced — R/RY) <button class="clear-filters" onclick="clearFilters('enh-hitter-section')">Clear Filters</button></h2>
+        <div class="tabs">${enh.hitterTabs}</div>
+        <div class="table-container">${enh.hitterContent}</div>
+        <div class="match-count"></div>
+    </div>
+    <div class="section" id="enh-pitcher-section">
+        <h2>Pitchers (Enhanced — R/RY) <button class="clear-filters" onclick="clearFilters('enh-pitcher-section')">Clear Filters</button></h2>
+        <div class="tabs">${enh.pitcherTabs}</div>
+        <div class="table-container">${enh.pitcherContent}</div>
         <div class="match-count"></div>
     </div>
 </div>

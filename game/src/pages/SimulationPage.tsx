@@ -16,7 +16,7 @@ interface Props { onBack: () => void; }
 
 type Phase = 'idle' | 'loading' | 'running' | 'done' | 'error';
 
-interface ProgressMsg { type: 'progress'; phase: 'icons-on' | 'icons-off'; done: number; total: number; elapsedMs: number }
+interface ProgressMsg { type: 'progress'; phase: 'icons-on' | 'icons-off' | 'enhanced'; done: number; total: number; elapsedMs: number }
 interface DoneMsg { type: 'done'; data: SimExportData; elapsedMs: number }
 interface ErrorMsg { type: 'error'; message: string }
 type WorkerOut = ProgressMsg | DoneMsg | ErrorMsg;
@@ -61,6 +61,8 @@ const HITTER_VIEW_COLS: ViewCol<HitterFinal>[] = [
     { key: 'Sused', label: 'S', decimals: 0, desc: 'S (Speed) icon uses — singles upgraded to doubles (once per 5-AB game).' },
     { key: 'HRused', label: 'HR*', decimals: 0, desc: 'HR (Power) icon uses — doubles/triples upgraded to HRs (once per 5-AB game).' },
     { key: 'totalIconWobaImpact', label: 'Ico+', decimals: 3, colorCode: 'positive-good', desc: 'Total icon wOBA impact — estimated wOBA boost from all icons combined.' },
+    { key: 'rAdjustmentAbs', label: 'RVar', decimals: 0, desc: 'R icon variance magnitude — sum of |±3| applied to swing rolls (Enhanced mode only).' },
+    { key: 'ryUsed', label: 'RY', decimals: 0, desc: 'RY icon uses — +3 swing bonuses applied on hitter-chart PAs (once per 5 ABs, Enhanced mode only).' },
 ];
 
 const PITCHER_VIEW_COLS: ViewCol<PitcherFinal>[] = [
@@ -87,6 +89,8 @@ const PITCHER_VIEW_COLS: ViewCol<PitcherFinal>[] = [
     { key: 'kIconHRsBlocked', label: 'K*', decimals: 0, desc: 'K icon uses — HRs converted to strikeouts (once per 9 innings).' },
     { key: 'twentyIconAdvantageSwings', label: '20*', decimals: 0, desc: '20 icon advantage swings — +3 control bonus flipped from hitter to pitcher chart.' },
     { key: 'rpIconAdvantageSwings', label: 'RP*', decimals: 0, desc: 'RP icon advantage swings — first-inning +3 control bonus flipped chart.' },
+    { key: 'rAdjustmentAbs', label: 'RVar', decimals: 0, desc: 'R icon variance magnitude — sum of |±3| applied to pitch rolls (Enhanced mode only).' },
+    { key: 'ryUsed', label: 'RY', decimals: 0, desc: 'RY icon uses — +3 pitch bonuses applied (once per 27 outs, Enhanced mode only).' },
 ];
 
 function formatCell(val: unknown, decimals?: number): string {
@@ -161,13 +165,14 @@ export default function SimulationPage({ onBack }: Props) {
     const [errorMsg, setErrorMsg] = useState('');
     const [iconsOnProgress, setIconsOnProgress] = useState({ done: 0, total: 0 });
     const [iconsOffProgress, setIconsOffProgress] = useState({ done: 0, total: 0 });
+    const [enhancedProgress, setEnhancedProgress] = useState({ done: 0, total: 0 });
     const [elapsedMs, setElapsedMs] = useState(0);
     const [results, setResults] = useState<SimExportData | null>(null);
     const [usedConfig, setUsedConfig] = useState<SimConfig | null>(null);
     const [rawData, setRawData] = useState<{ hitters: RawHitter[]; pitchers: RawPitcher[] } | null>(null);
 
     // View-state (tabs)
-    const [viewMode, setViewMode] = useState<'on' | 'off'>('on');
+    const [viewMode, setViewMode] = useState<'on' | 'off' | 'enhanced'>('on');
     const [viewKind, setViewKind] = useState<'hitters' | 'pitchers'>('hitters');
     const [viewPosition, setViewPosition] = useState('All Hitters');
     const [viewRole, setViewRole] = useState('Starters');
@@ -205,6 +210,7 @@ export default function SimulationPage({ onBack }: Props) {
         setErrorMsg('');
         setIconsOnProgress({ done: 0, total: rawData.hitters.length });
         setIconsOffProgress({ done: 0, total: rawData.hitters.length });
+        setEnhancedProgress({ done: 0, total: rawData.hitters.length });
         setElapsedMs(0);
         setResults(null);
 
@@ -223,7 +229,8 @@ export default function SimulationPage({ onBack }: Props) {
             const msg = e.data;
             if (msg.type === 'progress') {
                 if (msg.phase === 'icons-on') setIconsOnProgress({ done: msg.done, total: msg.total });
-                else setIconsOffProgress({ done: msg.done, total: msg.total });
+                else if (msg.phase === 'icons-off') setIconsOffProgress({ done: msg.done, total: msg.total });
+                else setEnhancedProgress({ done: msg.done, total: msg.total });
                 setElapsedMs(msg.elapsedMs);
             } else if (msg.type === 'done') {
                 setResults(msg.data);
@@ -269,18 +276,33 @@ export default function SimulationPage({ onBack }: Props) {
         URL.revokeObjectURL(url);
     }, [results, usedConfig]);
 
+    const hittersForView = (mode: 'on' | 'off' | 'enhanced'): HitterFinal[] | null => {
+        if (!results) return null;
+        if (mode === 'on') return results.hittersOn;
+        if (mode === 'off') return results.hittersOff;
+        return results.hittersEnhanced;
+    };
+    const pitchersForView = (mode: 'on' | 'off' | 'enhanced'): PitcherFinal[] | null => {
+        if (!results) return null;
+        if (mode === 'on') return results.pitchersOn;
+        if (mode === 'off') return results.pitchersOff;
+        return results.pitchersEnhanced;
+    };
     const hittersGrouped = useMemo(
-        () => results ? groupHittersByPosition(viewMode === 'on' ? results.hittersOn : results.hittersOff) : null,
+        () => { const h = hittersForView(viewMode); return h ? groupHittersByPosition(h) : null; },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
         [results, viewMode]
     );
     const pitchersGrouped = useMemo(
-        () => results ? groupPitchersByRole(viewMode === 'on' ? results.pitchersOn : results.pitchersOff) : null,
+        () => { const p = pitchersForView(viewMode); return p ? groupPitchersByRole(p) : null; },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
         [results, viewMode]
     );
 
     const onPct = iconsOnProgress.total ? Math.round((iconsOnProgress.done / iconsOnProgress.total) * 100) : 0;
     const offPct = iconsOffProgress.total ? Math.round((iconsOffProgress.done / iconsOffProgress.total) * 100) : 0;
-    const totalMatchups = rawData ? rawData.hitters.length * rawData.pitchers.length * atBats * 2 : 0;
+    const enhPct = enhancedProgress.total ? Math.round((enhancedProgress.done / enhancedProgress.total) * 100) : 0;
+    const totalMatchups = rawData ? rawData.hitters.length * rawData.pitchers.length * atBats * 3 : 0;
 
     return (
         <div className="sim-page">
@@ -322,7 +344,7 @@ export default function SimulationPage({ onBack }: Props) {
                     {rawData && (
                         <div className="sim-estimate">
                             {rawData.hitters.length.toLocaleString()} hitters × {rawData.pitchers.length.toLocaleString()} pitchers ×
-                            {' '}{atBats} AB × 2 modes = {totalMatchups.toLocaleString()} at-bats
+                            {' '}{atBats} AB × 3 modes = {totalMatchups.toLocaleString()} at-bats
                             {atBats > 200 && <span className="sim-warn"> — will take a few minutes</span>}
                         </div>
                     )}
@@ -336,6 +358,8 @@ export default function SimulationPage({ onBack }: Props) {
                         <div className="sim-progress-bar"><div className="sim-progress-fill" style={{ width: `${onPct}%` }} /></div>
                         <div className="sim-progress-label">Icons OFF — {iconsOffProgress.done} / {iconsOffProgress.total}</div>
                         <div className="sim-progress-bar"><div className="sim-progress-fill" style={{ width: `${offPct}%` }} /></div>
+                        <div className="sim-progress-label">Enhanced (R/RY) — {enhancedProgress.done} / {enhancedProgress.total}</div>
+                        <div className="sim-progress-bar"><div className="sim-progress-fill" style={{ width: `${enhPct}%` }} /></div>
                         <div className="sim-elapsed">Elapsed: {(elapsedMs / 1000).toFixed(1)}s</div>
                     </div>
                 )}
@@ -350,6 +374,7 @@ export default function SimulationPage({ onBack }: Props) {
                         <div className="sim-tabs">
                             <button className={`sim-tab ${viewMode === 'on' ? 'active' : ''}`} onClick={() => setViewMode('on')}>Icons ON</button>
                             <button className={`sim-tab ${viewMode === 'off' ? 'active' : ''}`} onClick={() => setViewMode('off')}>Icons OFF</button>
+                            <button className={`sim-tab ${viewMode === 'enhanced' ? 'active' : ''}`} onClick={() => setViewMode('enhanced')}>Enhanced (R/RY)</button>
                         </div>
 
                         <div className="sim-tabs">
