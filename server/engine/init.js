@@ -3,7 +3,7 @@
  */
 
 import { rollD20, getRollSequence } from './dice.js';
-import { getFieldingFromSlot, computeFieldingTotals } from './fielding.js';
+import { getFieldingFromSlot, computeFieldingTotals, buildFieldingAt, buildRoster } from './fielding.js';
 import { enterPreAtBat } from './phases/substitutions.js';
 
 /**
@@ -165,6 +165,10 @@ function selectStarter(team, spNum) {
 
     // Re-init pitcher stats
     team.pitcherStats[selected.cardId] = team.pitcherStats[selected.cardId] || { ip: 0, h: 0, r: 0, bb: 0, ibb: 0, so: 0, hr: 0, bf: 0 };
+
+    // Phase 1: keep fieldingAt + roster in sync after starter selection
+    team.fieldingAt = buildFieldingAt(team);
+    team.roster = buildRoster(team);
 }
 
 /**
@@ -243,7 +247,7 @@ function buildTeam(data, userId) {
         pitcherStats[p.cardId] = { ip: 0, h: 0, r: 0, bb: 0, ibb: 0, so: 0, hr: 0, bf: 0 };
     }
 
-    return {
+    const team = {
         userId, lineup, pitcher, bullpen, bench,
         currentBatterIndex: 0, runsPerInning: [0], hits: 0,
         usedPlayers: [], iconUsage: {},
@@ -251,6 +255,12 @@ function buildTeam(data, userId) {
         totalInfieldFielding, totalOutfieldFielding, catcherArm,
         batterStats, pitcherStats,
     };
+    // Phase 1 (substitution refactor): defensive alignment + roster lookup
+    // derived from the lineup. Will be kept in sync after substitutions and
+    // become primary state in later phases.
+    team.fieldingAt = buildFieldingAt(team);
+    team.roster = buildRoster(team);
+    return team;
 }
 
 function toPlayer(slot) {

@@ -5,7 +5,10 @@
 
 import { initializeGame, handleRollStarters } from './init.js';
 import { handlePitch, handleSwing } from './phases/pitch.js';
-import { handlePinchHit, handlePitchingChange, handleSkipSub } from './phases/substitutions.js';
+import {
+    handlePinchHit, handlePitchingChange, handleSkipSub,
+    handlePinchRun, handleDefensiveSub, handleDoubleSwitch,
+} from './phases/substitutions.js';
 import { handleUseIcon, handleSkipIcons } from './phases/resultIcons.js';
 import { handleGbDecision } from './phases/groundball.js';
 import { handleSteal, handleStealSbDecision, handleStealGDecision } from './phases/steal.js';
@@ -45,6 +48,9 @@ export function processAction(state, action) {
         case 'ROLL_SWING':         return handleSwing(state);
         case 'PINCH_HIT':          return handlePinchHit(state, action);
         case 'PITCHING_CHANGE':    return handlePitchingChange(state, action);
+        case 'PINCH_RUN':          return handlePinchRun(state, action);
+        case 'DEFENSIVE_SUB':      return handleDefensiveSub(state, action);
+        case 'DOUBLE_SWITCH':      return handleDoubleSwitch(state, action);
         case 'USE_ICON':           return handleUseIcon(state, action);
         case 'GB_DECISION':        return handleGbDecision(state, action);
         case 'STEAL':              return handleSteal(state, action);

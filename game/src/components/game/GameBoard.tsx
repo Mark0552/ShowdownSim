@@ -13,6 +13,7 @@ import GameToast from './GameToast';
 import GameLogOverlay from './GameLogOverlay';
 import CardSlot from './CardSlot';
 import BullpenPanel from './BullpenPanel';
+import SubstitutionModal from './SubstitutionModal';
 import BoxScore from './BoxScore';
 import ActionButtons from './ActionButtons';
 import DiceSpinner from './DiceSpinner';
@@ -559,34 +560,12 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             {showAwayBullpen && <BullpenPanel team={state.awayTeam} side="away" onClose={() => setShowAwayBullpen(false)} onHover={handlePlayerHover} onLeave={handlePlayerLeave} />}
             {showHomeBullpen && <BullpenPanel team={state.homeTeam} side="home" onClose={() => setShowHomeBullpen(false)} onHover={handlePlayerHover} onLeave={handlePlayerLeave} />}
             {showSubPanel && isMyTurn && (
-                <div className="bullpen-panel" style={{ left: '50%', bottom: '80px', transform: 'translateX(-50%)', zIndex: 600 }}>
-                    {state.phase === 'pre_atbat' && iAmBatting && (
-                        <>
-                            <div className="bp-header" onClick={() => setShowSubPanel(false)}>SELECT PINCH HITTER &#x25B2;</div>
-                            <div className="bp-cards">
-                                {battingTeam.bench.filter(p => { if (!p.isBackup) return true; return (state.halfInning === 'bottom') ? state.inning >= 6 : state.inning >= 7; }).map((p, i) => (
-                                    <div key={`ph-${i}`} className="bp-card" onClick={() => { onAction({ type: 'PINCH_HIT', benchCardId: p.cardId, lineupIndex: battingTeam.currentBatterIndex }); setShowSubPanel(false); }}>
-                                        <img src={p.imagePath} alt="" />
-                                        <div className="bp-card-info"><span className="bp-card-name">{p.name}</span><span className="bp-card-stats">OB:{p.onBase} Spd:{p.speed} {p.icons?.join(' ')}</span></div>
-                                    </div>
-                                ))}
-                            </div>
-                        </>
-                    )}
-                    {state.phase === 'defense_sub' && !iAmBatting && (
-                        <>
-                            <div className="bp-header" onClick={() => setShowSubPanel(false)}>SELECT RELIEVER &#x25B2;</div>
-                            <div className="bp-cards">
-                                {fieldingTeam.bullpen.filter(p => p.role !== 'Starter').map((p, i) => (
-                                    <div key={`pc-${i}`} className="bp-card" onClick={() => { onAction({ type: 'PITCHING_CHANGE', bullpenCardId: p.cardId }); setShowSubPanel(false); }}>
-                                        <img src={p.imagePath} alt="" />
-                                        <div className="bp-card-info"><span className="bp-card-name">{p.name}</span><span className="bp-card-stats">Ctrl:{p.control} IP:{p.ip} {p.role} {p.icons?.join(' ')}</span></div>
-                                    </div>
-                                ))}
-                            </div>
-                        </>
-                    )}
-                </div>
+                <SubstitutionModal
+                    state={state}
+                    myRole={myRole}
+                    onAction={onAction}
+                    onClose={() => setShowSubPanel(false)}
+                />
             )}
 
             <svg viewBox="0 0 1400 950" className="game-board-svg">

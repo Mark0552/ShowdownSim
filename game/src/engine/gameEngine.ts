@@ -132,6 +132,12 @@ export interface TeamState {
     // Per-player stats
     batterStats: { [cardId: string]: BatterStats };
     pitcherStats: { [cardId: string]: PitcherStats };
+    // Phase 1 (substitution refactor): defensive alignment + roster lookup,
+    // derived from lineup/pitcher/bench/bullpen and kept in sync after substitutions.
+    // Will become primary state in later phases when subs can manipulate fielding
+    // independently of batting order (double switches, position swaps).
+    fieldingAt?: { [slotKey: string]: string };  // slotKey ("P","C","1B","LF-RF-1",...) → cardId
+    roster?: { [cardId: string]: PlayerSlot };
 }
 
 // ============================================================================
@@ -274,6 +280,9 @@ export type GameAction =
     | { type: 'ROLL_SWING' }
     | { type: 'PINCH_HIT'; benchCardId: string; lineupIndex: number }
     | { type: 'PITCHING_CHANGE'; bullpenCardId: string }
+    | { type: 'PINCH_RUN'; base: 'first' | 'second' | 'third'; benchCardId: string }
+    | { type: 'DEFENSIVE_SUB'; position: string; benchCardId: string; lineupSlot?: number }
+    | { type: 'DOUBLE_SWITCH'; bullpenCardId: string; benchCardId?: string; pitcherLineupSlot: number; swappedPlayerLineupSlot: number }
     | { type: 'USE_ICON'; cardId: string; icon: string; targetId?: string }
     | { type: 'SEND_RUNNERS'; runnerIds: string[] }
     | { type: 'HOLD_RUNNERS' }

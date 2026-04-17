@@ -27,15 +27,22 @@ export function findGPlayer(team) {
 }
 
 // Find ALL players on team with unused G icon (for player choice)
+// Phase 6: out-of-position players cannot use the G icon (gIconEligible check).
 export function findAllGPlayers(team, positionFilter) {
     return team.lineup
         .filter(p => {
             if (!playerHasIcon(p, 'G') || !canUseIcon(team, p.cardId, 'G')) return false;
             if (positionFilter) {
                 const pos = (p.assignedPosition || '').replace(/-\d+$/, '');
-                return positionFilter.includes(pos);
+                if (!positionFilter.includes(pos)) return false;
             }
-            return true;
+            // G only available when the player is on-card at their assigned position.
+            const slot = p.assignedPosition || '';
+            const onCard = (p.positions || []).some(cp => {
+                if (slot === 'LF-RF') return cp.position === 'LF' || cp.position === 'RF' || cp.position === 'LF-RF';
+                return cp.position === slot.replace(/-\d+$/, '');
+            });
+            return onCard;
         })
         .map(p => ({ cardId: p.cardId, name: p.name, position: (p.assignedPosition || '').replace(/-\d+$/, '') }));
 }
