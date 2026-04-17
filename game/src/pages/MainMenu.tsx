@@ -43,6 +43,14 @@ export default function MainMenu({ userEmail, onNavigate, onLogout }: Props) {
                             <span className="menu-btn-desc">View game history and career statistics</span>
                         </span>
                     </button>
+
+                    <button className="menu-btn" onClick={() => onNavigate('simulation')}>
+                        <span className="menu-btn-icon">&#9881;</span>
+                        <span className="menu-btn-text">
+                            <span className="menu-btn-title">Simulation</span>
+                            <span className="menu-btn-desc">Run matchup simulations and export the full report</span>
+                        </span>
+                    </button>
                 </div>
 
                 <button className="menu-logout" onClick={handleLogout}>Sign Out</button>

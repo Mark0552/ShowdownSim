@@ -12,10 +12,11 @@ import LineupsPage from './pages/LineupsPage';
 import LobbyPage from './pages/LobbyPage';
 import GamePage from './pages/GamePage';
 import StatsPage from './pages/StatsPage';
+import SimulationPage from './pages/SimulationPage';
 import TeamBuilder from './pages/TeamBuilder';
 import MusicPlayer from './components/MusicPlayer';
 
-type Page = 'login' | 'menu' | 'lineups' | 'builder' | 'lobby' | 'game' | 'stats';
+type Page = 'login' | 'menu' | 'lineups' | 'builder' | 'lobby' | 'game' | 'stats' | 'simulation';
 
 /** Read page + gameId from URL hash */
 function readHash(): { page: Page | null; gameId: string | null } {
@@ -24,7 +25,7 @@ function readHash(): { page: Page | null; gameId: string | null } {
     if (hash.startsWith('game/')) {
         return { page: 'game', gameId: hash.slice(5) };
     }
-    const validPages: Page[] = ['menu', 'lineups', 'builder', 'lobby', 'stats'];
+    const validPages: Page[] = ['menu', 'lineups', 'builder', 'lobby', 'stats', 'simulation'];
     if (validPages.includes(hash as Page)) {
         return { page: hash as Page, gameId: null };
     }
@@ -179,6 +180,12 @@ export default function App() {
         case 'stats':
             return (
                 <StatsPage
+                    onBack={() => setPage('menu')}
+                />
+            );
+        case 'simulation':
+            return (
+                <SimulationPage
                     onBack={() => setPage('menu')}
                 />
             );

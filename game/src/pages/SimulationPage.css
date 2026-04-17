@@ -1,0 +1,283 @@
+.sim-page {
+    min-height: 100vh;
+    background: var(--bg-primary);
+    padding: 24px;
+}
+
+.sim-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.sim-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.sim-header h1 {
+    font-size: 24px;
+    color: var(--accent);
+    margin: 0;
+}
+
+.sim-back {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.sim-back:hover {
+    border-color: var(--accent);
+    color: var(--text);
+}
+
+.sim-config {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+}
+
+.sim-config-row {
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.sim-config-row label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    color: var(--text-dim);
+    font-size: 13px;
+}
+
+.sim-config-row input {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    padding: 6px 10px;
+    font-size: 14px;
+    width: 180px;
+}
+
+.sim-config-row input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.sim-config-row input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.sim-run-controls {
+    margin-left: auto;
+}
+
+.sim-estimate {
+    margin-top: 10px;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.sim-warn {
+    color: var(--warning);
+    margin-left: 4px;
+}
+
+.sim-btn {
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text);
+}
+
+.sim-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.sim-btn-primary {
+    background: var(--accent);
+    color: #002;
+    border-color: var(--accent);
+}
+
+.sim-btn-primary:hover:not(:disabled) {
+    filter: brightness(1.1);
+}
+
+.sim-btn-danger {
+    background: var(--error);
+    color: #fff;
+    border-color: var(--error);
+}
+
+.sim-error {
+    background: rgba(233, 69, 96, 0.15);
+    border: 1px solid var(--error);
+    border-radius: 6px;
+    padding: 12px 16px;
+    color: var(--error);
+    margin-bottom: 16px;
+}
+
+.sim-progress-block {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+}
+
+.sim-progress-label {
+    color: var(--text-dim);
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    margin-top: 6px;
+}
+
+.sim-progress-label:first-child {
+    margin-top: 0;
+}
+
+.sim-progress-bar {
+    height: 10px;
+    background: var(--bg-card);
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.sim-progress-fill {
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.15s ease-out;
+}
+
+.sim-elapsed {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-top: 8px;
+}
+
+.sim-results-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    color: var(--text-dim);
+    font-size: 13px;
+}
+
+.sim-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.sim-tab {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 18px;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+}
+
+.sim-tab:hover { color: var(--text); }
+.sim-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+.sim-subtabs {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin: 10px 0;
+}
+
+.sim-subtab {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.sim-subtab:hover {
+    border-color: var(--accent-dim);
+    color: var(--text);
+}
+
+.sim-subtab.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(212, 160, 24, 0.1);
+}
+
+.sim-table-wrap {
+    max-height: 600px;
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
+
+.sim-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Consolas', monospace;
+    font-size: 12px;
+}
+
+.sim-table th {
+    background: var(--bg-secondary);
+    color: var(--accent);
+    padding: 6px 8px;
+    border-bottom: 2px solid var(--accent);
+    text-align: left;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    white-space: nowrap;
+}
+
+.sim-table td {
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+.sim-table tr:nth-child(even) td {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.sim-table tr:hover td {
+    background: rgba(212, 160, 24, 0.08);
+}
+
+.sim-table td:nth-child(2) {
+    color: var(--text);
+    font-weight: 600;
+}
