@@ -183,10 +183,15 @@ export function handleExtraBaseThrow(state, action) {
         }
     }
 
-    // Track thrown-out-at-3rd scenario where home runner still scores
+    // Track thrown-out-at-3rd scenario where home runner still scores.
+    // The newScore[side]++ for that run was already done above (line ~152),
+    // so here we only credit stats. This runner must ALSO be excluded from
+    // the "remaining" auto-advance loop below to prevent double counting.
+    let alreadyScoredRunnerId = null;
     if (!safe && target.toBase === 'third') {
         const otherHomeRunner = eligible.find(e => e.runnerId !== target.runnerId && e.toBase === 'home');
         if (otherHomeRunner) {
+            alreadyScoredRunnerId = otherHomeRunner.runnerId;
             battingTeam = addBatterStat(battingTeam, otherHomeRunner.runnerId, 'r');
             // RBI to batter for the run produced by their action
             if (batterId) battingTeam = addBatterStat(battingTeam, batterId, 'rbi');
@@ -210,8 +215,12 @@ export function handleExtraBaseThrow(state, action) {
         gameLog: [...state.gameLog, ...logs],
     };
 
-    // Remaining sent runners advance automatically (defense only gets ONE throw)
-    const remaining = eligible.filter(e => e.runnerId !== target.runnerId);
+    // Remaining sent runners advance automatically (defense only gets ONE throw).
+    // Exclude the home runner already credited above when the thrown-out-at-3rd
+    // path ran — otherwise their score, R, RBI, and RPI would be double counted.
+    const remaining = eligible.filter(e =>
+        e.runnerId !== target.runnerId && e.runnerId !== alreadyScoredRunnerId
+    );
     for (const runner of remaining) {
         if (runner.toBase === 'home') {
             newScore[side]++;
