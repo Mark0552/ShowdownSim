@@ -43,6 +43,7 @@ export default function GamePage({ gameId, onBack }: Props) {
     const reconnectAttemptRef = useRef(0);
     const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const pumpedUpPlayedRef = useRef(false);
+    const starterOffsetSyncedRef = useRef(false);
 
     // Play "I'm pumped up" once when the game first finishes loading
     useEffect(() => {
@@ -245,6 +246,20 @@ export default function GamePage({ gameId, onBack }: Props) {
             syncSeriesStarterOffsetFromGames(gameRow.series_id).catch(console.error);
         }
     }, [gameState?.isOver, gameId, gameRow?.series_id]);
+
+    // Write series.starter_offset as soon as game 1's SP roll has resolved,
+    // so if the opponent opens game 2 before this client's game-over effect
+    // fires, they still see the correct rotation offset. Without this the
+    // offset only persists at game-over, which races with ensureNextSeriesGame.
+    useEffect(() => {
+        if (starterOffsetSyncedRef.current) return;
+        if (!gameRow?.series_id) return;
+        if ((gameRow?.game_number || 1) !== 1) return;
+        if (!gameState || gameState.phase === 'sp_roll') return;
+        if (!gameState.homeTeam?.pitcher?.assignedPosition) return;
+        starterOffsetSyncedRef.current = true;
+        syncSeriesStarterOffsetFromGames(gameRow.series_id).catch(console.error);
+    }, [gameState, gameRow?.series_id, gameRow?.game_number]);
 
     // Subscribe to series-game inserts so when the opponent creates the next
     // game, this client auto-navigates to it without requiring a click.

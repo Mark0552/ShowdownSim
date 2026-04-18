@@ -4,6 +4,7 @@
 
 import { rollD20, getRollSequence } from '../dice.js';
 import { playerHasIcon, canUseIcon, recordIconUse } from '../icons.js';
+import { gIconEligible } from '../fielding.js';
 import { addBatterStat } from '../stats.js';
 import { enterPreAtBat } from './substitutions.js';
 import { endHalfInning } from './baserunning.js';
@@ -137,7 +138,10 @@ export function resolveSteal(state, goldGloveCardId) {
 
     if (goldGloveCardId) {
         const gPlayer = fieldingTeam.lineup.find(p => p.cardId === goldGloveCardId);
-        if (gPlayer && playerHasIcon(gPlayer, 'G') && canUseIcon(fieldingTeam, gPlayer.cardId, 'G')) {
+        if (gPlayer
+            && playerHasIcon(gPlayer, 'G')
+            && canUseIcon(fieldingTeam, gPlayer.cardId, 'G')
+            && gIconEligible(gPlayer, gPlayer.assignedPosition)) {
             armTotal += 10;
             goldGloveUsed = true;
             fieldingTeam = recordIconUse(fieldingTeam, gPlayer.cardId, 'G');

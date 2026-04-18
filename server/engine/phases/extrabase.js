@@ -4,7 +4,7 @@
 
 import { rollD20, getRollSequence } from '../dice.js';
 import { playerHasIcon, canUseIcon, recordIconUse } from '../icons.js';
-import { OUTFIELD_POSITIONS } from '../fielding.js';
+import { OUTFIELD_POSITIONS, gIconEligible } from '../fielding.js';
 import { addBatterStat, addPitcherStat, updateWLTracker } from '../stats.js';
 import { advanceBatter, endHalfInning } from './baserunning.js';
 
@@ -108,11 +108,16 @@ export function handleExtraBaseThrow(state, action) {
     let ofFielding = fieldingTeam.totalOutfieldFielding;
     let goldGloveUsed = false;
 
-    // G icon — defense chooses which player's G to use (must be an outfielder for extra base throws)
+    // G icon — defense chooses which player's G to use (must be an outfielder
+    // for extra-base throws, AND on-card at their assigned position).
     if (action.goldGloveCardId) {
         const gPlayer = fieldingTeam.lineup.find(p => p.cardId === action.goldGloveCardId);
         const gPos = gPlayer ? (gPlayer.assignedPosition || '').replace(/-\d+$/, '') : '';
-        if (gPlayer && playerHasIcon(gPlayer, 'G') && canUseIcon(fieldingTeam, gPlayer.cardId, 'G') && OUTFIELD_POSITIONS.includes(gPos)) {
+        if (gPlayer
+            && playerHasIcon(gPlayer, 'G')
+            && canUseIcon(fieldingTeam, gPlayer.cardId, 'G')
+            && OUTFIELD_POSITIONS.includes(gPos)
+            && gIconEligible(gPlayer, gPlayer.assignedPosition)) {
             ofFielding += 10;
             goldGloveUsed = true;
             fieldingTeam = recordIconUse(fieldingTeam, gPlayer.cardId, 'G');
@@ -159,19 +164,22 @@ export function handleExtraBaseThrow(state, action) {
     };
 
     let battingTeam = { ...state[battingSide] };
+    const batterId = battingTeam.lineup[battingTeam.currentBatterIndex]?.cardId;
+    // Guard so SF is credited at most once per play (physically there's only
+    // ever one tag-up from 3rd on a given FB, but belt-and-suspenders).
+    let sfCreditedThisPlay = false;
     if (safe && target.toBase === 'home') {
         const rpi = [...battingTeam.runsPerInning];
         while (rpi.length < state.inning) rpi.push(0);
         rpi[state.inning - 1] = (rpi[state.inning - 1] || 0) + 1;
         battingTeam.runsPerInning = rpi;
         battingTeam = addBatterStat(battingTeam, target.runnerId, 'r');
-        // SF: runner scores from 3rd on a fly ball tag-up
-        if (state.lastOutcome === 'FB' && target.fromBase === 'third') {
-            const batterId = battingTeam.lineup[battingTeam.currentBatterIndex]?.cardId;
-            if (batterId) {
-                battingTeam = addBatterStat(battingTeam, batterId, 'sf');
-                battingTeam = addBatterStat(battingTeam, batterId, 'rbi');
-            }
+        // RBI for any runner scored by the batter's extra-base play
+        if (batterId) battingTeam = addBatterStat(battingTeam, batterId, 'rbi');
+        // SF: runner scores from 3rd on a fly ball tag-up (at most one per FB)
+        if (state.lastOutcome === 'FB' && target.fromBase === 'third' && !sfCreditedThisPlay) {
+            if (batterId) battingTeam = addBatterStat(battingTeam, batterId, 'sf');
+            sfCreditedThisPlay = true;
         }
     }
 
@@ -180,6 +188,8 @@ export function handleExtraBaseThrow(state, action) {
         const otherHomeRunner = eligible.find(e => e.runnerId !== target.runnerId && e.toBase === 'home');
         if (otherHomeRunner) {
             battingTeam = addBatterStat(battingTeam, otherHomeRunner.runnerId, 'r');
+            // RBI to batter for the run produced by their action
+            if (batterId) battingTeam = addBatterStat(battingTeam, batterId, 'rbi');
             const rpi2 = [...battingTeam.runsPerInning];
             while (rpi2.length < state.inning) rpi2.push(0);
             rpi2[state.inning - 1] = (rpi2[state.inning - 1] || 0) + 1;
@@ -208,6 +218,13 @@ export function handleExtraBaseThrow(state, action) {
             bases[runner.fromBase] = null;
             logs.push(`${runner.runnerName} scores (no throw)`);
             battingTeam = addBatterStat(battingTeam, runner.runnerId, 'r');
+            // RBI to batter for any run produced by their at-bat / extra-base play
+            if (batterId) battingTeam = addBatterStat(battingTeam, batterId, 'rbi');
+            // SF: tag-up from 3rd on FB, if not already credited for this play
+            if (state.lastOutcome === 'FB' && runner.fromBase === 'third' && !sfCreditedThisPlay) {
+                if (batterId) battingTeam = addBatterStat(battingTeam, batterId, 'sf');
+                sfCreditedThisPlay = true;
+            }
             const rpi = [...battingTeam.runsPerInning];
             while (rpi.length < state.inning) rpi.push(0);
             rpi[state.inning - 1] = (rpi[state.inning - 1] || 0) + 1;
@@ -268,16 +285,18 @@ export function handleSkipExtraBase(state) {
         battingTeam.runsPerInning = rpi;
     }
 
-    // Record R stat for runners who scored, and SF for fly ball tag-ups
+    // Record R stat for runners who scored + RBI for the batter; SF if FB tag-up.
+    const batterIdSkip = battingTeam.lineup[battingTeam.currentBatterIndex]?.cardId;
+    let sfCreditedSkip = false;
     for (const runner of eligible) {
         if (runner.toBase === 'home') {
             battingTeam = addBatterStat(battingTeam, runner.runnerId, 'r');
-            if (state.lastOutcome === 'FB' && runner.fromBase === 'third') {
-                const batterId = battingTeam.lineup[battingTeam.currentBatterIndex]?.cardId;
-                if (batterId) {
-                    battingTeam = addBatterStat(battingTeam, batterId, 'sf');
-                    battingTeam = addBatterStat(battingTeam, batterId, 'rbi');
-                }
+            // RBI for every run the batter caused (matches applyResult convention)
+            if (batterIdSkip) battingTeam = addBatterStat(battingTeam, batterIdSkip, 'rbi');
+            // SF at most once per play
+            if (state.lastOutcome === 'FB' && runner.fromBase === 'third' && !sfCreditedSkip) {
+                if (batterIdSkip) battingTeam = addBatterStat(battingTeam, batterIdSkip, 'sf');
+                sfCreditedSkip = true;
             }
         }
     }

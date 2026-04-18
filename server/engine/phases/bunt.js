@@ -50,10 +50,13 @@ export function handleSacBunt(state) {
     rpi[state.inning - 1] = (rpi[state.inning - 1] || 0) + runs;
     battingTeam.runsPerInning = rpi;
 
-    // Sac bunts count as PA and SH but not AB
+    // Successful sac bunt: PA + SH (no AB).
+    // Failed bunt (PU): PA + AB (official at-bat, no sacrifice credit).
     battingTeam = addBatterStat(battingTeam, batter.cardId, 'pa');
     if (chartResult !== 'PU') {
         battingTeam = addBatterStat(battingTeam, batter.cardId, 'sh');
+    } else {
+        battingTeam = addBatterStat(battingTeam, batter.cardId, 'ab');
     }
 
     let fieldingTeamUpdated = { ...state[fieldingSide] };

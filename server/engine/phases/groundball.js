@@ -4,7 +4,7 @@
 
 import { rollD20, getRollSequence } from '../dice.js';
 import { findAllGPlayers, recordIconUse, canUseIcon, playerHasIcon } from '../icons.js';
-import { INFIELD_POSITIONS } from '../fielding.js';
+import { INFIELD_POSITIONS, gIconEligible } from '../fielding.js';
 import { addBatterStat, addPitcherStat, updateWLTracker } from '../stats.js';
 import { advanceBatter, endHalfInning } from './baserunning.js';
 
@@ -46,9 +46,13 @@ export function handleGbDecision(state, action) {
     let goldGloveUsed = false;
 
     if (goldGloveCardId) {
-        // Verify the specific player can use G
+        // Verify: player has G icon, hasn't used it, AND is on-card at their
+        // current assigned position (out-of-position players can't use G).
         const gPlayer = fieldingTeam.lineup.find(p => p.cardId === goldGloveCardId);
-        if (gPlayer && playerHasIcon(gPlayer, 'G') && canUseIcon(fieldingTeam, gPlayer.cardId, 'G')) {
+        if (gPlayer
+            && playerHasIcon(gPlayer, 'G')
+            && canUseIcon(fieldingTeam, gPlayer.cardId, 'G')
+            && gIconEligible(gPlayer, gPlayer.assignedPosition)) {
             ifFielding += 10;
             goldGloveUsed = true;
             fieldingTeam = recordIconUse(fieldingTeam, gPlayer.cardId, 'G');

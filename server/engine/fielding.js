@@ -100,7 +100,10 @@ export function fieldingPenalty(card, position) {
 
     // 1B special case (matches existing rulebook handling)
     if (pos === '1B') {
-        const isPureDH = (card.positions || []).every(p => p.position === 'DH');
+        // Empty/missing positions array is not a "pure DH" — fall back to the
+        // -1 position-player penalty so a card with no data doesn't get -2.
+        const positions = card.positions || [];
+        const isPureDH = positions.length > 0 && positions.every(p => p.position === 'DH');
         const penalty = isPureDH ? -2 : -1;
         return { penalty, valid: true, reason: isPureDH ? 'DH at 1B' : 'position-player at 1B' };
     }
