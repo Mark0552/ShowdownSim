@@ -132,9 +132,13 @@ function RunnerAnimOverlay({ anim, baseCoords, baseAnimMs }: {
             const p1 = positions[segIdx + 1];
             setPos({ x: p0.x + (p1.x - p0.x) * eased, y: p0.y + (p1.y - p0.y) * eased });
 
-            // Fade out on last 30% if scoring or out
-            if ((scoring || isOut) && progress > 0.7) {
+            // Out animations fade out on last 30% (visual feedback for the throw).
+            // Scoring runners disappear instantly when they touch home — no fade.
+            if (isOut && progress > 0.7) {
                 setOpacity(1 - (progress - 0.7) / 0.3);
+            }
+            if (scoring && progress >= 1) {
+                setOpacity(0);
             }
 
             if (progress < 1) raf = requestAnimationFrame(tick);
@@ -413,10 +417,10 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
 
     // Freeze the running game log while dice is animating or icon-soft-freeze
     // is active so new log entries don't spoil the result before the dice
-    // settles. Mirrors the toast logic.
+    // settles. Uses animatingRef (set synchronously in the same render the
+    // freeze begins) instead of React state which lags one render behind.
     const displayedLogLenRef = useRef(state.gameLog?.length || 0);
-    const inSoftFreeze = diceAnimating || iconFreezeActive;
-    if (!inSoftFreeze) {
+    if (!animatingRef.current) {
         displayedLogLenRef.current = state.gameLog?.length || 0;
     }
     const displayedGameLog = (state.gameLog || []).slice(0, displayedLogLenRef.current);

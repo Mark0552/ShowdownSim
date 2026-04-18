@@ -26,11 +26,22 @@ interface Props {
 
 type SubTab = 'PH' | 'PR' | 'PC' | 'DS';
 
-const ALL_TABS: { key: SubTab; label: string; phases: GameState['phase'][] }[] = [
-    { key: 'PH', label: 'Pinch Hit', phases: ['pre_atbat'] },
-    { key: 'PR', label: 'Pinch Run', phases: ['pre_atbat'] },
-    { key: 'PC', label: 'Pitching Change', phases: ['defense_sub'] },
-    { key: 'DS', label: 'Defensive Sub', phases: ['pre_atbat', 'defense_sub'] },
+interface TabDef {
+    key: SubTab;
+    label: string;
+    phases: GameState['phase'][];
+    /** Tooltip shown when this tab is disabled (i.e., not allowed in current phase). */
+    unavailableReason: string;
+}
+const ALL_TABS: TabDef[] = [
+    { key: 'PH', label: 'Pinch Hit', phases: ['pre_atbat'],
+        unavailableReason: 'Pinch hits are made by the offense before the pitcher rolls.' },
+    { key: 'PR', label: 'Pinch Run', phases: ['pre_atbat'],
+        unavailableReason: 'Pinch running is done by the offense before the pitcher rolls.' },
+    { key: 'PC', label: 'Pitching Change', phases: ['defense_sub'],
+        unavailableReason: 'Pitching changes are made by the defense before the pitcher rolls.' },
+    { key: 'DS', label: 'Defensive Sub', phases: ['pre_atbat', 'defense_sub'],
+        unavailableReason: 'Defensive substitutions are made before the pitcher rolls.' },
 ];
 
 function renderPenalty(penalty: number, valid: boolean): { text: string; cls: string } {
@@ -48,8 +59,9 @@ function asCard(p: PlayerSlot) {
 export default function SubstitutionModal({ state, myRole, onAction, onClose }: Props) {
     const myTeam: TeamState = myRole === 'home' ? state.homeTeam : state.awayTeam;
     const phase = state.phase;
-    const availableTabs = ALL_TABS.filter(t => t.phases.includes(phase));
-    const [tab, setTab] = useState<SubTab>(() => availableTabs[0]?.key || 'PH');
+    const isTabAvailable = (t: TabDef) => t.phases.includes(phase);
+    const firstAvailable = ALL_TABS.find(isTabAvailable);
+    const [tab, setTab] = useState<SubTab>(() => firstAvailable?.key || 'PH');
 
     // Card lookup for hover tooltip — cached load
     const [cardsList, setCardsList] = useState<Card[]>([]);
@@ -82,11 +94,20 @@ export default function SubstitutionModal({ state, myRole, onAction, onClose }: 
                 <button className="sm-close" onClick={onClose}>CLOSE</button>
             </div>
             <div className="sm-tabs">
-                {availableTabs.map(t => (
-                    <button key={t.key} className={`sm-tab ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}>
-                        {t.label}
-                    </button>
-                ))}
+                {ALL_TABS.map(t => {
+                    const available = isTabAvailable(t);
+                    return (
+                        <button
+                            key={t.key}
+                            className={`sm-tab ${tab === t.key ? 'active' : ''}`}
+                            onClick={() => available && setTab(t.key)}
+                            disabled={!available}
+                            title={available ? undefined : t.unavailableReason}
+                        >
+                            {t.label}
+                        </button>
+                    );
+                })}
             </div>
             <div className="sm-body">
                 {tab === 'PH' && <PinchHitTab team={myTeam} onAction={onAction} onClose={onClose} {...tabProps} />}

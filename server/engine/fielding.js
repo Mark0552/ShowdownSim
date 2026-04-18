@@ -151,13 +151,21 @@ export function buildFieldingAt(team) {
     return at;
 }
 
-/** Build roster: cardId → player object across all sources. */
+/** Build roster: cardId → player object across all sources, INCLUDING players
+ *  who've already been substituted out (preserved in team.archivedPlayers).
+ *  This is what the box score uses to look up names/images for stat rows. */
 export function buildRoster(team) {
     const roster = {};
     if (team.pitcher) roster[team.pitcher.cardId] = team.pitcher;
     for (const p of team.lineup || []) roster[p.cardId] = p;
     for (const p of team.bench || []) roster[p.cardId] = p;
     for (const p of team.bullpen || []) roster[p.cardId] = p;
+    if (team.archivedPlayers) {
+        for (const cardId of Object.keys(team.archivedPlayers)) {
+            // archivedPlayers fills in only for players no longer present elsewhere
+            if (!roster[cardId]) roster[cardId] = team.archivedPlayers[cardId];
+        }
+    }
     return roster;
 }
 

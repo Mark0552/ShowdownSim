@@ -45,10 +45,33 @@ export default function BoxScore({ awayTeam, homeTeam, awayName, homeName, onCar
 
     const renderBattingTable = (team: TeamState, label: string) => {
         const stats = team.batterStats || {};
-        const rows = team.lineup.map((p, i) => {
-            const s: BatterStats = { ...emptyBat, ...(stats[p.cardId] || {}) };
-            return { p, s, i };
-        }).filter(r => r.s.pa > 0 || r.s.ab > 0 || r.s.bb > 0); // skip players who didn't bat
+        // Look up player by cardId from the current lineup, the bench, or
+        // archivedPlayers (subbed-out players whose full data we preserved).
+        const archived = (team as any).archivedPlayers || {};
+        const findPlayer = (cardId: string) => {
+            return team.lineup.find(p => p.cardId === cardId)
+                || (team.bench || []).find(p => p.cardId === cardId)
+                || archived[cardId]
+                || null;
+        };
+        // Iterate the union of (current lineup) + (anyone with stats). Current
+        // lineup keeps the batting order; subbed-out players (no longer in
+        // lineup) get appended after.
+        const orderedIds: string[] = [];
+        for (const p of team.lineup) orderedIds.push(p.cardId);
+        for (const cardId of Object.keys(stats)) {
+            if (!orderedIds.includes(cardId)) orderedIds.push(cardId);
+        }
+        const rows = orderedIds
+            .map((cardId, i) => {
+                const p = findPlayer(cardId);
+                if (!p) return null;
+                const s: BatterStats = { ...emptyBat, ...(stats[cardId] || {}) };
+                return { p, s, i };
+            })
+            .filter((r): r is { p: typeof team.lineup[number]; s: BatterStats; i: number } => r !== null)
+            // Skip players who never appeared (no PA, no SB/CS, no R)
+            .filter(r => r.s.pa > 0 || r.s.ab > 0 || r.s.bb > 0 || r.s.sb > 0 || r.s.cs > 0 || r.s.r > 0);
 
         const totals = rows.reduce((a, r) => {
             const s = r.s;

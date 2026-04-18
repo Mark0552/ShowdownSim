@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { GameState, GameAction } from '../engine/gameEngine';
-import { getGame, getMyRole, getSeries, createNextSeriesGame, updateSeries, getSeriesGames } from '../lib/games';
+import { getGame, getMyRole, getSeries, ensureNextSeriesGame, syncSeriesWinsFromGames, subscribeToSeriesGames } from '../lib/games';
 import { getLineups } from '../lib/lineups';
 import { saveGameStats } from '../lib/stats';
 import { getUser } from '../lib/auth';
@@ -185,34 +185,35 @@ export default function GamePage({ gameId, onBack }: Props) {
         };
     }, [gameId, connectWs]);
 
-    // Save stats when game ends + bump series win count for the winner
-    const seriesWinSavedRef = useRef(false);
+    // Save stats + sync series wins when the game ends. Both are idempotent —
+    // syncSeriesWinsFromGames recomputes from the games table so revisiting
+    // this page after the game ended doesn't double-count.
     useEffect(() => {
         if (!gameState?.isOver) return;
         if (!statsSavedRef.current) {
             statsSavedRef.current = true;
             saveGameStats(gameId, gameRow?.series_id || null, gameState).catch(console.error);
         }
-        // Bump series win count for the winning team
-        if (gameRow?.series_id && seriesRow && !seriesWinSavedRef.current && gameState.winnerId) {
-            seriesWinSavedRef.current = true;
-            const winnerIsHome = gameState.winnerId === gameState.homeTeam.userId;
-            const newHomeWins = (seriesRow.home_wins || 0) + (winnerIsHome ? 1 : 0);
-            const newAwayWins = (seriesRow.away_wins || 0) + (winnerIsHome ? 0 : 1);
-            const seriesDecided = Math.max(newHomeWins, newAwayWins) > seriesRow.best_of / 2;
-            const updates: Partial<import('../types/game').SeriesRow> = {
-                home_wins: newHomeWins,
-                away_wins: newAwayWins,
-            };
-            if (seriesDecided) {
-                updates.status = 'finished';
-                updates.winner_user_id = winnerIsHome ? gameState.homeTeam.userId : gameState.awayTeam.userId;
-            }
-            updateSeries(gameRow.series_id, updates)
-                .then(() => setSeriesRow({ ...seriesRow, ...updates } as import('../types/game').SeriesRow))
+        if (gameRow?.series_id) {
+            syncSeriesWinsFromGames(gameRow.series_id)
+                .then(setSeriesRow)
                 .catch(console.error);
         }
-    }, [gameState?.isOver, gameId, gameRow?.series_id, seriesRow, gameState]);
+    }, [gameState?.isOver, gameId, gameRow?.series_id]);
+
+    // Subscribe to series-game inserts so when the opponent creates the next
+    // game, this client auto-navigates to it without requiring a click.
+    useEffect(() => {
+        if (!gameRow?.series_id || !gameState?.isOver) return;
+        const myGameNumber = gameRow.game_number || 1;
+        const unsub = subscribeToSeriesGames(gameRow.series_id, (newGame) => {
+            if (newGame.game_number === myGameNumber + 1) {
+                window.location.hash = `game/${newGame.id}`;
+                window.location.reload();
+            }
+        });
+        return unsub;
+    }, [gameRow?.series_id, gameRow?.game_number, gameState?.isOver]);
 
     const handleAction = useCallback((action: GameAction) => {
         if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -220,23 +221,23 @@ export default function GamePage({ gameId, onBack }: Props) {
         }
     }, []);
 
+    // Either client can click "Next Game". ensureNextSeriesGame is race-safe:
+    // if the opponent created it first, this returns the existing row.
     const handleNextSeriesGame = useCallback(async () => {
-        if (!gameRow?.series_id || !seriesRow || !gameState) return;
+        if (!gameRow?.series_id) return;
         try {
-            const games = await getSeriesGames(gameRow.series_id);
-            const nextNumber = (games[games.length - 1]?.game_number || 1) + 1;
-            const next = await createNextSeriesGame(
-                gameRow.series_id, nextNumber,
+            const next = await ensureNextSeriesGame(
+                gameRow.series_id,
+                (gameRow.game_number || 1) + 1,
                 gameRow.home_user_id, gameRow.away_user_id || '',
                 gameRow.home_user_email || '', gameRow.away_user_email || '',
             );
-            // Navigate to the new game via hash routing
             window.location.hash = `game/${next.id}`;
             window.location.reload();
         } catch (e) {
-            console.error('Failed to create next series game', e);
+            console.error('Failed to advance to next series game', e);
         }
-    }, [gameRow, seriesRow, gameState]);
+    }, [gameRow]);
 
     if (error) {
         return (
@@ -274,7 +275,7 @@ export default function GamePage({ gameId, onBack }: Props) {
                     homeWins: seriesRow.home_wins || 0,
                     awayWins: seriesRow.away_wins || 0,
                 } : undefined}
-                onNextSeriesGame={seriesRow && myRole === 'home' ? handleNextSeriesGame : undefined}
+                onNextSeriesGame={seriesRow ? handleNextSeriesGame : undefined}
             />
             {opponentDisconnected && !gameState.isOver && (
                 <div style={{

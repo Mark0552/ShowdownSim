@@ -266,3 +266,63 @@ export async function createNextSeriesGame(seriesId: string, gameNumber: number,
     if (error) throw error;
     return data;
 }
+
+/**
+ * Idempotently sync a series' win counts from the actual completed-game rows.
+ * Safe to call any number of times — uses the games table as source of truth so
+ * page revisits / reloads don't double-count.
+ */
+export async function syncSeriesWinsFromGames(seriesId: string): Promise<SeriesRow> {
+    const games = await getSeriesGames(seriesId);
+    const series = await getSeries(seriesId);
+    const homeWins = games.filter(g => g.status === 'finished' && g.winner_user_id === g.home_user_id).length;
+    const awayWins = games.filter(g => g.status === 'finished' && g.winner_user_id === g.away_user_id).length;
+    const decided = Math.max(homeWins, awayWins) > series.best_of / 2;
+    const updates: Partial<SeriesRow> = { home_wins: homeWins, away_wins: awayWins };
+    if (decided && series.status !== 'finished') {
+        updates.status = 'finished';
+        updates.winner_user_id = homeWins > awayWins ? series.home_user_id : (series.away_user_id || null);
+    }
+    if (homeWins !== series.home_wins || awayWins !== series.away_wins || (decided && series.status !== 'finished')) {
+        await updateSeries(seriesId, updates);
+    }
+    return { ...series, ...updates } as SeriesRow;
+}
+
+/**
+ * Create the next game in a series, or return the existing one if it's
+ * already been created (race-safe). Either client can call this.
+ */
+export async function ensureNextSeriesGame(
+    seriesId: string,
+    gameNumber: number,
+    homeUserId: string,
+    awayUserId: string,
+    homeEmail: string,
+    awayEmail: string,
+): Promise<GameRow> {
+    const games = await getSeriesGames(seriesId);
+    const existing = games.find(g => g.game_number === gameNumber);
+    if (existing) return existing;
+    try {
+        return await createNextSeriesGame(seriesId, gameNumber, homeUserId, awayUserId, homeEmail, awayEmail);
+    } catch (e) {
+        // Race: opponent created it between our check and insert. Re-query.
+        const refetched = await getSeriesGames(seriesId);
+        const found = refetched.find(g => g.game_number === gameNumber);
+        if (found) return found;
+        throw e;
+    }
+}
+
+/** Subscribe to new games being added to a series — used so when one player
+ *  creates the next game, the other auto-detects and can navigate. */
+export function subscribeToSeriesGames(seriesId: string, onChange: (game: GameRow) => void) {
+    const channel = supabase
+        .channel(`series-games-${seriesId}`)
+        .on('postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'games', filter: `series_id=eq.${seriesId}` },
+            (payload) => onChange(payload.new as GameRow))
+        .subscribe();
+    return () => { supabase.removeChannel(channel); };
+}

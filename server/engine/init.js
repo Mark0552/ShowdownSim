@@ -254,6 +254,10 @@ function buildTeam(data, userId) {
         inningsPitched: 0, pitcherEntryInning: 1,
         totalInfieldFielding, totalOutfieldFielding, catcherArm,
         batterStats, pitcherStats,
+        // Archive of players who've been substituted out — preserves their
+        // full PlayerSlot data so the box score can still display their stats
+        // and tooltip after they've left the active lineup/bullpen.
+        archivedPlayers: {},
     };
     // Phase 1 (substitution refactor): defensive alignment + roster lookup
     // derived from the lineup. Will be kept in sync after substitutions and

@@ -12,6 +12,12 @@ function syncAlignment(team) {
     team.roster = buildRoster(team);
 }
 
+/** Archive a substituted-out player so the box score can still show their stats. */
+function archivePlayer(team, player) {
+    if (!player) return;
+    team.archivedPlayers = { ...(team.archivedPlayers || {}), [player.cardId]: player };
+}
+
 /**
  * Backup-player entry rule (DH-only game, no PH-for-pitcher exception):
  *   Home backup may enter starting bottom of the 6th (or any inning ≥ 7).
@@ -62,6 +68,7 @@ export function handlePinchHit(state, action) {
     team.lineup = lineup;
     team.bench = bench;
     team.usedPlayers = [...team.usedPlayers, oldPlayer.cardId];
+    archivePlayer(team, oldPlayer);
 
     const { totalInfieldFielding, totalOutfieldFielding, catcherArm } = computeFieldingTotals(lineup);
     team.totalInfieldFielding = totalInfieldFielding;
@@ -111,6 +118,7 @@ export function handlePitchingChange(state, action) {
     team.pitcher = newPitcher;
     team.bullpen = bullpen;
     team.usedPlayers = [...team.usedPlayers, oldPitcher.cardId];
+    archivePlayer(team, oldPitcher);
     team.inningsPitched = 0;
     team.pitcherEntryInning = state.inning;
     team.outsRecordedByCurrentPitcher = 0;
@@ -170,9 +178,11 @@ export function handlePinchRun(state, action) {
     const lineup = [...team.lineup];
     const lineupIdx = lineup.findIndex(p => p.cardId === runnerCardId);
     let oldPlayerName = runnerCardId;
+    let oldPlayerForArchive = null;
     if (lineupIdx >= 0) {
         const oldPlayer = lineup[lineupIdx];
         oldPlayerName = oldPlayer.name;
+        oldPlayerForArchive = oldPlayer;
         // New runner inherits the lineup spot AND the original's defensive position.
         newRunner.assignedPosition = oldPlayer.assignedPosition;
         const slot = oldPlayer.assignedPosition || '';
@@ -188,6 +198,7 @@ export function handlePinchRun(state, action) {
     team.lineup = lineup;
     team.bench = bench;
     team.usedPlayers = [...team.usedPlayers, runnerCardId];
+    if (oldPlayerForArchive) archivePlayer(team, oldPlayerForArchive);
 
     const newBases = { ...state.bases, [base]: newRunner.cardId };
 
@@ -281,6 +292,7 @@ export function handleDefensiveSub(state, action) {
     team.lineup = lineup;
     team.bench = bench;
     team.usedPlayers = [...team.usedPlayers, oldPlayer.cardId];
+    archivePlayer(team, oldPlayer);
 
     const { totalInfieldFielding, totalOutfieldFielding, catcherArm } = computeFieldingTotals(lineup);
     team.totalInfieldFielding = totalInfieldFielding;

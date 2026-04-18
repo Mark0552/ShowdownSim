@@ -93,7 +93,7 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                         if (item.type === 'pinch') return (
                             <g key="pinch" className="roll-button" onClick={() => onShowSubPanel()} cursor="pointer">
                                 <rect x={x} y={ROW1} width={item.width} height={ROW1_H} rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
-                                <text x={x + item.width / 2} y={ROW1 + 32} textAnchor="middle" fontSize="22" fill="#002" fontWeight="normal" fontFamily="Impact">MAKE SUBSTITUTIONS</text>
+                                <text x={x + item.width / 2} y={ROW1 + 32} textAnchor="middle" fontSize="22" fill="#002" fontWeight="normal" fontFamily="Impact">SUBSTITUTIONS</text>
                                 <text x={x + item.width / 2} y={ROW1 + 58} textAnchor="middle" fontSize="15" fill="rgba(0,0,0,0.7)" fontFamily="Arial">Pinch hit, pinch run, defensive sub</text>
                             </g>
                         );
@@ -181,7 +181,7 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                             case 'change': return (
                                 <g key="change" className="roll-button" onClick={() => onShowSubPanel()} cursor="pointer">
                                     <rect x={x} y={y} width={item.width} height={ROW1_H} rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
-                                    <text x={x + item.width / 2} y={y + 32} textAnchor="middle" fontSize="22" fill="#002" fontWeight="normal" fontFamily="Impact">MAKE SUBSTITUTIONS</text>
+                                    <text x={x + item.width / 2} y={y + 32} textAnchor="middle" fontSize="22" fill="#002" fontWeight="normal" fontFamily="Impact">SUBSTITUTIONS</text>
                                     <text x={x + item.width / 2} y={y + 58} textAnchor="middle" fontSize="15" fill="rgba(0,0,0,0.7)" fontFamily="Arial">Pitching change, defensive sub</text>
                                 </g>
                             );

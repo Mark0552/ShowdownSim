@@ -138,6 +138,9 @@ export interface TeamState {
     // independently of batting order (double switches, position swaps).
     fieldingAt?: { [slotKey: string]: string };  // slotKey ("P","C","1B","LF-RF-1",...) → cardId
     roster?: { [cardId: string]: PlayerSlot };
+    /** Subbed-out players' full PlayerSlot data, kept so the box score can
+     *  still show their stats and tooltip after they've left the active lineup. */
+    archivedPlayers?: { [cardId: string]: PlayerSlot };
 }
 
 // ============================================================================
