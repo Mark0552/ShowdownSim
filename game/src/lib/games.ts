@@ -268,6 +268,68 @@ export async function createNextSeriesGame(seriesId: string, gameNumber: number,
 }
 
 /**
+ * Idempotently sync a series' starter_offset from the actual game-1 state.
+ * Reads game 1's home-team active pitcher, parses "Starter-N" from its
+ * assignedPosition, and writes that N as the series' starter_offset so the
+ * engine's rotation formula (((offset + gameNum - 2) % 4) + 1) cycles
+ * starting from the next slot. Safe to call any time — only writes when
+ * game 1 has finished its SP roll and the value differs from what's stored.
+ */
+export async function syncSeriesStarterOffsetFromGames(seriesId: string): Promise<void> {
+    const games = await getSeriesGames(seriesId);
+    const game1 = games.find(g => g.game_number === 1);
+    if (!game1?.state?.homeTeam?.pitcher?.assignedPosition) return;
+    const pos = String(game1.state.homeTeam.pitcher.assignedPosition);
+    const m = pos.match(/^Starter-(\d+)$/);
+    if (!m) return;
+    const offset = parseInt(m[1], 10);
+    if (!offset || offset < 1 || offset > 4) return;
+    const series = await getSeries(seriesId);
+    if (series.starter_offset === offset) return; // already in sync
+    await updateSeries(seriesId, { starter_offset: offset } as Partial<SeriesRow>);
+}
+
+/**
+ * Idempotently sync a series' reliever_history from completed-game rows.
+ * For each finished game, find every non-Starter pitcher who recorded any
+ * batters faced (bf > 0), and add that game_number to their list. Looks
+ * across active pitcher + bullpen + archivedPlayers (subbed-out pitchers
+ * still count). Safe to re-run.
+ */
+export async function syncSeriesRelieverHistoryFromGames(seriesId: string): Promise<void> {
+    const games = await getSeriesGames(seriesId);
+    const finished = games.filter(g => g.status === 'finished' && g.state).sort((a, b) => a.game_number - b.game_number);
+    const history: { home: Record<string, number[]>; away: Record<string, number[]> } = { home: {}, away: {} };
+
+    for (const game of finished) {
+        for (const side of ['home', 'away'] as const) {
+            const team = game.state[`${side}Team`];
+            if (!team) continue;
+            const pitcherStats = team.pitcherStats || {};
+            // Collect all pitchers we know about: active + bullpen + archived
+            const allPitchers: any[] = [];
+            if (team.pitcher) allPitchers.push(team.pitcher);
+            for (const p of team.bullpen || []) allPitchers.push(p);
+            if (team.archivedPlayers) {
+                for (const id of Object.keys(team.archivedPlayers)) {
+                    if (team.archivedPlayers[id].type === 'pitcher') allPitchers.push(team.archivedPlayers[id]);
+                }
+            }
+            for (const p of allPitchers) {
+                if (!p.cardId) continue;
+                if (p.role === 'Starter') continue;
+                const stats = pitcherStats[p.cardId];
+                if (!stats || (stats.bf || 0) === 0) continue;
+                const list = history[side][p.cardId] = history[side][p.cardId] || [];
+                if (!list.includes(game.game_number)) list.push(game.game_number);
+            }
+        }
+    }
+
+    await updateSeries(seriesId, { reliever_history: history } as Partial<SeriesRow>);
+}
+
+/**
  * Idempotently sync a series' win counts from the actual completed-game rows.
  * Safe to call any number of times — uses the games table as source of truth so
  * page revisits / reloads don't double-count.
@@ -290,8 +352,15 @@ export async function syncSeriesWinsFromGames(seriesId: string): Promise<SeriesR
 }
 
 /**
- * Create the next game in a series, or return the existing one if it's
- * already been created (race-safe). Either client can call this.
+ * Create the next game in a series, or return the existing one if already
+ * been created (race-safe). Either client can call this.
+ *
+ * Enforces the "same lineup throughout the series" rule by carrying the
+ * previous game's lineup IDs + names AND the embedded lineup data from
+ * game.state.{homeLineup,awayLineup} into the new game, and setting both
+ * ready flags to true so the lobby skips lineup-select entirely. When the
+ * clients navigate to the new game, the server finds state.homeLineup /
+ * awayLineup and initializes immediately — no "waiting for opponent".
  */
 export async function ensureNextSeriesGame(
     seriesId: string,
@@ -304,10 +373,38 @@ export async function ensureNextSeriesGame(
     const games = await getSeriesGames(seriesId);
     const existing = games.find(g => g.game_number === gameNumber);
     if (existing) return existing;
+
+    const prevGame = games.find(g => g.game_number === gameNumber - 1);
+    const prevState: any = prevGame?.state || {};
+    const initialState = {
+        homeLineup: prevState.homeLineup,
+        awayLineup: prevState.awayLineup,
+    };
+
     try {
-        return await createNextSeriesGame(seriesId, gameNumber, homeUserId, awayUserId, homeEmail, awayEmail);
+        const { data, error } = await supabase
+            .from('games')
+            .insert({
+                home_user_id: homeUserId,
+                away_user_id: awayUserId,
+                home_user_email: homeEmail,
+                away_user_email: awayEmail,
+                status: 'lineup_select',
+                series_id: seriesId,
+                game_number: gameNumber,
+                home_lineup_id: prevGame?.home_lineup_id,
+                home_lineup_name: prevGame?.home_lineup_name,
+                away_lineup_id: prevGame?.away_lineup_id,
+                away_lineup_name: prevGame?.away_lineup_name,
+                home_ready: true,
+                away_ready: true,
+                state: initialState,
+            })
+            .select()
+            .single();
+        if (error) throw error;
+        return data;
     } catch (e) {
-        // Race: opponent created it between our check and insert. Re-query.
         const refetched = await getSeriesGames(seriesId);
         const found = refetched.find(g => g.game_number === gameNumber);
         if (found) return found;

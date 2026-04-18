@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { GameState, GameAction } from '../engine/gameEngine';
 import { computeRunnerMovements } from '../engine/movements';
-import { getGame, getMyRole, getSeries, ensureNextSeriesGame, syncSeriesWinsFromGames, subscribeToSeriesGames } from '../lib/games';
+import { getGame, getMyRole, getSeries, ensureNextSeriesGame, syncSeriesWinsFromGames, syncSeriesRelieverHistoryFromGames, syncSeriesStarterOffsetFromGames, subscribeToSeriesGames, getSeriesGames } from '../lib/games';
 import { getLineups } from '../lib/lineups';
 import { saveGameStats } from '../lib/stats';
 import { getUser } from '../lib/auth';
+import { playSound } from '../lib/sounds';
 import { supabase } from '../lib/supabase';
 import type { GameRow, PlayerRole } from '../types/game';
 import GameBoard from '../components/game/GameBoard';
@@ -41,6 +42,15 @@ export default function GamePage({ gameId, onBack }: Props) {
     const mountedRef = useRef(true);
     const reconnectAttemptRef = useRef(0);
     const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const pumpedUpPlayedRef = useRef(false);
+
+    // Play "I'm pumped up" once when the game first finishes loading
+    useEffect(() => {
+        if (!loading && !pumpedUpPlayedRef.current) {
+            pumpedUpPlayedRef.current = true;
+            playSound('pumped-up');
+        }
+    }, [loading]);
 
     // Cached connection data for reconnects
     const connDataRef = useRef<{
@@ -169,10 +179,24 @@ export default function GamePage({ gameId, onBack }: Props) {
                         const series = await getSeries(game.series_id);
                         setSeriesRow(series);
                         if (game.game_number > 1) {
+                            // Prefer the stored series.starter_offset; if it
+                            // hasn't been synced yet (race with game-1 over),
+                            // derive it on the fly from game 1's pitcher.
+                            let offset = series.starter_offset;
+                            if (!offset) {
+                                try {
+                                    const allGames = await getSeriesGames(game.series_id);
+                                    const game1 = allGames.find(g => g.game_number === 1);
+                                    const pos = game1?.state?.homeTeam?.pitcher?.assignedPosition as string | undefined;
+                                    const m = pos?.match(/^Starter-(\d+)$/);
+                                    if (m) offset = parseInt(m[1], 10);
+                                } catch { /* fall through */ }
+                            }
+                            offset = offset || 1;
                             seriesContext = {
                                 gameNumber: game.game_number,
-                                homeStarterOffset: series.starter_offset || 1,
-                                awayStarterOffset: series.starter_offset || 1,
+                                homeStarterOffset: offset,
+                                awayStarterOffset: offset,
                                 relieverHistory: series.reliever_history || { home: {}, away: {} },
                             };
                         }
@@ -213,6 +237,12 @@ export default function GamePage({ gameId, onBack }: Props) {
             syncSeriesWinsFromGames(gameRow.series_id)
                 .then(setSeriesRow)
                 .catch(console.error);
+            // Update reliever history so the next game's init applies
+            // the correct stacking IP penalty for back-to-back appearances.
+            syncSeriesRelieverHistoryFromGames(gameRow.series_id).catch(console.error);
+            // Capture the SP rotation start from game 1 so subsequent games
+            // cycle through SP1→SP2→SP3→SP4 from the correct starting point.
+            syncSeriesStarterOffsetFromGames(gameRow.series_id).catch(console.error);
         }
     }, [gameState?.isOver, gameId, gameRow?.series_id]);
 

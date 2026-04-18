@@ -215,7 +215,9 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     };
     const handlePlayerLeave = () => { if (hoverTimer.current) clearTimeout(hoverTimer.current); setHoveredPlayer(null); };
 
-    const cardIp = pitcher.ip || 0;
+    // Series-fatigue ipPenalty (set on the player at init for relievers/closers
+    // who pitched in consecutive prior series games) reduces the card's base IP.
+    const cardIp = Math.max(0, (pitcher.ip || 0) - ((pitcher as any).ipPenalty || 0));
     const pitcherRuns = fieldingTeam.pitcherStats?.[pitcher.cardId]?.r || 0;
     const cyBonus = fieldingTeam.cyBonusInnings || 0;
     const effectiveIp = Math.max(0, cardIp - Math.floor(pitcherRuns / 3) + cyBonus);
@@ -405,6 +407,24 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         }
     }, [state.halfInning, state.inning, diceAnimating, state.isOver]);
 
+    // Brad Radke entrance — plays once per half-inning he's the active fielder.
+    // Fires after switch-sides (queued; FIFO) and on the very first inning after
+    // the SP roll if he's the home team's chosen starter.
+    const RADKE_CARD_ID = "Brad Radke|'04|UL|204|Twins";
+    const radkePlayedRef = useRef<string>('');
+    useEffect(() => {
+        if (diceAnimating) return;
+        if (state.isOver) return;
+        if (state.phase === 'sp_roll') return;
+        const fieldingPitcher = state.halfInning === 'top' ? state.homeTeam.pitcher : state.awayTeam.pitcher;
+        if (!fieldingPitcher || fieldingPitcher.cardId !== RADKE_CARD_ID) return;
+        const key = `${state.inning}-${state.halfInning}`;
+        if (radkePlayedRef.current === key) return;
+        radkePlayedRef.current = key;
+        // Queue after switch-sides; first inning has no transition sound to wait for
+        queueSound('radke-alert', 1500);
+    }, [state.inning, state.halfInning, state.phase, state.homeTeam.pitcher.cardId, state.awayTeam.pitcher.cardId, diceAnimating, state.isOver]);
+
     // Frozen display values for field visuals during dice animation
     const displayBases = frozenRef.current.bases;
     const displayOuts = frozenRef.current.outs;
@@ -429,7 +449,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const displayPitcher = displayFieldingTeam.pitcher || pitcher;
     // Frozen IP/fatigue display — uses frozen fielding team and inning
     const dPitcher = displayPitcher;
-    const dCardIp = dPitcher.ip || 0;
+    const dCardIp = Math.max(0, (dPitcher.ip || 0) - ((dPitcher as any).ipPenalty || 0));
     const dPitcherRuns = displayFieldingTeam.pitcherStats?.[dPitcher.cardId]?.r || 0;
     const dCyBonus = displayFieldingTeam.cyBonusInnings || 0;
     const dEffectiveIp = Math.max(0, dCardIp - Math.floor(dPitcherRuns / 3) + dCyBonus);

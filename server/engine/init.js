@@ -173,20 +173,22 @@ function selectStarter(team, spNum) {
 
 /**
  * Apply reliever fatigue for series games.
- * If a reliever/closer pitched in the last 2 consecutive games, their IP starts at 0.
+ * Stacking penalty: -1 effective IP per consecutive prior game pitched.
+ * A single game of rest fully resets — count stops at the first prior
+ * game the reliever didn't appear in. Starters are exempt.
  */
 function applyRelieverFatigue(team, history, currentGameNum) {
     if (!history) return;
     for (const p of team.bullpen) {
-        if (p.role === 'Starter') continue; // starters don't get fatigued this way
+        if (p.role === 'Starter') continue;
         const gamesPlayed = history[p.cardId] || [];
-        // Check if pitched in both of the last 2 games
-        const pitchedLastGame = gamesPlayed.includes(currentGameNum - 1);
-        const pitchedTwoGamesAgo = gamesPlayed.includes(currentGameNum - 2);
-        if (pitchedLastGame && pitchedTwoGamesAgo) {
-            // IP starts at 0 — set inningsPitched to equal their IP rating so fatigue kicks in immediately
-            // We mark this on the player so the engine knows
-            p.fatigued = true;
+        let consecutive = 0;
+        for (let g = currentGameNum - 1; g >= 1; g--) {
+            if (gamesPlayed.includes(g)) consecutive++;
+            else break; // any rest game wipes the streak
+        }
+        if (consecutive > 0) {
+            p.ipPenalty = consecutive;
         }
     }
 }

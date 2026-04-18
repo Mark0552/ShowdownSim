@@ -7,7 +7,7 @@ const BASE = import.meta.env.BASE_URL || '/';
 
 const SOUND_FILES: Record<string, string> = {
     'dice-roll': 'sounds/dice-roll.mp3',
-    'bathitball': 'sounds/bathitball.mp3',
+    'bathitball': 'sounds/baseball-hit-bat-crac.mp3',
     'ssbhomerun': 'sounds/ssbhomerun.mp3',
     'strike-three': 'sounds/strike-three.mp3',
     'glove-pop': 'sounds/glove-pop.mp3',
@@ -22,6 +22,8 @@ const SOUND_FILES: Record<string, string> = {
     'run-scored': 'sounds/taco-bell-bong-sfx.mp3',
     'rack-discipline': 'sounds/you-rack-drisipline.mp3',
     'pitch-roll-radke': 'sounds/radkepitchroll.mp3',
+    'radke-alert': 'sounds/radke-alert.mp3',
+    'pumped-up': 'sounds/i-sure-am-excited-south-park-i-sure-am-excited-im-excited-im-ready-for-it-randy-marsh-pumped-up.mp3',
 };
 
 const audioCache: Record<string, HTMLAudioElement> = {};

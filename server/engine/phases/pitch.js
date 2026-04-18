@@ -43,7 +43,9 @@ export function handlePitch(state, action) {
 
     const roll = rollD20();
     const baseControl = pitcher.control || 0;
-    const cardIp = pitcher.fatigued ? 0 : (pitcher.ip || 0);
+    // Series fatigue: subtract -1 IP per consecutive prior series game this
+    // reliever appeared in (set by applyRelieverFatigue at game init).
+    const cardIp = Math.max(0, (pitcher.ip || 0) - (pitcher.ipPenalty || 0));
     // Effective IP = card IP - floor(runs/3) + CY bonus innings
     const pitcherRuns = fieldingTeam.pitcherStats?.[pitcher.cardId]?.r || 0;
     const cyBonus = fieldingTeam.cyBonusInnings || 0;
