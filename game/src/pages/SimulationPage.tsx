@@ -137,11 +137,14 @@ function groupHittersByPosition(hitters: HitterFinal[]): Record<string, HitterFi
         out['All Hitters'].push(p);
         if (!p.Position) continue;
         const posList = p.Position.split(',').map(pp => pp.trim().split('+')[0]);
+        // Dedupe: a card like "3B+3, IF+1" shouldn't end up in 3B twice.
+        const targets = new Set<string>();
         for (const pos of posList) {
-            if (HITTER_POSITIONS.includes(pos)) out[pos].push(p);
-            if (pos === 'IF') ['1B', '2B', '3B', 'SS'].forEach(pp => out[pp].push(p));
-            if (pos === 'OF') ['LF-RF', 'CF'].forEach(pp => out[pp].push(p));
+            if (HITTER_POSITIONS.includes(pos)) targets.add(pos);
+            if (pos === 'IF') ['1B', '2B', '3B', 'SS'].forEach(pp => targets.add(pp));
+            if (pos === 'OF') ['LF-RF', 'CF'].forEach(pp => targets.add(pp));
         }
+        targets.forEach(t => out[t].push(p));
     }
     // Compute per-group regression/percentile/value so the "Value" column matches the export
     for (const pos of HITTER_POSITIONS) {

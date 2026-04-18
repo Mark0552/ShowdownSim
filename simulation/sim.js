@@ -839,11 +839,14 @@ function buildResultTabs(hittersData, pitchersData, config, prefix) {
             return;
         }
         const positionList = player.Position.split(',').map(p => p.trim().split('+')[0]);
+        // Dedupe: "3B+3, IF+1" shouldn't end up in 3B twice.
+        const targets = new Set();
         positionList.forEach(pos => {
-            if (positions.includes(pos)) playersByPosition[pos].push(player);
-            if (pos === "IF") ["1B", "2B", "3B", "SS"].forEach(p => playersByPosition[p].push(player));
-            if (pos === "OF") ["LF-RF", "CF"].forEach(p => playersByPosition[p].push(player));
+            if (positions.includes(pos)) targets.add(pos);
+            if (pos === "IF") ["1B", "2B", "3B", "SS"].forEach(p => targets.add(p));
+            if (pos === "OF") ["LF-RF", "CF"].forEach(p => targets.add(p));
         });
+        targets.forEach(t => playersByPosition[t].push(player));
         playersByPosition["All Hitters"].push(player);
     });
 
@@ -1228,11 +1231,14 @@ function exportToXlsx(hittersData, pitchersData, filename) {
             return;
         }
         const positionList = player.Position.split(',').map(p => p.trim().split('+')[0]);
+        // Dedupe: "3B+3, IF+1" shouldn't end up in 3B twice.
+        const targets = new Set();
         positionList.forEach(pos => {
-            if (positions.includes(pos)) playersByPosition[pos].push(player);
-            if (pos === "IF") ["1B", "2B", "3B", "SS"].forEach(p => playersByPosition[p].push(player));
-            if (pos === "OF") ["LF-RF", "CF"].forEach(p => playersByPosition[p].push(player));
+            if (positions.includes(pos)) targets.add(pos);
+            if (pos === "IF") ["1B", "2B", "3B", "SS"].forEach(p => targets.add(p));
+            if (pos === "OF") ["LF-RF", "CF"].forEach(p => targets.add(p));
         });
+        targets.forEach(t => playersByPosition[t].push(player));
         playersByPosition["All Hitters"].push(player);
     });
 
