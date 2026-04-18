@@ -77,7 +77,7 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 }
                 // Collect all buttons, then center them
                 const items: { type: string; width: number; data?: any }[] = [];
-                if (eligibleBench.length > 0) items.push({ type: 'pinch', width: 170 });
+                if (eligibleBench.length > 0) items.push({ type: 'pinch', width: 220 });
                 sbRunners.forEach(sb => items.push({ type: 'sb', width: 190, data: sb }));
                 if (state.bases.first && !state.bases.second) items.push({ type: 'steal2', width: 200 });
                 if (state.bases.second && !state.bases.third) items.push({ type: 'steal3', width: 200 });
@@ -94,7 +94,7 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                             <g key="pinch" className="roll-button" onClick={() => onShowSubPanel()} cursor="pointer">
                                 <rect x={x} y={ROW1} width={item.width} height={ROW1_H} rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
                                 <text x={x + item.width / 2} y={ROW1 + 32} textAnchor="middle" fontSize="22" fill="#002" fontWeight="normal" fontFamily="Impact">SUBSTITUTIONS</text>
-                                <text x={x + item.width / 2} y={ROW1 + 58} textAnchor="middle" fontSize="15" fill="rgba(0,0,0,0.7)" fontFamily="Arial">Pinch hit, pinch run, defensive sub</text>
+                                <text x={x + item.width / 2} y={ROW1 + 58} textAnchor="middle" fontSize="13" fill="rgba(0,0,0,0.7)" fontFamily="Arial">Pinch hit / pinch run / defensive</text>
                             </g>
                         );
                         if (item.type === 'sb') {
@@ -158,7 +158,7 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 // Row 1: pitcher change options (if any)
                 // Row 2: IBB | ROLL PITCH (+ 20 option) — always shown
                 const row1Items: { type: string; width: number }[] = [];
-                if (canChangePitcher) row1Items.push({ type: 'change', width: 190 });
+                if (canChangePitcher) row1Items.push({ type: 'change', width: 220 });
                 if (hasRP) row1Items.push({ type: 'rp', width: 190 });
 
                 const row2Items: { type: string; width: number }[] = [];
@@ -182,7 +182,7 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                                 <g key="change" className="roll-button" onClick={() => onShowSubPanel()} cursor="pointer">
                                     <rect x={x} y={y} width={item.width} height={ROW1_H} rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
                                     <text x={x + item.width / 2} y={y + 32} textAnchor="middle" fontSize="22" fill="#002" fontWeight="normal" fontFamily="Impact">SUBSTITUTIONS</text>
-                                    <text x={x + item.width / 2} y={y + 58} textAnchor="middle" fontSize="15" fill="rgba(0,0,0,0.7)" fontFamily="Arial">Pitching change, defensive sub</text>
+                                    <text x={x + item.width / 2} y={y + 58} textAnchor="middle" fontSize="13" fill="rgba(0,0,0,0.7)" fontFamily="Arial">Pitching change / defensive sub</text>
                                 </g>
                             );
                             case 'rp': return (

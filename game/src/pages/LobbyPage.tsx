@@ -165,6 +165,13 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
     };
 
     const handleResumeGame = (game: GameRow) => {
+        // Series games 2+ are pre-populated with both lineups + both ready=true
+        // by ensureNextSeriesGame. Skip the lineup-select UI in that case and
+        // go straight into the game.
+        if (game.status === 'lineup_select' && game.home_ready && game.away_ready) {
+            onGameStart(game.id);
+            return;
+        }
         if (game.status === 'lineup_select') {
             setActiveGame(game);
         } else if (game.status === 'in_progress') {

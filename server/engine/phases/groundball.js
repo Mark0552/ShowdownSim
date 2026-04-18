@@ -165,20 +165,39 @@ export function handleGbDecision(state, action) {
     rpi[state.inning - 1] = (rpi[state.inning - 1] || 0) + runs;
     battingTeam.runsPerInning = rpi;
 
-    // Record R stat for runners who scored (only if runs actually counted)
+    // Record PA + AB for the batter (GB always counts as an at-bat).
+    // applyResult bailed early into gb_decision before reaching its own stat
+    // block, so we do it here when the decision resolves.
+    battingTeam = addBatterStat(battingTeam, batter.cardId, 'pa');
+    battingTeam = addBatterStat(battingTeam, batter.cardId, 'ab');
+    // Infield-single hit credit: 'hold' path where the batter beat the throw
+    // and is now on 1st. FC outcomes (force_home, DP-avoided) leave the
+    // batter on 1st but are scored as fielder's choice — no hit.
+    const batterSafeAtFirst = bases.first === batter.cardId;
+    const isInfieldSingle = choice === 'hold' && batterSafeAtFirst;
+    if (isInfieldSingle) {
+        battingTeam = addBatterStat(battingTeam, batter.cardId, 'h');
+        battingTeam = addBatterStat(battingTeam, batter.cardId, 'tb', 1);
+    }
+    // Record R for runners who scored + RBI for the batter (matches the
+    // convention used by applyResult in baserunning.js).
     if (runs > 0) {
         for (const runnerId of runnersScored) {
             battingTeam = addBatterStat(battingTeam, runnerId, 'r');
         }
+        battingTeam = addBatterStat(battingTeam, batter.cardId, 'rbi', runs);
     }
     // GIDP stat for batter when double play succeeds
     if (dpSucceeded) {
         battingTeam = addBatterStat(battingTeam, batter.cardId, 'gidp');
     }
 
-    // Credit pitcher with runs allowed during GB decision
+    // Credit pitcher with BF (batters faced). H if the batter got a hit.
+    // R for any runs allowed during this GB decision.
+    const pitcherId = fieldingTeam.pitcher.cardId;
+    fieldingTeam = addPitcherStat(fieldingTeam, pitcherId, 'bf');
+    if (isInfieldSingle) fieldingTeam = addPitcherStat(fieldingTeam, pitcherId, 'h');
     if (runs > 0) {
-        const pitcherId = fieldingTeam.pitcher.cardId;
         fieldingTeam = addPitcherStat(fieldingTeam, pitcherId, 'r', runs);
     }
 
