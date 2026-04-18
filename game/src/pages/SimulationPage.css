@@ -271,6 +271,32 @@
     background: rgba(212, 160, 24, 0.15);
 }
 
+.sim-th-sortable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.sim-th-active {
+    color: #fff;
+    background: rgba(212, 160, 24, 0.25);
+}
+
+.sim-name-cell {
+    cursor: pointer;
+}
+
+.sim-card-hover-img {
+    position: fixed;
+    width: 251px;
+    height: 350px;
+    z-index: 9999;
+    pointer-events: none;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.7);
+    background: var(--bg-secondary);
+}
+
 .sim-table td {
     padding: 3px 4px;
     border-bottom: 1px solid var(--border);

@@ -95,6 +95,24 @@ const PITCHER_VIEW_COLS: ViewCol<PitcherFinal>[] = [
     { key: 'ryUsed', label: 'RY', decimals: 0, desc: 'RY icon uses — +3 pitch bonuses applied (once per 27 outs, Enhanced mode only).' },
 ];
 
+function sortRows<T extends Record<string, any>>(rows: T[], key: keyof T, dir: 'asc' | 'desc'): T[] {
+    const mult = dir === 'desc' ? -1 : 1;
+    const copy = [...rows];
+    copy.sort((a, b) => {
+        const av = a[key];
+        const bv = b[key];
+        // null/undefined always sort to the bottom regardless of direction
+        const aNull = av === null || av === undefined || (typeof av === 'number' && Number.isNaN(av));
+        const bNull = bv === null || bv === undefined || (typeof bv === 'number' && Number.isNaN(bv));
+        if (aNull && bNull) return 0;
+        if (aNull) return 1;
+        if (bNull) return -1;
+        if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * mult;
+        return String(av).localeCompare(String(bv)) * mult;
+    });
+    return copy;
+}
+
 function formatCell(val: unknown, decimals?: number): string {
     if (val === null || val === undefined) return '';
     if (typeof val === 'number') return decimals !== undefined ? val.toFixed(decimals) : String(val);
@@ -178,6 +196,14 @@ export default function SimulationPage({ onBack }: Props) {
     const [viewKind, setViewKind] = useState<'hitters' | 'pitchers'>('hitters');
     const [viewPosition, setViewPosition] = useState('All Hitters');
     const [viewRole, setViewRole] = useState('Starters');
+
+    // Sort state — null means use the default (value-rating desc) from grouping
+    const [hitterSort, setHitterSort] = useState<{ key: keyof HitterFinal; dir: 'asc' | 'desc' } | null>(null);
+    const [pitcherSort, setPitcherSort] = useState<{ key: keyof PitcherFinal; dir: 'asc' | 'desc' } | null>(null);
+
+    // Hovered card image tooltip
+    const [hoverImg, setHoverImg] = useState<string | null>(null);
+    const [hoverPos, setHoverPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
     const workerRef = useRef<Worker | null>(null);
 
@@ -301,6 +327,59 @@ export default function SimulationPage({ onBack }: Props) {
         [results, viewMode]
     );
 
+    // Apply the user's click-sort on top of the default-grouped order.
+    const sortedHitterRows = useMemo(() => {
+        const rows = hittersGrouped?.[viewPosition] || null;
+        if (!rows) return rows;
+        if (!hitterSort) return rows;
+        return sortRows(rows, hitterSort.key, hitterSort.dir);
+    }, [hittersGrouped, viewPosition, hitterSort]);
+
+    const sortedPitcherRows = useMemo(() => {
+        const rows = pitchersGrouped?.[viewRole] || null;
+        if (!rows) return rows;
+        if (!pitcherSort) return rows;
+        return sortRows(rows, pitcherSort.key, pitcherSort.dir);
+    }, [pitchersGrouped, viewRole, pitcherSort]);
+
+    const handleHitterSort = (key: keyof HitterFinal) => {
+        setHitterSort(prev => {
+            if (prev && prev.key === key) {
+                return { key, dir: prev.dir === 'desc' ? 'asc' : 'desc' };
+            }
+            // default: strings asc, numbers desc
+            const col = HITTER_VIEW_COLS.find(c => c.key === key);
+            const dir: 'asc' | 'desc' = col?.decimals === undefined && key !== 'valueRating' ? 'asc' : 'desc';
+            return { key, dir };
+        });
+    };
+
+    const handlePitcherSort = (key: keyof PitcherFinal) => {
+        setPitcherSort(prev => {
+            if (prev && prev.key === key) {
+                return { key, dir: prev.dir === 'desc' ? 'asc' : 'desc' };
+            }
+            const col = PITCHER_VIEW_COLS.find(c => c.key === key);
+            const dir: 'asc' | 'desc' = col?.decimals === undefined && key !== 'valueRating' ? 'asc' : 'desc';
+            return { key, dir };
+        });
+    };
+
+    const sortArrow = (active: boolean, dir: 'asc' | 'desc') => {
+        if (!active) return '';
+        return dir === 'desc' ? ' \u25BC' : ' \u25B2';
+    };
+
+    const showCardImage = (e: React.MouseEvent, imagePath?: string) => {
+        if (!imagePath) return;
+        setHoverImg(imagePath);
+        setHoverPos({ x: e.clientX, y: e.clientY });
+    };
+    const moveCardImage = (e: React.MouseEvent) => {
+        if (hoverImg) setHoverPos({ x: e.clientX, y: e.clientY });
+    };
+    const hideCardImage = () => setHoverImg(null);
+
     const onPct = iconsOnProgress.total ? Math.round((iconsOnProgress.done / iconsOnProgress.total) * 100) : 0;
     const offPct = iconsOffProgress.total ? Math.round((iconsOffProgress.done / iconsOffProgress.total) * 100) : 0;
     const enhPct = enhancedProgress.total ? Math.round((enhancedProgress.done / enhancedProgress.total) * 100) : 0;
@@ -366,6 +445,18 @@ export default function SimulationPage({ onBack }: Props) {
                     </div>
                 )}
 
+                {hoverImg && (
+                    <img
+                        className="sim-card-hover-img"
+                        src={hoverImg}
+                        alt=""
+                        style={{
+                            left: Math.min(hoverPos.x + 16, window.innerWidth - 267),
+                            top: Math.min(hoverPos.y + 16, window.innerHeight - 366),
+                        }}
+                    />
+                )}
+
                 {results && phase === 'done' && (
                     <div className="sim-results">
                         <div className="sim-results-head">
@@ -396,17 +487,34 @@ export default function SimulationPage({ onBack }: Props) {
                                 <div className="sim-table-wrap">
                                     <table className="sim-table">
                                         <thead>
-                                            <tr>{HITTER_VIEW_COLS.map(c => (
-                                                <th key={c.key as string} title={c.desc}>{c.label}</th>
-                                            ))}</tr>
+                                            <tr>{HITTER_VIEW_COLS.map(c => {
+                                                const active = hitterSort?.key === c.key;
+                                                return (
+                                                    <th
+                                                        key={c.key as string}
+                                                        title={c.desc}
+                                                        className={`sim-th-sortable ${active ? 'sim-th-active' : ''}`}
+                                                        onClick={() => handleHitterSort(c.key)}
+                                                    >
+                                                        {c.label}{sortArrow(active, hitterSort?.dir || 'desc')}
+                                                    </th>
+                                                );
+                                            })}</tr>
                                         </thead>
                                         <tbody>
-                                            {hittersGrouped[viewPosition].map(p => (
+                                            {(sortedHitterRows || []).map(p => (
                                                 <tr key={p.name}>
                                                     {HITTER_VIEW_COLS.map(c => {
                                                         const val = p[c.key];
+                                                        const isName = c.key === 'name';
                                                         return (
-                                                            <td key={c.key as string} className={cellClass(c, val)}>
+                                                            <td
+                                                                key={c.key as string}
+                                                                className={`${cellClass(c, val)} ${isName ? 'sim-name-cell' : ''}`}
+                                                                onMouseEnter={isName ? (e) => showCardImage(e, p.imagePath) : undefined}
+                                                                onMouseMove={isName ? moveCardImage : undefined}
+                                                                onMouseLeave={isName ? hideCardImage : undefined}
+                                                            >
                                                                 {formatCell(val, c.decimals)}
                                                             </td>
                                                         );
@@ -431,17 +539,34 @@ export default function SimulationPage({ onBack }: Props) {
                                 <div className="sim-table-wrap">
                                     <table className="sim-table">
                                         <thead>
-                                            <tr>{PITCHER_VIEW_COLS.map(c => (
-                                                <th key={c.key as string} title={c.desc}>{c.label}</th>
-                                            ))}</tr>
+                                            <tr>{PITCHER_VIEW_COLS.map(c => {
+                                                const active = pitcherSort?.key === c.key;
+                                                return (
+                                                    <th
+                                                        key={c.key as string}
+                                                        title={c.desc}
+                                                        className={`sim-th-sortable ${active ? 'sim-th-active' : ''}`}
+                                                        onClick={() => handlePitcherSort(c.key)}
+                                                    >
+                                                        {c.label}{sortArrow(active, pitcherSort?.dir || 'desc')}
+                                                    </th>
+                                                );
+                                            })}</tr>
                                         </thead>
                                         <tbody>
-                                            {pitchersGrouped[viewRole].map(p => (
+                                            {(sortedPitcherRows || []).map(p => (
                                                 <tr key={p.name}>
                                                     {PITCHER_VIEW_COLS.map(c => {
                                                         const val = p[c.key];
+                                                        const isName = c.key === 'name';
                                                         return (
-                                                            <td key={c.key as string} className={cellClass(c, val)}>
+                                                            <td
+                                                                key={c.key as string}
+                                                                className={`${cellClass(c, val)} ${isName ? 'sim-name-cell' : ''}`}
+                                                                onMouseEnter={isName ? (e) => showCardImage(e, p.imagePath) : undefined}
+                                                                onMouseMove={isName ? moveCardImage : undefined}
+                                                                onMouseLeave={isName ? hideCardImage : undefined}
+                                                            >
                                                                 {formatCell(val, c.decimals)}
                                                             </td>
                                                         );
