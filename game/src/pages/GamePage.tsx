@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { GameState, GameAction } from '../engine/gameEngine';
+import { computeRunnerMovements } from '../engine/movements';
 import { getGame, getMyRole, getSeries, ensureNextSeriesGame, syncSeriesWinsFromGames, subscribeToSeriesGames } from '../lib/games';
 import { getLineups } from '../lib/lineups';
 import { saveGameStats } from '../lib/stats';
@@ -21,6 +22,10 @@ interface Props {
 export default function GamePage({ gameId, onBack }: Props) {
     const [gameState, setGameState] = useState<GameState | null>(null);
     const [seriesRow, setSeriesRow] = useState<import('../types/game').SeriesRow | null>(null);
+    /** Last gameState we processed — used as the diff base for client-side
+     *  movement computation when the server-supplied runnerMovements field
+     *  is missing (e.g. after a brief reconnect). */
+    const prevGameStateRef = useRef<GameState | null>(null);
     const [myRole, setMyRole] = useState<PlayerRole | null>(null);
     const [myTurn, setMyTurn] = useState<string | null>(null);
     const [homeName, setHomeName] = useState('Home');
@@ -69,14 +74,24 @@ export default function GamePage({ gameId, onBack }: Props) {
             if (!mountedRef.current) return;
             const msg = JSON.parse(event.data);
             switch (msg.type) {
-                case 'game_state':
-                    setGameState(msg.state);
+                case 'game_state': {
+                    const prev = prevGameStateRef.current;
+                    const next = msg.state as GameState;
+                    setGameState(next);
                     setMyTurn(msg.turn);
-                    if (msg.runnerMovements?.length > 0) setPendingMovements(msg.runnerMovements);
+                    // Prefer the server-supplied movements when present, but
+                    // fall back to client-side diff so animations still fire
+                    // if the WS dropped that field (reconnect, race, etc).
+                    let movements = (msg.runnerMovements && msg.runnerMovements.length > 0)
+                        ? msg.runnerMovements
+                        : computeRunnerMovements(prev, next);
+                    if (movements.length > 0) setPendingMovements(movements);
+                    prevGameStateRef.current = next;
                     setLoading(false);
                     setStatus('');
                     setOpponentDisconnected(false);
                     break;
+                }
                 case 'joined':
                     setMyRole(msg.role as PlayerRole);
                     setStatus(`Joined as ${msg.role}. ${msg.players < 2 ? 'Waiting for opponent...' : 'Starting...'}`);
