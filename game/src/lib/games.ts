@@ -73,6 +73,12 @@ export async function joinGame(gameId: string): Promise<GameRow> {
         .select('*')
         .eq('id', gameId)
         .single();
+    // Row not found (PGRST116) means the game was deleted between our
+    // render and the join click. Surface a clean message so the caller
+    // can replace their stale lobby row instead of showing raw SQL errors.
+    if (error?.code === 'PGRST116' || !data) {
+        throw new Error('That game is no longer available.');
+    }
     if (error) throw error;
     return data;
 }
@@ -139,6 +145,9 @@ export async function getGame(gameId: string): Promise<GameRow> {
         .select('*')
         .eq('id', gameId)
         .single();
+    if (error?.code === 'PGRST116' || (!error && !data)) {
+        throw new Error('This game no longer exists.');
+    }
     if (error) throw error;
     return data;
 }
@@ -149,16 +158,41 @@ export function getMyRole(game: GameRow, userId: string): PlayerRole | null {
     return null;
 }
 
-export function subscribeToGame(gameId: string, callback: (game: GameRow) => void): RealtimeChannel {
-    return supabase
-        .channel(`game-${gameId}`)
-        .on('postgres_changes', {
-            event: 'UPDATE',
+export function subscribeToGame(
+    gameId: string,
+    onUpdate: (game: GameRow) => void,
+    onDelete?: () => void,
+): RealtimeChannel {
+    const channel = supabase.channel(`game-${gameId}`);
+    channel.on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'games',
+        filter: `id=eq.${gameId}`,
+    }, (payload) => {
+        onUpdate(payload.new as GameRow);
+    });
+    if (onDelete) {
+        channel.on('postgres_changes', {
+            event: 'DELETE',
             schema: 'public',
             table: 'games',
             filter: `id=eq.${gameId}`,
-        }, (payload) => {
-            callback(payload.new as GameRow);
+        }, () => {
+            onDelete();
+        });
+    }
+    return channel.subscribe();
+}
+
+/** Fires `callback` on any change to the games table. Consumers should refetch
+ *  their own filtered view (e.g. getMyGames) rather than inspect the payload —
+ *  deletes keep the list fresh even when a different client removed the row. */
+export function subscribeToMyGames(callback: () => void): RealtimeChannel {
+    return supabase
+        .channel('my-games')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, () => {
+            callback();
         })
         .subscribe();
 }

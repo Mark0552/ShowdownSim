@@ -18,7 +18,33 @@ const TRACKS: Track[] = [
     { file: 'sounds/music/And_You_Will_Know_Us_by_the_Trail_of_Dead_-_Let_It_Dive__SPOTISAVER_.mp3', title: 'Let It Dive', artist: '...Trail of Dead' },
     { file: 'sounds/music/Donots_-_We_Got_the_Noise__SPOTISAVER_.mp3', title: 'We Got the Noise', artist: 'Donots' },
     { file: 'sounds/music/The_High_Speed_Scene_-_The_I_Roc_Z_Song__SPOTISAVER_.mp3', title: 'The I Roc Z Song', artist: 'The High Speed Scene' },
+    { file: 'sounds/music/All My Friends_spotdown.org.mp3', title: 'All My Friends', artist: 'LCD Soundsystem' },
+    { file: 'sounds/music/Brimful Of Asha - Norman Cook Remix Single Version_spotdown.org.mp3', title: 'Brimful Of Asha (Norman Cook Remix)', artist: 'Cornershop' },
+    { file: 'sounds/music/Calling All Angels_spotdown.org.mp3', title: 'Calling All Angels', artist: 'Train' },
+    { file: 'sounds/music/Lean on Me_spotdown.org.mp3', title: 'Lean on Me', artist: 'Bill Withers' },
+    { file: 'sounds/music/Maggie May_spotdown.org.mp3', title: 'Maggie May', artist: 'Rod Stewart' },
+    { file: 'sounds/music/One Headlight_spotdown.org.mp3', title: 'One Headlight', artist: 'The Wallflowers' },
+    { file: 'sounds/music/Right Here Right Now_spotdown.org.mp3', title: 'Right Here, Right Now', artist: 'Jesus Jones' },
+    { file: 'sounds/music/Simple Man_spotdown.org.mp3', title: 'Simple Man', artist: 'Lynyrd Skynyrd' },
+    { file: 'sounds/music/Solsbury Hill_spotdown.org.mp3', title: 'Solsbury Hill', artist: 'Peter Gabriel' },
+    { file: 'sounds/music/Summer Breeze_spotdown.org.mp3', title: 'Summer Breeze', artist: 'Seals & Crofts' },
+    { file: 'sounds/music/Teach Your Children.mp3', title: 'Teach Your Children', artist: 'Crosby, Stills, Nash & Young' },
+    { file: 'sounds/music/The Letter - Single Version_spotdown.org.mp3', title: 'The Letter', artist: 'The Box Tops' },
+    { file: 'sounds/music/Three Weeks.mp3', title: 'Three Weeks', artist: '' },
+    { file: 'sounds/music/Tuesday\'s Gone_spotdown.org.mp3', title: "Tuesday's Gone", artist: 'Lynyrd Skynyrd' },
 ];
+
+/** Fisher-Yates over [0..n-1], excluding `startIdx` — then prepend `startIdx`
+ *  so the current track stays first and we don't jerkily restart on toggle. */
+function buildShuffleOrder(n: number, startIdx: number): number[] {
+    const rest: number[] = [];
+    for (let i = 0; i < n; i++) if (i !== startIdx) rest.push(i);
+    for (let i = rest.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [rest[i], rest[j]] = [rest[j], rest[i]];
+    }
+    return [startIdx, ...rest];
+}
 
 export default function MusicPlayer() {
     const [trackIdx, setTrackIdx] = useState(0);
@@ -27,8 +53,14 @@ export default function MusicPlayer() {
     const [minimized, setMinimized] = useState(true);
     const [progress, setProgress] = useState(0);
     const [duration, setDuration] = useState(0);
+    const [shuffle, setShuffle] = useState(false);
+    const [shuffleOrder, setShuffleOrder] = useState<number[]>([]);
+    const shufflePosRef = useRef(0);
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    // The 'ended' handler fires from stale closure capture — keep a live ref
+    // to the current advance function so auto-advance follows shuffle state.
+    const advanceRef = useRef<() => void>(() => {});
 
     const track = TRACKS[trackIdx];
 
@@ -37,9 +69,7 @@ export default function MusicPlayer() {
         const audio = new Audio();
         audio.volume = volume;
         audioRef.current = audio;
-        audio.addEventListener('ended', () => {
-            setTrackIdx(prev => (prev + 1) % TRACKS.length);
-        });
+        audio.addEventListener('ended', () => { advanceRef.current(); });
         audio.addEventListener('loadedmetadata', () => {
             setDuration(audio.duration);
         });
@@ -89,12 +119,41 @@ export default function MusicPlayer() {
     }, [playing]);
 
     const nextTrack = useCallback(() => {
-        setTrackIdx(prev => (prev + 1) % TRACKS.length);
-    }, []);
+        if (shuffle && shuffleOrder.length > 0) {
+            const nextPos = (shufflePosRef.current + 1) % shuffleOrder.length;
+            shufflePosRef.current = nextPos;
+            setTrackIdx(shuffleOrder[nextPos]);
+        } else {
+            setTrackIdx(prev => (prev + 1) % TRACKS.length);
+        }
+    }, [shuffle, shuffleOrder]);
 
     const prevTrack = useCallback(() => {
-        setTrackIdx(prev => (prev - 1 + TRACKS.length) % TRACKS.length);
-    }, []);
+        if (shuffle && shuffleOrder.length > 0) {
+            const prevPos = (shufflePosRef.current - 1 + shuffleOrder.length) % shuffleOrder.length;
+            shufflePosRef.current = prevPos;
+            setTrackIdx(shuffleOrder[prevPos]);
+        } else {
+            setTrackIdx(prev => (prev - 1 + TRACKS.length) % TRACKS.length);
+        }
+    }, [shuffle, shuffleOrder]);
+
+    const toggleShuffle = useCallback(() => {
+        setShuffle(prev => {
+            const next = !prev;
+            if (next) {
+                // Starting shuffle — build a fresh order rooted at the current track.
+                setShuffleOrder(buildShuffleOrder(TRACKS.length, trackIdx));
+                shufflePosRef.current = 0;
+            }
+            return next;
+        });
+    }, [trackIdx]);
+
+    // Keep advanceRef pointing at the latest nextTrack so auto-advance respects shuffle.
+    useEffect(() => {
+        advanceRef.current = nextTrack;
+    }, [nextTrack]);
 
     const seek = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
         const audio = audioRef.current;
@@ -123,7 +182,7 @@ export default function MusicPlayer() {
             }}>
                 <span style={{ fontSize: 16 }}>{playing ? '\u23F8' : '\u25B6'}</span>
                 <span style={{ color: '#d4a018', fontSize: 11, fontFamily: 'Arial' }}>
-                    {playing ? `${track.artist} — ${track.title}` : 'Music'}
+                    {playing ? `${track.artist ? track.artist + ' \u2014 ' : ''}${track.title}` : 'Music'}
                 </span>
             </div>
         );
@@ -147,7 +206,7 @@ export default function MusicPlayer() {
             {/* Track info */}
             <div style={{ marginBottom: 8 }}>
                 <div style={{ color: '#eee', fontSize: 15 }}>{track.title}</div>
-                <div style={{ color: '#8aade0', fontSize: 12 }}>{track.artist}</div>
+                <div style={{ color: '#8aade0', fontSize: 12 }}>{track.artist || '\u00A0'}</div>
             </div>
 
             {/* Progress bar */}
@@ -167,6 +226,14 @@ export default function MusicPlayer() {
 
             {/* Controls */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 10 }}>
+                <span
+                    onClick={toggleShuffle}
+                    title={shuffle ? 'Shuffle on' : 'Shuffle off'}
+                    style={{
+                        color: shuffle ? '#d4a018' : '#4a6a90',
+                        fontSize: 16, cursor: 'pointer', width: 28, textAlign: 'center',
+                    }}
+                >{'\u{1F500}'}</span>
                 <span onClick={prevTrack} style={{ color: '#8aade0', fontSize: 18, cursor: 'pointer' }}>{'\u23EE'}</span>
                 <span onClick={togglePlay} style={{
                     color: '#d4a018', fontSize: 28, cursor: 'pointer',
@@ -174,6 +241,7 @@ export default function MusicPlayer() {
                     border: '2px solid #d4a018', borderRadius: '50%',
                 }}>{playing ? '\u23F8' : '\u25B6'}</span>
                 <span onClick={nextTrack} style={{ color: '#8aade0', fontSize: 18, cursor: 'pointer' }}>{'\u23ED'}</span>
+                <span style={{ width: 28 }} />
             </div>
 
             {/* Volume */}
@@ -186,7 +254,7 @@ export default function MusicPlayer() {
 
             {/* Track number */}
             <div style={{ textAlign: 'center', color: '#4a6a90', fontSize: 10, marginTop: 6 }}>
-                {trackIdx + 1} / {TRACKS.length}
+                {trackIdx + 1} / {TRACKS.length}{shuffle ? ' \u2022 Shuffle' : ''}
             </div>
         </div>
     );

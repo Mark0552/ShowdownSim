@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { GameRow, SeriesRow } from '../types/game';
 import type { SavedLineup } from '../lib/lineups';
-import { createGame, getOpenGames, getMyGames, joinGame, selectLineup, deleteGame, subscribeToGame, subscribeToLobby, getMyRole, createSeries, getSeries } from '../lib/games';
+import { createGame, getOpenGames, getMyGames, joinGame, selectLineup, deleteGame, subscribeToGame, subscribeToLobby, subscribeToMyGames, getMyRole, createSeries, getSeries } from '../lib/games';
 import { getLineups } from '../lib/lineups';
 import { validateTeam } from '../logic/teamRules';
 import { supabase } from '../lib/supabase';
@@ -25,6 +25,10 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
 
     // Game we're currently in the lineup-select phase for
     const [activeGame, setActiveGame] = useState<GameRow | null>(null);
+    // Set to true when we initiate a delete ourselves, so the realtime
+    // DELETE handler below doesn't show a "game was cancelled" toast on top
+    // of our own intentional cancel.
+    const selfDeletingRef = useRef(false);
 
     useEffect(() => {
         getUser().then((user) => {
@@ -34,6 +38,23 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
 
     // Load data
     useEffect(() => {
+        const refreshMyGames = async () => {
+            try {
+                const mine = await getMyGames();
+                setMyGames(mine);
+                // Pre-fetch any newly-referenced series rows we don't have yet
+                const seriesIds = Array.from(new Set(mine.map(g => g.series_id).filter(Boolean) as string[]));
+                if (seriesIds.length > 0) {
+                    const rows = await Promise.all(seriesIds.map(id => getSeries(id).catch(() => null)));
+                    setSeriesById(prev => {
+                        const map = { ...prev };
+                        for (const row of rows) { if (row && !map[row.id]) map[row.id] = row; }
+                        return map;
+                    });
+                }
+            } catch { /* ignore transient */ }
+        };
+
         const loadData = async () => {
             try {
                 const [open, mine, lineups] = await Promise.all([
@@ -60,32 +81,41 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
         };
         loadData();
 
-        // Subscribe to lobby changes
-        const channel = subscribeToLobby(setOpenGames);
-        return () => { channel.unsubscribe(); };
+        // Subscribe to both: open-games (so inserts/deletes appear live) and
+        // my-games (so a game deleted by the opponent disappears from my list).
+        const lobbyCh = subscribeToLobby(setOpenGames);
+        const myCh = subscribeToMyGames(refreshMyGames);
+        return () => { lobbyCh.unsubscribe(); myCh.unsubscribe(); };
     }, []);
 
     // Subscribe to active game for lineup select + poll as fallback
     useEffect(() => {
         if (!activeGame) return;
 
-        // Realtime subscription
+        const handleGameGone = () => {
+            if (selfDeletingRef.current) return; // we initiated the cancel
+            setError('The other player cancelled this game.');
+            setActiveGame(null);
+            setSelectedLineup(null);
+        };
+
+        // Realtime subscription — updates on UPDATE, kicks out on DELETE
         const channel = subscribeToGame(activeGame.id, (updated) => {
             setActiveGame(updated);
             if (updated.home_ready && updated.away_ready && updated.status === 'lineup_select') {
                 onGameStart(updated.id);
             }
-        });
+        }, handleGameGone);
 
         // Polling fallback every 3 seconds (Realtime can be unreliable)
         const poll = setInterval(async () => {
             try {
-                const { data } = await supabase.from('games').select('*').eq('id', activeGame.id).single();
-                if (data) {
-                    setActiveGame(data);
-                    if (data.home_ready && data.away_ready && data.status === 'lineup_select') {
-                        onGameStart(data.id);
-                    }
+                const { data, error } = await supabase.from('games').select('*').eq('id', activeGame.id).maybeSingle();
+                if (error) return; // transient
+                if (!data) { handleGameGone(); return; }
+                setActiveGame(data);
+                if (data.home_ready && data.away_ready && data.status === 'lineup_select') {
+                    onGameStart(data.id);
                 }
             } catch (e) { /* ignore */ }
         }, 3000);
@@ -132,7 +162,12 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
             const updated = await joinGame(game.id);
             setActiveGame(updated);
         } catch (err: any) {
-            setError(err.message);
+            setError(err?.message || 'Failed to join');
+            // The row is likely gone — drop it from the open list immediately
+            // so the user doesn't click the same stale entry again.
+            setOpenGames(prev => prev.filter(g => g.id !== game.id));
+            // And refetch in case the realtime subscription missed the delete.
+            getOpenGames().then(setOpenGames).catch(() => { /* ignore */ });
         }
     };
 
@@ -157,11 +192,17 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
 
     const handleCancelGame = async () => {
         if (activeGame) {
+            selfDeletingRef.current = true;
             try {
                 await deleteGame(activeGame.id);
             } catch (e) { /* ignore */ }
+            // Clear shortly after — long enough for the realtime DELETE
+            // handler to no-op, short enough not to swallow a truly
+            // opponent-initiated cancel later in the session.
+            setTimeout(() => { selfDeletingRef.current = false; }, 2000);
         }
         setActiveGame(null);
+        setSelectedLineup(null);
     };
 
     const handleResumeGame = (game: GameRow) => {
