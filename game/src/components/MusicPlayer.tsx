@@ -30,8 +30,10 @@ const TRACKS: Track[] = [
     { file: 'sounds/music/Summer Breeze_spotdown.org.mp3', title: 'Summer Breeze', artist: 'Seals & Crofts' },
     { file: 'sounds/music/Teach Your Children.mp3', title: 'Teach Your Children', artist: 'Crosby, Stills, Nash & Young' },
     { file: 'sounds/music/The Letter - Single Version_spotdown.org.mp3', title: 'The Letter', artist: 'The Box Tops' },
-    { file: 'sounds/music/Three Weeks.mp3', title: 'Three Weeks', artist: '' },
+    { file: 'sounds/music/Three Weeks.mp3', title: 'Three Weeks', artist: 'Perpetual Groove' },
     { file: 'sounds/music/Tuesday\'s Gone_spotdown.org.mp3', title: "Tuesday's Gone", artist: 'Lynyrd Skynyrd' },
+    { file: 'sounds/music/Los Lonely Boys - Heaven (SPOTISAVER).mp3', title: 'Heaven', artist: 'Los Lonely Boys' },
+    { file: 'sounds/music/Tom Petty - You Don\'t Know How It Feels (SPOTISAVER).mp3', title: "You Don't Know How It Feels", artist: 'Tom Petty' },
 ];
 
 /** Fisher-Yates over [0..n-1], excluding `startIdx` — then prepend `startIdx`
