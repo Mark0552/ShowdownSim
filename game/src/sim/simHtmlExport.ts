@@ -111,6 +111,48 @@ function absoluteImageUrl(imagePath: string | undefined | null): string {
     return CARD_URL_BASE + normalized;
 }
 
+/** Build a `name → card details` dictionary that's serialized into the page
+ *  so the hover handler can render the full CardTooltip HTML without each
+ *  name cell carrying the whole tooltip inline (a card appears in ~3-9 tables,
+ *  so per-cell embedding would bloat the file by several MB). */
+function buildCardDict(rawData: { hitters: RawHitter[]; pitchers: RawPitcher[] }): Record<string, any> {
+    const out: Record<string, any> = {};
+    for (const h of rawData.hitters) {
+        const key = `${h.Name} ${h['Yr.']} ${h.Ed} ${h['#']} ${h.Team}`;
+        out[key] = {
+            type: 'hitter',
+            name: h.Name, team: h.Team, cardNum: h['#'],
+            edition: h.Ed, year: h['Yr.'], expansion: h.expansion || '',
+            points: h.Points, hand: h.H || '',
+            onBase: h.onBase, speed: h.Speed,
+            position: h.Position,
+            icons: h.Icons ? String(h.Icons).split(/\s+/).filter(Boolean) : [],
+            imagePath: absoluteImageUrl(h.imagePath),
+            chart: {
+                SO: h.SO, GB: h.GB, FB: h.FB, W: h.W,
+                S: h.S, SPlus: h.SPlus, DB: h.DB, TR: h.TR, HR: h.HR,
+            },
+        };
+    }
+    for (const p of rawData.pitchers) {
+        const key = `${p.Name} ${p['Yr.']} ${p.Ed} ${p['#']} ${p.Team}`;
+        out[key] = {
+            type: 'pitcher',
+            name: p.Name, team: p.Team, cardNum: p['#'],
+            edition: p.Ed, year: p['Yr.'], expansion: p.expansion || '',
+            points: p.Points, hand: p.H || '',
+            control: p.Control, ip: p.IP, role: p.Position,
+            icons: p.Icons ? String(p.Icons).split(/\s+/).filter(Boolean) : [],
+            imagePath: absoluteImageUrl(p.imagePath),
+            chart: {
+                PU: p.PU, SO: p.SO, GB: p.GB, FB: p.FB,
+                W: p.W, S: p.S, DB: p.DB, HR: p.HR,
+            },
+        };
+    }
+    return out;
+}
+
 function groupHittersByPosition(hitters: HitterFinal[]): Record<string, HitterFinal[]> {
     const out: Record<string, HitterFinal[]> = Object.fromEntries(HITTER_POSITIONS.map(p => [p, [] as HitterFinal[]]));
     for (const p of hitters) {
@@ -185,8 +227,9 @@ function renderTable(rows: any[], columns: Column[]): string {
             else text = String(raw);
             const cls = cellClass(c, raw);
             if (c.key === 'name') {
-                const img = absoluteImageUrl(row.imagePath);
-                return `<td class="sim-name-cell ${cls}" data-img="${escapeHtml(img)}">${escapeHtml(text)}</td>`;
+                // Key into the global __CARDS__ dictionary so the hover handler
+                // can render the same full CardTooltip as the in-app sim.
+                return `<td class="sim-name-cell ${cls}" data-card-key="${escapeHtml(row.name)}">${escapeHtml(text)}</td>`;
             }
             // Preserve numeric sort key on the <td> via data-sort so sort doesn't
             // depend on parsing the formatted text.
@@ -410,12 +453,44 @@ body {
 }
 .sim-val-good { color: #4ade80; }
 .sim-val-bad { color: #f87171; }
-.sim-card-hover-img {
-    position: fixed; width: 251px; height: 350px; z-index: 9999;
-    pointer-events: none; border: 1px solid var(--accent); border-radius: 6px;
-    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.7);
-    background: var(--bg-secondary);
+
+/* Card tooltip — mirrors game/src/components/cards/CardTooltip.css exactly
+   so name-hover popups in the export look identical to the in-app view. */
+.card-tooltip {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 9999; background: var(--bg-secondary);
+    border: 1px solid var(--accent); border-radius: 10px;
+    padding: 20px; box-shadow: 0 12px 48px rgba(0,0,0,0.7);
+    pointer-events: none;
 }
+.ct-layout { display: flex; gap: 14px; }
+.ct-image {
+    width: 251px; height: 350px; object-fit: cover;
+    border-radius: 6px; border: 1px solid var(--border); flex-shrink: 0;
+}
+.ct-info { flex: 1; min-width: 200px; }
+.ct-info h3 { font-size: 20px; margin: 0 0 6px 0; color: var(--text); }
+.ct-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.ct-meta span {
+    font-size: 13px; color: var(--text-dim);
+    padding: 1px 5px; background: var(--bg-card); border-radius: 3px;
+}
+.ct-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 10px; }
+.ct-stat {
+    display: flex; justify-content: space-between;
+    padding: 4px 8px; background: var(--bg-card); border-radius: 3px; font-size: 14px;
+}
+.ct-stat span:first-child { color: var(--text-dim); }
+.ct-stat span:last-child { font-weight: 600; color: var(--accent); }
+.ct-chart table {
+    width: 100%; border-collapse: collapse;
+    font-family: 'Consolas', 'Courier New', monospace; font-size: 14px;
+}
+.ct-chart th, .ct-chart td {
+    padding: 5px 7px; text-align: center; border: 1px solid var(--border);
+}
+.ct-chart th { background: var(--bg-card); color: var(--accent); font-size: 12px; }
+.ct-chart td { background: var(--bg-primary); }
 `;
 
     // JS handles: mode/kind/subtab switching, sort (with ▲/▼ indicators), card image hover
@@ -510,30 +585,67 @@ body {
         });
     });
 
-    // --- Card image tooltip on Name hover. Fixed-position 251x350 that tracks the cursor. ---
-    const hoverImg = document.getElementById('sim-hover-img');
-    function placeHoverImg(e) {
-        const w = 251, h = 350, pad = 16;
-        const x = Math.min(e.clientX + pad, window.innerWidth - w - pad);
-        const y = Math.min(e.clientY + pad, window.innerHeight - h - pad);
-        hoverImg.style.left = x + 'px';
-        hoverImg.style.top = y + 'px';
+    // --- Card tooltip on Name hover. Renders the same layout as the in-app
+    //     CardTooltip (centered fixed overlay with image + meta + stats + chart)
+    //     from the global __CARDS__ dictionary. ---
+    const hoverTip = document.getElementById('sim-card-tooltip');
+    const CARDS = window.__CARDS__ || {};
+
+    const esc = (s) => String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    function renderTooltipHtml(card) {
+        const isHitter = card.type === 'hitter';
+        const imgHtml = card.imagePath ? '<img src="' + esc(card.imagePath) + '" alt="" class="ct-image">' : '';
+        const metaItems = [card.team, '#' + card.cardNum, card.edition, card.year, card.expansion]
+            .filter(v => v && v !== '#' && v !== '#0');
+        const metaHtml = metaItems.map(v => '<span>' + esc(v) + '</span>').join('');
+        let statsHtml = '<div class="ct-stat"><span>Points</span><span>' + esc(card.points) + '</span></div>';
+        if (isHitter) {
+            statsHtml += '<div class="ct-stat"><span>On-Base</span><span>' + esc(card.onBase) + '</span></div>';
+            statsHtml += '<div class="ct-stat"><span>Speed</span><span>' + esc(card.speed) + '</span></div>';
+            statsHtml += '<div class="ct-stat"><span>Position</span><span>' + esc(card.position || 'DH') + '</span></div>';
+        } else {
+            statsHtml += '<div class="ct-stat"><span>Control</span><span>' + esc(card.control) + '</span></div>';
+            statsHtml += '<div class="ct-stat"><span>IP</span><span>' + esc(card.ip) + '</span></div>';
+            statsHtml += '<div class="ct-stat"><span>Role</span><span>' + esc(card.role) + '</span></div>';
+        }
+        statsHtml += '<div class="ct-stat"><span>Hand</span><span>' + esc(card.hand || '') + '</span></div>';
+        const iconsStr = (card.icons && card.icons.length > 0) ? card.icons.join(' ') : 'None';
+        statsHtml += '<div class="ct-stat"><span>Icons</span><span>' + esc(iconsStr) + '</span></div>';
+
+        const chartLabels = isHitter
+            ? ['SO','GB','FB','W','S','S+','DB','TR','HR']
+            : ['PU','SO','GB','FB','W','S','DB','HR'];
+        const chartKeys = isHitter
+            ? ['SO','GB','FB','W','S','SPlus','DB','TR','HR']
+            : ['PU','SO','GB','FB','W','S','DB','HR'];
+        const chartHeaders = chartLabels.map(l => '<th>' + esc(l) + '</th>').join('');
+        const chartCells = chartKeys.map(k => '<td>' + esc(card.chart[k] || '-') + '</td>').join('');
+        const chartHtml = '<div class="ct-chart"><table><thead><tr>' + chartHeaders
+            + '</tr></thead><tbody><tr>' + chartCells + '</tr></tbody></table></div>';
+
+        return '<div class="ct-layout">' + imgHtml + '<div class="ct-info">'
+            + '<h3>' + esc(card.name) + '</h3>'
+            + '<div class="ct-meta">' + metaHtml + '</div>'
+            + '<div class="ct-stats">' + statsHtml + '</div>'
+            + chartHtml
+            + '</div></div>';
     }
+
     document.addEventListener('mouseover', (e) => {
         const cell = e.target.closest('.sim-name-cell');
         if (!cell) return;
-        const src = cell.getAttribute('data-img');
-        if (!src) return;
-        hoverImg.src = src;
-        hoverImg.style.display = 'block';
-        placeHoverImg(e);
-    });
-    document.addEventListener('mousemove', (e) => {
-        if (hoverImg.style.display === 'block') placeHoverImg(e);
+        const key = cell.getAttribute('data-card-key');
+        if (!key) return;
+        const card = CARDS[key];
+        if (!card) return;
+        hoverTip.innerHTML = renderTooltipHtml(card);
+        hoverTip.style.display = 'block';
     });
     document.addEventListener('mouseout', (e) => {
         if (e.target.closest('.sim-name-cell')) {
-            hoverImg.style.display = 'none';
+            hoverTip.style.display = 'none';
         }
     });
 })();
@@ -549,13 +661,20 @@ body {
     <div class="sim-kind" data-kind="pitchers">${content.pitchers}</div>
 </div>`;
 
+    // Card-data dictionary for the hover popup. Serialize only when rawData
+    // was provided, and scrub `</script>` to avoid breaking out of the tag.
+    const cardDictJson = rawData
+        ? JSON.stringify(buildCardDict(rawData)).replace(/<\/script>/gi, '<\\/script>')
+        : '{}';
+
     return `<!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MLB Showdown Simulation Results</title>
 <style>${style}</style>
 </head><body>
-<img id="sim-hover-img" class="sim-card-hover-img" alt="" style="display:none;">
+<div id="sim-card-tooltip" class="card-tooltip" style="display:none;"></div>
+<script>window.__CARDS__ = ${cardDictJson};</script>
 <div class="sim-page"><div class="sim-container">
     <div class="sim-header">
         <h1>Simulation</h1>
