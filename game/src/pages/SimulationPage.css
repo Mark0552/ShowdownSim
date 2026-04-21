@@ -335,15 +335,3 @@
 
 .sim-val-good { color: var(--success, #4ade80); }
 .sim-val-bad { color: var(--error, #f87171); }
-
-/* Quadrant tag: compact badge cell driven by per-group combined-score percentiles. */
-.sim-quad-cell {
-    text-align: center;
-    font-weight: 700;
-    font-size: 9px;
-    letter-spacing: 0.5px;
-    white-space: nowrap;
-}
-.sim-quad-elite { color: #4ade80; }
-.sim-quad-star  { color: #facc15; }
-.sim-quad-avoid { color: #f87171; }

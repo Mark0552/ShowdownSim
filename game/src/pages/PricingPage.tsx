@@ -243,7 +243,9 @@ export default function PricingPage({ onBack }: Props) {
                                                     <td className={`num ${r.residual < -20 ? 'resid-good' : r.residual > 20 ? 'resid-bad' : ''}`}>
                                                         {r.residual > 0 ? '+' : ''}{r.residual.toFixed(0)}
                                                     </td>
-                                                    <td className={`num ${r.valueRatio < 0.9 ? 'resid-good' : r.valueRatio > 1.1 ? 'resid-bad' : ''}`}>
+                                                    {/* Ratio coloring follows residual sign so a negative ratio
+                                                         (model predicts <= 0) correctly colors red instead of green. */}
+                                                    <td className={`num ${r.residual < -20 ? 'resid-good' : r.residual > 20 ? 'resid-bad' : ''}`}>
                                                         {r.valueRatio.toFixed(2)}
                                                     </td>
                                                 </tr>

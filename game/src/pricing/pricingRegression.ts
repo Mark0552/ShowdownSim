@@ -276,7 +276,10 @@ export function fitHitterPricing(hitters: RawHitter[], lambda: number = 0.5): Pr
         actualPoints: y[i],
         predictedPoints: yHat[i],
         residual: y[i] - yHat[i],
-        valueRatio: yHat[i] > 0 ? y[i] / yHat[i] : 0,
+        // Let the ratio go negative when predicted < 0 — that's a real
+        // signal (model thinks the card is worth < 0 pts → severely
+        // overpriced). Only guard against exact 0 to avoid divide-by-zero.
+        valueRatio: yHat[i] !== 0 ? y[i] / yHat[i] : 0,
         onBaseOrControl: h.onBase,
         speedOrIp: h.Speed || 0,
     }));
@@ -306,7 +309,10 @@ export function fitPitcherPricing(pitchers: RawPitcher[], lambda: number = 0.5):
         actualPoints: y[i],
         predictedPoints: yHat[i],
         residual: y[i] - yHat[i],
-        valueRatio: yHat[i] > 0 ? y[i] / yHat[i] : 0,
+        // Let the ratio go negative when predicted < 0 — avoids the "a lot
+        // of zeros" artifact where cheap cards that push the model into
+        // negative-predicted territory collapsed to valueRatio: 0.
+        valueRatio: yHat[i] !== 0 ? y[i] / yHat[i] : 0,
         onBaseOrControl: p.Control,
         speedOrIp: p.IP || 0,
     }));

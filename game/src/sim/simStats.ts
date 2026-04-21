@@ -32,9 +32,8 @@ export interface HitterFinal {
     // Pricing residual from the hedonic regression (actual - predicted).
     // Populated in SimulationPage from a per-catalog fit.
     priceResidual?: number; priceValueRatio?: number;
-    // Combined z-score of pricing + OPS deviation, used to pick quadrant tags.
+    // Combined z-score within position group: z(OPS dev) - z(price resid).
     combinedScore?: number;
-    quadrant?: 'elite' | 'star' | 'avoid' | 'neutral';
 }
 
 export interface PitcherFinal extends Omit<PitcherState, 'iconImpact' | 'iconCounts' | 'ranges'> {
@@ -48,8 +47,8 @@ export interface PitcherFinal extends Omit<PitcherState, 'iconImpact' | 'iconCou
     whipPercentile?: number; mWHIPPercentile?: number;
     valueScore?: number; valueRating?: number;
     priceResidual?: number; priceValueRatio?: number;
+    // Combined z-score within role group: -z(WHIP dev) - z(price resid).
     combinedScore?: number;
-    quadrant?: 'elite' | 'star' | 'avoid' | 'neutral';
 }
 
 export function calculateFinalStats(stats: HitterState, weights: SimConfig['WEIGHTS']): HitterFinal {
