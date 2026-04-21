@@ -57,6 +57,24 @@ export function pitcherFeatureNames(): string[] {
     return names;
 }
 
+/** Starter-only feature list: no role dummies since every row is a Starter. */
+export function starterFeatureNames(): string[] {
+    const names = ['(intercept)', 'Control', 'IP'];
+    for (const c of PITCHER_CHART_OUTCOMES) names.push(`chart: ${c}`);
+    for (const ic of PITCHER_ICON_LIST) names.push(`icon: ${ic}`);
+    return names;
+}
+
+/** Bullpen feature list: Reliever + Closer combined, with Reliever as the
+ *  reference category and Closer as the only role indicator. */
+export function bullpenFeatureNames(): string[] {
+    const names = ['(intercept)', 'Control', 'IP'];
+    for (const c of PITCHER_CHART_OUTCOMES) names.push(`chart: ${c}`);
+    for (const ic of PITCHER_ICON_LIST) names.push(`icon: ${ic}`);
+    names.push('role: Closer');
+    return names;
+}
+
 // ============================================================================
 // FEATURE EXTRACTION
 // ============================================================================
@@ -120,6 +138,21 @@ export function pitcherFeatureRow(p: RawPitcher): number[] {
     for (const ic of PITCHER_ICON_LIST) row.push(iconsIncludes(p.Icons, ic) ? 1 : 0);
     // Role dummies — Reliever is the reference
     for (const r of PITCHER_ROLES) if (r !== 'Reliever') row.push(p.Position === r ? 1 : 0);
+    return row;
+}
+
+export function starterFeatureRow(p: RawPitcher): number[] {
+    const row: number[] = [1, p.Control || 0, p.IP || 0];
+    for (const c of PITCHER_CHART_OUTCOMES) row.push(rangeWidth((p as any)[c] ?? null));
+    for (const ic of PITCHER_ICON_LIST) row.push(iconsIncludes(p.Icons, ic) ? 1 : 0);
+    return row;
+}
+
+export function bullpenFeatureRow(p: RawPitcher): number[] {
+    const row: number[] = [1, p.Control || 0, p.IP || 0];
+    for (const c of PITCHER_CHART_OUTCOMES) row.push(rangeWidth((p as any)[c] ?? null));
+    for (const ic of PITCHER_ICON_LIST) row.push(iconsIncludes(p.Icons, ic) ? 1 : 0);
+    row.push(p.Position === 'Closer' ? 1 : 0);
     return row;
 }
 
@@ -231,7 +264,9 @@ export interface PricingRow {
     actualPoints: number;
     predictedPoints: number;
     residual: number;            // actual - predicted (negative = underpriced = good)
-    valueRatio: number;          // actual / predicted (< 1 = good)
+    // Residual as % of actual points. + = overpriced, − = underpriced.
+    // Always well-defined because actual > 0 for every card.
+    overUnderPct: number;
     onBaseOrControl: number;     // for display
     speedOrIp: number;           // for display; may be 0 if not applicable
 }
@@ -276,10 +311,10 @@ export function fitHitterPricing(hitters: RawHitter[], lambda: number = 0.5): Pr
         actualPoints: y[i],
         predictedPoints: yHat[i],
         residual: y[i] - yHat[i],
-        // Let the ratio go negative when predicted < 0 — that's a real
-        // signal (model thinks the card is worth < 0 pts → severely
-        // overpriced). Only guard against exact 0 to avoid divide-by-zero.
-        valueRatio: yHat[i] !== 0 ? y[i] / yHat[i] : 0,
+        // Residual as a % of the card's actual price. + overpriced, − underpriced.
+        // Using actual (always > 0) as the denominator sidesteps the negative-
+        // predicted blowup the old `actual / predicted` formula suffered.
+        overUnderPct: y[i] > 0 ? ((y[i] - yHat[i]) / y[i]) * 100 : 0,
         onBaseOrControl: h.onBase,
         speedOrIp: h.Speed || 0,
     }));
@@ -290,6 +325,45 @@ export function fitHitterPricing(hitters: RawHitter[], lambda: number = 0.5): Pr
         rSquared: rSquaredOf(y, yHat),
         meanAbsResidual: meanAbs(y.map((v, i) => v - yHat[i])),
     };
+}
+
+function fitPitcherSubset(
+    pitchers: RawPitcher[],
+    featureRow: (p: RawPitcher) => number[],
+    featureNames: string[],
+    lambda: number,
+): PricingFit {
+    const X = pitchers.map(featureRow);
+    const y = pitchers.map(p => p.Points || 0);
+    const beta = fitRidge(X, y, lambda);
+    const yHat = matVec(X, beta);
+    const rows: PricingRow[] = pitchers.map((p, i) => ({
+        name: `${p.Name} ${p['Yr.']} ${p.Ed} ${p['#']} ${p.Team}`,
+        team: p.Team, year: p['Yr.'], edition: p.Ed, cardNum: p['#'],
+        imagePath: p.imagePath || '',
+        position: p.Position, icons: p.Icons,
+        actualPoints: y[i], predictedPoints: yHat[i],
+        residual: y[i] - yHat[i],
+        overUnderPct: y[i] > 0 ? ((y[i] - yHat[i]) / y[i]) * 100 : 0,
+        onBaseOrControl: p.Control, speedOrIp: p.IP || 0,
+    }));
+    return {
+        coefficients: beta, featureNames, rows,
+        rSquared: rSquaredOf(y, yHat),
+        meanAbsResidual: meanAbs(y.map((v, i) => v - yHat[i])),
+    };
+}
+
+/** Fit a Starter-only pricing model. No role dummies — every row is a Starter. */
+export function fitStarterPricing(pitchers: RawPitcher[], lambda: number = 0.5): PricingFit {
+    const starters = pitchers.filter(p => p.Position === 'Starter');
+    return fitPitcherSubset(starters, starterFeatureRow, starterFeatureNames(), lambda);
+}
+
+/** Fit a Bullpen (Reliever + Closer) pricing model with a single Closer dummy. */
+export function fitBullpenPricing(pitchers: RawPitcher[], lambda: number = 0.5): PricingFit {
+    const bullpen = pitchers.filter(p => p.Position === 'Reliever' || p.Position === 'Closer');
+    return fitPitcherSubset(bullpen, bullpenFeatureRow, bullpenFeatureNames(), lambda);
 }
 
 export function fitPitcherPricing(pitchers: RawPitcher[], lambda: number = 0.5): PricingFit {
@@ -309,10 +383,8 @@ export function fitPitcherPricing(pitchers: RawPitcher[], lambda: number = 0.5):
         actualPoints: y[i],
         predictedPoints: yHat[i],
         residual: y[i] - yHat[i],
-        // Let the ratio go negative when predicted < 0 — avoids the "a lot
-        // of zeros" artifact where cheap cards that push the model into
-        // negative-predicted territory collapsed to valueRatio: 0.
-        valueRatio: yHat[i] !== 0 ? y[i] / yHat[i] : 0,
+        // Residual as a % of the card's actual price. + overpriced, − underpriced.
+        overUnderPct: y[i] > 0 ? ((y[i] - yHat[i]) / y[i]) * 100 : 0,
         onBaseOrControl: p.Control,
         speedOrIp: p.IP || 0,
     }));

@@ -31,7 +31,7 @@ export interface HitterFinal {
     valueScore?: number; valueRating?: number;
     // Pricing residual from the hedonic regression (actual - predicted).
     // Populated in SimulationPage from a per-catalog fit.
-    priceResidual?: number; priceValueRatio?: number;
+    priceResidual?: number;
     // Combined z-score within position group: z(OPS dev) - z(price resid).
     combinedScore?: number;
 }
@@ -46,7 +46,7 @@ export interface PitcherFinal extends Omit<PitcherState, 'iconImpact' | 'iconCou
     whipDeviation?: number; mWHIPDeviation?: number;
     whipPercentile?: number; mWHIPPercentile?: number;
     valueScore?: number; valueRating?: number;
-    priceResidual?: number; priceValueRatio?: number;
+    priceResidual?: number;
     // Combined z-score within role group: -z(WHIP dev) - z(price resid).
     combinedScore?: number;
 }

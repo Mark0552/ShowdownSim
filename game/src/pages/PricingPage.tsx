@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import type { RawHitter, RawPitcher } from '../sim/simEngine';
 import {
-    fitHitterPricing, fitPitcherPricing,
+    fitHitterPricing, fitStarterPricing, fitBullpenPricing,
     type PricingFit, type PricingRow,
 } from '../pricing/pricingRegression';
 import type { Card } from '../types/cards';
@@ -13,8 +13,8 @@ const BASE = import.meta.env.BASE_URL || '/';
 
 interface Props { onBack: () => void; }
 
-type SortKey = 'valueRatio' | 'residual' | 'actualPoints' | 'predictedPoints' | 'name' | 'onBaseOrControl' | 'speedOrIp';
-type Kind = 'hitters' | 'pitchers';
+type SortKey = 'overUnderPct' | 'residual' | 'actualPoints' | 'predictedPoints' | 'name' | 'onBaseOrControl' | 'speedOrIp';
+type Kind = 'hitters' | 'starters' | 'bullpen';
 
 export default function PricingPage({ onBack }: Props) {
     const [rawData, setRawData] = useState<{ hitters: RawHitter[]; pitchers: RawPitcher[] } | null>(null);
@@ -38,12 +38,16 @@ export default function PricingPage({ onBack }: Props) {
         () => rawData ? fitHitterPricing(rawData.hitters) : null,
         [rawData]
     );
-    const pitcherFit: PricingFit | null = useMemo(
-        () => rawData ? fitPitcherPricing(rawData.pitchers) : null,
+    const starterFit: PricingFit | null = useMemo(
+        () => rawData ? fitStarterPricing(rawData.pitchers) : null,
+        [rawData]
+    );
+    const bullpenFit: PricingFit | null = useMemo(
+        () => rawData ? fitBullpenPricing(rawData.pitchers) : null,
         [rawData]
     );
 
-    const fit = kind === 'hitters' ? hitterFit : pitcherFit;
+    const fit = kind === 'hitters' ? hitterFit : kind === 'starters' ? starterFit : bullpenFit;
 
     const sortedRows = useMemo(() => {
         if (!fit) return [];
@@ -71,9 +75,9 @@ export default function PricingPage({ onBack }: Props) {
                 return prev;
             }
             // Default: asc for name, desc for most numeric — asc here is
-            // "most underpriced first" for residual/valueRatio which is the
+            // "most underpriced first" for residual/overUnderPct which is the
             // interesting direction, so we keep asc as the default.
-            setSortDir(key === 'name' ? 'asc' : (key === 'residual' || key === 'valueRatio' ? 'asc' : 'desc'));
+            setSortDir(key === 'name' ? 'asc' : (key === 'residual' || key === 'overUnderPct' ? 'asc' : 'desc'));
             return key;
         });
     };
@@ -157,8 +161,8 @@ export default function PricingPage({ onBack }: Props) {
                         and the <b>residual</b> (actual &minus; predicted) flags over- and under-priced cards.
                     </p>
                     <p>
-                        <span className="resid-good">Negative residual / value ratio &lt; 1</span> = <b>underpriced</b> (good buy),
-                        {' '}<span className="resid-bad">Positive residual / value ratio &gt; 1</span> = <b>overpriced</b>.
+                        <span className="resid-good">Negative residual / negative over/under %</span> = <b>underpriced</b> (good buy),
+                        {' '}<span className="resid-bad">Positive residual / positive over/under %</span> = <b>overpriced</b>.
                     </p>
                 </div>
 
@@ -169,7 +173,8 @@ export default function PricingPage({ onBack }: Props) {
                     <>
                         <div className="pricing-tabs">
                             <button className={`pricing-tab ${kind === 'hitters' ? 'active' : ''}`} onClick={() => setKind('hitters')}>Hitters ({hitterFit?.rows.length ?? 0})</button>
-                            <button className={`pricing-tab ${kind === 'pitchers' ? 'active' : ''}`} onClick={() => setKind('pitchers')}>Pitchers ({pitcherFit?.rows.length ?? 0})</button>
+                            <button className={`pricing-tab ${kind === 'starters' ? 'active' : ''}`} onClick={() => setKind('starters')}>Starters ({starterFit?.rows.length ?? 0})</button>
+                            <button className={`pricing-tab ${kind === 'bullpen' ? 'active' : ''}`} onClick={() => setKind('bullpen')}>Bullpen ({bullpenFit?.rows.length ?? 0})</button>
                         </div>
 
                         <div className="pricing-fit-summary">
@@ -223,7 +228,7 @@ export default function PricingPage({ onBack }: Props) {
                                                 <th onClick={() => handleSort('actualPoints')} className="sortable num">Actual{sortArrow('actualPoints')}</th>
                                                 <th onClick={() => handleSort('predictedPoints')} className="sortable num">Predicted{sortArrow('predictedPoints')}</th>
                                                 <th onClick={() => handleSort('residual')} className="sortable num">Residual{sortArrow('residual')}</th>
-                                                <th onClick={() => handleSort('valueRatio')} className="sortable num">Value Ratio{sortArrow('valueRatio')}</th>
+                                                <th onClick={() => handleSort('overUnderPct')} className="sortable num">Over/Under %{sortArrow('overUnderPct')}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -243,10 +248,9 @@ export default function PricingPage({ onBack }: Props) {
                                                     <td className={`num ${r.residual < -20 ? 'resid-good' : r.residual > 20 ? 'resid-bad' : ''}`}>
                                                         {r.residual > 0 ? '+' : ''}{r.residual.toFixed(0)}
                                                     </td>
-                                                    {/* Ratio coloring follows residual sign so a negative ratio
-                                                         (model predicts <= 0) correctly colors red instead of green. */}
-                                                    <td className={`num ${r.residual < -20 ? 'resid-good' : r.residual > 20 ? 'resid-bad' : ''}`}>
-                                                        {r.valueRatio.toFixed(2)}
+                                                    {/* Over/Under % — residual as a % of actual price. + overpriced, − underpriced. */}
+                                                    <td className={`num ${r.overUnderPct < -5 ? 'resid-good' : r.overUnderPct > 5 ? 'resid-bad' : ''}`}>
+                                                        {r.overUnderPct > 0 ? '+' : ''}{r.overUnderPct.toFixed(1)}%
                                                     </td>
                                                 </tr>
                                             ))}

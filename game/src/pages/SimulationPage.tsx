@@ -11,7 +11,7 @@ import { buildHtmlReport } from '../sim/simHtmlExport';
 import type { Card } from '../types/cards';
 import CardTooltip from '../components/cards/CardTooltip';
 import { hitterFinalToCard, pitcherFinalToCard } from '../components/cards/cardAdapters';
-import { fitHitterPricing, fitPitcherPricing } from '../pricing/pricingRegression';
+import { fitHitterPricing, fitStarterPricing, fitBullpenPricing } from '../pricing/pricingRegression';
 import './SimulationPage.css';
 
 function stdev(values: number[]): number {
@@ -368,15 +368,20 @@ export default function SimulationPage({ onBack }: Props) {
     const hitterPriceMap = useMemo(() => {
         if (!rawData) return null;
         const fit = fitHitterPricing(rawData.hitters);
-        const m = new Map<string, { residual: number; valueRatio: number }>();
-        for (const r of fit.rows) m.set(r.name, { residual: r.residual, valueRatio: r.valueRatio });
+        const m = new Map<string, { residual: number }>();
+        for (const r of fit.rows) m.set(r.name, { residual: r.residual });
         return m;
     }, [rawData]);
     const pitcherPriceMap = useMemo(() => {
         if (!rawData) return null;
-        const fit = fitPitcherPricing(rawData.pitchers);
-        const m = new Map<string, { residual: number; valueRatio: number }>();
-        for (const r of fit.rows) m.set(r.name, { residual: r.residual, valueRatio: r.valueRatio });
+        // Starters and bullpen have fundamentally different pricing scales
+        // (IP range alone makes a combined fit noisy), so each group gets its
+        // own model. Merge residuals into one name→residual map.
+        const starterFit = fitStarterPricing(rawData.pitchers);
+        const bullpenFit = fitBullpenPricing(rawData.pitchers);
+        const m = new Map<string, { residual: number }>();
+        for (const r of starterFit.rows) m.set(r.name, { residual: r.residual });
+        for (const r of bullpenFit.rows) m.set(r.name, { residual: r.residual });
         return m;
     }, [rawData]);
 
@@ -392,10 +397,7 @@ export default function SimulationPage({ onBack }: Props) {
                 for (const pos of Object.keys(grouped)) {
                     for (const row of grouped[pos]) {
                         const p = hitterPriceMap.get(row.name);
-                        if (p) {
-                            row.priceResidual = p.residual;
-                            row.priceValueRatio = p.valueRatio;
-                        }
+                        if (p) row.priceResidual = p.residual;
                     }
                     assignCombinedScore(grouped[pos], r => r.opsDeviation, true);
                 }
@@ -414,10 +416,7 @@ export default function SimulationPage({ onBack }: Props) {
                 for (const role of Object.keys(grouped)) {
                     for (const row of grouped[role]) {
                         const price = pitcherPriceMap.get(row.name);
-                        if (price) {
-                            row.priceResidual = price.residual;
-                            row.priceValueRatio = price.valueRatio;
-                        }
+                        if (price) row.priceResidual = price.residual;
                     }
                     // WHIP dev: lower is better, so flip the perf z-score.
                     assignCombinedScore(grouped[role], r => r.whipDeviation, false);
