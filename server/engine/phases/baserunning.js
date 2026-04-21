@@ -188,8 +188,15 @@ export function applyResult(state, outcome, batterId) {
     if (outcome === 'HR') fieldingTeamUpdated = addPitcherStat(fieldingTeamUpdated, pitcherId, 'hr');
     if (runs > 0) fieldingTeamUpdated = addPitcherStat(fieldingTeamUpdated, pitcherId, 'r', runs);
 
+    // If S+ actually advanced the batter to 2nd, that auto-steal counts as
+    // their one allowed steal for this trip to the bases.
+    const runnersAlreadyStole = (outcome === 'SPlus' && bases.second === batterId)
+        ? [...(state.runnersAlreadyStole || []), batterId]
+        : (state.runnersAlreadyStole || []);
+
     let newState = {
         ...state, bases, outs, score: newScore, pendingDpResult: null, halfInningClean,
+        runnersAlreadyStole,
         gameLog: [...state.gameLog, ...logs],
         [battingSide]: battingTeam,
         [fieldingSide]: fieldingTeamUpdated,
@@ -220,7 +227,13 @@ export function advanceBatter(state) {
     const battingSide = state.halfInning === 'top' ? 'awayTeam' : 'homeTeam';
     const team = { ...state[battingSide] };
     team.currentBatterIndex = (team.currentBatterIndex + 1) % 9;
-    return enterPreAtBat({ ...state, [battingSide]: team, matchupLogged: false });
+    // Fresh pre-at-bat for the new batter — the per-PA steal cap resets.
+    return enterPreAtBat({
+        ...state,
+        [battingSide]: team,
+        matchupLogged: false,
+        stealUsedThisPreAtBat: false,
+    });
 }
 
 export function endHalfInning(state) {
@@ -259,6 +272,7 @@ export function endHalfInning(state) {
             pendingDpResult: null, extraBaseEligible: null, pendingExtraBaseResult: null,
             iconPrompt: null, halfInningClean: true, icon20UsedThisInning: false, gbOptions: null,
             pendingSteal: null, pendingStealResult: null, matchupLogged: false,
+            stealUsedThisPreAtBat: false, runnersAlreadyStole: [],
             controlModifier: (s.rpActiveInning === state.inning && s.rpActiveTeam === 'home') ? s.controlModifier : 0,
             rpActivePitcherId: (s.rpActiveInning === state.inning && s.rpActiveTeam === 'home') ? s.rpActivePitcherId : null,
             gameLog: [...s.gameLog, `--- Bottom of ${state.inning} ---`],
@@ -289,6 +303,7 @@ export function endHalfInning(state) {
         iconPrompt: null, halfInningClean: true, icon20UsedThisInning: false,
         controlModifier: newControlMod, rpActivePitcherId: rpCarriesOver ? s.rpActivePitcherId : null, gbOptions: null,
         pendingSteal: null, pendingStealResult: null, matchupLogged: false,
+        stealUsedThisPreAtBat: false, runnersAlreadyStole: [],
         gameLog: [...s.gameLog, `--- Top of ${state.inning + 1} ---`],
     };
     // Pipe through enterPreAtBat for auto-skip logic

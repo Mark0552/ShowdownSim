@@ -73,6 +73,10 @@ export function initializeGame(homeLineupData, awayLineupData, homeUserId, awayU
         gbOptions: null,
         pendingSteal: null,
         pendingStealResult: null,
+        // Steal limits: one attempt per pre-at-bat, and each runner may use
+        // only one active steal per trip to the bases (S+ auto-steal counts).
+        stealUsedThisPreAtBat: false,
+        runnersAlreadyStole: [],
         outsBeforeSwing: 0,
         spRoll: spRollResult,
         lastRoll: null,

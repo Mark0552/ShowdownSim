@@ -269,6 +269,13 @@ export interface GameState {
     gbOptions: GbOptions | null;
     pendingSteal: StealAttempt | null;
     pendingStealResult: StealResult | null;
+    // One steal attempt per pre-at-bat (true after any steal resolves);
+    // resets when the next batter comes up.
+    stealUsedThisPreAtBat?: boolean;
+    // CardIds of runners who've used their one active steal this trip to the
+    // bases — populated on successful steal or S+ arrival, pruned when they
+    // leave the bases, and fully reset on half-inning change.
+    runnersAlreadyStole?: string[];
     outsBeforeSwing: number;            // track outs before swing for +5 bonus on extra base
     spRoll: number | null;              // starting pitcher d20 roll result (for animation)
     lastRoll: number | null;            // most recent d20 roll (for dice animation)

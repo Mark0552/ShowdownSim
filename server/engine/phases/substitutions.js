@@ -338,6 +338,15 @@ export function enterPreAtBat(state) {
     const offSide = state.halfInning === 'top' ? 'awayTeam' : 'homeTeam';
     const defSide = state.halfInning === 'top' ? 'homeTeam' : 'awayTeam';
 
+    // Prune runnersAlreadyStole: drop cardIds no longer on base (scored,
+    // thrown out, or just left the basepaths some other way). A card that
+    // leaves and later returns via a fresh hit starts unflagged.
+    const onBases = new Set([state.bases.first, state.bases.second, state.bases.third].filter(Boolean));
+    const pruned = (state.runnersAlreadyStole || []).filter(id => onBases.has(id));
+    if (pruned.length !== (state.runnersAlreadyStole || []).length) {
+        state = { ...state, runnersAlreadyStole: pruned };
+    }
+
     // Log matchup once per at-bat (not on re-entries from steal etc.)
     if (!state.matchupLogged) {
         const batter = state[offSide].lineup[state[offSide].currentBatterIndex];
@@ -367,20 +376,26 @@ export function enterPreAtBat(state) {
     const hasRelievers = hasRelieversInBullpen && canRemoveStarter;
     const bases = state.bases;
 
-    // Check steal eligibility (runner on 1st with 2nd open, or runner on 2nd with 3rd open)
-    const canSteal = (bases.first && !bases.second) || (bases.second && !bases.third);
+    // Check steal eligibility. A runner is eligible if their target base is
+    // open AND they haven't already used their one steal (via prior success
+    // or via S+ auto-advance). Also gate on the per-pre-at-bat cap.
+    const alreadyStole = new Set(state.runnersAlreadyStole || []);
+    const firstCanSteal = !!bases.first && !bases.second && !alreadyStole.has(bases.first);
+    const secondCanSteal = !!bases.second && !bases.third && !alreadyStole.has(bases.second);
+    const canSteal = !state.stealUsedThisPreAtBat && (firstCanSteal || secondCanSteal);
 
-    // Check SB icon — only for runners on stealable bases (must match client button logic)
+    // Check SB icon — only for runners on stealable bases who are still eligible.
     const battingTeam = state[offSide];
     let hasSBOption = false;
-    if (bases.first && !bases.second) {
+    if (firstCanSteal) {
         const runner = battingTeam.lineup.find(p => p.cardId === bases.first);
         if (runner && playerHasIcon(runner, 'SB') && canUseIcon(battingTeam, runner.cardId, 'SB')) hasSBOption = true;
     }
-    if (bases.second && !bases.third) {
+    if (secondCanSteal) {
         const runner = battingTeam.lineup.find(p => p.cardId === bases.second);
         if (runner && playerHasIcon(runner, 'SB') && canUseIcon(battingTeam, runner.cardId, 'SB')) hasSBOption = true;
     }
+    if (state.stealUsedThisPreAtBat) hasSBOption = false;
 
     // Bunt is now in bunt_decision phase (after IBB), not pre_atbat
 

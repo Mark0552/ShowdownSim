@@ -61,15 +61,26 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 const isHomeBatting = state.halfInning === 'bottom';
                 const backupAllowed = isHomeBatting ? state.inning >= 6 : state.inning >= 7;
                 const eligibleBench = battingTeam.bench.filter(p => !p.isBackup || backupAllowed);
-                // Find runners with unused SB icon
+                // Steal caps: one event per pre-at-bat, and each runner at most
+                // one active steal per trip to the bases (S+ arrival also counts).
+                const stealUsed = !!state.stealUsedThisPreAtBat;
+                const alreadyStoleSet = new Set<string>(state.runnersAlreadyStole || []);
+                const canStealFromFirst = !stealUsed
+                    && !!state.bases.first && !state.bases.second
+                    && !alreadyStoleSet.has(state.bases.first);
+                const canStealFromSecond = !stealUsed
+                    && !!state.bases.second && !state.bases.third
+                    && !alreadyStoleSet.has(state.bases.second);
+                // Find runners with unused SB icon — but only if they haven't
+                // already used their steal on this trip to the bases.
                 const sbRunners: { cardId: string; name: string; fromBase: string; toBase: string }[] = [];
-                if (state.bases.first && !state.bases.second) {
+                if (canStealFromFirst) {
                     const runner = battingTeam.lineup.find(p => p.cardId === state.bases.first);
                     if (runner?.icons?.includes('SB') && !battingTeam.iconUsage?.[runner.cardId]?.['SB']) {
                         sbRunners.push({ cardId: runner.cardId, name: runner.name, fromBase: '1st', toBase: '2nd' });
                     }
                 }
-                if (state.bases.second && !state.bases.third) {
+                if (canStealFromSecond) {
                     const runner = battingTeam.lineup.find(p => p.cardId === state.bases.second);
                     if (runner?.icons?.includes('SB') && !battingTeam.iconUsage?.[runner.cardId]?.['SB']) {
                         sbRunners.push({ cardId: runner.cardId, name: runner.name, fromBase: '2nd', toBase: '3rd' });
@@ -79,8 +90,8 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 const items: { type: string; width: number; data?: any }[] = [];
                 if (eligibleBench.length > 0) items.push({ type: 'pinch', width: 220 });
                 sbRunners.forEach(sb => items.push({ type: 'sb', width: 190, data: sb }));
-                if (state.bases.first && !state.bases.second) items.push({ type: 'steal2', width: 200 });
-                if (state.bases.second && !state.bases.third) items.push({ type: 'steal3', width: 200 });
+                if (canStealFromFirst) items.push({ type: 'steal2', width: 200 });
+                if (canStealFromSecond) items.push({ type: 'steal3', width: 200 });
                 items.push({ type: 'skip', width: 130 });
                 const gap = 10;
                 const totalW = items.reduce((s, it) => s + it.width, 0) + (items.length - 1) * gap;

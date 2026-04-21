@@ -11,6 +11,10 @@ import { endHalfInning } from './baserunning.js';
 
 export function handleSteal(state, action) {
     if (state.phase !== 'pre_atbat') return state;
+    // One steal event per pre-at-bat (success or fail), per runner at most
+    // one active steal per trip to the bases (S+ arrival also counts).
+    if (state.stealUsedThisPreAtBat) return state;
+    if ((state.runnersAlreadyStole || []).includes(action.runnerId)) return state;
     const battingSide = state.halfInning === 'top' ? 'awayTeam' : 'homeTeam';
     const fieldingSide = state.halfInning === 'top' ? 'homeTeam' : 'awayTeam';
     const battingTeam = state[battingSide];
@@ -105,9 +109,15 @@ export function handleStealSbDecision(state, action) {
             runnerId: steal.runnerId, runnerName: steal.runnerName,
             roll: 0, defenseTotal: 0, runnerSpeed: steal.runnerSpeed, safe: true, goldGloveUsed: false,
         };
+        const runnersAlreadyStole = [
+            ...(state.runnersAlreadyStole || []),
+            steal.runnerId,
+        ];
         return enterPreAtBat({
             ...state, bases, [battingSide]: battingTeam,
             pendingSteal: null, pendingStealResult,
+            stealUsedThisPreAtBat: true,
+            runnersAlreadyStole,
             gameLog: [...state.gameLog, ...logs],
         });
     }
@@ -186,11 +196,20 @@ export function resolveSteal(state, goldGloveCardId) {
         battingTeam = addBatterStat(battingTeam, steal.runnerId, 'cs');
     }
 
+    // One-shot per pre-at-bat (flag set on both success and fail).
+    // Tag the runner as having used their one steal on success only — on fail
+    // they're out and removed from bases, so the tag would be irrelevant.
+    const runnersAlreadyStole = safe
+        ? [...(state.runnersAlreadyStole || []), steal.runnerId]
+        : (state.runnersAlreadyStole || []);
+
     let newState = {
         ...state, bases, outs,
         [fieldingSide]: fieldingTeam,
         [battingSide]: battingTeam,
         pendingSteal: null, pendingStealResult,
+        stealUsedThisPreAtBat: true,
+        runnersAlreadyStole,
         lastRoll: roll, lastRollType: 'fielding', rollSequence: getRollSequence(),
         gameLog: [...state.gameLog, ...logs],
     };
