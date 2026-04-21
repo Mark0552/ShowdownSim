@@ -12,7 +12,8 @@ import {
     type HitterFinal,
     type PitcherFinal,
 } from './simStats';
-import type { SimConfig } from './simEngine';
+import type { SimConfig, RawHitter, RawPitcher } from './simEngine';
+import { fitHitterPricing, fitStarterPricing, fitBullpenPricing } from '../pricing/pricingRegression';
 
 export interface Column {
     key: string;
@@ -22,7 +23,8 @@ export interface Column {
     desc?: string;
 }
 
-// Compact column set — identical to HITTER_VIEW_COLS / PITCHER_VIEW_COLS in SimulationPage.tsx
+// Columns here mirror HITTER_VIEW_COLS / PITCHER_VIEW_COLS in SimulationPage.tsx
+// EXACTLY — same keys, labels, decimals, colorCode, descriptions, order.
 const HITTER_COLUMNS: Column[] = [
     { key: 'valueRating', label: 'Val', decimals: 0, desc: 'Value Rating (0-100). Combined z-score of OPS and wOBA deviation vs points, scaled 0-100. 50 = average for cost, higher = better value.' },
     { key: 'name', label: 'Name', desc: 'Player name, year, edition, card number, team.' },
@@ -35,55 +37,59 @@ const HITTER_COLUMNS: Column[] = [
     { key: 'onBasePercentage', label: 'OBP', decimals: 3, desc: 'On-Base Pct = (H + BB) / PA.' },
     { key: 'sluggingPercentage', label: 'SLG', decimals: 3, desc: 'Slugging Pct = Total Bases / AB.' },
     { key: 'ops', label: 'OPS', decimals: 3, desc: 'OPS = OBP + SLG.' },
-    { key: 'woba', label: 'wOBA', decimals: 3, desc: 'Weighted On-Base Avg.' },
+    { key: 'woba', label: 'wOBA', decimals: 3, desc: 'Weighted On-Base Avg — weights each outcome by run value: (0.69\u00B7BB + 0.88\u00B71B + 1.08\u00B71B+ + 1.24\u00B72B + 1.56\u00B73B + 1.95\u00B7HR) / PA.' },
     { key: 'iso', label: 'ISO', decimals: 3, desc: 'Isolated Power = SLG - AVG.' },
     { key: 'kPct', label: 'K%', decimals: 3, desc: 'Strikeout rate = SO / PA.' },
     { key: 'bbPct', label: 'BB%', decimals: 3, desc: 'Walk rate = BB / PA.' },
     { key: 'hrPct', label: 'HR%', decimals: 3, desc: 'HR rate = HR / AB.' },
     { key: 'opsDeviation', label: 'OPS\u00B1', decimals: 3, colorCode: 'positive-good', desc: 'OPS deviation from points regression within position. Positive (green) = overperforming for cost.' },
     { key: 'wobaDeviation', label: 'wOBA\u00B1', decimals: 3, colorCode: 'positive-good', desc: 'wOBA deviation from points regression. Positive (green) = overperforming for cost.' },
+    { key: 'priceResidual', label: 'Pts\u00B1', decimals: 0, colorCode: 'negative-good', desc: 'Points residual from the pricing regression (actual - predicted). Negative (green) = card costs LESS than the stats-formula predicts = underpriced. Positive (red) = overpriced per the formula.' },
+    { key: 'combinedScore', label: 'z+/\u2212', decimals: 2, colorCode: 'positive-good', desc: 'Combined z-score within position group: z(OPS\u00B1) \u2212 z(Pts\u00B1). Higher (green) = outperforms AND/OR underpriced; lower (red) = the opposite. Positive means better than position-group average on the joint distribution.' },
     { key: 'hits', label: 'H', decimals: 0, desc: 'Hits = 1B + 1B+ + 2B + 3B + HR.' },
     { key: 'doubles', label: '2B', decimals: 0, desc: 'Doubles.' },
     { key: 'triples', label: '3B', decimals: 0, desc: 'Triples.' },
     { key: 'homeRuns', label: 'HR', decimals: 0, desc: 'Home runs.' },
     { key: 'walks', label: 'BB', decimals: 0, desc: 'Walks.' },
     { key: 'strikeouts', label: 'SO', decimals: 0, desc: 'Strikeouts.' },
-    { key: 'Vused', label: 'V', decimals: 0, desc: 'V icon uses.' },
-    { key: 'Sused', label: 'S', decimals: 0, desc: 'S icon uses.' },
-    { key: 'HRused', label: 'HR*', decimals: 0, desc: 'HR icon uses.' },
-    { key: 'totalIconWobaImpact', label: 'Ico+', decimals: 3, colorCode: 'positive-good', desc: 'Total icon wOBA impact.' },
-    { key: 'rAdjustmentAbs', label: 'RVar', decimals: 0, desc: 'R icon variance magnitude.' },
-    { key: 'rAdjustmentNet', label: 'RNet', decimals: 0, colorCode: 'positive-good', desc: 'R icon net luck.' },
-    { key: 'ryUsed', label: 'RY', decimals: 0, desc: 'RY icon uses.' },
+    { key: 'Vused', label: 'V', decimals: 0, desc: 'V (Vision) icon uses \u2014 rerolls of outs on hitter chart (max 2 per 5-AB game).' },
+    { key: 'Sused', label: 'S', decimals: 0, desc: 'S (Speed) icon uses \u2014 singles upgraded to doubles (once per 5-AB game).' },
+    { key: 'HRused', label: 'HR*', decimals: 0, desc: 'HR (Power) icon uses \u2014 doubles/triples upgraded to HRs (once per 5-AB game).' },
+    { key: 'totalIconWobaImpact', label: 'Ico+', decimals: 3, colorCode: 'positive-good', desc: 'Total icon wOBA impact \u2014 estimated wOBA boost from all icons combined.' },
+    { key: 'rAdjustmentAbs', label: 'RVar', decimals: 0, desc: 'R icon variance magnitude \u2014 cumulative sum of |\u00B13| applied to swing rolls. Linear with PA count for hitters with R; expected \u2248 1.71 \u00D7 PA. 0 if hitter lacks R.' },
+    { key: 'rAdjustmentNet', label: 'RNet', decimals: 0, colorCode: 'positive-good', desc: 'R icon net luck \u2014 signed sum of all \u00B13 adjustments. Positive (green) = R helped this hitter (rolls ran high); negative (red) = R hurt them. Should average ~0 across many sims.' },
+    { key: 'ryUsed', label: 'RY', decimals: 0, desc: 'RY icon uses \u2014 +3 swing bonuses applied on hitter-chart PAs (once per 5 ABs, Enhanced mode only).' },
 ];
 
 const PITCHER_COLUMNS: Column[] = [
     { key: 'valueRating', label: 'Val', decimals: 0, desc: 'Value Rating (0-100). Combined z-score of WHIP and mWHIP deviation vs points.' },
     { key: 'name', label: 'Name', desc: 'Pitcher name, year, edition, card number, team.' },
     { key: 'points', label: 'Pts', decimals: 0, desc: 'Card point cost.' },
-    { key: 'Control', label: 'Ctrl', decimals: 0, desc: 'Control.' },
+    { key: 'Control', label: 'Ctrl', decimals: 0, desc: 'Control \u2014 added to pitcher d20 roll.' },
     { key: 'IP', label: 'IP', decimals: 0, desc: 'Innings Pitched capacity.' },
     { key: 'Icons', label: 'Ico', desc: 'Icons (K, 20, RP).' },
-    { key: 'whip', label: 'WHIP', decimals: 3, desc: '(BB + H) / IP. Lower = better.' },
-    { key: 'mWHIP', label: 'mWHIP', decimals: 3, desc: 'Modified WHIP. Lower = better.' },
-    { key: 'oppAvg', label: 'OppAVG', decimals: 3, desc: 'Opponent batting avg. Lower = better.' },
-    { key: 'oppOps', label: 'OppOPS', decimals: 3, desc: 'Opponent OPS. Lower = better.' },
+    { key: 'whip', label: 'WHIP', decimals: 3, desc: 'Walks + Hits per IP = (BB + H) / IP. Lower = better.' },
+    { key: 'mWHIP', label: 'mWHIP', decimals: 3, desc: 'Modified WHIP weighting baserunners by run value. Lower = better.' },
+    { key: 'oppAvg', label: 'OppAVG', decimals: 3, desc: 'Opponent batting avg against this pitcher. Lower = better.' },
+    { key: 'oppOps', label: 'OppOPS', decimals: 3, desc: 'Opponent OPS against this pitcher. Lower = better.' },
     { key: 'kPct', label: 'K%', decimals: 3, desc: 'Strikeout rate = SO / BF. Higher = better.' },
     { key: 'bbPct', label: 'BB%', decimals: 3, desc: 'Walk rate = BB / BF. Lower = better.' },
     { key: 'kBbRatio', label: 'K/BB', decimals: 2, desc: 'Strikeout-to-walk ratio.' },
     { key: 'hr9', label: 'HR/9', decimals: 2, desc: 'Home runs per 9 IP.' },
-    { key: 'whipDeviation', label: 'WHIP\u00B1', decimals: 3, colorCode: 'negative-good', desc: 'WHIP deviation from regression. Negative (green) = better than expected.' },
+    { key: 'whipDeviation', label: 'WHIP\u00B1', decimals: 3, colorCode: 'negative-good', desc: 'WHIP deviation from regression. Negative (green) = better than expected for cost.' },
     { key: 'mWHIPDeviation', label: 'mWHIP\u00B1', decimals: 3, colorCode: 'negative-good', desc: 'mWHIP deviation from regression. Negative (green) = better than expected.' },
+    { key: 'priceResidual', label: 'Pts\u00B1', decimals: 0, colorCode: 'negative-good', desc: 'Points residual from pricing regression (actual - predicted). Negative (green) = underpriced per stats formula.' },
+    { key: 'combinedScore', label: 'z+/\u2212', decimals: 2, colorCode: 'positive-good', desc: 'Combined z-score within role group: \u2212z(WHIP\u00B1) \u2212 z(Pts\u00B1). Higher (green) = lower WHIP AND/OR underpriced relative to the group; lower (red) = the opposite.' },
     { key: 'battersFaced', label: 'BF', decimals: 0, desc: 'Batters Faced.' },
     { key: 'strikeouts', label: 'SO', decimals: 0, desc: 'Strikeouts.' },
     { key: 'walks', label: 'BB', decimals: 0, desc: 'Walks.' },
     { key: 'homeruns', label: 'HR', decimals: 0, desc: 'Home runs allowed.' },
-    { key: 'kIconHRsBlocked', label: 'K*', decimals: 0, desc: 'K icon uses.' },
-    { key: 'twentyIconAdvantageSwings', label: '20*', decimals: 0, desc: '20 icon advantage swings.' },
-    { key: 'rpIconAdvantageSwings', label: 'RP*', decimals: 0, desc: 'RP icon advantage swings.' },
-    { key: 'rAdjustmentAbs', label: 'RVar', decimals: 0, desc: 'R icon variance magnitude.' },
-    { key: 'rAdjustmentNet', label: 'RNet', decimals: 0, colorCode: 'positive-good', desc: 'R icon net luck.' },
-    { key: 'ryUsed', label: 'RY', decimals: 0, desc: 'RY icon uses.' },
+    { key: 'kIconHRsBlocked', label: 'K*', decimals: 0, desc: 'K icon uses \u2014 HRs converted to strikeouts (once per 9 innings).' },
+    { key: 'twentyIconAdvantageSwings', label: '20*', decimals: 0, desc: '20 icon advantage swings \u2014 +3 control bonus flipped from hitter to pitcher chart.' },
+    { key: 'rpIconAdvantageSwings', label: 'RP*', decimals: 0, desc: 'RP icon advantage swings \u2014 first-inning +3 control bonus flipped chart.' },
+    { key: 'rAdjustmentAbs', label: 'RVar', decimals: 0, desc: 'R icon variance magnitude \u2014 cumulative sum of |\u00B13| applied to pitch rolls. Linear with BF for pitchers with R; expected \u2248 1.71 \u00D7 BF. 0 if pitcher lacks R.' },
+    { key: 'rAdjustmentNet', label: 'RNet', decimals: 0, colorCode: 'positive-good', desc: 'R icon net luck \u2014 signed sum of all \u00B13 adjustments. Positive (green) = R helped this pitcher (rolls ran high \u2192 more pitcher-chart matchups); negative (red) = R hurt them. Should average ~0 across many sims.' },
+    { key: 'ryUsed', label: 'RY', decimals: 0, desc: 'RY icon uses \u2014 +3 pitch bonuses applied (once per 27 outs, Enhanced mode only).' },
 ];
 
 const HITTER_POSITIONS = ['All Hitters', 'C', '1B', '2B', '3B', 'SS', 'LF-RF', 'CF', 'DH'];
@@ -196,11 +202,68 @@ function renderTable(rows: any[], columns: Column[]): string {
 
 interface ModeContent { hitters: string; pitchers: string }
 
+type PriceMap = Map<string, number>;
+
+function stdev(values: number[]): number {
+    if (values.length < 2) return 0;
+    const m = values.reduce((a, b) => a + b, 0) / values.length;
+    let s = 0;
+    for (const v of values) s += (v - m) ** 2;
+    return Math.sqrt(s / values.length);
+}
+function mean(values: number[]): number {
+    if (values.length === 0) return 0;
+    return values.reduce((a, b) => a + b, 0) / values.length;
+}
+
+/** Mirror of SimulationPage.assignCombinedScore:
+ *  combined = z(perf) - z(price resid), flipping perf sign for pitchers. */
+function assignCombinedScore<T extends { priceResidual?: number; combinedScore?: number }>(
+    rows: T[],
+    perfGetter: (r: T) => number | undefined,
+    perfHigherBetter: boolean,
+): void {
+    if (rows.length < 2) { rows.forEach(r => { r.combinedScore = 0; }); return; }
+    const perfVals = rows.map(r => perfGetter(r) ?? 0);
+    const priceVals = rows.map(r => r.priceResidual ?? 0);
+    const mPerf = mean(perfVals), sPerf = stdev(perfVals) || 1;
+    const mPrice = mean(priceVals), sPrice = stdev(priceVals) || 1;
+    for (const r of rows) {
+        const perfZ = ((perfGetter(r) ?? 0) - mPerf) / sPerf;
+        const priceZ = ((r.priceResidual ?? 0) - mPrice) / sPrice;
+        const signedPerf = perfHigherBetter ? perfZ : -perfZ;
+        r.combinedScore = signedPerf - priceZ;
+    }
+}
+
 function buildModeContent(
-    hitters: HitterFinal[], pitchers: PitcherFinal[], modeId: string
+    hitters: HitterFinal[], pitchers: PitcherFinal[], modeId: string,
+    hitterPriceMap: PriceMap | null, pitcherPriceMap: PriceMap | null,
 ): ModeContent {
     const byPos = groupHittersByPosition(hitters);
     const byRole = groupPitchersByRole(pitchers);
+
+    // Inject pricing residuals + compute per-group combined z-scores. Matches
+    // SimulationPage's hittersGrouped / pitchersGrouped useMemos exactly.
+    if (hitterPriceMap) {
+        for (const pos of HITTER_POSITIONS) {
+            for (const row of byPos[pos]) {
+                const resid = hitterPriceMap.get(row.name);
+                if (resid !== undefined) row.priceResidual = resid;
+            }
+            assignCombinedScore(byPos[pos], r => r.opsDeviation, true);
+        }
+    }
+    if (pitcherPriceMap) {
+        for (const role of PITCHER_ROLES) {
+            for (const row of byRole[role]) {
+                const resid = pitcherPriceMap.get(row.name);
+                if (resid !== undefined) row.priceResidual = resid;
+            }
+            // WHIP dev is lower-better, so flip the perf z-score.
+            assignCombinedScore(byRole[role], r => r.whipDeviation, false);
+        }
+    }
 
     const hitterSubtabs = HITTER_POSITIONS.map((pos, idx) => {
         const active = idx === 0 ? ' active' : '';
@@ -233,10 +296,30 @@ export interface SimExportData {
     hittersEnhanced: HitterFinal[]; pitchersEnhanced: PitcherFinal[];
 }
 
-export function buildHtmlReport(data: SimExportData, config: SimConfig): string {
-    const on = buildModeContent(data.hittersOn, data.pitchersOn, 'on');
-    const off = buildModeContent(data.hittersOff, data.pitchersOff, 'off');
-    const enh = buildModeContent(data.hittersEnhanced, data.pitchersEnhanced, 'enh');
+export function buildHtmlReport(
+    data: SimExportData,
+    config: SimConfig,
+    rawData?: { hitters: RawHitter[]; pitchers: RawPitcher[] },
+): string {
+    // Fit pricing regressions once per catalog and build name→residual maps.
+    // Starters and bullpen fit separately (same split as the in-app Pricing page).
+    let hitterPriceMap: PriceMap | null = null;
+    let pitcherPriceMap: PriceMap | null = null;
+    if (rawData) {
+        const hFit = fitHitterPricing(rawData.hitters);
+        hitterPriceMap = new Map<string, number>();
+        for (const r of hFit.rows) hitterPriceMap.set(r.name, r.residual);
+
+        const sFit = fitStarterPricing(rawData.pitchers);
+        const bFit = fitBullpenPricing(rawData.pitchers);
+        pitcherPriceMap = new Map<string, number>();
+        for (const r of sFit.rows) pitcherPriceMap.set(r.name, r.residual);
+        for (const r of bFit.rows) pitcherPriceMap.set(r.name, r.residual);
+    }
+
+    const on = buildModeContent(data.hittersOn, data.pitchersOn, 'on', hitterPriceMap, pitcherPriceMap);
+    const off = buildModeContent(data.hittersOff, data.pitchersOff, 'off', hitterPriceMap, pitcherPriceMap);
+    const enh = buildModeContent(data.hittersEnhanced, data.pitchersEnhanced, 'enh', hitterPriceMap, pitcherPriceMap);
 
     // CSS mirrors game/src/pages/SimulationPage.css with variable values inlined
     const style = `
