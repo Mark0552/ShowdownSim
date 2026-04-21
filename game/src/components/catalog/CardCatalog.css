@@ -6,17 +6,15 @@
 
 .catalog-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
     gap: 10px;
 }
 
 .catalog-card {
     display: grid;
     grid-template-columns: auto 1fr;
-    grid-template-rows: auto auto;
-    grid-template-areas: "img info" "chart chart";
+    grid-template-areas: "img info";
     column-gap: 10px;
-    row-gap: 6px;
     padding: 8px;
     background: var(--bg-card);
     border: 1px solid var(--border);
@@ -37,19 +35,21 @@
     object-fit: cover;
     border-radius: 3px;
     flex-shrink: 0;
+    align-self: start;
 }
 
 .catalog-card-info {
     grid-area: info;
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 2px;
     min-width: 0;
 }
 
 .catalog-card-name {
     font-weight: 600;
     font-size: 14px;
+    line-height: 1.1;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -61,10 +61,11 @@
     font-size: 11px;
     color: var(--text-dim);
     flex-wrap: wrap;
+    line-height: 1.2;
 }
 
 .catalog-card-chart {
-    grid-area: chart;
+    margin-top: auto;
     overflow-x: auto;
 }
 
@@ -78,7 +79,7 @@
 
 .catalog-card-chart th,
 .catalog-card-chart td {
-    padding: 2px 3px;
+    padding: 1px 2px;
     border: 1px solid var(--border);
     text-align: center;
     white-space: nowrap;
