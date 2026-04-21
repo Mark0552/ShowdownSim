@@ -227,7 +227,6 @@ function groupPitchersByRole(pitchers: PitcherFinal[]): Record<string, PitcherFi
 
 export default function SimulationPage({ onBack }: Props) {
     const [atBats, setAtBats] = useState(50);
-    const [seed, setSeed] = useState('');
     const [phase, setPhase] = useState<Phase>('idle');
     const [errorMsg, setErrorMsg] = useState('');
     const [iconsOnProgress, setIconsOnProgress] = useState({ done: 0, total: 0 });
@@ -292,7 +291,7 @@ export default function SimulationPage({ onBack }: Props) {
         const config: SimConfig = {
             ...DEFAULT_CONFIG,
             AT_BATS_PER_MATCHUP: atBats,
-            SEED: seed.trim() || null,
+            SEED: null,
         };
         setUsedConfig(config);
 
@@ -330,7 +329,7 @@ export default function SimulationPage({ onBack }: Props) {
             hitters: rawData.hitters,
             pitchers: rawData.pitchers,
         });
-    }, [rawData, atBats, seed, terminateWorker]);
+    }, [rawData, atBats, terminateWorker]);
 
     const cancel = useCallback(() => {
         terminateWorker();
@@ -339,7 +338,7 @@ export default function SimulationPage({ onBack }: Props) {
 
     const exportHtml = useCallback(() => {
         if (!results || !usedConfig) return;
-        const html = buildHtmlReport(results, usedConfig);
+        const html = buildHtmlReport(results, usedConfig, rawData || undefined);
         const blob = new Blob([html], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -349,7 +348,7 @@ export default function SimulationPage({ onBack }: Props) {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-    }, [results, usedConfig]);
+    }, [results, usedConfig, rawData]);
 
     const hittersForView = (mode: 'on' | 'off' | 'enhanced'): HitterFinal[] | null => {
         if (!results) return null;
@@ -510,14 +509,6 @@ export default function SimulationPage({ onBack }: Props) {
                                 type="number" min={1} max={2000} value={atBats}
                                 disabled={phase === 'running' || phase === 'loading'}
                                 onChange={e => setAtBats(Math.max(1, parseInt(e.target.value) || 1))}
-                            />
-                        </label>
-                        <label>
-                            Seed (optional)
-                            <input
-                                type="text" value={seed} placeholder="random"
-                                disabled={phase === 'running' || phase === 'loading'}
-                                onChange={e => setSeed(e.target.value)}
                             />
                         </label>
                         <div className="sim-run-controls">
