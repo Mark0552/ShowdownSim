@@ -11,6 +11,7 @@ import { getCurrentBatter, getCurrentPitcher } from '../../engine/gameEngine';
 import { playSound, playSoundDelayed, queueSound, preloadSounds } from '../../lib/sounds';
 import GameToast from './GameToast';
 import GameLogOverlay from './GameLogOverlay';
+import DiceRollsOverlay from './DiceRollsOverlay';
 import CardSlot from './CardSlot';
 import BullpenPanel from './BullpenPanel';
 import SubstitutionModal from './SubstitutionModal';
@@ -170,6 +171,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const [showSubPanel, setShowSubPanel] = useState(false);
     const [showStats, setShowStats] = useState(false);
     const [showFullLog, setShowFullLog] = useState(false);
+    const [showDiceRolls, setShowDiceRolls] = useState(false);
     const [diceAnimating, setDiceAnimating] = useState(false);
     // Soft freeze for icon-driven outcome changes (no dice spin) — locks the
     // lineup highlight + frozenRef long enough for the user to see the change.
@@ -840,6 +842,12 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 {/* RUNNING GAME LOG (right 16%: x=1180..1400) */}
                 <foreignObject x="1182" y={BOT_Y + 2} width="216" height={948 - BOT_Y - 4}>
                     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                        <button onClick={() => setShowDiceRolls(true)} title="Show dice rolls and per-player averages" style={{
+                            position: 'absolute', top: 2, right: 66, zIndex: 2,
+                            background: 'rgba(10, 20, 40, 0.85)', border: '1px solid #d4a018', borderRadius: 3,
+                            padding: '1px 6px', cursor: 'pointer', fontSize: 9, color: '#d4a018',
+                            fontFamily: 'Arial', fontWeight: 600, letterSpacing: 1,
+                        }}>DICE ROLLS</button>
                         <button onClick={() => setShowFullLog(true)} title="Expand log" style={{
                             position: 'absolute', top: 2, right: 2, zIndex: 2,
                             background: 'rgba(10, 20, 40, 0.85)', border: '1px solid #d4a018', borderRadius: 3,
@@ -883,6 +891,14 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             <GameToast gameLog={state.gameLog} diceAnimating={diceAnimating} />
 
             {showFullLog && <GameLogOverlay gameLog={state.gameLog} onClose={() => setShowFullLog(false)} />}
+            {showDiceRolls && (
+                <DiceRollsOverlay
+                    gameLog={state.gameLog}
+                    homeName={homeName}
+                    awayName={awayName}
+                    onClose={() => setShowDiceRolls(false)}
+                />
+            )}
 
             {showStats && (
                 <div className="overlay-panel" style={{ minWidth: 'min(1200px, 95vw)', maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto', overflowX: 'auto' }}>

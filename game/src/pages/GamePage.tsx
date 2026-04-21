@@ -177,7 +177,14 @@ export default function GamePage({ gameId, onBack }: Props) {
                 let seriesContext = undefined;
                 if (game.series_id) {
                     try {
-                        const series = await getSeries(game.series_id);
+                        const seriesId = game.series_id;
+                        // For games 2+ in a series, re-sync wins from the finished
+                        // games on mount. If the previous game's game-over effect
+                        // hasn't committed yet (race), this catches up the stored
+                        // home_wins / away_wins so the scoreboard doesn't show 0-0.
+                        const series = game.game_number > 1
+                            ? await syncSeriesWinsFromGames(seriesId).catch(() => getSeries(seriesId))
+                            : await getSeries(seriesId);
                         setSeriesRow(series);
                         if (game.game_number > 1) {
                             // Prefer the stored series.starter_offset; if it
@@ -270,8 +277,10 @@ export default function GamePage({ gameId, onBack }: Props) {
         const myGameNumber = gameRow.game_number || 1;
         const unsub = subscribeToSeriesGames(gameRow.series_id, (newGame) => {
             if (newGame.game_number === myGameNumber + 1) {
+                // Just update the hash — App.tsx's hashchange listener picks it
+                // up and sets activeGameId, which remounts GamePage via its
+                // key= binding. No full page reload, so the music keeps going.
                 window.location.hash = `game/${newGame.id}`;
-                window.location.reload();
             }
         });
         return unsub;
@@ -295,7 +304,6 @@ export default function GamePage({ gameId, onBack }: Props) {
                 gameRow.home_user_email || '', gameRow.away_user_email || '',
             );
             window.location.hash = `game/${next.id}`;
-            window.location.reload();
         } catch (e) {
             console.error('Failed to advance to next series game', e);
         }
@@ -311,9 +319,15 @@ export default function GamePage({ gameId, onBack }: Props) {
     }
 
     if (loading || !gameState || !myRole) {
+        // Always offer a Back to Lobby escape hatch — easy to get stuck on
+        // this screen when waiting for an opponent who isn't coming, or
+        // when the WS is still connecting.
         return (
             <div className="game-page loading">
                 <div>{status || 'Loading game...'}</div>
+                <button onClick={onBack} className="back-btn-simple" style={{ marginTop: 20 }}>
+                    &larr; Back to Lobby
+                </button>
             </div>
         );
     }

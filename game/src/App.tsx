@@ -198,8 +198,14 @@ export default function App() {
             );
         case 'game':
             if (!activeGameId) return null;
+            // key={activeGameId} forces a fresh mount when the game id changes
+            // (e.g. after finishing one series game and advancing to the next).
+            // That resets all per-game refs (reconnect attempts, pumped-up
+            // played, stats-saved, starter-offset-synced, ...) cleanly without
+            // needing a full-page reload that would also kill the music.
             return (
                 <GamePage
+                    key={activeGameId}
                     gameId={activeGameId}
                     onBack={() => { setActiveGameId(null); setPage('lobby'); }}
                 />
