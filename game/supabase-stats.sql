@@ -1,8 +1,12 @@
 -- Stats persistence
 CREATE TABLE IF NOT EXISTS game_player_stats (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    game_id UUID NOT NULL REFERENCES games(id),
-    series_id UUID REFERENCES series(id),
+    -- CASCADE: stats are per-game, so deleting a game should clean up its
+    -- stat rows rather than block the delete.
+    game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+    -- SET NULL: deleting a series doesn't need to kill the per-game stats,
+    -- just detach them from the series aggregation.
+    series_id UUID REFERENCES series(id) ON DELETE SET NULL,
     user_id UUID NOT NULL,
     card_id TEXT NOT NULL,
     card_name TEXT NOT NULL,
