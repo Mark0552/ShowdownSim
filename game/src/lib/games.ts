@@ -312,15 +312,44 @@ export async function createNextSeriesGame(seriesId: string, gameNumber: number,
 export async function syncSeriesStarterOffsetFromGames(seriesId: string): Promise<void> {
     const games = await getSeriesGames(seriesId);
     const game1 = games.find(g => g.game_number === 1);
-    if (!game1?.state?.homeTeam?.pitcher?.assignedPosition) return;
-    const pos = String(game1.state.homeTeam.pitcher.assignedPosition);
-    const m = pos.match(/^Starter-(\d+)$/);
-    if (!m) return;
-    const offset = parseInt(m[1], 10);
-    if (!offset || offset < 1 || offset > 4) return;
+    if (!game1?.state) return;
+    const offset = findGame1StarterNumber(game1.state);
+    if (!offset) return;
     const series = await getSeries(seriesId);
     if (series.starter_offset === offset) return; // already in sync
     await updateSeries(seriesId, { starter_offset: offset } as Partial<SeriesRow>);
+}
+
+/** Find the Starter-N number that actually pitched first in game 1.
+ *  The ACTIVE pitcher may have changed mid-game (pitching change swaps in a
+ *  reliever), so we scan across active pitcher + bullpen + archivedPlayers
+ *  for any player with an assignedPosition matching /^Starter-(\d+)$/ who
+ *  recorded at least one batter faced. Returns 1-4 or null if not found. */
+export function findGame1StarterNumber(state: any): number | null {
+    const home = state?.homeTeam;
+    if (!home) return null;
+    const stats = home.pitcherStats || {};
+    const pool: any[] = [home.pitcher, ...(home.bullpen || [])];
+    if (home.archivedPlayers) {
+        for (const id of Object.keys(home.archivedPlayers)) {
+            if (!pool.find(p => p?.cardId === id)) pool.push(home.archivedPlayers[id]);
+        }
+    }
+    let best: { num: number; bf: number } | null = null;
+    for (const p of pool) {
+        if (!p) continue;
+        const pos = String(p.assignedPosition || '');
+        const m = pos.match(/^Starter-(\d+)$/);
+        if (!m) continue;
+        const num = parseInt(m[1], 10);
+        if (!num || num < 1 || num > 4) continue;
+        const bf = stats[p.cardId]?.bf || 0;
+        // Prefer the starter who actually faced batters. Fall back to any
+        // matched starter so a freshly-rolled-but-not-yet-pitched state
+        // still produces an offset (covers the early-write call).
+        if (!best || bf > best.bf) best = { num, bf };
+    }
+    return best ? best.num : null;
 }
 
 /**

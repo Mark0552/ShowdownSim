@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { GameState, GameAction } from '../engine/gameEngine';
 import { computeRunnerMovements } from '../engine/movements';
-import { getGame, getMyRole, getSeries, ensureNextSeriesGame, syncSeriesWinsFromGames, syncSeriesRelieverHistoryFromGames, syncSeriesStarterOffsetFromGames, subscribeToSeriesGames, getSeriesGames } from '../lib/games';
+import { getGame, getMyRole, getSeries, ensureNextSeriesGame, syncSeriesWinsFromGames, syncSeriesRelieverHistoryFromGames, syncSeriesStarterOffsetFromGames, findGame1StarterNumber, updateSeries, subscribeToSeriesGames, getSeriesGames } from '../lib/games';
 import { getLineups } from '../lib/lineups';
 import { saveGameStats } from '../lib/stats';
 import { getUser } from '../lib/auth';
@@ -182,15 +182,15 @@ export default function GamePage({ gameId, onBack }: Props) {
                         if (game.game_number > 1) {
                             // Prefer the stored series.starter_offset; if it
                             // hasn't been synced yet (race with game-1 over),
-                            // derive it on the fly from game 1's pitcher.
+                            // derive it by scanning game 1's state across
+                            // pitcher + bullpen + archivedPlayers so a mid-
+                            // game pitching change doesn't hide the starter.
                             let offset = series.starter_offset;
                             if (!offset) {
                                 try {
                                     const allGames = await getSeriesGames(game.series_id);
                                     const game1 = allGames.find(g => g.game_number === 1);
-                                    const pos = game1?.state?.homeTeam?.pitcher?.assignedPosition as string | undefined;
-                                    const m = pos?.match(/^Starter-(\d+)$/);
-                                    if (m) offset = parseInt(m[1], 10);
+                                    if (game1?.state) offset = findGame1StarterNumber(game1.state) ?? 0;
                                 } catch { /* fall through */ }
                             }
                             offset = offset || 1;
@@ -247,18 +247,20 @@ export default function GamePage({ gameId, onBack }: Props) {
         }
     }, [gameState?.isOver, gameId, gameRow?.series_id]);
 
-    // Write series.starter_offset as soon as game 1's SP roll has resolved,
-    // so if the opponent opens game 2 before this client's game-over effect
-    // fires, they still see the correct rotation offset. Without this the
-    // offset only persists at game-over, which races with ensureNextSeriesGame.
+    // Write series.starter_offset as soon as game 1's SP roll has resolved.
+    // Reads the Starter-N from the LIVE in-memory state (not Supabase) to
+    // avoid racing with the server's saveState, and scans bullpen +
+    // archivedPlayers so a mid-game pitching change doesn't lose the
+    // originally-rolled starter's number.
     useEffect(() => {
         if (starterOffsetSyncedRef.current) return;
         if (!gameRow?.series_id) return;
         if ((gameRow?.game_number || 1) !== 1) return;
         if (!gameState || gameState.phase === 'sp_roll') return;
-        if (!gameState.homeTeam?.pitcher?.assignedPosition) return;
+        const offset = findGame1StarterNumber(gameState as any);
+        if (!offset) return;
         starterOffsetSyncedRef.current = true;
-        syncSeriesStarterOffsetFromGames(gameRow.series_id).catch(console.error);
+        updateSeries(gameRow.series_id, { starter_offset: offset } as any).catch(console.error);
     }, [gameState, gameRow?.series_id, gameRow?.game_number]);
 
     // Subscribe to series-game inserts so when the opponent creates the next
