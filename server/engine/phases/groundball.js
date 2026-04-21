@@ -73,7 +73,13 @@ export function handleGbDecision(state, action) {
             // Runners on 2nd/3rd advance
             if (bases.third && outs < 3) { runs++; runnersScored.push(bases.third); logs.push('Runner scores from 3rd'); }
             else if (bases.third) { logs.push('Runner on 3rd held — 3rd out'); }
-            if (bases.second) { bases.third = bases.second; bases.second = null; }
+            // ALWAYS clear third then shift 2nd -> 3rd. The old code only
+            // overwrote bases.third when bases.second was truthy, leaving
+            // the just-scored runner still "on" 3rd in state, which broke
+            // the client animation diff (saw no change -> pushed the batter
+            // around the bases as if it were a HR).
+            bases.third = bases.second;
+            bases.second = null;
 
             // Roll for batter (DP attempt)
             const dpRoll = rollD20();
@@ -148,7 +154,15 @@ export function handleGbDecision(state, action) {
             // Batter out at 1st, runners advance freely
             outs++;
             if (bases.third) { runs++; runnersScored.push(bases.third); logs.push('Runner scores from 3rd on groundout'); }
-            if (bases.second) { bases.third = bases.second; bases.second = null; logs.push('Runner on 2nd advances to 3rd'); }
+            // ALWAYS clear third then shift 2nd -> 3rd. Old code skipped the
+            // shift when bases.second was null, leaving the just-scored
+            // runner lingering on bases.third — that then made the client
+            // animation diff think nothing moved and animate the batter as
+            // the one who scored (HR-style loop around the bases).
+            const secondAdvancing = !!bases.second;
+            bases.third = bases.second;
+            bases.second = null;
+            if (secondAdvancing) logs.push('Runner on 2nd advances to 3rd');
             pendingDpResult = { roll: 0, defenseTotal: 0, offenseSpeed: 0, isDP: false, goldGloveUsed: false, choice: 'advance' };
             break;
         }
