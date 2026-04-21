@@ -29,6 +29,10 @@ export interface HitterFinal {
     opsDeviation?: number; wobaDeviation?: number;
     opsPercentile?: number; wobaPercentile?: number;
     valueScore?: number; valueRating?: number;
+    // Pricing residual (actual - predicted from hedonic regression) and the
+    // derived quadrant (★ elite / ⚠ avoid / blank). Populated in SimulationPage.
+    priceResidual?: number; priceValueRatio?: number;
+    quadrant?: 'elite' | 'star' | 'avoid' | 'lemon' | 'neutral';
 }
 
 export interface PitcherFinal extends Omit<PitcherState, 'iconImpact' | 'iconCounts' | 'ranges'> {
@@ -41,6 +45,8 @@ export interface PitcherFinal extends Omit<PitcherState, 'iconImpact' | 'iconCou
     whipDeviation?: number; mWHIPDeviation?: number;
     whipPercentile?: number; mWHIPPercentile?: number;
     valueScore?: number; valueRating?: number;
+    priceResidual?: number; priceValueRatio?: number;
+    quadrant?: 'elite' | 'star' | 'avoid' | 'lemon' | 'neutral';
 }
 
 export function calculateFinalStats(stats: HitterState, weights: SimConfig['WEIGHTS']): HitterFinal {

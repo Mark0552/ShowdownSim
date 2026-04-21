@@ -11,7 +11,44 @@ import { buildHtmlReport } from '../sim/simHtmlExport';
 import type { Card } from '../types/cards';
 import CardTooltip from '../components/cards/CardTooltip';
 import { hitterFinalToCard, pitcherFinalToCard } from '../components/cards/cardAdapters';
+import { fitHitterPricing, fitPitcherPricing } from '../pricing/pricingRegression';
 import './SimulationPage.css';
+
+/** Classify a card into a pricing-vs-performance quadrant.
+ *  Thresholds mirror the existing colorCode (0.02) for stat deviation and
+ *  use ±20 pts for pricing residual — anything inside those bands is "neutral." */
+function hitterQuadrant(opsDev: number | undefined, priceResid: number | undefined): HitterFinal['quadrant'] {
+    const o = opsDev ?? 0;
+    const r = priceResid ?? 0;
+    const opsUp = o > 0.02, opsDn = o < -0.02;
+    const priceUp = r > 20, priceDn = r < -20;
+    if (priceDn && opsUp) return 'elite';
+    if (priceUp && opsUp) return 'star';
+    if (priceUp && opsDn) return 'avoid';
+    if (priceDn && opsDn) return 'lemon';
+    return 'neutral';
+}
+function pitcherQuadrant(whipDev: number | undefined, priceResid: number | undefined): PitcherFinal['quadrant'] {
+    const w = whipDev ?? 0;
+    const r = priceResid ?? 0;
+    // WHIP deviation is negative-good — flip the sign logic.
+    const whipGood = w < -0.02, whipBad = w > 0.02;
+    const priceUp = r > 20, priceDn = r < -20;
+    if (priceDn && whipGood) return 'elite';
+    if (priceUp && whipGood) return 'star';
+    if (priceUp && whipBad) return 'avoid';
+    if (priceDn && whipBad) return 'lemon';
+    return 'neutral';
+}
+function quadrantDisplay(q: string | undefined): { label: string; cls: string } {
+    switch (q) {
+        case 'elite': return { label: '\u2605 ELITE', cls: 'sim-quad-elite' };
+        case 'star':  return { label: '\u2605 STAR',  cls: 'sim-quad-star'  };
+        case 'avoid': return { label: '\u26A0 AVOID', cls: 'sim-quad-avoid' };
+        case 'lemon': return { label: 'LEMON',        cls: 'sim-quad-lemon' };
+        default:      return { label: '',             cls: '' };
+    }
+}
 
 const BASE = import.meta.env.BASE_URL || '/';
 
@@ -36,6 +73,7 @@ interface ViewCol<T> {
     colorCode?: 'positive-good' | 'negative-good';
 }
 const HITTER_VIEW_COLS: ViewCol<HitterFinal>[] = [
+    { key: 'quadrant' as keyof HitterFinal, label: 'Q', desc: 'Quadrant tag combining pricing residual (cost vs stats) with OPS deviation (performance vs price). ★ ELITE = underpriced AND outperforms (rare bargain). ★ STAR = overpriced AND outperforms (elite card worth its cost). ⚠ AVOID = overpriced AND underperforms.' },
     { key: 'valueRating', label: 'Val', decimals: 0, desc: 'Value Rating (0-100). Combined z-score of OPS and wOBA deviation vs points, scaled 0-100. 50 = average for cost, higher = better value.' },
     { key: 'name', label: 'Name', desc: 'Player name, year, edition, card number, team.' },
     { key: 'points', label: 'Pts', decimals: 0, desc: 'Card point cost for team building.' },
@@ -54,6 +92,8 @@ const HITTER_VIEW_COLS: ViewCol<HitterFinal>[] = [
     { key: 'hrPct', label: 'HR%', decimals: 3, desc: 'HR rate = HR / AB.' },
     { key: 'opsDeviation', label: 'OPS±', decimals: 3, colorCode: 'positive-good', desc: 'OPS deviation from points regression within position. Positive (green) = overperforming for cost.' },
     { key: 'wobaDeviation', label: 'wOBA±', decimals: 3, colorCode: 'positive-good', desc: 'wOBA deviation from points regression. Positive (green) = overperforming for cost.' },
+    { key: 'priceResidual', label: 'Pts±', decimals: 0, colorCode: 'negative-good', desc: 'Points residual from the pricing regression (actual - predicted). Negative (green) = card costs LESS than the stats-formula predicts = underpriced. Positive (red) = overpriced per the formula.' },
+    { key: 'priceValueRatio', label: 'Ratio', decimals: 2, desc: 'Actual points / predicted points. < 1 = underpriced, > 1 = overpriced.' },
     { key: 'hits', label: 'H', decimals: 0, desc: 'Hits = 1B + 1B+ + 2B + 3B + HR.' },
     { key: 'doubles', label: '2B', decimals: 0, desc: 'Doubles.' },
     { key: 'triples', label: '3B', decimals: 0, desc: 'Triples.' },
@@ -70,6 +110,7 @@ const HITTER_VIEW_COLS: ViewCol<HitterFinal>[] = [
 ];
 
 const PITCHER_VIEW_COLS: ViewCol<PitcherFinal>[] = [
+    { key: 'quadrant' as keyof PitcherFinal, label: 'Q', desc: 'Quadrant tag combining pricing residual with WHIP deviation. ★ ELITE = underpriced AND lower WHIP than expected. ★ STAR = priced high but earns it. ⚠ AVOID = overpriced AND higher WHIP.' },
     { key: 'valueRating', label: 'Val', decimals: 0, desc: 'Value Rating (0-100). Combined z-score of WHIP and mWHIP deviation vs points.' },
     { key: 'name', label: 'Name', desc: 'Pitcher name, year, edition, card number, team.' },
     { key: 'points', label: 'Pts', decimals: 0, desc: 'Card point cost.' },
@@ -86,6 +127,8 @@ const PITCHER_VIEW_COLS: ViewCol<PitcherFinal>[] = [
     { key: 'hr9', label: 'HR/9', decimals: 2, desc: 'Home runs per 9 IP.' },
     { key: 'whipDeviation', label: 'WHIP±', decimals: 3, colorCode: 'negative-good', desc: 'WHIP deviation from regression. Negative (green) = better than expected for cost.' },
     { key: 'mWHIPDeviation', label: 'mWHIP±', decimals: 3, colorCode: 'negative-good', desc: 'mWHIP deviation from regression. Negative (green) = better than expected.' },
+    { key: 'priceResidual', label: 'Pts±', decimals: 0, colorCode: 'negative-good', desc: 'Points residual from pricing regression (actual - predicted). Negative (green) = underpriced per stats formula.' },
+    { key: 'priceValueRatio', label: 'Ratio', decimals: 2, desc: 'Actual points / predicted points. < 1 = underpriced.' },
     { key: 'battersFaced', label: 'BF', decimals: 0, desc: 'Batters Faced.' },
     { key: 'strikeouts', label: 'SO', decimals: 0, desc: 'Strikeouts.' },
     { key: 'walks', label: 'BB', decimals: 0, desc: 'Walks.' },
@@ -322,15 +365,68 @@ export default function SimulationPage({ onBack }: Props) {
         if (mode === 'off') return results.pitchersOff;
         return results.pitchersEnhanced;
     };
+    // Fit the pricing regression once per card catalog load — resulting
+    // residuals and value ratios are merged into each sim row below.
+    const hitterPriceMap = useMemo(() => {
+        if (!rawData) return null;
+        const fit = fitHitterPricing(rawData.hitters);
+        const m = new Map<string, { residual: number; valueRatio: number }>();
+        for (const r of fit.rows) m.set(r.name, { residual: r.residual, valueRatio: r.valueRatio });
+        return m;
+    }, [rawData]);
+    const pitcherPriceMap = useMemo(() => {
+        if (!rawData) return null;
+        const fit = fitPitcherPricing(rawData.pitchers);
+        const m = new Map<string, { residual: number; valueRatio: number }>();
+        for (const r of fit.rows) m.set(r.name, { residual: r.residual, valueRatio: r.valueRatio });
+        return m;
+    }, [rawData]);
+
     const hittersGrouped = useMemo(
-        () => { const h = hittersForView(viewMode); return h ? groupHittersByPosition(h) : null; },
+        () => {
+            const h = hittersForView(viewMode);
+            if (!h) return null;
+            const grouped = groupHittersByPosition(h);
+            // After per-position regressions populate opsDeviation, enrich each
+            // row with its pricing residual and quadrant tag.
+            if (hitterPriceMap) {
+                for (const pos of Object.keys(grouped)) {
+                    for (const row of grouped[pos]) {
+                        const p = hitterPriceMap.get(row.name);
+                        if (p) {
+                            row.priceResidual = p.residual;
+                            row.priceValueRatio = p.valueRatio;
+                        }
+                        row.quadrant = hitterQuadrant(row.opsDeviation, row.priceResidual);
+                    }
+                }
+            }
+            return grouped;
+        },
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [results, viewMode]
+        [results, viewMode, hitterPriceMap]
     );
     const pitchersGrouped = useMemo(
-        () => { const p = pitchersForView(viewMode); return p ? groupPitchersByRole(p) : null; },
+        () => {
+            const p = pitchersForView(viewMode);
+            if (!p) return null;
+            const grouped = groupPitchersByRole(p);
+            if (pitcherPriceMap) {
+                for (const role of Object.keys(grouped)) {
+                    for (const row of grouped[role]) {
+                        const price = pitcherPriceMap.get(row.name);
+                        if (price) {
+                            row.priceResidual = price.residual;
+                            row.priceValueRatio = price.valueRatio;
+                        }
+                        row.quadrant = pitcherQuadrant(row.whipDeviation, row.priceResidual);
+                    }
+                }
+            }
+            return grouped;
+        },
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [results, viewMode]
+        [results, viewMode, pitcherPriceMap]
     );
 
     // Apply the user's click-sort on top of the default-grouped order.
@@ -510,6 +606,15 @@ export default function SimulationPage({ onBack }: Props) {
                                                     {HITTER_VIEW_COLS.map(c => {
                                                         const val = p[c.key];
                                                         const isName = c.key === 'name';
+                                                        const isQuad = c.key === 'quadrant';
+                                                        if (isQuad) {
+                                                            const q = quadrantDisplay(val as string | undefined);
+                                                            return (
+                                                                <td key={c.key as string} className={`sim-quad-cell ${q.cls}`}>
+                                                                    {q.label}
+                                                                </td>
+                                                            );
+                                                        }
                                                         return (
                                                             <td
                                                                 key={c.key as string}
@@ -561,6 +666,15 @@ export default function SimulationPage({ onBack }: Props) {
                                                     {PITCHER_VIEW_COLS.map(c => {
                                                         const val = p[c.key];
                                                         const isName = c.key === 'name';
+                                                        const isQuad = c.key === 'quadrant';
+                                                        if (isQuad) {
+                                                            const q = quadrantDisplay(val as string | undefined);
+                                                            return (
+                                                                <td key={c.key as string} className={`sim-quad-cell ${q.cls}`}>
+                                                                    {q.label}
+                                                                </td>
+                                                            );
+                                                        }
                                                         return (
                                                             <td
                                                                 key={c.key as string}
