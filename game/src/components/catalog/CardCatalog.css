@@ -6,13 +6,17 @@
 
 .catalog-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
     gap: 10px;
 }
 
 .catalog-card {
-    display: flex;
-    gap: 8px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    grid-template-areas: "img info" "chart chart";
+    column-gap: 10px;
+    row-gap: 6px;
     padding: 8px;
     background: var(--bg-card);
     border: 1px solid var(--border);
@@ -27,24 +31,25 @@
 .catalog-card.on-roster { opacity: 0.5; border-color: var(--success); cursor: default; }
 
 .catalog-card-img {
-    width: 60px;
-    height: 84px;
+    grid-area: img;
+    width: 80px;
+    height: 112px;
     object-fit: cover;
     border-radius: 3px;
     flex-shrink: 0;
 }
 
 .catalog-card-info {
-    flex: 1;
+    grid-area: info;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 3px;
     min-width: 0;
 }
 
 .catalog-card-name {
     font-weight: 600;
-    font-size: 13px;
+    font-size: 14px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -55,6 +60,39 @@
     gap: 6px;
     font-size: 11px;
     color: var(--text-dim);
+    flex-wrap: wrap;
+}
+
+.catalog-card-chart {
+    grid-area: chart;
+    overflow-x: auto;
+}
+
+.catalog-card-chart table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    table-layout: fixed;
+}
+
+.catalog-card-chart th,
+.catalog-card-chart td {
+    padding: 2px 3px;
+    border: 1px solid var(--border);
+    text-align: center;
+    white-space: nowrap;
+}
+
+.catalog-card-chart th {
+    background: var(--bg-secondary);
+    color: var(--accent);
+    font-size: 9px;
+    font-weight: 600;
+}
+
+.catalog-card-chart td {
+    color: var(--text);
 }
 
 .card-points { color: var(--warning); font-weight: 600; }

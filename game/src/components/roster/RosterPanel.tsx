@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { PitcherCard } from '../../types/cards';
 import type { TeamStore } from '../../store/teamStore';
 import type { DragStore } from '../../store/dragStore';
@@ -46,6 +46,20 @@ export default function RosterPanel({ teamStore, dragStore, activeSlot, onSlotCl
         setHoverCard(null);
     };
 
+    // If the hovered card was removed (drag-to-delete, swap, etc.), the
+    // onMouseLeave may not fire — clear the popup when the underlying data
+    // no longer contains the hovered card.
+    useEffect(() => {
+        if (!hoverCard) return;
+        const stillPresent =
+            starterSlots.some(s => s.card.id === hoverCard.card.id) ||
+            bullpenSlots.some(s => s.card.id === hoverCard.card.id);
+        if (!stillPresent) {
+            if (hoverTimer.current) clearTimeout(hoverTimer.current);
+            setHoverCard(null);
+        }
+    }, [starterSlots, bullpenSlots]); // eslint-disable-line react-hooks/exhaustive-deps
+
     // Starter drag — set card data so other panels can accept
     const handleStarterDragStart = (e: React.DragEvent, idx: number, slot: RosterSlot) => {
         setDragIdx(idx);
@@ -53,6 +67,7 @@ export default function RosterPanel({ teamStore, dragStore, activeSlot, onSlotCl
         e.dataTransfer.setData('application/source-slot', slot.assignedPosition);
         e.dataTransfer.effectAllowed = 'move';
         startDrag(slot.card);
+        if (hoverTimer.current) clearTimeout(hoverTimer.current);
         setHoverCard(null);
     };
 
@@ -98,6 +113,7 @@ export default function RosterPanel({ teamStore, dragStore, activeSlot, onSlotCl
         e.dataTransfer.setData('application/source-slot', slot.assignedPosition);
         e.dataTransfer.effectAllowed = 'move';
         startDrag(slot.card);
+        if (hoverTimer.current) clearTimeout(hoverTimer.current);
         setHoverCard(null);
     };
 

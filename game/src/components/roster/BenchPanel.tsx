@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { TeamStore } from '../../store/teamStore';
 import type { DragStore } from '../../store/dragStore';
 import type { SlotSelection } from './RosterPanel';
@@ -32,11 +32,22 @@ export default function BenchPanel({ teamStore, dragStore, activeSlot, onSlotCli
         setHoverCard(null);
     };
 
+    // If the hovered bench slot's card was removed (drag-to-delete, etc.),
+    // the onMouseLeave may not fire — clear the popup when the slot list
+    // no longer contains the hovered card.
+    useEffect(() => {
+        if (hoverCard && !benchSlots.some(s => s.card.id === hoverCard.card.id)) {
+            if (hoverTimer.current) clearTimeout(hoverTimer.current);
+            setHoverCard(null);
+        }
+    }, [benchSlots]); // eslint-disable-line react-hooks/exhaustive-deps
+
     const handleBenchDragStart = (e: React.DragEvent, slot: RosterSlot) => {
         e.dataTransfer.setData('application/card-id', slot.card.id);
         e.dataTransfer.setData('application/source-slot', slot.assignedPosition);
         e.dataTransfer.effectAllowed = 'move';
         startDrag(slot.card);
+        if (hoverTimer.current) clearTimeout(hoverTimer.current);
         setHoverCard(null);
     };
 

@@ -17,6 +17,8 @@ import SubstitutionModal from './SubstitutionModal';
 import BoxScore from './BoxScore';
 import ActionButtons from './ActionButtons';
 import DiceSpinner from './DiceSpinner';
+import CardTooltip from '../cards/CardTooltip';
+import { playerSlotToCard } from '../cards/cardAdapters';
 import './GameBoard.css';
 
 interface RunnerMovement {
@@ -163,7 +165,6 @@ function RunnerAnimOverlay({ anim, baseCoords, baseAnimMs }: {
 
 export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName, awayName, pendingMovements = [], onMovementsConsumed, seriesInfo, onNextSeriesGame }: Props) {
     const [hoveredPlayer, setHoveredPlayer] = useState<PlayerSlot | null>(null);
-    const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
     const [showAwayBullpen, setShowAwayBullpen] = useState(false);
     const [showHomeBullpen, setShowHomeBullpen] = useState(false);
     const [showSubPanel, setShowSubPanel] = useState(false);
@@ -209,9 +210,9 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     };
     const innings = Array.from({ length: Math.max(9, state.inning) }, (_, i) => i + 1);
 
-    const handlePlayerHover = (player: PlayerSlot, e: React.MouseEvent) => {
+    const handlePlayerHover = (player: PlayerSlot, _e: React.MouseEvent) => {
         if (hoverTimer.current) clearTimeout(hoverTimer.current);
-        hoverTimer.current = setTimeout(() => { setHoveredPlayer(player); setHoverPos({ x: e.clientX, y: e.clientY }); }, 300);
+        hoverTimer.current = setTimeout(() => setHoveredPlayer(player), 300);
     };
     const handlePlayerLeave = () => { if (hoverTimer.current) clearTimeout(hoverTimer.current); setHoveredPlayer(null); };
 
@@ -549,76 +550,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     return (
         <div className="game-board-wrap">
             {/* ====== TOOLTIP ====== */}
-            {hoveredPlayer && (
-                <div className="player-tooltip" style={{
-                    left: hoverPos.x > window.innerWidth * 0.5 ? Math.max(0, hoverPos.x - 620) : Math.min(hoverPos.x + 15, window.innerWidth - 620),
-                    top: Math.max(4, Math.min(hoverPos.y - 140, window.innerHeight - 340)),
-                }}>
-                    <img src={hoveredPlayer.imagePath} alt="" className="tooltip-card-img" />
-                    <div className="tooltip-info">
-                        <div className="tooltip-name">{hoveredPlayer.name}</div>
-                        {/* Card metadata */}
-                        <div className="tooltip-meta">
-                            {hoveredPlayer.team != null && <span>{hoveredPlayer.team}</span>}
-                            {hoveredPlayer.year != null && <span>{hoveredPlayer.year}</span>}
-                            {hoveredPlayer.expansion != null && <span>{hoveredPlayer.expansion}</span>}
-                            {hoveredPlayer.points != null && <span>{hoveredPlayer.points} pts</span>}
-                            {hoveredPlayer.hand != null && <span>{hoveredPlayer.hand}</span>}
-                            {hoveredPlayer.cardNumber != null && <span>#{hoveredPlayer.cardNumber}</span>}
-                            {hoveredPlayer.edition != null && <span>{hoveredPlayer.edition}</span>}
-                        </div>
-                        {hoveredPlayer.type === 'hitter' ? (
-                            <div className="tooltip-stats">
-                                <span>OB: {hoveredPlayer.onBase}</span>
-                                <span>Spd: {hoveredPlayer.speed}</span>
-                                {hoveredPlayer.assignedPosition ? <span>{hoveredPlayer.assignedPosition.replace(/-\d+$/, '')} +{hoveredPlayer.assignedPosition.replace(/-\d+$/, '') === 'C' ? (hoveredPlayer.arm ?? 0) : (hoveredPlayer.fielding ?? 0)}</span> : null}
-                            </div>
-                        ) : (
-                            <div className="tooltip-stats"><span>Ctrl: {hoveredPlayer.control}</span><span>IP: {hoveredPlayer.ip}</span></div>
-                        )}
-                        {hoveredPlayer.icons && hoveredPlayer.icons.length > 0 && (
-                            <div className="tooltip-icons">
-                                {(() => {
-                                    const team = [state.awayTeam, state.homeTeam].find(t => t.lineup.some(p => p.cardId === hoveredPlayer!.cardId) || t.pitcher.cardId === hoveredPlayer!.cardId);
-                                    const usage = team?.iconUsage?.[hoveredPlayer!.cardId] || {};
-                                    const maxUses: Record<string, number> = { V: 2 };
-                                    // Determine if this player is the active pitcher on the fielding side
-                                    const isActivePitcher = team?.pitcher.cardId === hoveredPlayer!.cardId;
-                                    const isFieldingHalf = (team === state.homeTeam && state.halfInning === 'top') || (team === state.awayTeam && state.halfInning === 'bottom');
-                                    return hoveredPlayer!.icons.map((icon, i) => {
-                                        // CY never crossed out
-                                        if (icon === 'CY') {
-                                            const parts = [<span key={`${i}-0`} style={{ color: '#d4a018' }}>{icon}</span>];
-                                            if (i < hoveredPlayer!.icons.length - 1) parts.push(<span key={`${i}-gap`}> </span>);
-                                            return parts;
-                                        }
-                                        // 20 only crossed out during active pitching half-inning
-                                        if (icon === '20') {
-                                            const crossed = isActivePitcher && isFieldingHalf && !!state.icon20UsedThisInning;
-                                            const parts = [<span key={`${i}-0`} style={{ textDecoration: crossed ? 'line-through' : 'none', color: crossed ? '#4a3030' : '#d4a018' }}>{icon}</span>];
-                                            if (i < hoveredPlayer!.icons.length - 1) parts.push(<span key={`${i}-gap`}> </span>);
-                                            return parts;
-                                        }
-                                        const max = maxUses[icon] || 1; const used = usage[icon] || 0;
-                                        const parts = [];
-                                        for (let j = 0; j < max; j++) { parts.push(<span key={`${i}-${j}`} style={{ textDecoration: j < used ? 'line-through' : 'none', color: j < used ? '#4a3030' : '#d4a018' }}>{icon}</span>); if (j < max - 1) parts.push(<span key={`${i}-${j}-sep`}> </span>); }
-                                        if (i < hoveredPlayer!.icons.length - 1) parts.push(<span key={`${i}-gap`}> </span>);
-                                        return parts;
-                                    });
-                                })()}
-                            </div>
-                        )}
-                        <div className="tooltip-chart">
-                            {(() => {
-                                const po = [['PU','PU'],['SO','SO'],['GB','GB'],['FB','FB'],['W','BB'],['S','1B'],['DB','2B'],['HR','HR']];
-                                const ho = [['SO','SO'],['GB','GB'],['FB','FB'],['W','BB'],['S','1B'],['SPlus','1B+'],['DB','2B'],['TR','3B'],['HR','HR']];
-                                const order = hoveredPlayer!.type === 'pitcher' ? po : ho;
-                                return order.filter(([f]) => hoveredPlayer!.chart[f]).map(([f, l]) => (<span key={f}><span style={{ color: 'white' }}>{l}:</span> {String(hoveredPlayer!.chart[f])}</span>));
-                            })()}
-                        </div>
-                    </div>
-                </div>
-            )}
+            {hoveredPlayer && <CardTooltip card={playerSlotToCard(hoveredPlayer)} />}
 
             {/* Bullpen/Sub panels (HTML overlays) */}
             {showAwayBullpen && <BullpenPanel team={state.awayTeam} side="away" onClose={() => setShowAwayBullpen(false)} onHover={handlePlayerHover} onLeave={handlePlayerLeave} />}

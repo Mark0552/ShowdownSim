@@ -8,6 +8,9 @@ import {
 } from '../sim/simStats';
 import type { SimExportData } from '../sim/simHtmlExport';
 import { buildHtmlReport } from '../sim/simHtmlExport';
+import type { Card } from '../types/cards';
+import CardTooltip from '../components/cards/CardTooltip';
+import { hitterFinalToCard, pitcherFinalToCard } from '../components/cards/cardAdapters';
 import './SimulationPage.css';
 
 const BASE = import.meta.env.BASE_URL || '/';
@@ -204,9 +207,9 @@ export default function SimulationPage({ onBack }: Props) {
     const [hitterSort, setHitterSort] = useState<{ key: keyof HitterFinal; dir: 'asc' | 'desc' } | null>(null);
     const [pitcherSort, setPitcherSort] = useState<{ key: keyof PitcherFinal; dir: 'asc' | 'desc' } | null>(null);
 
-    // Hovered card image tooltip
-    const [hoverImg, setHoverImg] = useState<string | null>(null);
-    const [hoverPos, setHoverPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+    // Hovered card popup — uses the same CardTooltip as the Team Builder.
+    const [hoverCard, setHoverCard] = useState<Card | null>(null);
+    const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const workerRef = useRef<Worker | null>(null);
 
@@ -373,15 +376,22 @@ export default function SimulationPage({ onBack }: Props) {
         return dir === 'desc' ? ' \u25BC' : ' \u25B2';
     };
 
-    const showCardImage = (e: React.MouseEvent, imagePath?: string) => {
-        if (!imagePath) return;
-        setHoverImg(imagePath);
-        setHoverPos({ x: e.clientX, y: e.clientY });
+    const showHitterPopup = (row: HitterFinal) => {
+        if (hoverTimer.current) clearTimeout(hoverTimer.current);
+        hoverTimer.current = setTimeout(() => setHoverCard(hitterFinalToCard(row)), 200);
     };
-    const moveCardImage = (e: React.MouseEvent) => {
-        if (hoverImg) setHoverPos({ x: e.clientX, y: e.clientY });
+    const showPitcherPopup = (row: PitcherFinal) => {
+        if (hoverTimer.current) clearTimeout(hoverTimer.current);
+        hoverTimer.current = setTimeout(() => setHoverCard(pitcherFinalToCard(row)), 200);
     };
-    const hideCardImage = () => setHoverImg(null);
+    const hidePopup = () => {
+        if (hoverTimer.current) clearTimeout(hoverTimer.current);
+        setHoverCard(null);
+    };
+
+    // Hide the popup if the active tab (mode / kind / position / role) changes,
+    // so it doesn't linger when the hovered row scrolls out of view.
+    useEffect(() => { hidePopup(); }, [viewMode, viewKind, viewPosition, viewRole]);
 
     const onPct = iconsOnProgress.total ? Math.round((iconsOnProgress.done / iconsOnProgress.total) * 100) : 0;
     const offPct = iconsOffProgress.total ? Math.round((iconsOffProgress.done / iconsOffProgress.total) * 100) : 0;
@@ -448,17 +458,7 @@ export default function SimulationPage({ onBack }: Props) {
                     </div>
                 )}
 
-                {hoverImg && (
-                    <img
-                        className="sim-card-hover-img"
-                        src={hoverImg}
-                        alt=""
-                        style={{
-                            left: Math.min(hoverPos.x + 16, window.innerWidth - 267),
-                            top: Math.min(hoverPos.y + 16, window.innerHeight - 366),
-                        }}
-                    />
-                )}
+                {hoverCard && <CardTooltip card={hoverCard} />}
 
                 {results && phase === 'done' && (
                     <div className="sim-results">
@@ -514,9 +514,8 @@ export default function SimulationPage({ onBack }: Props) {
                                                             <td
                                                                 key={c.key as string}
                                                                 className={`${cellClass(c, val)} ${isName ? 'sim-name-cell' : ''}`}
-                                                                onMouseEnter={isName ? (e) => showCardImage(e, p.imagePath) : undefined}
-                                                                onMouseMove={isName ? moveCardImage : undefined}
-                                                                onMouseLeave={isName ? hideCardImage : undefined}
+                                                                onMouseEnter={isName ? () => showHitterPopup(p) : undefined}
+                                                                onMouseLeave={isName ? hidePopup : undefined}
                                                             >
                                                                 {formatCell(val, c.decimals)}
                                                             </td>
@@ -566,9 +565,8 @@ export default function SimulationPage({ onBack }: Props) {
                                                             <td
                                                                 key={c.key as string}
                                                                 className={`${cellClass(c, val)} ${isName ? 'sim-name-cell' : ''}`}
-                                                                onMouseEnter={isName ? (e) => showCardImage(e, p.imagePath) : undefined}
-                                                                onMouseMove={isName ? moveCardImage : undefined}
-                                                                onMouseLeave={isName ? hideCardImage : undefined}
+                                                                onMouseEnter={isName ? () => showPitcherPopup(p) : undefined}
+                                                                onMouseLeave={isName ? hidePopup : undefined}
                                                             >
                                                                 {formatCell(val, c.decimals)}
                                                             </td>

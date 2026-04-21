@@ -72,6 +72,15 @@ export default function LineupBar({ teamStore, dragStore, activeSlot, onSlotClic
         (team as any).lineupOrder = cardOrder;
     }, [cardOrder]); // eslint-disable-line
 
+    // If the hovered slot's card was removed (drag-to-delete, etc.), the
+    // onMouseLeave may not fire — clear hover when the slot map changes.
+    useEffect(() => {
+        if (hoverCard && !slotMap.has(hoverCard.assignedPosition)) {
+            if (hoverTimer.current) clearTimeout(hoverTimer.current);
+            setHoverCard(null);
+        }
+    }, [slotMap]); // eslint-disable-line react-hooks/exhaustive-deps
+
     // ---- INTERNAL lineup reorder drag ----
     const handleInternalDragStart = (e: React.DragEvent, idx: number, slot: RosterSlot) => {
         dragRef.current = idx;
@@ -83,6 +92,7 @@ export default function LineupBar({ teamStore, dragStore, activeSlot, onSlotClic
         e.dataTransfer.setData('application/source-slot', slot.assignedPosition);
         e.dataTransfer.effectAllowed = 'move';
         startDrag(slot.card);
+        if (hoverTimer.current) clearTimeout(hoverTimer.current);
         setHoverCard(null);
         (e.currentTarget as HTMLElement).classList.add('dragging');
     };
