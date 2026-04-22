@@ -60,6 +60,12 @@ export function handleUseIcon(state, action) {
 
     if (state.phase !== 'result_icons') return state;
 
+    // Safety guard: the icon must be in the current prompt's available list.
+    // Otherwise a mis-wired prompt could let the wrong team use an opponent's
+    // icon (e.g. defense clicking the hitter's S icon to upgrade a single).
+    const available = state.iconPrompt?.availableIcons || [];
+    if (!available.some(i => i.icon === icon && i.cardId === cardId)) return state;
+
     const fieldingSide = state.halfInning === 'top' ? 'homeTeam' : 'awayTeam';
     const battingSide = state.halfInning === 'top' ? 'awayTeam' : 'homeTeam';
     const batter = state[battingSide].lineup[state[battingSide].currentBatterIndex];
@@ -111,6 +117,23 @@ export function handleSkipIcons(state) {
     if (state.phase !== 'result_icons') return state;
     const battingSide = state.halfInning === 'top' ? 'awayTeam' : 'homeTeam';
     const batter = state[battingSide].lineup[state[battingSide].currentBatterIndex];
+
+    // If DEFENSE just skipped (prompted team is the defense side), the
+    // offense may still have icons to use on the original outcome — give
+    // them their turn before applying the result.
+    const offenseKey = state.halfInning === 'top' ? 'away' : 'home';
+    const defenseKey = state.halfInning === 'top' ? 'home' : 'away';
+    if (state.iconPrompt?.team === defenseKey) {
+        const remaining = getPostResultIcons(state, state.lastOutcome).filter(i => i.team === offenseKey);
+        if (remaining.length > 0) {
+            return {
+                ...state,
+                phase: 'result_icons',
+                iconPrompt: { team: offenseKey, availableIcons: remaining.map(i => ({ cardId: i.cardId, icon: i.icon, description: i.description })) },
+            };
+        }
+    }
+
     // Bump rollSequence so the client freezes display while applyResult advances the batter
     return applyResult({ ...state, iconPrompt: null, iconChangeSequence: bumpIconChange(state) }, state.lastOutcome, batter.cardId);
 }

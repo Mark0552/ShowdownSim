@@ -8,16 +8,23 @@ interface DiceRollsOverlayProps {
 }
 
 type Side = 'home' | 'away';
-interface ParsedRoll { roll: number; type: 'Pitch' | 'Swing' | 'Fielding' | 'SP'; side: Side; }
+interface ParsedRoll { roll: number; type: 'Pitch' | 'Swing' | 'Fielding'; side: Side; }
 
 /** Walk the game log and extract every d20 roll, tagging each with which
- *  side made it based on the current half-inning context. */
+ *  side made it based on the current half-inning context.
+ *
+ *  The starting-pitcher roll is excluded — it's a one-time shared roll that
+ *  doesn't belong to either user, so including it would skew both players'
+ *  averages by the same opening-roll value. */
 function parseRolls(log: string[]): ParsedRoll[] {
     const rolls: ParsedRoll[] = [];
     let isBottom = false;
     for (const line of log) {
         if (/^--- Top of/i.test(line)) { isBottom = false; continue; }
         if (/^--- Bottom of/i.test(line)) { isBottom = true; continue; }
+        // Skip SP roll — shared/ceremonial, not attributable to a single user.
+        if (/Starting pitcher roll:/.test(line)) continue;
+
         const batting: Side = isBottom ? 'home' : 'away';
         const fielding: Side = isBottom ? 'away' : 'home';
 
@@ -28,10 +35,6 @@ function parseRolls(log: string[]): ParsedRoll[] {
         // Pitch roll — defense
         const mPitch = line.match(/^Pitch:\s*(\d+)/);
         if (mPitch) { rolls.push({ roll: parseInt(mPitch[1], 10), type: 'Pitch', side: fielding }); continue; }
-
-        // Starting pitcher roll — before play begins, attribute to away (first up)
-        const mSp = line.match(/Starting pitcher roll: d20\((\d+)\)/);
-        if (mSp) { rolls.push({ roll: parseInt(mSp[1], 10), type: 'SP', side: 'away' }); continue; }
 
         // Any d20(N) inside the line — fielding play (DP, steal defense, extra-base throw).
         // Use exec loop in case a line has multiple (rare but possible).

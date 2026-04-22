@@ -437,6 +437,11 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const displayHalfInning = frozenRef.current.halfInning;
     const displayInning = frozenRef.current.inning;
     const displayPhase = frozenRef.current.phase;
+    // Treat the game as "over for display purposes" only once the final
+    // dice roll has settled — otherwise the field clears before the last
+    // play's animation plays out. Controls (buttons etc.) still use
+    // state.isOver directly; they're gated by diceAnimating elsewhere.
+    const displayIsOver = state.isOver && !diceAnimating && !iconFreezeActive;
 
     // Freeze the running game log while dice is animating or icon-soft-freeze
     // is active so new log entries don't spoil the result before the dice
@@ -755,12 +760,12 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 <line x1={HX} y1={MAIN_TOP} x2={HX} y2={MAIN_BOT} stroke="#d4a018" strokeWidth="1.5"/>
 
                 {/* Runner speed labels — centered above each base card */}
-                {!state.isOver && runner1 && <text x={B1.x} y={B1.y - 58} textAnchor="middle" fontSize="18" fill="white" fontWeight="normal" fontFamily="Impact">Speed: {runner1.speed}</text>}
-                {!state.isOver && runner2 && <text x={B2.x} y={B2.y - 58} textAnchor="middle" fontSize="18" fill="white" fontWeight="normal" fontFamily="Impact">Speed: {runner2.speed}</text>}
-                {!state.isOver && runner3 && <text x={B3.x} y={B3.y - 58} textAnchor="middle" fontSize="18" fill="white" fontWeight="normal" fontFamily="Impact">Speed: {runner3.speed}</text>}
+                {!displayIsOver && runner1 && <text x={B1.x} y={B1.y - 58} textAnchor="middle" fontSize="18" fill="white" fontWeight="normal" fontFamily="Impact">Speed: {runner1.speed}</text>}
+                {!displayIsOver && runner2 && <text x={B2.x} y={B2.y - 58} textAnchor="middle" fontSize="18" fill="white" fontWeight="normal" fontFamily="Impact">Speed: {runner2.speed}</text>}
+                {!displayIsOver && runner3 && <text x={B3.x} y={B3.y - 58} textAnchor="middle" fontSize="18" fill="white" fontWeight="normal" fontFamily="Impact">Speed: {runner3.speed}</text>}
 
                 {/* Card slots centered on bases — hidden during SP roll AND after game over (players leave field) */}
-                {displayPhase !== 'sp_roll' && !state.isOver && (
+                {displayPhase !== 'sp_roll' && !displayIsOver && (
                     <>
                         <CardSlot x={B2.x - 38} y={B2.y - 53} label="2B" card={runner2} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
                         <CardSlot x={B1.x - 38} y={B1.y - 53} label="1B" card={runner1} onHover={handlePlayerHover} onLeave={handlePlayerLeave}/>
@@ -782,7 +787,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 ))}
 
                 {/* IP / Fatigue near pitcher — hidden during SP roll AND game over */}
-                {displayPhase !== 'sp_roll' && !state.isOver && (
+                {displayPhase !== 'sp_roll' && !displayIsOver && (
                     <>
                         <rect x={MOUND.x - 42} y={MOUND.y + 56} width="84" height="20" rx="4" fill="rgba(0,0,0,0.75)"/>
                         <text x={MOUND.x} y={MOUND.y + 70} textAnchor="middle" fontSize="10" fill={dFatigueActive ? '#ff6060' : '#8aade0'} fontWeight="normal" fontFamily="monospace">

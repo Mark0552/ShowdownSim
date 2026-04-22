@@ -283,8 +283,12 @@
 .stats-table th {
     color: #d4a018;
     font-weight: normal;
-    text-align: center;
-    padding: 4px 6px;
+    /* Right-align numeric columns (standard box-score convention) so
+       header labels and value columns always share the same rightmost
+       pixel — values line up cleanly under their labels regardless of
+       digit count and header-abbrev length. */
+    text-align: right;
+    padding: 4px 10px;
     border-bottom: 2px solid #d4a018;
     font-size: 10px;
     letter-spacing: 1px;
@@ -296,8 +300,8 @@
 }
 
 .stats-table td {
-    text-align: center;
-    padding: 3px 6px;
+    text-align: right;
+    padding: 3px 10px;
     color: #8aade0;
     border-bottom: 1px solid #0e1e38;
 }

@@ -128,13 +128,29 @@ export function handleSwing(state) {
         gameLog: [...state.gameLog, `Swing: ${roll} -> ${names[outcome] || outcome}`],
     };
 
-    // Check for post-result icons before applying result
+    // Check for post-result icons before applying result. DEFENSE icons
+    // (K) resolve first — only their team is prompted, only their icons
+    // offered. If defense skips or there are none, offense gets a turn
+    // with OFFENSE icons (HR / S / V). Previously all icons were bundled
+    // into one prompt under the first icon's team, which let defense
+    // click the hitter's S icon and vice versa.
     const postIcons = getPostResultIcons(newState, outcome);
-    if (postIcons.length > 0) {
+    const defenseIcons = postIcons.filter(i => i.team !== (state.halfInning === 'top' ? 'away' : 'home'));
+    const offenseIcons = postIcons.filter(i => i.team === (state.halfInning === 'top' ? 'away' : 'home'));
+    const defenseTeamKey = state.halfInning === 'top' ? 'home' : 'away';
+    const offenseTeamKey = state.halfInning === 'top' ? 'away' : 'home';
+    if (defenseIcons.length > 0) {
         return {
             ...newState,
             phase: 'result_icons',
-            iconPrompt: { team: postIcons[0].team, availableIcons: postIcons.map(i => ({ cardId: i.cardId, icon: i.icon, description: i.description })) },
+            iconPrompt: { team: defenseTeamKey, availableIcons: defenseIcons.map(i => ({ cardId: i.cardId, icon: i.icon, description: i.description })) },
+        };
+    }
+    if (offenseIcons.length > 0) {
+        return {
+            ...newState,
+            phase: 'result_icons',
+            iconPrompt: { team: offenseTeamKey, availableIcons: offenseIcons.map(i => ({ cardId: i.cardId, icon: i.icon, description: i.description })) },
         };
     }
 

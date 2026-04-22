@@ -287,10 +287,10 @@ function handleAction(ws, msg, userId, room) {
         runnerMovements,
     });
 
-    // Save to Supabase periodically (every new at-bat or on game over)
-    if (newState.phase === 'pre_atbat' || newState.phase === 'pitch' || newState.isOver) {
-        saveState(room.gameId, newState);
-    }
+    // Persist on every action so a mid-at-bat reconnect doesn't restore a
+    // stale state from the previous batter. saveState is fire-and-forget
+    // (no await) so it doesn't block the response to clients.
+    saveState(room.gameId, newState);
 }
 
 // ============================================================================
