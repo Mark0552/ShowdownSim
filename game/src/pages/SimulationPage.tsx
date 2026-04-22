@@ -26,24 +26,38 @@ function mean(values: number[]): number {
     return values.reduce((a, b) => a + b, 0) / values.length;
 }
 
-/** Compute combined z-score = z(perf) - z(price residual) per row within the
- *  passed group. For hitters pass opsDeviation with perfHigherBetter=true;
- *  for pitchers pass whipDeviation with perfHigherBetter=false (lower-better). */
+/** Compute combined z-score = avg(perf z-scores) - z(price residual) per row
+ *  within the passed group. Pass one or more performance getters; they are
+ *  z-scored separately, then averaged so the performance axis stays balanced
+ *  with the price axis regardless of how many perf signals you combine.
+ *  perfHigherBetter=true for hitters (OPS/wOBA up=good);
+ *  perfHigherBetter=false for pitchers (WHIP/mWHIP down=good). */
 function assignCombinedScore<T extends { priceResidual?: number; combinedScore?: number }>(
     rows: T[],
-    perfGetter: (r: T) => number | undefined,
+    perfGetters: Array<(r: T) => number | undefined>,
     perfHigherBetter: boolean,
 ): void {
-    if (rows.length < 2) {
+    if (rows.length < 2 || perfGetters.length === 0) {
         rows.forEach(r => { r.combinedScore = 0; });
         return;
     }
-    const perfVals = rows.map(r => perfGetter(r) ?? 0);
+    // Pre-compute mean and std per perf getter so we can z-score each card's
+    // value against its group on that specific metric.
+    const perfStats = perfGetters.map(get => {
+        const vals = rows.map(r => get(r) ?? 0);
+        return { mean: mean(vals), std: stdev(vals) || 1 };
+    });
     const priceVals = rows.map(r => r.priceResidual ?? 0);
-    const mPerf = mean(perfVals), sPerf = stdev(perfVals) || 1;
     const mPrice = mean(priceVals), sPrice = stdev(priceVals) || 1;
     for (const r of rows) {
-        const perfZ = ((perfGetter(r) ?? 0) - mPerf) / sPerf;
+        // Average the per-metric z-scores so adding more signals doesn't
+        // inflate the perf side vs the single price z-score.
+        let perfZSum = 0;
+        for (let i = 0; i < perfGetters.length; i++) {
+            const v = perfGetters[i](r) ?? 0;
+            perfZSum += (v - perfStats[i].mean) / perfStats[i].std;
+        }
+        const perfZ = perfZSum / perfGetters.length;
         const priceZ = ((r.priceResidual ?? 0) - mPrice) / sPrice;
         const signedPerf = perfHigherBetter ? perfZ : -perfZ;
         r.combinedScore = signedPerf - priceZ;
@@ -92,7 +106,7 @@ const HITTER_VIEW_COLS: ViewCol<HitterFinal>[] = [
     { key: 'opsDeviation', label: 'OPS±', decimals: 3, colorCode: 'positive-good', desc: 'OPS deviation from points regression within position. Positive (green) = overperforming for cost.' },
     { key: 'wobaDeviation', label: 'wOBA±', decimals: 3, colorCode: 'positive-good', desc: 'wOBA deviation from points regression. Positive (green) = overperforming for cost.' },
     { key: 'priceResidual', label: 'Pts±', decimals: 0, colorCode: 'negative-good', desc: 'Points residual from the pricing regression (actual - predicted). Negative (green) = card costs LESS than the stats-formula predicts = underpriced. Positive (red) = overpriced per the formula.' },
-    { key: 'combinedScore', label: 'z+/−', decimals: 2, colorCode: 'positive-good', desc: 'Combined z-score within position group: z(OPS±) − z(Pts±). Higher (green) = outperforms AND/OR underpriced; lower (red) = the opposite. Positive means better than position-group average on the joint distribution.' },
+    { key: 'combinedScore', label: 'z+/−', decimals: 2, colorCode: 'positive-good', desc: 'Combined z-score within position group: avg[z(OPS±), z(wOBA±)] − z(Pts±). Higher (green) = outperforms AND/OR underpriced; lower (red) = the opposite. Performance averages both OPS and wOBA deviations (same pair that feeds Val) so offense signal is balanced against price.' },
     { key: 'hits', label: 'H', decimals: 0, desc: 'Hits = 1B + 1B+ + 2B + 3B + HR.' },
     { key: 'doubles', label: '2B', decimals: 0, desc: 'Doubles.' },
     { key: 'triples', label: '3B', decimals: 0, desc: 'Triples.' },
@@ -126,7 +140,7 @@ const PITCHER_VIEW_COLS: ViewCol<PitcherFinal>[] = [
     { key: 'whipDeviation', label: 'WHIP±', decimals: 3, colorCode: 'negative-good', desc: 'WHIP deviation from regression. Negative (green) = better than expected for cost.' },
     { key: 'mWHIPDeviation', label: 'mWHIP±', decimals: 3, colorCode: 'negative-good', desc: 'mWHIP deviation from regression. Negative (green) = better than expected.' },
     { key: 'priceResidual', label: 'Pts±', decimals: 0, colorCode: 'negative-good', desc: 'Points residual from pricing regression (actual - predicted). Negative (green) = underpriced per stats formula.' },
-    { key: 'combinedScore', label: 'z+/−', decimals: 2, colorCode: 'positive-good', desc: 'Combined z-score within role group: −z(WHIP±) − z(Pts±). Higher (green) = lower WHIP AND/OR underpriced relative to the group; lower (red) = the opposite.' },
+    { key: 'combinedScore', label: 'z+/−', decimals: 2, colorCode: 'positive-good', desc: 'Combined z-score within role group: −avg[z(WHIP±), z(mWHIP±)] − z(Pts±). Higher (green) = lower WHIP AND/OR underpriced; lower (red) = the opposite. Performance averages both WHIP metrics (same pair that feeds Val) so pitching signal is balanced against price.' },
     { key: 'battersFaced', label: 'BF', decimals: 0, desc: 'Batters Faced.' },
     { key: 'strikeouts', label: 'SO', decimals: 0, desc: 'Strikeouts.' },
     { key: 'walks', label: 'BB', decimals: 0, desc: 'Walks.' },
@@ -226,7 +240,12 @@ function groupPitchersByRole(pitchers: PitcherFinal[]): Record<string, PitcherFi
 }
 
 export default function SimulationPage({ onBack }: Props) {
-    const [atBats, setAtBats] = useState(50);
+    // Store the raw input string so the user can fully clear / retype without
+    // the onChange handler snapping it back to a fallback number.
+    const [atBatsInput, setAtBatsInput] = useState('50');
+    const parsedAtBats = parseInt(atBatsInput, 10);
+    const atBatsValid = !Number.isNaN(parsedAtBats) && parsedAtBats >= 1 && parsedAtBats <= 2000;
+    const atBats = atBatsValid ? parsedAtBats : 0;
     const [phase, setPhase] = useState<Phase>('idle');
     const [errorMsg, setErrorMsg] = useState('');
     const [iconsOnProgress, setIconsOnProgress] = useState({ done: 0, total: 0 });
@@ -398,7 +417,7 @@ export default function SimulationPage({ onBack }: Props) {
                         const p = hitterPriceMap.get(row.name);
                         if (p) row.priceResidual = p.residual;
                     }
-                    assignCombinedScore(grouped[pos], r => r.opsDeviation, true);
+                    assignCombinedScore(grouped[pos], [r => r.opsDeviation, r => r.wobaDeviation], true);
                 }
             }
             return grouped;
@@ -417,8 +436,8 @@ export default function SimulationPage({ onBack }: Props) {
                         const price = pitcherPriceMap.get(row.name);
                         if (price) row.priceResidual = price.residual;
                     }
-                    // WHIP dev: lower is better, so flip the perf z-score.
-                    assignCombinedScore(grouped[role], r => r.whipDeviation, false);
+                    // WHIP and mWHIP: lower is better, so flip the perf z-score.
+                    assignCombinedScore(grouped[role], [r => r.whipDeviation, r => r.mWHIPDeviation], false);
                 }
             }
             return grouped;
@@ -506,16 +525,21 @@ export default function SimulationPage({ onBack }: Props) {
                         <label>
                             At-bats per matchup
                             <input
-                                type="number" min={1} max={2000} value={atBats}
+                                type="number" min={1} max={2000} value={atBatsInput}
                                 disabled={phase === 'running' || phase === 'loading'}
-                                onChange={e => setAtBats(Math.max(1, parseInt(e.target.value) || 1))}
+                                onChange={e => setAtBatsInput(e.target.value)}
                             />
+                            {!atBatsValid && (
+                                <span style={{ color: 'var(--error, #f87171)', fontSize: 11 }}>
+                                    Enter 1-2000
+                                </span>
+                            )}
                         </label>
                         <div className="sim-run-controls">
                             {phase === 'running' ? (
                                 <button className="sim-btn sim-btn-danger" onClick={cancel}>Cancel</button>
                             ) : (
-                                <button className="sim-btn sim-btn-primary" onClick={run} disabled={phase === 'loading' || !rawData}>
+                                <button className="sim-btn sim-btn-primary" onClick={run} disabled={phase === 'loading' || !rawData || !atBatsValid}>
                                     {phase === 'loading' ? 'Loading cards…' : 'Run Simulation'}
                                 </button>
                             )}

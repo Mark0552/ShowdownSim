@@ -45,7 +45,7 @@ const HITTER_COLUMNS: Column[] = [
     { key: 'opsDeviation', label: 'OPS\u00B1', decimals: 3, colorCode: 'positive-good', desc: 'OPS deviation from points regression within position. Positive (green) = overperforming for cost.' },
     { key: 'wobaDeviation', label: 'wOBA\u00B1', decimals: 3, colorCode: 'positive-good', desc: 'wOBA deviation from points regression. Positive (green) = overperforming for cost.' },
     { key: 'priceResidual', label: 'Pts\u00B1', decimals: 0, colorCode: 'negative-good', desc: 'Points residual from the pricing regression (actual - predicted). Negative (green) = card costs LESS than the stats-formula predicts = underpriced. Positive (red) = overpriced per the formula.' },
-    { key: 'combinedScore', label: 'z+/\u2212', decimals: 2, colorCode: 'positive-good', desc: 'Combined z-score within position group: z(OPS\u00B1) \u2212 z(Pts\u00B1). Higher (green) = outperforms AND/OR underpriced; lower (red) = the opposite. Positive means better than position-group average on the joint distribution.' },
+    { key: 'combinedScore', label: 'z+/\u2212', decimals: 2, colorCode: 'positive-good', desc: 'Combined z-score within position group: avg[z(OPS\u00B1), z(wOBA\u00B1)] \u2212 z(Pts\u00B1). Higher (green) = outperforms AND/OR underpriced; lower (red) = the opposite. Performance averages both OPS and wOBA deviations (same pair that feeds Val) so offense signal is balanced against price.' },
     { key: 'hits', label: 'H', decimals: 0, desc: 'Hits = 1B + 1B+ + 2B + 3B + HR.' },
     { key: 'doubles', label: '2B', decimals: 0, desc: 'Doubles.' },
     { key: 'triples', label: '3B', decimals: 0, desc: 'Triples.' },
@@ -79,7 +79,7 @@ const PITCHER_COLUMNS: Column[] = [
     { key: 'whipDeviation', label: 'WHIP\u00B1', decimals: 3, colorCode: 'negative-good', desc: 'WHIP deviation from regression. Negative (green) = better than expected for cost.' },
     { key: 'mWHIPDeviation', label: 'mWHIP\u00B1', decimals: 3, colorCode: 'negative-good', desc: 'mWHIP deviation from regression. Negative (green) = better than expected.' },
     { key: 'priceResidual', label: 'Pts\u00B1', decimals: 0, colorCode: 'negative-good', desc: 'Points residual from pricing regression (actual - predicted). Negative (green) = underpriced per stats formula.' },
-    { key: 'combinedScore', label: 'z+/\u2212', decimals: 2, colorCode: 'positive-good', desc: 'Combined z-score within role group: \u2212z(WHIP\u00B1) \u2212 z(Pts\u00B1). Higher (green) = lower WHIP AND/OR underpriced relative to the group; lower (red) = the opposite.' },
+    { key: 'combinedScore', label: 'z+/\u2212', decimals: 2, colorCode: 'positive-good', desc: 'Combined z-score within role group: \u2212avg[z(WHIP\u00B1), z(mWHIP\u00B1)] \u2212 z(Pts\u00B1). Higher (green) = lower WHIP AND/OR underpriced; lower (red) = the opposite. Performance averages both WHIP metrics (same pair that feeds Val) so pitching signal is balanced against price.' },
     { key: 'battersFaced', label: 'BF', decimals: 0, desc: 'Batters Faced.' },
     { key: 'strikeouts', label: 'SO', decimals: 0, desc: 'Strikeouts.' },
     { key: 'walks', label: 'BB', decimals: 0, desc: 'Walks.' },
@@ -260,19 +260,29 @@ function mean(values: number[]): number {
 }
 
 /** Mirror of SimulationPage.assignCombinedScore:
- *  combined = z(perf) - z(price resid), flipping perf sign for pitchers. */
+ *  combined = avg(perf z-scores) - z(price resid), flipping perf sign for pitchers. */
 function assignCombinedScore<T extends { priceResidual?: number; combinedScore?: number }>(
     rows: T[],
-    perfGetter: (r: T) => number | undefined,
+    perfGetters: Array<(r: T) => number | undefined>,
     perfHigherBetter: boolean,
 ): void {
-    if (rows.length < 2) { rows.forEach(r => { r.combinedScore = 0; }); return; }
-    const perfVals = rows.map(r => perfGetter(r) ?? 0);
+    if (rows.length < 2 || perfGetters.length === 0) {
+        rows.forEach(r => { r.combinedScore = 0; });
+        return;
+    }
+    const perfStats = perfGetters.map(get => {
+        const vals = rows.map(r => get(r) ?? 0);
+        return { mean: mean(vals), std: stdev(vals) || 1 };
+    });
     const priceVals = rows.map(r => r.priceResidual ?? 0);
-    const mPerf = mean(perfVals), sPerf = stdev(perfVals) || 1;
     const mPrice = mean(priceVals), sPrice = stdev(priceVals) || 1;
     for (const r of rows) {
-        const perfZ = ((perfGetter(r) ?? 0) - mPerf) / sPerf;
+        let perfZSum = 0;
+        for (let i = 0; i < perfGetters.length; i++) {
+            const v = perfGetters[i](r) ?? 0;
+            perfZSum += (v - perfStats[i].mean) / perfStats[i].std;
+        }
+        const perfZ = perfZSum / perfGetters.length;
         const priceZ = ((r.priceResidual ?? 0) - mPrice) / sPrice;
         const signedPerf = perfHigherBetter ? perfZ : -perfZ;
         r.combinedScore = signedPerf - priceZ;
@@ -294,7 +304,7 @@ function buildModeContent(
                 const resid = hitterPriceMap.get(row.name);
                 if (resid !== undefined) row.priceResidual = resid;
             }
-            assignCombinedScore(byPos[pos], r => r.opsDeviation, true);
+            assignCombinedScore(byPos[pos], [r => r.opsDeviation, r => r.wobaDeviation], true);
         }
     }
     if (pitcherPriceMap) {
@@ -303,8 +313,8 @@ function buildModeContent(
                 const resid = pitcherPriceMap.get(row.name);
                 if (resid !== undefined) row.priceResidual = resid;
             }
-            // WHIP dev is lower-better, so flip the perf z-score.
-            assignCombinedScore(byRole[role], r => r.whipDeviation, false);
+            // WHIP and mWHIP are lower-better, so flip the perf z-score.
+            assignCombinedScore(byRole[role], [r => r.whipDeviation, r => r.mWHIPDeviation], false);
         }
     }
 
