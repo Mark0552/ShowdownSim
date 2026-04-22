@@ -16,6 +16,10 @@ interface ActionButtonsProps {
      *  button (or SERIES COMPLETE if the series is decided). */
     onNextSeriesGame?: () => void;
     seriesStatus?: 'in-progress' | 'complete';
+    /** True while the last dice roll is still animating. The game-over card
+     *  holds off rendering until this flips back to false so users see the
+     *  final roll resolve before "YOU WIN!" takes over. */
+    diceAnimating?: boolean;
 }
 
 // Layout constants for the bottom-left actions section (x=2..820, y=750..948)
@@ -29,7 +33,7 @@ const ROW2 = ROW1 + ROW1_H + 4; // secondary row (G sub-buttons) below buttons
 const LABEL_Y = ROW1 - 6;  // context label above buttons
 
 /** All phase-specific action button groups rendered as an SVG <g> element */
-export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onAction, battingTeam, fieldingTeam, hasRunners, outcomeNames, onShowSubPanel, onNextSeriesGame, seriesStatus }: ActionButtonsProps) {
+export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onAction, battingTeam, fieldingTeam, hasRunners, outcomeNames, onShowSubPanel, onNextSeriesGame, seriesStatus, diceAnimating }: ActionButtonsProps) {
     const curBatter = getCurrentBatter(state);
     const curPitcher = getCurrentPitcher(state);
     const ctrl = curPitcher.control || 0;
@@ -667,8 +671,8 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 );
             })()}
 
-            {/* Game over */}
-            {state.isOver && (() => {
+            {/* Game over — hold off until dice settle so the last roll is visible */}
+            {state.isOver && !diceAnimating && (() => {
                 const iWon = state.winnerId === (myRole === 'home' ? state.homeTeam.userId : state.awayTeam.userId);
                 const color = iWon ? '#4ade80' : '#e94560';
                 return (

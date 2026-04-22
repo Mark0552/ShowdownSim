@@ -816,6 +816,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                         ? (Math.max(seriesInfo.homeWins, seriesInfo.awayWins) > seriesInfo.bestOf / 2
                            ? 'complete' : 'in-progress')
                         : undefined}
+                    diceAnimating={diceAnimating}
                 />
 
                 {/* DICE SECTION (26%: x=820..1180) — spinner + settled display */}
