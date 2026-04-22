@@ -49,6 +49,10 @@ interface Props {
     };
     /** Click handler to advance to the next game in the series; only used when isOver. */
     onNextSeriesGame?: () => void;
+    /** Exit-to-lobby handler. Used by the EXIT GAME button in the top bar
+     *  so users always land on the lobby instead of whatever was last in
+     *  browser history (which could be the "waiting for opponent" screen). */
+    onExit?: () => void;
 }
 
 // Layout constants
@@ -164,7 +168,7 @@ function RunnerAnimOverlay({ anim, baseCoords, baseAnimMs }: {
     );
 }
 
-export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName, awayName, pendingMovements = [], onMovementsConsumed, seriesInfo, onNextSeriesGame }: Props) {
+export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName, awayName, pendingMovements = [], onMovementsConsumed, seriesInfo, onNextSeriesGame, onExit }: Props) {
     const [hoveredPlayer, setHoveredPlayer] = useState<PlayerSlot | null>(null);
     const [showAwayBullpen, setShowAwayBullpen] = useState(false);
     const [showHomeBullpen, setShowHomeBullpen] = useState(false);
@@ -591,8 +595,11 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 {/* ====== TOP BAR (y=0..80) ====== */}
                 <rect x="0" y="0" width="1400" height={TOP} fill="url(#scoreBg)" stroke="#d4a018" strokeWidth="2" rx="0"/>
 
-                {/* Exit button — left */}
-                <g cursor="pointer" className="roll-button" onClick={() => window.history.back()}>
+                {/* Exit button — goes straight to the lobby via the onExit
+                    callback (not window.history.back(), which could land on
+                    the waiting-for-opponent screen if that was the prior
+                    entry). */}
+                <g cursor="pointer" className="roll-button" onClick={() => onExit?.()}>
                     <rect x="8" y="8" width="80" height="34" rx="4" fill="#3a0a0a" stroke="#e94560" strokeWidth="1"/>
                     <text x="48" y="30" textAnchor="middle" fontSize="12" fill="#e94560" fontWeight="normal" fontFamily="Arial">EXIT GAME</text>
                 </g>

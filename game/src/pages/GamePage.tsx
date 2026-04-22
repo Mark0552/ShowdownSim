@@ -352,6 +352,7 @@ export default function GamePage({ gameId, onBack }: Props) {
                     awayWins: seriesRow.away_wins || 0,
                 } : undefined}
                 onNextSeriesGame={seriesRow ? handleNextSeriesGame : undefined}
+                onExit={onBack}
             />
             {opponentDisconnected && !gameState.isOver && (
                 <div style={{
