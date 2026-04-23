@@ -25,6 +25,36 @@ const supabase = SUPABASE_SERVICE_KEY
     ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
     : null;
 
+/**
+ * Fallback for seriesContext when series.starter_offset hasn't been synced
+ * yet. Scans game 1's home team for the Starter-N assignment (active pitcher
+ * + bullpen + archivedPlayers, so a mid-game pitching change doesn't hide
+ * the original starter). Returns 1-4 or null. Mirror of the client's
+ * findGame1StarterNumber in game/src/lib/games.ts.
+ */
+function deriveStarterOffsetFromGame1(state) {
+    const home = state?.homeTeam;
+    if (!home) return null;
+    const stats = home.pitcherStats || {};
+    const pool = [home.pitcher, ...(home.bullpen || [])];
+    if (home.archivedPlayers) {
+        for (const id of Object.keys(home.archivedPlayers)) {
+            if (!pool.find(p => p && p.cardId === id)) pool.push(home.archivedPlayers[id]);
+        }
+    }
+    let best = null;
+    for (const p of pool) {
+        if (!p) continue;
+        const m = String(p.assignedPosition || '').match(/^Starter-(\d+)$/);
+        if (!m) continue;
+        const num = parseInt(m[1], 10);
+        if (!num || num < 1 || num > 4) continue;
+        const bf = (stats[p.cardId] && stats[p.cardId].bf) || 0;
+        if (!best || bf > best.bf) best = { num, bf };
+    }
+    return best ? best.num : null;
+}
+
 // ============================================================================
 // EXPRESS
 // ============================================================================
@@ -214,7 +244,24 @@ async function handleJoinGame(ws, msg, setContext) {
                     .from('series')
                     .select('home_user_id, starter_offset, reliever_history')
                     .eq('id', dbSeriesId).single();
-                const offset = series?.starter_offset || 1;
+                let offset = series?.starter_offset || 0;
+                // Fallback: if series.starter_offset hasn't been synced yet
+                // (race: game-1 game-over effect didn't commit before game-2
+                // advance), derive it from game-1's saved state directly.
+                if (!offset) {
+                    try {
+                        const { data: game1 } = await supabase
+                            .from('games')
+                            .select('state')
+                            .eq('series_id', dbSeriesId)
+                            .eq('game_number', 1)
+                            .single();
+                        if (game1?.state) {
+                            offset = deriveStarterOffsetFromGame1(game1.state) || 0;
+                        }
+                    } catch { /* fall through */ }
+                }
+                if (!offset) offset = 1;
                 authoritativeSeriesContext = {
                     gameNumber: dbGameNumber,
                     homeStarterOffset: offset,
