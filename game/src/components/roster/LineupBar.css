@@ -114,3 +114,17 @@
     font-style: italic;
 }
 
+.lineup-penalty {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: #dc2626;
+    color: white;
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    z-index: 1;
+}
+

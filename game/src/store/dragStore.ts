@@ -20,6 +20,11 @@ export function useDragStore() {
             for (const def of LINEUP_SLOT_DEFS) {
                 if (def.filterPos === 'DH') {
                     eligible.add(def.key); // any hitter can DH
+                } else if (def.filterPos === '1B') {
+                    // 1B is the only non-native slot that's legal-with-penalty
+                    // per the rulebook — any hitter is allowed (builder will
+                    // badge -1 / -2 so the user sees the cost).
+                    eligible.add(def.key);
                 } else if (def.filterPos === 'LF-RF') {
                     if (canPlayPosition(h.positions, 'LF') || canPlayPosition(h.positions, 'RF') || canPlayPosition(h.positions, 'LF-RF' as FieldPosition)) {
                         eligible.add(def.key);

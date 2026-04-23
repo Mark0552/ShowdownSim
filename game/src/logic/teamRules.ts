@@ -46,11 +46,14 @@ export function validateTeam(team: Team): TeamValidation {
         cardIds.add(slot.card.id);
     }
 
-    // Validate hitters can play their assigned position
+    // Validate hitters can play their assigned position. 1B is the only
+    // non-native slot that's legal under the rulebook (with a fielding
+    // penalty the in-game display surfaces), so skip the native check for
+    // 1B — any hitter is allowed there.
     for (const slot of slots) {
         if (slot.card.type !== 'hitter') continue;
         const pos = slot.assignedPosition;
-        if (pos === 'DH' || pos === 'bench') continue;
+        if (pos === 'DH' || pos === 'bench' || pos === '1B') continue;
         // Normalize: 'LF-RF-1' -> 'LF-RF'
         const filterPos = pos.replace(/-\d$/, '') as FieldPosition;
         if (!canPlayPosition(slot.card.positions, filterPos)) {

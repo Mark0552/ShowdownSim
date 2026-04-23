@@ -5,6 +5,7 @@ import type { SlotSelection } from './RosterPanel';
 import type { RosterSlot } from '../../types/team';
 import { LINEUP_SLOT_DEFS } from '../../types/team';
 import CardTooltip from '../cards/CardTooltip';
+import { fieldingPenalty } from '../../lib/fielding';
 import './LineupBar.css';
 
 interface Props {
@@ -174,6 +175,9 @@ export default function LineupBar({ teamStore, dragStore, activeSlot, onSlotClic
                 {display.map(({ key, label, filterPos, slot }, idx) => {
                     const order = slot?.battingOrder;
                     const isDropTarget = !isInternalDrag.current && draggedCard && eligibleSlots.has(key);
+                    // Badge the 1B slot when the assigned hitter isn't native (legal
+                    // per rulebook, but user should see the -1 / -2 fielding penalty).
+                    const penalty = slot ? fieldingPenalty(slot.card, filterPos).penalty : 0;
                     return (
                         <div
                             key={key}
@@ -194,6 +198,11 @@ export default function LineupBar({ teamStore, dragStore, activeSlot, onSlotClic
                                     <img src={slot.card.imagePath} alt="" className="lineup-img" draggable={false} />
                                     <span className="lineup-name">{slot.card.name}</span>
                                     <span className="lineup-pts">{slot.card.points}pt</span>
+                                    {penalty < 0 && (
+                                        <span className="lineup-penalty" title={`Out of position at ${filterPos} — ${penalty} fielding`}>
+                                            OOP {penalty}
+                                        </span>
+                                    )}
                                 </>
                             ) : (
                                 <div className="lineup-empty">{isDropTarget ? 'Drop here' : 'Click\nto fill'}</div>
