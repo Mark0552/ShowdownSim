@@ -133,14 +133,26 @@ export function handleExtraBaseThrow(state, action) {
     const logs = [];
     let outs = state.outs;
 
+    // Snapshot each sent runner's cardId AT THEIR FROM-BASE before any mutation,
+    // and pre-clear those from-bases. This prevents a collision when the target
+    // is a trailing runner advancing into a base that a lead runner is about to
+    // vacate (e.g. single w/ runners on 1st+2nd: target = runner-to-3rd SAFE,
+    // remaining = runner-to-home — without the snapshot, the target's
+    // `bases[toBase] = bases[fromBase]` would overwrite the lead runner on 3rd,
+    // and the remaining loop would then clear the just-placed target as if
+    // they vanished, producing the phantom-out-at-third animation bug.
+    const runnerIdAtFromBase = {};
+    for (const e of eligible) {
+        runnerIdAtFromBase[e.fromBase] = bases[e.fromBase];
+        bases[e.fromBase] = null;
+    }
+
     if (safe) {
         if (target.toBase === 'home') {
             newScore[side]++;
-            bases[target.fromBase] = null;
             logs.push(`${target.runnerName} scores! Spd ${target.targetWithBonuses} vs d20(${roll})+OF(${ofFielding})=${defenseTotal}`);
         } else {
-            bases[target.toBase] = bases[target.fromBase];
-            bases[target.fromBase] = null;
+            bases[target.toBase] = runnerIdAtFromBase[target.fromBase];
             logs.push(`${target.runnerName} advances to ${target.toBase}! Target ${target.targetWithBonuses} vs ${defenseTotal}`);
         }
     } else {
@@ -150,12 +162,11 @@ export function handleExtraBaseThrow(state, action) {
         if (target.toBase === 'third' && otherHomeRunner) {
             // The home runner scores even if this out is the 3rd out
             newScore[side]++;
-            bases.third = null; // home runner scored
             logs.push(`${target.runnerName} thrown out at 3rd, but ${otherHomeRunner.runnerName}'s run still scores!`);
         } else {
             logs.push(`${target.runnerName} thrown out! Target ${target.targetWithBonuses} vs d20(${roll})+OF(${ofFielding})=${defenseTotal}`);
         }
-        bases[target.fromBase] = null;
+        // Target's from-base was already cleared by the pre-clear above.
     }
 
     const pendingExtraBaseResult = {
@@ -224,7 +235,7 @@ export function handleExtraBaseThrow(state, action) {
     for (const runner of remaining) {
         if (runner.toBase === 'home') {
             newScore[side]++;
-            bases[runner.fromBase] = null;
+            // from-base already cleared by the pre-clear loop above.
             logs.push(`${runner.runnerName} scores (no throw)`);
             battingTeam = addBatterStat(battingTeam, runner.runnerId, 'r');
             // RBI to batter for any run produced by their at-bat / extra-base play
@@ -239,8 +250,10 @@ export function handleExtraBaseThrow(state, action) {
             rpi[state.inning - 1] = (rpi[state.inning - 1] || 0) + 1;
             battingTeam.runsPerInning = rpi;
         } else {
-            bases[runner.toBase] = bases[runner.fromBase];
-            bases[runner.fromBase] = null;
+            // Use snapshot instead of `bases[runner.fromBase]` — that value is
+            // null after the pre-clear, so without the snapshot we'd place
+            // `null` at the toBase and erase any runner already there.
+            bases[runner.toBase] = runnerIdAtFromBase[runner.fromBase];
             logs.push(`${runner.runnerName} advances to ${runner.toBase} (no throw)`);
         }
     }
@@ -275,14 +288,21 @@ export function handleSkipExtraBase(state) {
     let battingTeam = { ...state[battingSide] };
     let extraRuns = 0;
 
+    // Snapshot + pre-clear: see handleExtraBaseThrow for why. Processing
+    // sent runners sequentially would have a trailing runner overwrite a
+    // lead runner whose base is about to vacate.
+    const runnerIdAtFromBase = {};
+    for (const e of eligible) {
+        runnerIdAtFromBase[e.fromBase] = bases[e.fromBase];
+        bases[e.fromBase] = null;
+    }
+
     for (const runner of eligible) {
         if (runner.toBase === 'home') {
             newScore[side]++; extraRuns++;
-            bases[runner.fromBase] = null;
             logs.push(`${runner.runnerName} scores (no throw)`);
         } else {
-            bases[runner.toBase] = bases[runner.fromBase];
-            bases[runner.fromBase] = null;
+            bases[runner.toBase] = runnerIdAtFromBase[runner.fromBase];
             logs.push(`${runner.runnerName} advances to ${runner.toBase} (no throw)`);
         }
     }
