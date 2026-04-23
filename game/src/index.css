@@ -19,7 +19,14 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: var(--bg-primary);
+    background-color: var(--bg-primary);
+    background-image:
+        linear-gradient(rgba(15, 25, 35, 0.88), rgba(15, 25, 35, 0.92)),
+        url('./assets/Fenway.jpg');
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
     color: var(--text);
     min-height: 100vh;
 }

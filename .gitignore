@@ -25,6 +25,7 @@ Screenshots/
 *.JPG
 *.png
 !game/public/**/*.png
+!game/src/assets/**
 
 # Misc scratch files
 mlb_showdown_2005_board.html
