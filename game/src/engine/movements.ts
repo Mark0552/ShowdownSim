@@ -48,8 +48,13 @@ export function computeRunnerMovements(oldState: GameState | null, newState: Gam
         return oldTeam.lineup.find(p => p.cardId === cardId)
             || newTeam?.lineup?.find(p => p.cardId === cardId)
             || (oldTeam.bench || []).find(p => p.cardId === cardId)
-            || (newTeam?.archivedPlayers && newTeam.archivedPlayers[cardId])
-            || (oldTeam.archivedPlayers && oldTeam.archivedPlayers[cardId]);
+            || (newTeam?.bench || []).find(p => p.cardId === cardId)
+            || (oldTeam.bullpen || []).find(p => p.cardId === cardId)
+            || (newTeam?.bullpen || []).find(p => p.cardId === cardId)
+            || (oldTeam.pitcher?.cardId === cardId ? oldTeam.pitcher : undefined)
+            || (newTeam?.pitcher?.cardId === cardId ? newTeam.pitcher : undefined)
+            || (oldTeam.archivedPlayers && oldTeam.archivedPlayers[cardId])
+            || (newTeam?.archivedPlayers && newTeam.archivedPlayers[cardId]);
     };
 
     const countSegments = (from: string, to: string): number => {

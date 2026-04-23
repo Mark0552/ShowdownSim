@@ -236,7 +236,9 @@ export default function StatsPage({ onBack }: Props) {
                                 return (
                                     <div key={`g-${game.id}`} className="stats-standalone-row">
                                         <span className="stats-standalone-date">{new Date(game.created_at).toLocaleDateString()}</span>
-                                        <span className="stats-standalone-opp">vs {opponent || '???'}</span>
+                                        <span className="stats-standalone-opp">
+                                            {isHome ? `vs ${opponent || '???'}` : `@ ${opponent || '???'}`}
+                                        </span>
                                         <span className={`stats-result ${won ? 'win' : 'loss'}`}>
                                             {won ? 'W' : 'L'} {score}
                                         </span>

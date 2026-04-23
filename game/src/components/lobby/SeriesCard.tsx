@@ -97,9 +97,9 @@ export default function SeriesCard({ series, games, userId, onResumeSeries, onDe
         <div className="series-card">
             <div className="series-card-header">
                 <div className="series-card-title">
-                    <span className={`series-card-user ${seriesWinnerSide === 'home' ? 'winner' : ''}`}>{homeName}</span>
-                    <span className="series-card-vs">vs</span>
                     <span className={`series-card-user ${seriesWinnerSide === 'away' ? 'winner' : ''}`}>{awayName}</span>
+                    <span className="series-card-vs">@</span>
+                    <span className={`series-card-user ${seriesWinnerSide === 'home' ? 'winner' : ''}`}>{homeName}</span>
                 </div>
                 <div className="series-card-meta">
                     <span className="series-card-bestof">Best of {series.best_of}</span>
@@ -124,17 +124,17 @@ export default function SeriesCard({ series, games, userId, onResumeSeries, onDe
                                 <span className={`series-game-status ${s.cls}`}>{s.label}</span>
                             </div>
                             <div className="series-game-rows">
-                                <div className={`series-game-row ${winner === 'home' ? 'winner' : (winner === 'away' ? 'loser' : '')}`}>
-                                    <span className="series-player">{homeName}</span>
-                                    <span className="series-pitcher">{r.homeStarter ? `· ${r.homeStarter}` : ''}</span>
-                                    <span className="series-score">{score ? score.home : ''}</span>
-                                    <span className="series-winner-mark">{winner === 'home' ? '◀ W' : ''}</span>
-                                </div>
                                 <div className={`series-game-row ${winner === 'away' ? 'winner' : (winner === 'home' ? 'loser' : '')}`}>
                                     <span className="series-player">{awayName}</span>
                                     <span className="series-pitcher">{r.awayStarter ? `· ${r.awayStarter}` : ''}</span>
                                     <span className="series-score">{score ? score.away : ''}</span>
                                     <span className="series-winner-mark">{winner === 'away' ? '◀ W' : ''}</span>
+                                </div>
+                                <div className={`series-game-row ${winner === 'home' ? 'winner' : (winner === 'away' ? 'loser' : '')}`}>
+                                    <span className="series-player">{homeName}</span>
+                                    <span className="series-pitcher">{r.homeStarter ? `· ${r.homeStarter}` : ''}</span>
+                                    <span className="series-score">{score ? score.home : ''}</span>
+                                    <span className="series-winner-mark">{winner === 'home' ? '◀ W' : ''}</span>
                                 </div>
                             </div>
                         </div>

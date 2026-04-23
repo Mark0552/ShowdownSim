@@ -28,9 +28,20 @@ export function computeRunnerMovements(oldState, newState) {
     const movedIds = new Set();
 
     const findPlayer = (cardId) => {
+        // Check every roster location on both the old and new team snapshots,
+        // plus archivedPlayers for subbed-out cards. A narrow lookup used to
+        // miss pinch-runners fresh from bench and archived players, which made
+        // the animation silently render a blank image for the full duration.
         return oldTeam.lineup.find(p => p.cardId === cardId)
             || newTeam?.lineup?.find(p => p.cardId === cardId)
-            || oldTeam.bench?.find(p => p.cardId === cardId);
+            || oldTeam.bench?.find(p => p.cardId === cardId)
+            || newTeam?.bench?.find(p => p.cardId === cardId)
+            || oldTeam.bullpen?.find(p => p.cardId === cardId)
+            || newTeam?.bullpen?.find(p => p.cardId === cardId)
+            || (oldTeam.pitcher?.cardId === cardId ? oldTeam.pitcher : null)
+            || (newTeam?.pitcher?.cardId === cardId ? newTeam.pitcher : null)
+            || oldTeam.archivedPlayers?.[cardId]
+            || newTeam?.archivedPlayers?.[cardId];
     };
 
     const countSegments = (from, to) => {

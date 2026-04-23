@@ -167,8 +167,15 @@ function RunnerAnimOverlay({ anim, baseCoords, baseAnimMs }: {
 
     return (
         <g opacity={opacity} style={{ pointerEvents: 'none' }}>
-            <image href={anim.imagePath} x={pos.x + 3} y={pos.y + 3} width={64} height={94}
-                preserveAspectRatio="xMidYMid slice" />
+            {/* Placeholder card behind the image: guarantees the animation is
+                visible even if imagePath is missing / fails to load. Matches
+                the CardSlot corner-bracket styling so it looks intentional. */}
+            <rect x={pos.x} y={pos.y} width={70} height={100} rx="6"
+                fill="rgba(0,0,0,0.55)" stroke="#f0e8c0" strokeWidth="2" strokeDasharray="6,4" opacity="0.88" />
+            {anim.imagePath && (
+                <image href={anim.imagePath} x={pos.x + 3} y={pos.y + 3} width={64} height={94}
+                    preserveAspectRatio="xMidYMid slice" />
+            )}
             {isOut && (
                 <rect x={pos.x} y={pos.y} width={70} height={100} rx="4"
                     fill="rgba(200, 20, 20, 0.7)" stroke="rgba(255, 30, 30, 0.9)" strokeWidth="3" />
