@@ -12,9 +12,13 @@
 }
 
 .menu-card h1 {
-    font-size: 36px;
-    color: var(--accent);
-    margin-bottom: 4px;
+    font-family: 'Alfa Slab One', 'Rockwell', Georgia, serif;
+    font-size: 52px;
+    letter-spacing: 0.04em;
+    color: #bd3039;
+    text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45);
+    margin-bottom: 8px;
+    line-height: 1;
 }
 
 .menu-user {

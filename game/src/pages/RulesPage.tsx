@@ -116,10 +116,13 @@ function AdvancedRules() {
                     <li><strong>Bench</strong>: fills remaining slots. Bench players pay <strong>1/5 their card cost</strong> (rounded up).</li>
                 </ul>
 
-                <h3>Position Eligibility</h3>
+                <h3>Position Eligibility <span className="rules-house">HOUSE</span></h3>
                 <p>
-                    Hitters must be placed at a position printed on their card, with one exception:
-                    any hitter may be placed at <strong>1B</strong> with a fielding penalty.
+                    <span className="rules-house">HOUSE</span> Out-of-position placement and the associated
+                    penalty scheme are a house addition. In the official rulebook, hitters must be placed at
+                    a position printed on their card. This implementation allows any hitter at <strong>1B</strong>{' '}
+                    voluntarily, and permits all other non-native placements only when a mid-game sub leaves
+                    no native fielder for a slot.
                 </p>
                 <table className="rules-table">
                     <thead>
@@ -129,9 +132,9 @@ function AdvancedRules() {
                         <tr><td>On-card position</td><td><code>0</code></td><td>Yes</td></tr>
                         <tr><td>Position player at 1B</td><td><code>-1</code></td><td>Yes (only voluntary OOP slot)</td></tr>
                         <tr><td>DH-only card at 1B</td><td><code>-2</code></td><td>Yes</td></tr>
-                        <tr><td>Similar-group OOP <span className="rules-note-inline">(2B/3B/SS swap; LF/CF/RF swap)</span></td><td><code>-2</code></td><td>No (only via mid-game sub)</td></tr>
-                        <tr><td>Cross-group OOP</td><td><code>-3</code></td><td>No (only via mid-game sub)</td></tr>
-                        <tr><td>Non-catcher at C</td><td><code>-3</code></td><td>No (only via mid-game sub)</td></tr>
+                        <tr><td>Similar-group OOP <span className="rules-note-inline">(2B/3B/SS swap; LF/CF/RF swap)</span></td><td><code>-2</code></td><td>Forced only — when mid-game subs leave no native fielder</td></tr>
+                        <tr><td>Cross-group OOP</td><td><code>-3</code></td><td>Forced only — when mid-game subs leave no native fielder</td></tr>
+                        <tr><td>Non-catcher at C</td><td><code>-3</code></td><td>Forced only — when mid-game subs leave no native fielder</td></tr>
                     </tbody>
                 </table>
                 <p>
@@ -143,7 +146,7 @@ function AdvancedRules() {
                 <ul>
                     <li>Bench players are marked <strong>isBackup</strong>. They cannot be placed as starters.</li>
                     <li>Pitchers cannot be bench/backup players.</li>
-                    <li><span className="rules-house">HOUSE</span> Backups cannot pinch-hit before the <strong>7th inning</strong> (exception: home team may use a backup in the <strong>bottom of the 6th</strong>).</li>
+                    <li>Backups cannot pinch-hit before the <strong>7th inning</strong> (exception: home team may use a backup in the <strong>bottom of the 6th</strong>).</li>
                 </ul>
 
                 <h3>DH</h3>
@@ -208,7 +211,7 @@ function AdvancedRules() {
                         </tr>
                         <tr>
                             <td><strong>S</strong></td>
-                            <td>Upgrade a Single or Single+ to a <strong>Double</strong>. <span className="rules-house">HOUSE</span> Cannot be stacked with HR on the same result.</td>
+                            <td>Upgrade a Single or Single+ to a <strong>Double</strong>. Cannot be stacked with HR on the same result.</td>
                             <td>1× per game</td>
                         </tr>
                         <tr>
@@ -218,7 +221,7 @@ function AdvancedRules() {
                         </tr>
                         <tr>
                             <td><strong>G</strong></td>
-                            <td>+10 fielding on a DP or extra-base roll at the player's slot. <span className="rules-house">HOUSE</span> Defense chooses which G player to use when multiple are eligible.</td>
+                            <td>+10 fielding on a DP or extra-base roll at the player's slot. Defense chooses which G player to use when multiple are eligible.</td>
                             <td>1× per player per game</td>
                         </tr>
                         <tr>
@@ -289,8 +292,7 @@ if Pitch Total &gt; Batter's On-Base → use PITCHER'S chart
 else                                → use HITTER'S chart
                 </pre>
                 <p className="rules-note">
-                    <span className="rules-house">HOUSE</span> The comparison is strictly greater than
-                    (<code>&gt;</code>), not ≥. A tie goes to the hitter.
+                    The comparison is strictly greater than (<code>&gt;</code>), not ≥. A tie goes to the hitter.
                 </p>
 
                 <h3>Modifiers</h3>
@@ -329,7 +331,7 @@ Effective IP = (Card IP − Series Reliever Penalty)
                         <tr><td>FB</td><td>Fly Ball</td><td>Out. Sac-fly scores runner from 3rd if fewer than 2 outs.</td></tr>
                         <tr><td>W</td><td>Walk</td><td>Batter to 1st. Forced runners advance. No pitch count.</td></tr>
                         <tr><td>S</td><td>Single</td><td>Batter to 1st. Runners advance one base.</td></tr>
-                        <tr><td>S+</td><td>Single Plus</td><td><span className="rules-house">HOUSE</span> Batter to 1st (runners advance one). Batter then auto-steals 2nd if open.</td></tr>
+                        <tr><td>S+</td><td>Single Plus</td><td>Batter to 1st (runners advance one). Batter then auto-steals 2nd if open.</td></tr>
                         <tr><td>DB</td><td>Double</td><td>Batter to 2nd. Runners advance two bases (runner from 1st scores is possible via extra-base roll).</td></tr>
                         <tr><td>TR</td><td>Triple</td><td>Batter to 3rd. All runners score.</td></tr>
                         <tr><td>HR</td><td>Home Run</td><td>Everyone scores including the batter.</td></tr>
@@ -371,9 +373,9 @@ if Defense Roll ≥ Runner Target → runner OUT
 else                             → runner SAFE
                 </pre>
                 <p>
-                    <span className="rules-house">HOUSE</span> The offense decides first whether to send the
-                    runner; the defense then chooses which runner to throw at when multiple are eligible. The
-                    G icon may be activated to add +10 to the defense roll.
+                    The offense decides first whether to send the runner; the defense then chooses which
+                    runner to throw at when multiple are eligible. The G icon may be activated to add +10
+                    to the defense roll.
                 </p>
 
                 <h3>Ground Ball Decision</h3>
@@ -383,7 +385,7 @@ else                             → runner SAFE
                 <ul>
                     <li><strong>Double Play</strong> — d20 + IF Fielding vs Speed of lead forced runner. Success turns two outs.</li>
                     <li><strong>Force at Home</strong> (bases loaded) — runner from 3rd is thrown out, others advance, batter on 1st.</li>
-                    <li><strong>Hold Runners</strong> — runners stay, out made at 1st, batter is out. <span className="rules-house">HOUSE</span> Allowed at any base state.</li>
+                    <li><span className="rules-house">HOUSE</span> <strong>Hold Runners</strong> — defense elects to hold all runners in place; the infield play must still be made on the batter, who is out at 1st.</li>
                 </ul>
             </section>
 
@@ -409,7 +411,7 @@ else                             → runner SAFE
                     <li>Available only when the player is on-card at their assigned position (penalty = 0).</li>
                     <li>Adds +10 to a DP roll or an extra-base throw.</li>
                     <li>1× per player per game.</li>
-                    <li><span className="rules-house">HOUSE</span> When multiple eligible G players exist, the defense chooses which one to activate.</li>
+                    <li>When multiple eligible G players exist, the defense chooses which one to activate.</li>
                 </ul>
             </section>
 
@@ -443,9 +445,19 @@ else                             → runner SAFE
 
                 <h3>Reliever Fatigue Across a Series</h3>
                 <p>
-                    <span className="rules-house">HOUSE</span> A reliever who pitched in the previous series
-                    game starts with <strong>−1 IP</strong>. If they pitched in the two previous games, IP
-                    starts at <strong>0</strong>, meaning any use incurs immediate fatigue.
+                    Each <em>consecutive</em> prior series game a reliever appeared in subtracts{' '}
+                    <strong>−1</strong> from their effective IP this game:
+                </p>
+                <ul>
+                    <li>Pitched the previous game → <strong>−1 IP</strong></li>
+                    <li>Pitched the previous two games → <strong>−2 IP</strong></li>
+                    <li>Pitched the previous three → <strong>−3 IP</strong>, and so on</li>
+                </ul>
+                <p>
+                    A single game of rest <strong>fully resets</strong> the streak — the count stops at the
+                    first prior game the reliever didn't appear in. Starters are exempt. Effective IP is
+                    clamped at 0 (never negative); if a reliever's card IP is exceeded by the penalty, any
+                    use immediately incurs fatigue.
                 </p>
             </section>
 
@@ -460,8 +472,8 @@ else                             → runner SAFE
                     return to the game.
                 </p>
                 <p>
-                    <span className="rules-house">HOUSE</span> Backups cannot pinch-hit before the 7th inning.
-                    The home team may use a backup in the bottom of the 6th as an exception.
+                    Backups cannot pinch-hit before the 7th inning. The home team may use a backup in the
+                    bottom of the 6th as an exception.
                 </p>
 
                 <h3>Pitching Change</h3>
@@ -499,7 +511,7 @@ else                             → runner SAFE
                 <h3>Formula</h3>
                 <pre className="rules-formula">
 Defense Roll = d20 + Catcher Arm
-            +5 if the throw is to 3rd base  [HOUSE]
+            +5 if the throw is to 3rd base
 
 Runner Target = Runner Speed
 
