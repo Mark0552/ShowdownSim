@@ -79,7 +79,15 @@ export async function saveGameStats(gameId: string, seriesId: string | null, gam
     }
 
     if (rows.length > 0) {
-        await supabase.from('game_player_stats').insert(rows);
+        // Upsert on the (game_id, user_id, card_id) unique constraint so
+        // repeat calls (both players online, one reconnects post-game,
+        // useEffect firing twice, etc.) just overwrite the same rows
+        // instead of creating duplicates that would double-count in
+        // career aggregations.
+        const { error } = await supabase
+            .from('game_player_stats')
+            .upsert(rows, { onConflict: 'game_id,user_id,card_id' });
+        if (error) throw error;
     }
 }
 

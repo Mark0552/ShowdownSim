@@ -18,7 +18,11 @@ CREATE TABLE IF NOT EXISTS game_player_stats (
     p_h INT DEFAULT 0, p_r INT DEFAULT 0, p_bb INT DEFAULT 0, p_ibb INT DEFAULT 0,
     p_so INT DEFAULT 0, p_hr INT DEFAULT 0, bf INT DEFAULT 0,
     win BOOLEAN DEFAULT false,
-    created_at TIMESTAMPTZ DEFAULT now()
+    created_at TIMESTAMPTZ DEFAULT now(),
+    -- Prevent duplicate stat rows for the same (game, user, card). Both
+    -- players' clients save at game-end; without this either a second
+    -- fire or a reconnect-after-over could insert a duplicate.
+    CONSTRAINT game_player_stats_game_user_card_unique UNIQUE (game_id, user_id, card_id)
 );
 
 ALTER TABLE game_player_stats ENABLE ROW LEVEL SECURITY;

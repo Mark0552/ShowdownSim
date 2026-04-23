@@ -241,14 +241,32 @@ export default function GamePage({ gameId, onBack }: Props) {
         };
     }, [gameId, connectWs]);
 
-    // Save stats + sync series wins when the game ends. Both are idempotent —
-    // syncSeriesWinsFromGames recomputes from the games table so revisiting
-    // this page after the game ended doesn't double-count.
+    // Save stats + sync series wins when the game ends. Stats upsert on
+    // (game_id, user_id, card_id) so a repeat save (both players online,
+    // reconnect after over, etc.) doesn't duplicate. Small retry on
+    // transient errors so a flaky connection at game-end doesn't silently
+    // lose stats. Toast the result either way.
+    const [toast, setToast] = useState<{ text: string; kind: 'ok' | 'err' } | null>(null);
     useEffect(() => {
         if (!gameState?.isOver) return;
         if (!statsSavedRef.current) {
             statsSavedRef.current = true;
-            saveGameStats(gameId, gameRow?.series_id || null, gameState).catch(console.error);
+            (async () => {
+                for (let attempt = 0; attempt < 3; attempt++) {
+                    try {
+                        await saveGameStats(gameId, gameRow?.series_id || null, gameState);
+                        setToast({ text: 'Stats saved', kind: 'ok' });
+                        setTimeout(() => setToast(null), 2500);
+                        return;
+                    } catch (e) {
+                        if (attempt === 2) {
+                            console.error('Failed to save stats after retries', e);
+                            setToast({ text: 'Stats failed to save — will retry on reconnect', kind: 'err' });
+                        }
+                        await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
+                    }
+                }
+            })();
         }
         if (gameRow?.series_id) {
             syncSeriesWinsFromGames(gameRow.series_id)
@@ -264,10 +282,21 @@ export default function GamePage({ gameId, onBack }: Props) {
     }, [gameState?.isOver, gameId, gameRow?.series_id]);
 
     // Subscribe to the current game's row so both players see each other's
-    // ready-for-next-game flag flips in realtime. When both sides flip to
-    // true, auto-advance via ensureNextSeriesGame (race-safe).
+    // ready-for-next-game flag flips in realtime. Also does an initial
+    // fetch so a post-reconnect mount (when the subscription may have
+    // missed a UPDATE during reconnect) re-hydrates readyNext correctly.
     useEffect(() => {
         if (!gameId) return;
+        supabase
+            .from('games')
+            .select('pending_action')
+            .eq('id', gameId)
+            .single()
+            .then(({ data }) => {
+                const pa: any = (data as any)?.pending_action || {};
+                const rn = pa.readyNext || {};
+                if (mountedRef.current) setReadyNext({ home: !!rn.home, away: !!rn.away });
+            });
         const ch = supabase
             .channel(`game-row-${gameId}`)
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${gameId}` }, (payload) => {
@@ -280,8 +309,11 @@ export default function GamePage({ gameId, onBack }: Props) {
     }, [gameId]);
 
     // Auto-advance when both players are ready for the next game in the series.
+    // Hold the advance for 2.5s with a visible countdown so the game-over
+    // card stays readable when the other player readies last.
+    const [advanceCountdown, setAdvanceCountdown] = useState<number | null>(null);
     useEffect(() => {
-        if (!readyNext.home || !readyNext.away) return;
+        if (!readyNext.home || !readyNext.away) { setAdvanceCountdown(null); return; }
         if (advancingRef.current) return;
         if (!gameRow?.series_id) return;
         if (!gameState?.isOver) return;
@@ -289,21 +321,39 @@ export default function GamePage({ gameId, onBack }: Props) {
         const bestOf = seriesRow?.best_of || 1;
         const maxWins = Math.max(seriesRow?.home_wins || 0, seriesRow?.away_wins || 0);
         if (maxWins > bestOf / 2) return;
+        if (!gameRow.away_user_id) return; // guarded at ensureNextSeriesGame too; short-circuit
+
         advancingRef.current = true;
-        (async () => {
-            try {
-                const next = await ensureNextSeriesGame(
-                    gameRow.series_id!,
-                    (gameRow.game_number || 1) + 1,
-                    gameRow.home_user_id, gameRow.away_user_id || '',
-                    gameRow.home_user_email || '', gameRow.away_user_email || '',
-                );
-                window.location.hash = `game/${next.id}`;
-            } catch (e) {
-                console.error('Auto-advance failed', e);
-                advancingRef.current = false;
+        let n = 2;
+        setAdvanceCountdown(n);
+        const tick = setInterval(() => {
+            n -= 1;
+            if (n <= 0) {
+                clearInterval(tick);
+                setAdvanceCountdown(0);
+                (async () => {
+                    try {
+                        const next = await ensureNextSeriesGame(
+                            gameRow.series_id!,
+                            (gameRow.game_number || 1) + 1,
+                            gameRow.home_user_id, gameRow.away_user_id!,
+                            gameRow.home_user_email || '', gameRow.away_user_email || '',
+                        );
+                        window.location.hash = `game/${next.id}`;
+                    } catch (e) {
+                        // Swallow the "series already advanced by the
+                        // other client" path; only log unexpected failures.
+                        // eslint-disable-next-line no-console
+                        console.warn('Auto-advance hiccup', e);
+                        advancingRef.current = false;
+                        setAdvanceCountdown(null);
+                    }
+                })();
+            } else {
+                setAdvanceCountdown(n);
             }
-        })();
+        }, 1000);
+        return () => { clearInterval(tick); };
     }, [readyNext.home, readyNext.away, gameState?.isOver, gameRow?.series_id, seriesRow?.best_of, seriesRow?.home_wins, seriesRow?.away_wins]); // eslint-disable-line
 
     const toggleReadyForNext = useCallback(async () => {
@@ -424,15 +474,66 @@ export default function GamePage({ gameId, onBack }: Props) {
                 onToggleReadyForNext={toggleReadyForNext}
             />
             {opponentDisconnected && !gameState.isOver && (
+                <DisconnectModal onExit={onBack} />
+            )}
+            {advanceCountdown !== null && advanceCountdown > 0 && (
                 <div style={{
-                    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                    background: 'rgba(10,20,40,0.95)', border: '2px solid #d4a018', borderRadius: '10px',
-                    padding: '20px 30px', zIndex: 2000, textAlign: 'center',
+                    position: 'absolute', top: 80, left: '50%', transform: 'translateX(-50%)',
+                    background: 'rgba(10,20,40,0.95)', border: '1px solid #d4a018', borderRadius: 8,
+                    padding: '8px 16px', zIndex: 2500, color: '#d4a018', fontSize: 13, fontWeight: 600,
+                    letterSpacing: 1,
                 }}>
-                    <div style={{ color: '#d4a018', fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>Opponent Disconnected</div>
-                    <div style={{ color: '#8aade0', fontSize: '13px' }}>Waiting for them to reconnect...</div>
-                    <div style={{ color: '#4a6a90', fontSize: '11px', marginTop: '8px' }}>The game will resume when they return.</div>
+                    NEXT GAME IN {advanceCountdown}…
                 </div>
+            )}
+            {toast && (
+                <div style={{
+                    position: 'fixed', bottom: 16, right: 16, zIndex: 3000,
+                    background: toast.kind === 'ok' ? 'rgba(34,197,94,0.95)' : 'rgba(239,68,68,0.95)',
+                    color: '#fff', padding: '10px 16px', borderRadius: 6,
+                    fontFamily: 'Arial, sans-serif', fontSize: 13, fontWeight: 600,
+                    boxShadow: '0 6px 16px rgba(0,0,0,0.5)',
+                }}>
+                    {toast.text}
+                </div>
+            )}
+        </div>
+    );
+}
+
+/** Opponent-disconnect modal that counts up and offers an explicit
+ *  "Back to Lobby" after 60s so the game doesn't become a dead-end if
+ *  the opponent rage-quits or otherwise never returns. */
+function DisconnectModal({ onExit }: { onExit: () => void }) {
+    const [elapsed, setElapsed] = useState(0);
+    useEffect(() => {
+        const t = setInterval(() => setElapsed(e => e + 1), 1000);
+        return () => clearInterval(t);
+    }, []);
+    const canBail = elapsed >= 60;
+    return (
+        <div style={{
+            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+            background: 'rgba(10,20,40,0.95)', border: '2px solid #d4a018', borderRadius: '10px',
+            padding: '20px 30px', zIndex: 2000, textAlign: 'center', minWidth: 280,
+        }}>
+            <div style={{ color: '#d4a018', fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>Opponent Disconnected</div>
+            <div style={{ color: '#8aade0', fontSize: '13px' }}>
+                Waiting for them to reconnect&hellip; ({Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')})
+            </div>
+            <div style={{ color: '#4a6a90', fontSize: '11px', marginTop: '8px' }}>
+                The game will resume when they return.
+            </div>
+            {canBail && (
+                <button
+                    onClick={onExit}
+                    style={{
+                        marginTop: 14, background: '#3a0a0a', border: '1px solid #e94560',
+                        color: '#e94560', padding: '8px 16px', borderRadius: 4, cursor: 'pointer',
+                        fontFamily: 'Arial, sans-serif', fontSize: 12, fontWeight: 600, letterSpacing: 1,
+                    }}>
+                    BACK TO LOBBY
+                </button>
             )}
         </div>
     );

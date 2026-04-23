@@ -93,15 +93,14 @@ export async function getMyGames(): Promise<GameRow[]> {
 }
 
 /** Toggle the current player's "ready for next series game" flag on the
- *  game row's pending_action JSON. Both players subscribe to the game row;
- *  when both flags are true, each client independently triggers
- *  ensureNextSeriesGame and navigates to the new game. */
+ *  game row's pending_action JSON. Uses the set_ready_for_next_game RPC
+ *  (Postgres function, jsonb_set under the hood) so the read-modify-write
+ *  is atomic — a previous client-side read→patch→write could lose the
+ *  other player's flag when both clicked Ready simultaneously. */
 export async function setReadyForNextGame(gameId: string, role: PlayerRole, ready: boolean): Promise<void> {
-    const { data } = await supabase.from('games').select('pending_action').eq('id', gameId).single();
-    const pa: any = (data?.pending_action && typeof data.pending_action === 'object') ? data.pending_action : {};
-    const readyNext = { ...(pa.readyNext || {}) };
-    readyNext[role] = ready;
-    const { error } = await supabase.from('games').update({ pending_action: { ...pa, readyNext } }).eq('id', gameId);
+    const { error } = await supabase.rpc('set_ready_for_next_game', {
+        p_game_id: gameId, p_role: role, p_ready: ready,
+    });
     if (error) throw error;
 }
 
@@ -257,12 +256,16 @@ export function subscribeToLobby(callback: (games: GameRow[]) => void): Realtime
 
     return supabase
         .channel('lobby')
+        // Scope the trigger to rows where status=waiting so other chatty
+        // mid-game writes don't refetch the entire lobby on every action.
+        // DELETEs of rows that WERE waiting still fire because the filter
+        // matched the old row's status.
         .on('postgres_changes', {
             event: '*',
             schema: 'public',
             table: 'games',
+            filter: 'status=eq.waiting',
         }, () => {
-            // Refetch on any change
             getOpenGames().then(callback);
         })
         .subscribe();
@@ -487,6 +490,13 @@ export async function ensureNextSeriesGame(
     homeEmail: string,
     awayEmail: string,
 ): Promise<GameRow> {
+    // Guard: both participants must be set. Creating a next-series row
+    // with an empty away_user_id would violate the FK (or produce a row
+    // that can't be played) and mask the real "opponent never joined"
+    // problem until much later.
+    if (!homeUserId || !awayUserId) {
+        throw new Error('Cannot advance series: both players must be present.');
+    }
     const games = await getSeriesGames(seriesId);
     const existing = games.find(g => g.game_number === gameNumber);
     if (existing) return existing;
@@ -521,7 +531,11 @@ export async function ensureNextSeriesGame(
             .single();
         if (error) throw error;
         return data;
-    } catch (e) {
+    } catch (e: any) {
+        // Race: the other client (or we) inserted first and the
+        // games_series_game_number_unique constraint is now rejecting
+        // our INSERT. Treat that as success — refetch and return the
+        // existing row. Only rethrow if refetch also comes up empty.
         const refetched = await getSeriesGames(seriesId);
         const found = refetched.find(g => g.game_number === gameNumber);
         if (found) return found;

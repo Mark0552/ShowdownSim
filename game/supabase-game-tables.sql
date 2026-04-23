@@ -22,7 +22,11 @@ create table if not exists games (
     pending_action jsonb,
     winner_user_id uuid references auth.users(id),
     created_at timestamptz default now(),
-    updated_at timestamptz default now()
+    updated_at timestamptz default now(),
+    -- One game per series slot. Prevents a race when both clients call
+    -- ensureNextSeriesGame simultaneously from creating two rows for
+    -- the same (series_id, game_number).
+    constraint games_series_game_number_unique unique (series_id, game_number)
 );
 
 -- Enable Row Level Security
