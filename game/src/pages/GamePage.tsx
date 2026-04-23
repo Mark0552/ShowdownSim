@@ -249,6 +249,11 @@ export default function GamePage({ gameId, onBack }: Props) {
     const [toast, setToast] = useState<{ text: string; kind: 'ok' | 'err' } | null>(null);
     useEffect(() => {
         if (!gameState?.isOver) return;
+        // Extra guards: a winnerId and a non-zero score confirm this is a real
+        // finished game, not a transient state during series game-2 init
+        // where a flag might briefly look over-ish.
+        if (!gameState.winnerId) return;
+        if ((gameState.homeTeam?.lineup?.length || 0) === 0) return;
         if (!statsSavedRef.current) {
             statsSavedRef.current = true;
             (async () => {
@@ -258,10 +263,10 @@ export default function GamePage({ gameId, onBack }: Props) {
                         setToast({ text: 'Stats saved', kind: 'ok' });
                         setTimeout(() => setToast(null), 2500);
                         return;
-                    } catch (e) {
+                    } catch (e: any) {
                         if (attempt === 2) {
                             console.error('Failed to save stats after retries', e);
-                            setToast({ text: 'Stats failed to save — will retry on reconnect', kind: 'err' });
+                            setToast({ text: `Stats save failed: ${e?.message || 'unknown error'}`, kind: 'err' });
                         }
                         await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
                     }

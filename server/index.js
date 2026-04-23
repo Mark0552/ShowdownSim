@@ -179,22 +179,68 @@ async function handleJoinGame(ws, msg, setContext) {
 
     // If both players are in and we have lineups, start or resume the game
     if (room.homeUserId && room.awayUserId && room.homeLineup && room.awayLineup && !room.state) {
-        // Try to load existing state from Supabase first (reconnection after room expired)
+        // Try to load existing state from Supabase first (reconnection after room expired).
+        // Also fetch the game row's series_id + game_number so we can build an
+        // authoritative seriesContext server-side — the client's seriesContext
+        // has occasionally arrived undefined due to a race (series row not yet
+        // synced when the game-2 lobby navigation fires), causing the server
+        // to fall through to sp_roll and then persist that bad state.
         let loadedState = null;
+        let dbSeriesId = null;
+        let dbGameNumber = 1;
         if (supabase) {
             try {
-                const { data } = await supabase.from('games').select('state, status').eq('id', gameId).single();
-                if (data?.state && data.status !== 'finished' && data.state.awayTeam?.lineup && data.state.homeTeam?.lineup) {
-                    loadedState = data.state;
+                const { data } = await supabase
+                    .from('games')
+                    .select('state, status, series_id, game_number')
+                    .eq('id', gameId).single();
+                if (data) {
+                    dbSeriesId = data.series_id || null;
+                    dbGameNumber = data.game_number || 1;
+                    if (data.state && data.status !== 'finished'
+                        && data.state.awayTeam?.lineup && data.state.homeTeam?.lineup) {
+                        loadedState = data.state;
+                    }
                 }
             } catch (e) { /* no saved state, start fresh */ }
+        }
+
+        // Build authoritative seriesContext from DB — only for games 2+.
+        // Ignores client-sent seriesContext so races can't produce sp_roll.
+        let authoritativeSeriesContext = null;
+        if (!loadedState && dbSeriesId && dbGameNumber > 1 && supabase) {
+            try {
+                const { data: series } = await supabase
+                    .from('series')
+                    .select('starter_offset, reliever_history')
+                    .eq('id', dbSeriesId).single();
+                const offset = series?.starter_offset || 1;
+                authoritativeSeriesContext = {
+                    gameNumber: dbGameNumber,
+                    homeStarterOffset: offset,
+                    awayStarterOffset: offset,
+                    relieverHistory: series?.reliever_history || { home: {}, away: {} },
+                };
+            } catch (e) {
+                console.warn(`Series context fetch failed for game ${gameId}:`, e.message);
+                // Fallback: still prevent sp_roll by supplying a minimal context.
+                // offset=1 is arbitrary but the rotation formula will still
+                // produce deterministic starters; better than re-rolling.
+                authoritativeSeriesContext = {
+                    gameNumber: dbGameNumber,
+                    homeStarterOffset: 1,
+                    awayStarterOffset: 1,
+                    relieverHistory: { home: {}, away: {} },
+                };
+            }
         }
 
         if (loadedState) {
             room.state = loadedState;
             console.log(`Restored game ${gameId} from Supabase`);
         } else {
-            room.state = initializeGame(room.homeLineup, room.awayLineup, room.homeUserId, room.awayUserId, room.seriesContext);
+            const ctx = authoritativeSeriesContext || room.seriesContext;
+            room.state = initializeGame(room.homeLineup, room.awayLineup, room.homeUserId, room.awayUserId, ctx);
             saveState(gameId, room.state);
         }
 
