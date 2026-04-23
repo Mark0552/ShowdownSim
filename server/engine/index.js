@@ -9,6 +9,7 @@ import {
     handlePinchHit, handlePitchingChange, handleSkipSub,
     handlePinchRun, handleDefensiveSub,
 } from './phases/substitutions.js';
+import { handleDefenseSetupCommit, handlePositionSwap } from './phases/defenseSetup.js';
 import { handleUseIcon, handleSkipIcons } from './phases/resultIcons.js';
 import { handleGbDecision } from './phases/groundball.js';
 import { handleSteal, handleStealSbDecision, handleStealGDecision } from './phases/steal.js';
@@ -24,6 +25,7 @@ export function whoseTurn(state) {
     const defense = state.halfInning === 'top' ? 'home' : 'away';
     switch (state.phase) {
         case 'sp_roll':           return 'home';  // home team rolls for starters
+        case 'defense_setup':     return defense;
         case 'pre_atbat':         return offense;
         case 'defense_sub':       return defense;
         case 'ibb_decision':      return defense;
@@ -50,6 +52,8 @@ export function processAction(state, action) {
         case 'PITCHING_CHANGE':    return handlePitchingChange(state, action);
         case 'PINCH_RUN':          return handlePinchRun(state, action);
         case 'DEFENSIVE_SUB':      return handleDefensiveSub(state, action);
+        case 'DEFENSE_SETUP_COMMIT': return handleDefenseSetupCommit(state, action);
+        case 'POSITION_SWAP':      return handlePositionSwap(state, action);
         case 'USE_ICON':           return handleUseIcon(state, action);
         case 'GB_DECISION':        return handleGbDecision(state, action);
         case 'STEAL':              return handleSteal(state, action);

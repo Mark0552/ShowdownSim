@@ -5,6 +5,7 @@
 import { addBatterStat, addPitcherStat, updateWLTracker } from '../stats.js';
 import { playerHasIcon, canUseIcon, recordIconUse } from '../icons.js';
 import { enterPreAtBat } from './substitutions.js';
+import { enterDefenseSetupOrPreAtBat } from './defenseSetup.js';
 import { buildGbOptions } from './groundball.js';
 import { checkExtraBaseEligible } from './extrabase.js';
 
@@ -277,8 +278,8 @@ export function endHalfInning(state) {
             rpActivePitcherId: (s.rpActiveInning === state.inning && s.rpActiveTeam === 'home') ? s.rpActivePitcherId : null,
             gameLog: [...s.gameLog, `--- Bottom of ${state.inning} ---`],
         };
-        // Pipe through enterPreAtBat for auto-skip logic (skips to defense_sub if no offense options)
-        return enterPreAtBat(bottomState);
+        // Half-inning boundary — check if defense needs to set alignment first.
+        return enterDefenseSetupOrPreAtBat(bottomState);
     }
 
     if (state.inning >= 9 && state.score.home !== state.score.away) {
@@ -306,6 +307,6 @@ export function endHalfInning(state) {
         stealUsedThisPreAtBat: false, runnersAlreadyStole: [],
         gameLog: [...s.gameLog, `--- Top of ${state.inning + 1} ---`],
     };
-    // Pipe through enterPreAtBat for auto-skip logic
-    return enterPreAtBat(topState);
+    // Half-inning boundary — check if defense needs to set alignment first.
+    return enterDefenseSetupOrPreAtBat(topState);
 }

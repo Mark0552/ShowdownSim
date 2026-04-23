@@ -13,6 +13,7 @@ export type Outcome = 'SO' | 'GB' | 'FB' | 'PU' | 'W' | 'S' | 'SPlus' | 'DB' | '
 
 export type Phase =
     | 'sp_roll'          // home team rolls for starting pitchers
+    | 'defense_setup'    // defense arranges alignment at half-inning start (drag-drop)
     | 'pre_atbat'        // offense can pinch hit, steal, use SB icon
     | 'defense_sub'      // defense can change pitcher, use 20/RP icons
     | 'ibb_decision'     // defense decides whether to intentional walk
@@ -311,7 +312,9 @@ export type GameAction =
     | { type: 'INTENTIONAL_WALK' }
     | { type: 'SKIP_IBB' }
     | { type: 'SAC_BUNT' }
-    | { type: 'SKIP_BUNT' };
+    | { type: 'SKIP_BUNT' }
+    | { type: 'DEFENSE_SETUP_COMMIT'; alignment: { [slotKey: string]: string } }
+    | { type: 'POSITION_SWAP'; slotA: string; slotB: string };
 
 // ============================================================================
 // PURE READ-ONLY HELPERS (used by UI)

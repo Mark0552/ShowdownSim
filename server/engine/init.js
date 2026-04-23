@@ -5,6 +5,7 @@
 import { rollD20, getRollSequence } from './dice.js';
 import { getFieldingFromSlot, computeFieldingTotals, buildFieldingAt, buildRoster } from './fielding.js';
 import { enterPreAtBat } from './phases/substitutions.js';
+import { enterDefenseSetupOrPreAtBat } from './phases/defenseSetup.js';
 
 /**
  * @param seriesContext Optional: { gameNumber, homeStarterOffset, awayStarterOffset, relieverHistory }
@@ -89,10 +90,11 @@ export function initializeGame(homeLineupData, awayLineupData, homeUserId, awayU
         },
     };
 
-    // For series game 2+ (which skips SP roll), pipe through enterPreAtBat
-    // for auto-skip logic so the first at-bat doesn't get stuck on "NO ACTION"
+    // For series game 2+ (which skips SP roll), pipe through the defense-
+    // setup check so the home team can fix any OOP alignment before the
+    // first pitch. Falls through to enterPreAtBat when already native.
     if (startPhase === 'pre_atbat') {
-        return enterPreAtBat(initialState);
+        return enterDefenseSetupOrPreAtBat(initialState);
     }
     return initialState;
 }
@@ -130,8 +132,9 @@ export function handleRollStarters(state) {
         rollSequence: getRollSequence(),
     };
 
-    // Use enterPreAtBat to properly auto-skip phases with no options
-    return enterPreAtBat(postRollState);
+    // Game 1: home defense takes the field first — route through the
+    // defense-setup check so OOP alignment can be fixed before play.
+    return enterDefenseSetupOrPreAtBat(postRollState);
 }
 
 /**
