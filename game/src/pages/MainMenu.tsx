@@ -59,6 +59,14 @@ export default function MainMenu({ userEmail, onNavigate, onLogout }: Props) {
                             <span className="menu-btn-desc">Reverse-engineer the point formula and find under/overpriced cards</span>
                         </span>
                     </button>
+
+                    <button className="menu-btn" onClick={() => onNavigate('rules')}>
+                        <span className="menu-btn-icon">&#167;</span>
+                        <span className="menu-btn-text">
+                            <span className="menu-btn-title">Game Rules</span>
+                            <span className="menu-btn-desc">Advanced ruleset (implemented) and Expert ruleset (under construction)</span>
+                        </span>
+                    </button>
                 </div>
 
                 <button className="menu-logout" onClick={handleLogout}>Sign Out</button>

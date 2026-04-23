@@ -14,10 +14,11 @@ import GamePage from './pages/GamePage';
 import StatsPage from './pages/StatsPage';
 import SimulationPage from './pages/SimulationPage';
 import PricingPage from './pages/PricingPage';
+import RulesPage from './pages/RulesPage';
 import TeamBuilder from './pages/TeamBuilder';
 import MusicPlayer from './components/MusicPlayer';
 
-type Page = 'login' | 'menu' | 'lineups' | 'builder' | 'lobby' | 'game' | 'stats' | 'simulation' | 'pricing';
+type Page = 'login' | 'menu' | 'lineups' | 'builder' | 'lobby' | 'game' | 'stats' | 'simulation' | 'pricing' | 'rules';
 
 /** Read page + gameId from URL hash */
 function readHash(): { page: Page | null; gameId: string | null } {
@@ -26,7 +27,7 @@ function readHash(): { page: Page | null; gameId: string | null } {
     if (hash.startsWith('game/')) {
         return { page: 'game', gameId: hash.slice(5) };
     }
-    const validPages: Page[] = ['menu', 'lineups', 'builder', 'lobby', 'stats', 'simulation', 'pricing'];
+    const validPages: Page[] = ['menu', 'lineups', 'builder', 'lobby', 'stats', 'simulation', 'pricing', 'rules'];
     if (validPages.includes(hash as Page)) {
         return { page: hash as Page, gameId: null };
     }
@@ -193,6 +194,12 @@ export default function App() {
         case 'pricing':
             return (
                 <PricingPage
+                    onBack={() => setPage('menu')}
+                />
+            );
+        case 'rules':
+            return (
+                <RulesPage
                     onBack={() => setPage('menu')}
                 />
             );

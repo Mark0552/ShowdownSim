@@ -76,9 +76,9 @@ function similarGroup(position) {
  *
  * Convention:
  *   0  = on-card (no penalty)
- *  -1  = similar position group  OR  position-player at 1B (rulebook)
- *  -2  = cross-group  OR  DH at 1B (rulebook)
- *  -3  = non-catcher at C  (catching needs gear and skills)
+ *  -1  = position-player at 1B (only voluntary OOP slot in the builder)
+ *  -2  = similar position group (IF: 2B/3B/SS, OF: LF/CF/RF) OR DH-only at 1B
+ *  -3  = cross-group OOP  OR  non-catcher at C  (catching needs gear and skills)
  *  Pitchers do not field except as P; placing a pitcher elsewhere returns invalid.
  *  P slot is reserved for the active pitcher (not handled by this function).
  *

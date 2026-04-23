@@ -7,9 +7,9 @@
  *
  * Convention (matches server):
  *   0  = on-card (no penalty)
- *  -1  = similar position group (IF: 2B/3B/SS, OF: LF/CF/RF) OR position-player at 1B
- *  -2  = cross-group OR DH-only at 1B
- *  -3  = non-catcher at C
+ *  -1  = position-player at 1B (only voluntary OOP slot in the builder)
+ *  -2  = similar position group (IF: 2B/3B/SS, OF: LF/CF/RF) OR DH-only at 1B
+ *  -3  = cross-group OOP OR non-catcher at C
  *  G icon disabled if penalty < 0.
  */
 
