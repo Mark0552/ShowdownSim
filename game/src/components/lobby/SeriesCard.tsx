@@ -46,8 +46,19 @@ function statusBadge(row: DisplayRow): { label: string; cls: string } {
 }
 
 export default function SeriesCard({ series, games, userId, onResumeSeries, onDeleteSeries, onGameClick }: Props) {
-    const homeName = series.home_user_email || 'Home';
-    const awayName = series.away_user_email || 'Away';
+    // Usernames (the `_email` column name is a misnomer — it actually stores
+    // usernames via getUsername()). Prefer the series row, but fall back to
+    // any child game row that has them, since the series row's away username
+    // often stays null even after the opponent joined (only the game rows
+    // get updated on join).
+    const gameWithAwayUsername = games.find(g => !!g.away_user_email);
+    const gameWithHomeUsername = games.find(g => !!g.home_user_email);
+    const homeName = series.home_user_email
+        || gameWithHomeUsername?.home_user_email
+        || 'Home';
+    const awayName = series.away_user_email
+        || gameWithAwayUsername?.away_user_email
+        || 'Away';
     const isCreator = series.home_user_id === userId;
     const showActions = !!(onResumeSeries || (onDeleteSeries && isCreator));
 
