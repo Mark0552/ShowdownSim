@@ -2,12 +2,14 @@ import { useState, useEffect, useMemo } from 'react';
 import { getGameHistory, getCareerBattingStats, getCareerPitchingStats } from '../lib/stats';
 import { supabase } from '../lib/supabase';
 import { getUser } from '../lib/auth';
-import type { GameRow } from '../types/game';
+import { getSeries } from '../lib/games';
+import type { GameRow, SeriesRow } from '../types/game';
 import type { Card } from '../types/cards';
 import { loadCards } from '../data/cardData';
 import BoxScore from '../components/game/BoxScore';
 import GameLogOverlay from '../components/game/GameLogOverlay';
 import CardTooltip from '../components/cards/CardTooltip';
+import SeriesCard from '../components/lobby/SeriesCard';
 import './StatsPage.css';
 
 interface Props {
@@ -26,6 +28,7 @@ export default function StatsPage({ onBack }: Props) {
 
     // History
     const [games, setGames] = useState<GameRow[]>([]);
+    const [seriesById, setSeriesById] = useState<Record<string, SeriesRow>>({});
     const [selectedGame, setSelectedGame] = useState<GameRow | null>(null);
     const [detailTab, setDetailTab] = useState<'box' | 'log'>('box');
 
@@ -66,6 +69,20 @@ export default function StatsPage({ onBack }: Props) {
                 .catch(() => setLoading(false));
         }
     }, [tab]);
+
+    // Fetch series rows referenced by history games
+    useEffect(() => {
+        const ids = Array.from(new Set(games.map(g => g.series_id).filter(Boolean) as string[]));
+        const missing = ids.filter(id => !seriesById[id]);
+        if (missing.length === 0) return;
+        Promise.all(missing.map(id => getSeries(id).catch(() => null))).then(rows => {
+            setSeriesById(prev => {
+                const next = { ...prev };
+                for (const r of rows) { if (r) next[r.id] = r; }
+                return next;
+            });
+        });
+    }, [games]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleSort = (key: string) => {
         if (sortKey === key) {
@@ -134,57 +151,106 @@ export default function StatsPage({ onBack }: Props) {
 
                 {loading && <p className="stats-loading">Loading...</p>}
 
-                {!loading && tab === 'history' && (
-                    <div className="stats-history">
-                        {games.length === 0 && <p className="stats-empty">No finished games yet.</p>}
-                        <div className="stats-table-wrap">
-                            {games.length > 0 && (
-                                <table className="stats-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Date</th>
-                                            <th>Opponent</th>
-                                            <th>Result</th>
-                                            <th>Lineup</th>
-                                            <th></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {games.map(game => {
-                                            const isHome = game.home_user_id === userId;
-                                            const opponent = isHome ? game.away_user_email : game.home_user_email;
-                                            const myLineup = isHome ? game.home_lineup_name : game.away_lineup_name;
-                                            const won = game.winner_user_id === userId;
-                                            const homeScore = game.state?.score?.home ?? '?';
-                                            const awayScore = game.state?.score?.away ?? '?';
-                                            const score = isHome ? `${homeScore}-${awayScore}` : `${awayScore}-${homeScore}`;
-                                            const hasState = !!game.state?.homeTeam && !!game.state?.awayTeam;
-                                            return (
-                                                <tr key={game.id}>
-                                                    <td>{new Date(game.created_at).toLocaleDateString()}</td>
-                                                    <td>{opponent || '???'}</td>
-                                                    <td>
-                                                        <span className={`stats-result ${won ? 'win' : 'loss'}`}>
-                                                            {won ? 'W' : 'L'} {score}
-                                                        </span>
-                                                    </td>
-                                                    <td>{myLineup || '-'}</td>
-                                                    <td>
-                                                        {hasState && (
-                                                            <button className="stats-view-btn" onClick={() => { setSelectedGame(game); setDetailTab('box'); }}>
-                                                                View
-                                                            </button>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            )}
+                {!loading && tab === 'history' && (() => {
+                    if (games.length === 0) {
+                        return <div className="stats-history"><p className="stats-empty">No finished games yet.</p></div>;
+                    }
+
+                    // Overall + last-10 record
+                    const totalWins = games.filter(g => g.winner_user_id === userId).length;
+                    const totalLosses = games.length - totalWins;
+                    const pct = games.length > 0 ? totalWins / games.length : 0;
+                    const last10 = games.slice(0, 10);
+                    const l10Wins = last10.filter(g => g.winner_user_id === userId).length;
+                    const l10Losses = last10.length - l10Wins;
+
+                    // Group into series + standalone
+                    const seriesGroups: Record<string, GameRow[]> = {};
+                    const standalone: GameRow[] = [];
+                    for (const g of games) {
+                        if (g.series_id) {
+                            (seriesGroups[g.series_id] ??= []).push(g);
+                        } else {
+                            standalone.push(g);
+                        }
+                    }
+                    // Sort combined list (series + standalone) by most-recent activity
+                    const seriesIds = Object.keys(seriesGroups);
+                    type Entry = { kind: 'series'; id: string; ts: number } | { kind: 'game'; game: GameRow; ts: number };
+                    const entries: Entry[] = [
+                        ...seriesIds.map(id => ({
+                            kind: 'series' as const,
+                            id,
+                            ts: Math.max(...seriesGroups[id].map(g => new Date(g.created_at).getTime())),
+                        })),
+                        ...standalone.map(g => ({
+                            kind: 'game' as const,
+                            game: g,
+                            ts: new Date(g.created_at).getTime(),
+                        })),
+                    ].sort((a, b) => b.ts - a.ts);
+
+                    return (
+                        <div className="stats-history">
+                            <div className="stats-record-strip">
+                                <span className="stats-record-overall">
+                                    Overall: <strong>{totalWins}-{totalLosses}</strong>
+                                    {games.length > 0 && (
+                                        <span className="stats-record-pct"> ({pct.toFixed(3).replace(/^0/, '')})</span>
+                                    )}
+                                </span>
+                                <span className="stats-record-sep">·</span>
+                                <span className="stats-record-l10">
+                                    Last {last10.length}: <strong>{l10Wins}-{l10Losses}</strong>
+                                </span>
+                            </div>
+
+                            {entries.map(entry => {
+                                if (entry.kind === 'series') {
+                                    const series = seriesById[entry.id];
+                                    const seriesGames = seriesGroups[entry.id];
+                                    if (!series) return null;
+                                    return (
+                                        <SeriesCard
+                                            key={`s-${entry.id}`}
+                                            series={series}
+                                            games={seriesGames}
+                                            userId={userId}
+                                            onGameClick={(game) => {
+                                                if (game.state?.homeTeam && game.state?.awayTeam) {
+                                                    setSelectedGame(game);
+                                                    setDetailTab('box');
+                                                }
+                                            }}
+                                        />
+                                    );
+                                }
+                                const game = entry.game;
+                                const isHome = game.home_user_id === userId;
+                                const opponent = isHome ? game.away_user_email : game.home_user_email;
+                                const won = game.winner_user_id === userId;
+                                const homeScore = game.state?.score?.home ?? '?';
+                                const awayScore = game.state?.score?.away ?? '?';
+                                const score = isHome ? `${homeScore}-${awayScore}` : `${awayScore}-${homeScore}`;
+                                const hasState = !!game.state?.homeTeam && !!game.state?.awayTeam;
+                                return (
+                                    <div key={`g-${game.id}`} className="stats-standalone-row">
+                                        <span className="stats-standalone-date">{new Date(game.created_at).toLocaleDateString()}</span>
+                                        <span className="stats-standalone-opp">vs {opponent || '???'}</span>
+                                        <span className={`stats-result ${won ? 'win' : 'loss'}`}>
+                                            {won ? 'W' : 'L'} {score}
+                                        </span>
+                                        {hasState && (
+                                            <button className="stats-view-btn" onClick={() => { setSelectedGame(game); setDetailTab('box'); }}>
+                                                View
+                                            </button>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
-                    </div>
-                )}
+                    );
+                })()}
 
                 {!loading && tab === 'career' && (
                     <div className="stats-career">

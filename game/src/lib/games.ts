@@ -214,6 +214,27 @@ export async function deleteGame(gameId: string): Promise<void> {
     }
 }
 
+/**
+ * Delete every game in a series, then the series row (if RLS permits).
+ * Individual deleteGame calls each cascade game_player_stats via FK; the last
+ * game deletion triggers the orphan-series cleanup path. This function also
+ * tries an explicit series delete at the end for the mid-series case where
+ * the orphan path's RLS filter (waiting-only) wouldn't fire.
+ */
+export async function deleteSeries(seriesId: string): Promise<void> {
+    const games = await getSeriesGames(seriesId);
+    for (const g of games) {
+        try { await deleteGame(g.id); }
+        catch { /* continue — best-effort */ }
+    }
+    // Best-effort: RLS may still block this for non-waiting series until a
+    // matching policy is added. The loop above has already cascaded away
+    // the user-visible data (games + stats) even if the series row lingers.
+    try {
+        await supabase.from('series').delete().eq('id', seriesId);
+    } catch { /* ignore */ }
+}
+
 export async function getGame(gameId: string): Promise<GameRow> {
     const { data, error } = await supabase
         .from('games')

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import type { GameRow, SeriesRow } from '../types/game';
 import type { SavedLineup } from '../lib/lineups';
-import { createGame, getOpenGames, getMyGames, joinGame, selectLineup, deleteGame, subscribeToGame, subscribeToLobby, subscribeToMyGames, getMyRole, createSeries, getSeries } from '../lib/games';
+import { createGame, getOpenGames, getMyGames, joinGame, selectLineup, deleteGame, deleteSeries, subscribeToGame, subscribeToLobby, subscribeToMyGames, getMyRole, createSeries, getSeries } from '../lib/games';
+import SeriesCard from '../components/lobby/SeriesCard';
 import { getLineups } from '../lib/lineups';
 import { validateTeam } from '../logic/teamRules';
 import { supabase } from '../lib/supabase';
@@ -399,70 +400,114 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
 
                 {error && <div className="lobby-error">{error}</div>}
 
-                {/* My active games */}
+                {/* My active games — grouped by series, standalone below */}
                 {myGames.length > 0 && (
                     <div className="lobby-section">
                         <h2>My Games</h2>
-                        <div className="lobby-games">
-                            {myGames.map(game => {
-                                const role = getMyRole(game, userId);
-                                const opp = role === 'home' ? game.away_user_email : game.home_user_email;
-                                const isCreator = game.home_user_id === userId;
-                                const series = game.series_id ? seriesById[game.series_id] : null;
-                                return (
-                                    <div key={game.id} className="game-row">
-                                        <div className="game-info">
-                                            <span className="game-opponent">
-                                                {role === 'away'
-                                                    ? `@ ${game.home_user_email || 'Home'}`
-                                                    : `vs ${game.away_user_email || 'Away'}`
-                                                }
-                                            </span>
-                                            {series && (
-                                                <span style={{
-                                                    fontSize: 11, color: '#d4a018', background: 'rgba(212,160,24,0.12)',
-                                                    padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(212,160,24,0.3)',
-                                                    fontWeight: 600,
-                                                }}>
-                                                    SERIES — Game {game.game_number} of {series.best_of} ({series.home_user_email || 'Home'} {series.home_wins || 0}{'\u2013'}{series.away_wins || 0} {series.away_user_email || 'Away'})
-                                                </span>
-                                            )}
-                                            <span className={`game-status status-${game.status}`}>{game.status === 'in_progress' && game.state?.inning
-                                                ? `${game.state.halfInning === 'top' ? '\u25B2' : '\u25BC'}${game.state.inning} | ${game.state.score?.away ?? 0} - ${game.state.score?.home ?? 0}`
-                                                : game.status === 'finished' && game.series_id
-                                                    ? 'Ready for next game'
-                                                    : game.status.replace('_', ' ')}</span>
-                                            {game.status === 'in_progress' && game.state?.score && (
-                                                <span className="game-role-hint" style={{ fontSize: '11px', color: '#6a8aba' }}>
-                                                    ({role === 'home' ? 'Home' : 'Away'})
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="game-actions">
-                                            <button className="game-resume" onClick={() => handleResumeGame(game)}>
-                                                {game.status === 'in_progress'
-                                                    ? 'Resume'
-                                                    : game.status === 'finished' && game.series_id
-                                                        ? 'Ready Up'
-                                                        : 'Continue'}
-                                            </button>
-                                            {isCreator && (
-                                                <button className="game-delete" onClick={async () => {
-                                                    if (confirm('Delete this game?')) {
-                                                        try {
-                                                            await deleteGame(game.id);
-                                                            setMyGames(prev => prev.filter(g => g.id !== game.id));
-                                                        } catch (err: any) {
-                                                            setError(err.message);
-                                                        }
+                        {(() => {
+                            const seriesGroups: Record<string, GameRow[]> = {};
+                            const standalone: GameRow[] = [];
+                            for (const g of myGames) {
+                                if (g.series_id) {
+                                    (seriesGroups[g.series_id] ??= []).push(g);
+                                } else {
+                                    standalone.push(g);
+                                }
+                            }
+                            const seriesIds = Object.keys(seriesGroups).sort((a, b) => {
+                                const la = Math.max(...seriesGroups[a].map(g => new Date(g.updated_at).getTime()));
+                                const lb = Math.max(...seriesGroups[b].map(g => new Date(g.updated_at).getTime()));
+                                return lb - la;
+                            });
+                            const pickResumeTarget = (games: GameRow[]): GameRow | null => {
+                                const sorted = [...games].sort((a, b) => b.game_number - a.game_number);
+                                return sorted.find(g => g.status === 'in_progress')
+                                    ?? sorted.find(g => g.status === 'finished' && g.series_id)
+                                    ?? sorted.find(g => g.status === 'lineup_select')
+                                    ?? sorted[0]
+                                    ?? null;
+                            };
+                            return (
+                                <>
+                                    {seriesIds.map(sid => {
+                                        const series = seriesById[sid];
+                                        const games = seriesGroups[sid];
+                                        if (!series) return null;
+                                        return (
+                                            <SeriesCard
+                                                key={sid}
+                                                series={series}
+                                                games={games}
+                                                userId={userId}
+                                                onResumeSeries={() => {
+                                                    const target = pickResumeTarget(games);
+                                                    if (target) handleResumeGame(target);
+                                                }}
+                                                onDeleteSeries={async () => {
+                                                    if (!confirm(`Delete this entire series (${games.length} game${games.length === 1 ? '' : 's'})? All associated stats will be removed.`)) return;
+                                                    try {
+                                                        await deleteSeries(sid);
+                                                        setMyGames(prev => prev.filter(g => g.series_id !== sid));
+                                                        setSeriesById(prev => {
+                                                            const next = { ...prev };
+                                                            delete next[sid];
+                                                            return next;
+                                                        });
+                                                    } catch (err: any) {
+                                                        setError(err.message);
                                                     }
-                                                }}>Delete</button>
-                                            )}
+                                                }}
+                                            />
+                                        );
+                                    })}
+                                    {standalone.length > 0 && (
+                                        <div className="lobby-games">
+                                            {standalone.map(game => {
+                                                const role = getMyRole(game, userId);
+                                                const isCreator = game.home_user_id === userId;
+                                                return (
+                                                    <div key={game.id} className="game-row">
+                                                        <div className="game-info">
+                                                            <span className="game-opponent">
+                                                                {role === 'away'
+                                                                    ? `@ ${game.home_user_email || 'Home'}`
+                                                                    : `vs ${game.away_user_email || 'Away'}`
+                                                                }
+                                                            </span>
+                                                            <span className={`game-status status-${game.status}`}>{game.status === 'in_progress' && game.state?.inning
+                                                                ? `${game.state.halfInning === 'top' ? '▲' : '▼'}${game.state.inning} | ${game.state.score?.away ?? 0} - ${game.state.score?.home ?? 0}`
+                                                                : game.status.replace('_', ' ')}</span>
+                                                            {game.status === 'in_progress' && game.state?.score && (
+                                                                <span className="game-role-hint" style={{ fontSize: '11px', color: '#6a8aba' }}>
+                                                                    ({role === 'home' ? 'Home' : 'Away'})
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="game-actions">
+                                                            <button className="game-resume" onClick={() => handleResumeGame(game)}>
+                                                                {game.status === 'in_progress' ? 'Resume' : 'Continue'}
+                                                            </button>
+                                                            {isCreator && (
+                                                                <button className="game-delete" onClick={async () => {
+                                                                    if (confirm('Delete this game?')) {
+                                                                        try {
+                                                                            await deleteGame(game.id);
+                                                                            setMyGames(prev => prev.filter(g => g.id !== game.id));
+                                                                        } catch (err: any) {
+                                                                            setError(err.message);
+                                                                        }
+                                                                    }
+                                                                }}>Delete</button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                                    )}
+                                </>
+                            );
+                        })()}
                     </div>
                 )}
 

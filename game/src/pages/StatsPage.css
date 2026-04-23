@@ -117,6 +117,70 @@
     color: var(--text);
 }
 
+.stats-record-strip {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text-dim);
+}
+
+.stats-record-overall,
+.stats-record-l10 {
+    color: var(--text-dim);
+}
+
+.stats-record-overall strong,
+.stats-record-l10 strong {
+    color: var(--text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+
+.stats-record-pct {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    color: var(--text-muted);
+    margin-left: 4px;
+}
+
+.stats-record-sep {
+    color: var(--border);
+}
+
+.stats-standalone-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.stats-standalone-date {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    min-width: 90px;
+}
+
+.stats-standalone-opp {
+    color: var(--text);
+    flex: 1;
+}
+
+.stats-standalone-row .stats-view-btn {
+    margin-left: auto;
+}
+
 .stats-result {
     font-weight: 700;
     font-size: 13px;
