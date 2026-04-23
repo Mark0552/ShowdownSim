@@ -1,0 +1,266 @@
+.dsm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 2100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.dsm-overlay.dsm-opp { background: rgba(0, 0, 0, 0.55); }
+
+.dsm-panel {
+    background: #0a1628;
+    border: 1px solid #d4a018;
+    border-radius: 10px;
+    width: 100%;
+    max-width: 1200px;
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    color: #eee;
+}
+
+.dsm-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 12px 18px;
+    border-bottom: 1px solid #1f4068;
+    background: #16213e;
+}
+
+.dsm-title {
+    color: #d4a018;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    font-family: Impact, sans-serif;
+    flex-shrink: 0;
+}
+
+.dsm-totals {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    justify-content: center;
+    font-family: Consolas, monospace;
+    color: #8aade0;
+    font-size: 13px;
+}
+
+.dsm-tot-label { color: #6a8aba; font-weight: 600; letter-spacing: 1px; }
+.dsm-stat { color: #4ade80; font-weight: 700; font-size: 14px; margin-right: 8px; }
+
+.dsm-reset {
+    background: none;
+    border: 1px solid #4a6a90;
+    color: #8aade0;
+    padding: 5px 14px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    cursor: pointer;
+}
+.dsm-reset:hover { border-color: #d4a018; color: #d4a018; }
+
+.dsm-body {
+    flex: 1;
+    overflow: auto;
+    padding: 16px 18px;
+}
+
+.dsm-section-title {
+    color: #d4a018;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+    margin-top: 12px;
+    text-transform: uppercase;
+}
+.dsm-section-title:first-child { margin-top: 0; }
+
+.dsm-field-grid {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    gap: 8px;
+    padding: 8px;
+    background: rgba(20, 40, 20, 0.2);
+    border: 1px solid #1f4068;
+    border-radius: 6px;
+}
+
+.dsm-bench-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 8px;
+    padding: 8px;
+    min-height: 170px;
+    background: rgba(30, 30, 50, 0.2);
+    border: 1px dashed #2a3a5e;
+    border-radius: 6px;
+}
+
+.dsm-slot {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4px;
+    background: #0c1a2e;
+    border: 2px solid #1f4068;
+    border-radius: 6px;
+    min-height: 150px;
+    transition: border-color 0.15s;
+}
+
+.dsm-slot.dsm-slot-bad { border-color: #e94560; }
+.dsm-slot.dsm-slot-displaced { border-style: dashed; opacity: 0.75; }
+
+.dsm-slot-label {
+    color: #d4a018;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 1px;
+    margin-bottom: 2px;
+}
+
+.dsm-empty-slot {
+    color: #4a5e80;
+    font-size: 11px;
+    font-style: italic;
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+.dsm-card {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: grab;
+    user-select: none;
+}
+.dsm-card:active { cursor: grabbing; }
+
+.dsm-card-img {
+    width: 100%;
+    height: 82px;
+    object-fit: cover;
+    object-position: center top;
+    border-radius: 3px;
+    pointer-events: none;
+}
+
+.dsm-card-name {
+    color: #e6e6e6;
+    font-size: 10px;
+    font-weight: 600;
+    margin-top: 3px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+.dsm-card-nat {
+    color: #6a8aba;
+    font-size: 9px;
+    font-family: Consolas, monospace;
+}
+
+.dsm-card-pen {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: #dc2626;
+    color: white;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 3px;
+    letter-spacing: 0.5px;
+}
+
+.dsm-card-sub {
+    color: #e94560;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-top: 2px;
+}
+
+.dsm-status {
+    margin: 12px 0 8px;
+}
+
+.dsm-warn {
+    background: rgba(233, 69, 96, 0.1);
+    border: 1px solid rgba(233, 69, 96, 0.4);
+    color: #e94560;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+.dsm-empty {
+    color: #6a8aba;
+    font-style: italic;
+    padding: 16px;
+    text-align: center;
+    grid-column: 1 / -1;
+}
+
+.dsm-accept {
+    width: 100%;
+    background: #d4a018;
+    color: #002;
+    border: none;
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    cursor: pointer;
+    text-transform: uppercase;
+    margin-top: 8px;
+}
+.dsm-accept:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.dsm-accept:hover:not(:disabled) { filter: brightness(1.1); }
+
+/* Opponent banner — non-blocking, pinned to top of screen so the user
+   can still interact with Box Score, Log, Dice Rolls, Exit. */
+.dsm-opp-banner {
+    position: fixed;
+    top: 56px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(10, 22, 40, 0.95);
+    border: 1px solid #d4a018;
+    border-radius: 8px;
+    padding: 14px 28px;
+    text-align: center;
+    z-index: 1500;
+    pointer-events: none;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+.dsm-wait-title {
+    color: #d4a018;
+    font-family: Impact, sans-serif;
+    font-size: 18px;
+    letter-spacing: 3px;
+    margin-bottom: 6px;
+}
+.dsm-wait-sub { color: #c8d8f8; font-size: 13px; }

@@ -15,6 +15,7 @@ import DiceRollsOverlay from './DiceRollsOverlay';
 import CardSlot from './CardSlot';
 import BullpenPanel from './BullpenPanel';
 import SubstitutionModal from './SubstitutionModal';
+import DefenseSetupModal from './DefenseSetupModal';
 import BoxScore from './BoxScore';
 import ActionButtons from './ActionButtons';
 import DiceSpinner from './DiceSpinner';
@@ -588,6 +589,13 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     myRole={myRole}
                     onAction={onAction}
                     onClose={() => setShowSubPanel(false)}
+                />
+            )}
+            {state.phase === 'defense_setup' && (
+                <DefenseSetupModal
+                    state={state}
+                    myRole={myRole}
+                    onAction={onAction}
                 />
             )}
 
