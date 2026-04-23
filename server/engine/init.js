@@ -8,10 +8,15 @@ import { enterPreAtBat } from './phases/substitutions.js';
 import { enterDefenseSetupOrPreAtBat } from './phases/defenseSetup.js';
 
 /**
- * @param seriesContext Optional: { gameNumber, homeStarterOffset, awayStarterOffset, relieverHistory }
+ * @param seriesContext Optional: { gameNumber, homeStarterOffset, awayStarterOffset, relieverHistory, creatorUserId }
  *   - gameNumber: which game in the series (1-indexed)
  *   - homeStarterOffset / awayStarterOffset: SP number from game 1 roll (1-4)
- *   - relieverHistory: { home: { cardId: [gameNums...] }, away: { ... } }
+ *   - relieverHistory: { creator: { cardId: [gameNums...] }, opponent: { ... } }
+ *     (legacy format { home, away } is also accepted — interpreted as
+ *     home=creator, opponent=away, valid before MLB home-field swaps landed)
+ *   - creatorUserId: series.home_user_id — the higher seed / series creator.
+ *     Used to map each team's reliever_history bucket once home/away can swap
+ *     per the postseason schedule.
  */
 export function initializeGame(homeLineupData, awayLineupData, homeUserId, awayUserId, seriesContext) {
     const homeTeam = buildTeam(homeLineupData, homeUserId);
@@ -33,10 +38,17 @@ export function initializeGame(homeLineupData, awayLineupData, homeUserId, awayU
         logs.push('Play ball!');
         startPhase = 'pre_atbat';
 
-        // Apply reliever fatigue
+        // Apply reliever fatigue. Pick each team's bucket by identifying who
+        // is the creator (higher seed) — home/away swap per MLB schedule, so
+        // we can't just key by side anymore.
         if (seriesContext.relieverHistory) {
-            applyRelieverFatigue(homeTeam, seriesContext.relieverHistory.home, seriesContext.gameNumber);
-            applyRelieverFatigue(awayTeam, seriesContext.relieverHistory.away, seriesContext.gameNumber);
+            const rh = seriesContext.relieverHistory;
+            const creatorHistory = rh.creator || rh.home || {};
+            const opponentHistory = rh.opponent || rh.away || {};
+            const creatorUserId = seriesContext.creatorUserId;
+            const homeIsCreator = creatorUserId ? homeUserId === creatorUserId : true;
+            applyRelieverFatigue(homeTeam, homeIsCreator ? creatorHistory : opponentHistory, seriesContext.gameNumber);
+            applyRelieverFatigue(awayTeam, homeIsCreator ? opponentHistory : creatorHistory, seriesContext.gameNumber);
         }
     } else {
         // Game 1 or single game: wait for ROLL_STARTERS button

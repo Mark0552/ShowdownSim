@@ -341,8 +341,6 @@ export default function GamePage({ gameId, onBack }: Props) {
                         const next = await ensureNextSeriesGame(
                             gameRow.series_id!,
                             (gameRow.game_number || 1) + 1,
-                            gameRow.home_user_id, gameRow.away_user_id!,
-                            gameRow.home_user_email || '', gameRow.away_user_email || '',
                         );
                         window.location.hash = `game/${next.id}`;
                     } catch (e) {
@@ -421,8 +419,6 @@ export default function GamePage({ gameId, onBack }: Props) {
             const next = await ensureNextSeriesGame(
                 gameRow.series_id,
                 (gameRow.game_number || 1) + 1,
-                gameRow.home_user_id, gameRow.away_user_id || '',
-                gameRow.home_user_email || '', gameRow.away_user_email || '',
             );
             window.location.hash = `game/${next.id}`;
         } catch (e) {

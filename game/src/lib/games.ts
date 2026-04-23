@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { getUsername, getUser } from './auth';
+import { isCreatorHomeInGame } from './seriesSchedule';
 import type { GameRow, SeriesRow, PlayerRole } from '../types/game';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
@@ -462,12 +463,20 @@ export function findGame1StarterNumber(state: any): number | null {
 export async function syncSeriesRelieverHistoryFromGames(seriesId: string): Promise<void> {
     const games = await getSeriesGames(seriesId);
     const finished = games.filter(g => g.status === 'finished' && g.state).sort((a, b) => a.game_number - b.game_number);
-    const history: { home: Record<string, number[]>; away: Record<string, number[]> } = { home: {}, away: {} };
+    // Bucket by creator / opponent (stable across games) instead of home/away
+    // (which swaps per MLB schedule). Init.js maps the right bucket to the
+    // right team based on each game's home_user_id.
+    const series = await getSeries(seriesId);
+    const creatorUserId = series.home_user_id;
+    const history: { creator: Record<string, number[]>; opponent: Record<string, number[]> } = { creator: {}, opponent: {} };
 
     for (const game of finished) {
         for (const side of ['home', 'away'] as const) {
             const team = game.state[`${side}Team`];
             if (!team) continue;
+            // Which bucket: creator (higher seed) or opponent (lower seed)?
+            const sideUserId = side === 'home' ? game.home_user_id : game.away_user_id;
+            const bucket: 'creator' | 'opponent' = sideUserId === creatorUserId ? 'creator' : 'opponent';
             const pitcherStats = team.pitcherStats || {};
             // Collect all pitchers we know about: active + bullpen + archived
             const allPitchers: any[] = [];
@@ -483,7 +492,7 @@ export async function syncSeriesRelieverHistoryFromGames(seriesId: string): Prom
                 if (p.role === 'Starter') continue;
                 const stats = pitcherStats[p.cardId];
                 if (!stats || (stats.bf || 0) === 0) continue;
-                const list = history[side][p.cardId] = history[side][p.cardId] || [];
+                const list = history[bucket][p.cardId] = history[bucket][p.cardId] || [];
                 if (!list.includes(game.game_number)) list.push(game.game_number);
             }
         }
@@ -518,54 +527,92 @@ export async function syncSeriesWinsFromGames(seriesId: string): Promise<SeriesR
  * Create the next game in a series, or return the existing one if already
  * been created (race-safe). Either client can call this.
  *
- * Enforces the "same lineup throughout the series" rule by carrying the
- * previous game's lineup IDs + names AND the embedded lineup data from
- * game.state.{homeLineup,awayLineup} into the new game, and setting both
- * ready flags to true so the lobby skips lineup-select entirely. When the
- * clients navigate to the new game, the server finds state.homeLineup /
- * awayLineup and initializes immediately — no "waiting for opponent".
+ * Enforces two rules:
+ *   1. Same lineup throughout the series — carries lineup IDs/names and the
+ *      embedded lineup data from the previous game.
+ *   2. MLB postseason home-field schedule — the creator (higher seed) hosts
+ *      a specific subset of games depending on bestOf:
+ *        best-of-3: all games at creator (3-0-0)
+ *        best-of-5: creator hosts 1, 2, 5 (2-2-1)
+ *        best-of-7: creator hosts 1, 2, 6, 7 (2-3-2)
+ *      Swaps home/away on the new game row when the schedule calls for it.
+ *
+ * Both ready flags are set to true so the lobby skips lineup-select. The
+ * server reads state.homeLineup/awayLineup on join and starts immediately.
+ *
+ * The legacy (homeUserId, awayUserId, homeEmail, awayEmail) parameters are
+ * accepted for backward compatibility but ignored — all assignment now comes
+ * from the series row and the MLB schedule.
  */
 export async function ensureNextSeriesGame(
     seriesId: string,
     gameNumber: number,
-    homeUserId: string,
-    awayUserId: string,
-    homeEmail: string,
-    awayEmail: string,
+    _homeUserId?: string,
+    _awayUserId?: string,
+    _homeEmail?: string,
+    _awayEmail?: string,
 ): Promise<GameRow> {
-    // Guard: both participants must be set. Creating a next-series row
-    // with an empty away_user_id would violate the FK (or produce a row
-    // that can't be played) and mask the real "opponent never joined"
-    // problem until much later.
-    if (!homeUserId || !awayUserId) {
-        throw new Error('Cannot advance series: both players must be present.');
-    }
+    void _homeUserId; void _awayUserId; void _homeEmail; void _awayEmail;
     const games = await getSeriesGames(seriesId);
     const existing = games.find(g => g.game_number === gameNumber);
     if (existing) return existing;
 
+    const series = await getSeries(seriesId);
+    const creatorUserId = series.home_user_id;
+    const creatorUsername = series.home_user_email;
+    const opponentUserId = series.away_user_id;
+    const opponentUsername = series.away_user_email;
+    if (!creatorUserId || !opponentUserId) {
+        throw new Error('Cannot advance series: both players must be present.');
+    }
+
     const prevGame = games.find(g => g.game_number === gameNumber - 1);
     const prevState: any = prevGame?.state || {};
+
+    // Map the previous game's home/away fields back to creator/opponent —
+    // the prev game may have had its sides swapped by the schedule.
+    const prevCreatorWasHome = prevGame ? prevGame.home_user_id === creatorUserId : true;
+    const creatorLineup = prevCreatorWasHome ? prevState.homeLineup : prevState.awayLineup;
+    const opponentLineup = prevCreatorWasHome ? prevState.awayLineup : prevState.homeLineup;
+    const creatorLineupId = prevCreatorWasHome ? prevGame?.home_lineup_id : prevGame?.away_lineup_id;
+    const creatorLineupName = prevCreatorWasHome ? prevGame?.home_lineup_name : prevGame?.away_lineup_name;
+    const opponentLineupId = prevCreatorWasHome ? prevGame?.away_lineup_id : prevGame?.home_lineup_id;
+    const opponentLineupName = prevCreatorWasHome ? prevGame?.away_lineup_name : prevGame?.home_lineup_name;
+
+    // Apply the MLB postseason schedule
+    const creatorIsHome = isCreatorHomeInGame(series.best_of, gameNumber);
+
+    const newHomeUserId = creatorIsHome ? creatorUserId : opponentUserId;
+    const newAwayUserId = creatorIsHome ? opponentUserId : creatorUserId;
+    const newHomeUsername = creatorIsHome ? creatorUsername : opponentUsername;
+    const newAwayUsername = creatorIsHome ? opponentUsername : creatorUsername;
+    const newHomeLineup = creatorIsHome ? creatorLineup : opponentLineup;
+    const newAwayLineup = creatorIsHome ? opponentLineup : creatorLineup;
+    const newHomeLineupId = creatorIsHome ? creatorLineupId : opponentLineupId;
+    const newHomeLineupName = creatorIsHome ? creatorLineupName : opponentLineupName;
+    const newAwayLineupId = creatorIsHome ? opponentLineupId : creatorLineupId;
+    const newAwayLineupName = creatorIsHome ? opponentLineupName : creatorLineupName;
+
     const initialState = {
-        homeLineup: prevState.homeLineup,
-        awayLineup: prevState.awayLineup,
+        homeLineup: newHomeLineup,
+        awayLineup: newAwayLineup,
     };
 
     try {
         const { data, error } = await supabase
             .from('games')
             .insert({
-                home_user_id: homeUserId,
-                away_user_id: awayUserId,
-                home_user_email: homeEmail,
-                away_user_email: awayEmail,
+                home_user_id: newHomeUserId,
+                away_user_id: newAwayUserId,
+                home_user_email: newHomeUsername,
+                away_user_email: newAwayUsername,
                 status: 'lineup_select',
                 series_id: seriesId,
                 game_number: gameNumber,
-                home_lineup_id: prevGame?.home_lineup_id,
-                home_lineup_name: prevGame?.home_lineup_name,
-                away_lineup_id: prevGame?.away_lineup_id,
-                away_lineup_name: prevGame?.away_lineup_name,
+                home_lineup_id: newHomeLineupId,
+                home_lineup_name: newHomeLineupName,
+                away_lineup_id: newAwayLineupId,
+                away_lineup_name: newAwayLineupName,
                 home_ready: true,
                 away_ready: true,
                 state: initialState,

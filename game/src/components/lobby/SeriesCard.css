@@ -98,6 +98,7 @@
     align-items: center;
     gap: 10px;
     margin-bottom: 6px;
+    width: 100%;
 }
 
 .series-game-num {
@@ -116,6 +117,13 @@
     border-radius: 3px;
     border: 1px solid;
     text-transform: uppercase;
+}
+
+.series-game-host {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+    margin-left: auto;
 }
 
 .status-final {

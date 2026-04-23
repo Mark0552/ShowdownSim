@@ -212,14 +212,15 @@ async function handleJoinGame(ws, msg, setContext) {
             try {
                 const { data: series } = await supabase
                     .from('series')
-                    .select('starter_offset, reliever_history')
+                    .select('home_user_id, starter_offset, reliever_history')
                     .eq('id', dbSeriesId).single();
                 const offset = series?.starter_offset || 1;
                 authoritativeSeriesContext = {
                     gameNumber: dbGameNumber,
                     homeStarterOffset: offset,
                     awayStarterOffset: offset,
-                    relieverHistory: series?.reliever_history || { home: {}, away: {} },
+                    relieverHistory: series?.reliever_history || { creator: {}, opponent: {} },
+                    creatorUserId: series?.home_user_id || null,
                 };
             } catch (e) {
                 console.warn(`Series context fetch failed for game ${gameId}:`, e.message);
@@ -230,7 +231,8 @@ async function handleJoinGame(ws, msg, setContext) {
                     gameNumber: dbGameNumber,
                     homeStarterOffset: 1,
                     awayStarterOffset: 1,
-                    relieverHistory: { home: {}, away: {} },
+                    relieverHistory: { creator: {}, opponent: {} },
+                    creatorUserId: null,
                 };
             }
         }
