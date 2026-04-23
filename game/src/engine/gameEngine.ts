@@ -67,9 +67,12 @@ export interface PlayerSlot {
     ip?: number;
     role?: string;
     assignedPosition?: string;  // "SS", "CF", "LF-RF-1", "DH", etc.
-    fielding?: number;          // fielding value at assigned position
+    fielding?: number;          // fielding value at assigned position (pre-penalty)
     arm?: number;               // catcher Arm value (used for steal defense)
     isBackup?: boolean;         // bench player at 1/5 cost (timing restrictions)
+    /** Native positions from the card — present on server-built PlayerSlots so
+     *  the client can compute the out-of-position penalty for display. */
+    positions?: { position: string; fielding: number }[];
     // Card metadata
     cardNumber?: string;
     edition?: string;

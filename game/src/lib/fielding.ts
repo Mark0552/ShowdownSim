@@ -79,15 +79,44 @@ export function fieldingPenalty(card: Card | null | undefined, position: string)
     if (group) {
         const inSameGroup = cardPositions(card).some(p => group.has(normalizePosition(p.position)));
         if (inSameGroup) {
-            return { penalty: -1, valid: true, reason: 'similar position' };
+            return { penalty: -2, valid: true, reason: 'similar position' };
         }
     }
 
-    return { penalty: -2, valid: true, reason: 'out of position' };
+    return { penalty: -3, valid: true, reason: 'out of position' };
 }
 
 export function gIconEligible(card: Card | null | undefined, position: string): boolean {
     return fieldingPenalty(card, position).penalty === 0;
+}
+
+/** Same penalty rules as fieldingPenalty, but takes a raw positions array
+ *  so it's callable on a live PlayerSlot (which doesn't carry a full Card). */
+export function penaltyForAssignment(
+    positions: { position: string; fielding: number }[] | undefined,
+    assignedPosition: string | undefined,
+): number {
+    const pos = normalizePosition(assignedPosition || '');
+    if (!pos || pos === 'DH' || pos === 'bench') return 0;
+    const ps = positions || [];
+    // Native?
+    if (pos === 'LF-RF') {
+        if (ps.some(p => p.position === 'LF' || p.position === 'RF' || p.position === 'LF-RF')) return 0;
+    } else if (ps.some(p => p.position === pos)) {
+        return 0;
+    }
+    // 1B legal-with-penalty
+    if (pos === '1B') {
+        const isPureDH = ps.length > 0 && ps.every(p => p.position === 'DH');
+        return isPureDH ? -2 : -1;
+    }
+    // Non-catcher at C
+    if (pos === 'C') return -3;
+    // Similar group — forced case
+    const grp = SIMILAR_GROUPS.find(g => g.has(pos));
+    if (grp && ps.some(p => grp.has(normalizePosition(p.position)))) return -2;
+    // Cross-group — forced case
+    return -3;
 }
 
 // Re-export type aliases used by callers

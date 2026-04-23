@@ -20,6 +20,7 @@ import ActionButtons from './ActionButtons';
 import DiceSpinner from './DiceSpinner';
 import CardTooltip from '../cards/CardTooltip';
 import { playerSlotToCard } from '../cards/cardAdapters';
+import { penaltyForAssignment } from '../../lib/fielding';
 import './GameBoard.css';
 
 interface RunnerMovement {
@@ -530,14 +531,22 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             const isOnDeck = (isHome ? dHalf === 'top' : dHalf === 'bottom') && i === frozenBatIdx;
             const rawPos = player.assignedPosition ? player.assignedPosition.replace(/-\d+$/, '') : '';
             const pos = rawPos === 'bench' ? '' : rawPos; // don't show "bench" as position
-            const fld = pos ? `+${pos === 'C' ? (player.arm ?? 0) : (player.fielding ?? 0)}` : '';
+            // Effective fielding = raw + penalty. Penalty is 0 when native,
+            // -1/-2 for 1B OOP, -2 similar / -3 cross / -3 non-catcher-at-C
+            // in the forced-accept case. Color red when penalty < 0 so the
+            // user immediately sees which player is out of position.
+            const penalty = pos ? penaltyForAssignment(player.positions, player.assignedPosition) : 0;
+            const rawFld = pos === 'C' ? (player.arm ?? 0) : (player.fielding ?? 0);
+            const effFld = rawFld + penalty;
+            const fld = pos ? (effFld >= 0 ? `+${effFld}` : `${effFld}`) : '';
+            const fldColor = penalty < 0 ? '#f87171' : '#a0c0e0';
             return (
                 <g key={`${isHome ? 'h' : 'a'}-${i}`} cursor="pointer" onMouseEnter={(e) => handlePlayerHover(player, e.nativeEvent as any)} onMouseLeave={handlePlayerLeave}>
                     <rect x={panelX + 6} y={y} width={w} height="52" rx="3" fill={isAtBat ? '#1a2858' : isOnDeck ? '#0e1a30' : '#081428'} stroke={isAtBat ? '#e94560' : isOnDeck ? '#60a5fa' : '#1a3040'} strokeWidth={isAtBat ? 2.5 : isOnDeck ? 1.5 : 0.5}/>
                     <text x={panelX + 20} y={y + 32} fontSize="15" fill={isAtBat ? '#e94560' : isOnDeck ? '#60a5fa' : '#a0c0e0'} fontWeight="normal" fontFamily="Arial">{i + 1}.</text>
                     {player.imagePath && <image href={player.imagePath} x={panelX + 40} y={y + 3} width="34" height="46" preserveAspectRatio="xMidYMid slice"/>}
                     <text x={panelX + 82} y={y + 22} fontSize="15" fill={isAtBat ? 'white' : '#a0c0e0'} fontWeight="normal" fontFamily="Arial">{player.name.length > 18 ? player.name.slice(0, 17) + '\u2026' : player.name}</text>
-                    {pos && fld && <text x={panelX + w} y={y + 22} textAnchor="end" fontSize="13" fill="#a0c0e0" fontWeight="normal" fontFamily="Arial">{pos} {fld}</text>}
+                    {pos && fld && <text x={panelX + w} y={y + 22} textAnchor="end" fontSize="13" fill={fldColor} fontWeight={penalty < 0 ? 'bold' : 'normal'} fontFamily="Arial">{pos} {fld}</text>}
                     {player.icons && player.icons.length > 0 && renderIcons(player, team, panelX + 82, y + 40)}
                 </g>
             );

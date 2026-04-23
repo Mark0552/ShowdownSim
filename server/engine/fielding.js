@@ -98,32 +98,32 @@ export function fieldingPenalty(card, position) {
         return { penalty: 0, valid: false, reason: 'pitchers cannot play the field' };
     }
 
-    // 1B special case (matches existing rulebook handling)
+    // 1B special case — the only non-native slot that's legal under normal
+    // play (builder allows it too). Position player = -1, pure DH = -2.
     if (pos === '1B') {
-        // Empty/missing positions array is not a "pure DH" — fall back to the
-        // -1 position-player penalty so a card with no data doesn't get -2.
         const positions = card.positions || [];
         const isPureDH = positions.length > 0 && positions.every(p => p.position === 'DH');
         const penalty = isPureDH ? -2 : -1;
         return { penalty, valid: true, reason: isPureDH ? 'DH at 1B' : 'position-player at 1B' };
     }
 
-    // Catcher: any non-catcher takes -3
+    // Catcher: any non-catcher takes -3 (always). Only ever reached in the
+    // forced-accept case from the defense_setup modal.
     if (pos === 'C') {
         return { penalty: -3, valid: true, reason: 'non-catcher at C' };
     }
 
-    // Same similarity group (IF/OF) — small penalty
+    // Same similarity group (IF/OF) — forced case only.
     const group = similarGroup(pos);
     if (group) {
         const cardInSameGroup = (card.positions || []).some(p => group.has(normalizePosition(p.position)));
         if (cardInSameGroup) {
-            return { penalty: -1, valid: true, reason: 'similar position' };
+            return { penalty: -2, valid: true, reason: 'similar position' };
         }
     }
 
-    // Cross-group out of position
-    return { penalty: -2, valid: true, reason: 'out of position' };
+    // Cross-group out of position — forced case only.
+    return { penalty: -3, valid: true, reason: 'out of position' };
 }
 
 /** True if the card can use a G icon at this position (no penalty applies). */
