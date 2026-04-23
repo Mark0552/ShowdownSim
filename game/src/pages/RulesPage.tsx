@@ -263,21 +263,60 @@ function AdvancedRules() {
             <section id="atbat-flow">
                 <h2>At-Bat Flow</h2>
                 <p>
-                    Each at-bat follows a fixed phase sequence. The server enforces whose turn it is at each step.
+                    Each at-bat moves through a deterministic phase sequence. The server enforces whose turn
+                    it is at each step via the <code>whoseTurn()</code> table and validates every action against
+                    a per-phase whitelist. The core path is eight phases; several <em>conditional</em> phases
+                    only appear when specific triggers fire.
                 </p>
+
+                <h3>Game Setup (one-time)</h3>
                 <ol className="rules-ordered">
-                    <li><strong>pre_atbat</strong> <em>(offense)</em> — optional: pinch hit, attempt steal, activate SB icon, or proceed.</li>
-                    <li><strong>defense_sub</strong> <em>(defense)</em> — optional: pitching change, activate 20 or RP icon, or proceed.</li>
-                    <li><strong>ibb_decision</strong> <em>(defense)</em> — optional: intentionally walk the batter (first base open preferred).</li>
-                    <li><strong>bunt_decision</strong> <em>(offense)</em> — only offered when runners are on 1st and/or 2nd, no runner on 3rd, fewer than 2 outs.</li>
-                    <li><strong>pitch</strong> <em>(defense rolls)</em> — d20 + Control vs batter's On-Base number.</li>
-                    <li><strong>swing</strong> <em>(offense rolls)</em> — d20 against the resolved chart.</li>
-                    <li><strong>result_icons</strong> <em>(conditional)</em> — K icon (defense) resolves first; then HR/V/S icons (offense).</li>
-                    <li><strong>apply result</strong> — baserunning, outs, optional GB decision, optional extra-base attempt.</li>
+                    <li><strong>sp_roll</strong> — single d20 roll determines both teams' Game 1 starting pitcher (1-5 = SP1, 6-10 = SP2, 11-15 = SP3, 16-20 = SP4). Series Game 2+ skip this, using the stored <code>series.starter_offset</code>.</li>
+                    <li><strong>defense_setup</strong> <em>(conditional)</em> — entered at half-inning boundaries when the defense has bench players that could validly take the field. The defense drags-and-drops players into field/DH slots. Submits when a valid matching exists.</li>
                 </ol>
+
+                <h3>Core At-Bat Sequence</h3>
+                <ol className="rules-ordered">
+                    <li><strong>pre_atbat</strong> <em>(offense, conditional)</em> — entered only if the offense has ≥1 meaningful option: eligible bench player (respecting backup/inning rules), a runner able to steal, or an SB icon available. If none apply, the engine auto-skips straight to <code>defense_sub</code>. Actions: pinch hit, pinch run, steal, activate SB icon, skip.
+                        <ul>
+                            <li><strong>subPhaseStep: offense_first</strong> — first entry for this at-bat.</li>
+                            <li><strong>subPhaseStep: offense_re</strong> — re-entry after the defense made a pitching change; the offense gets a fresh round of options against the new matchup.</li>
+                        </ul>
+                    </li>
+                    <li><strong>defense_sub</strong> <em>(defense, always entered)</em> — actions: pitching change, activate the 20 icon (inline with pitch), activate the RP icon (inning 7+, relievers/closers only), <strong>intentionally walk the batter</strong> (no separate <code>ibb_decision</code> phase is used in practice), skip to bunt/pitch.</li>
+                    <li><strong>bunt_decision</strong> <em>(offense, conditional)</em> — offered only when runners are on 1st and/or 2nd, no runner on 3rd, and fewer than 2 outs. Accept rolls the bunt on the pitcher's chart (PU = hold runners, any other = runners advance 1). Skip proceeds to pitch.</li>
+                    <li><strong>pitch</strong> <em>(defense rolls)</em> — d20 + Effective Control compared to the batter's On-Base number. Chooses pitcher's or hitter's chart.</li>
+                    <li><strong>swing</strong> <em>(offense rolls)</em> — d20 resolved against the selected chart. Produces an outcome code (SO / GB / FB / PU / W / S / S+ / DB / TR / HR).</li>
+                    <li><strong>result_icons</strong> <em>(conditional)</em> — defense icons resolve first (K converts hit/walk → strikeout); then offense icons (HR, V for reroll, S for single→double). The server prompts each eligible team in order; an empty prompt is skipped automatically.</li>
+                    <li><strong>baserunning</strong> <em>(not a user-facing phase)</em> — the engine applies the outcome: moves runners, scores runs, records outs, archives subbed-out players. May push one of the conditional phases below.</li>
+                </ol>
+
+                <h3>Conditional Post-Swing Phases</h3>
+                <ol className="rules-ordered">
+                    <li><strong>gb_decision</strong> <em>(defense)</em> — entered on a GB result with runners on base. Defense picks Double Play, Force at Home, or Hold Runners.</li>
+                    <li><strong>extra_base_offer</strong> <em>(offense)</em> — entered on a single with a runner on 1st (or similar multi-base scenarios) where the runner could attempt an extra base. Offense chooses whom to send.</li>
+                    <li><strong>extra_base</strong> <em>(defense)</em> — entered after <code>extra_base_offer</code> if the offense sent a runner. Defense picks which eligible runner to throw at, then the d20 resolves.</li>
+                </ol>
+
+                <h3>Steal Flow (branches from pre_atbat)</h3>
+                <ol className="rules-ordered">
+                    <li><strong>steal_sb</strong> <em>(conditional)</em> — entered when the offense activates the SB icon. Auto-resolves to success (no roll) and returns to <code>pre_atbat</code>.</li>
+                    <li><strong>steal_resolve</strong> <em>(conditional)</em> — entered on a standard steal attempt. d20 + Catcher Arm (+5 to 3rd) vs runner Speed. Returns to <code>pre_atbat</code> afterward.</li>
+                </ol>
+
+                <h3>End States</h3>
+                <ul>
+                    <li>After baserunning (and any post-swing phases) completes, control returns to <code>pre_atbat</code> for the next batter — or to <code>defense_setup</code> / the next half-inning's <code>pre_atbat</code> if three outs were recorded.</li>
+                    <li><strong>game_over</strong> — terminal state on walk-off, regulation completion, or extra-inning conclusion. Server writes <code>status='finished'</code> + <code>winner_user_id</code>.</li>
+                </ul>
+
+                <h3>Pitching Change Special Case</h3>
                 <p>
-                    If the defense subs the pitcher mid-sequence, an offense_re phase may be inserted to allow
-                    the offense to react (e.g., pinch-hit into the new matchup).
+                    When the defense makes a pitching change in <code>defense_sub</code>, the state returns to{' '}
+                    <code>pre_atbat</code> with <code>subPhaseStep: 'offense_re'</code> so the offense gets a
+                    fresh pass of options against the new pitcher. Skipping from <code>offense_re</code> goes
+                    back to <code>defense_sub</code> (where the defense can still use 20/RP/IBB if available).
+                    This is why a pitching change during an at-bat doesn't skip the at-bat.
                 </p>
             </section>
 
@@ -360,33 +399,66 @@ Effective IP = (Card IP − Series Reliever Penalty)
                 <h3>Extra Base Attempts</h3>
                 <p>
                     On a Single with a runner on 1st (or a Double with a runner on 1st), the offense may attempt
-                    to take an extra base. The defense rolls:
+                    to take an extra base. Speed-based bonuses are added to the <em>runner's target</em>, making
+                    them harder to throw out:
                 </p>
                 <pre className="rules-formula">
-Defense Roll = d20 + Outfield Fielding Total
-            +5 if the throw is to home
+Runner Target = Runner Speed
+            +5 if the runner is going home
             +5 if there are already 2 outs
 
-Runner Target = Runner Speed
+Defense Roll = d20 + Outfield Fielding Total
+            +10 if the G icon is activated (on-card OF only)
 
-if Defense Roll ≥ Runner Target → runner OUT
-else                             → runner SAFE
+if Defense Roll &gt; Runner Target → runner OUT
+else                              → runner SAFE  (ties go to the runner)
                 </pre>
                 <p>
                     The offense decides first whether to send the runner; the defense then chooses which
-                    runner to throw at when multiple are eligible. The G icon may be activated to add +10
-                    to the defense roll.
+                    runner to throw at when multiple are eligible.
                 </p>
 
                 <h3>Ground Ball Decision</h3>
                 <p>
-                    With runners on base on a GB result, the defense chooses one of three options:
+                    With eligible base states on a GB result, the defense enters the <code>gb_decision</code>{' '}
+                    phase and picks one of the options below. When no option applies, the batter is simply out
+                    at 1st and runners advance normally.
                 </p>
-                <ul>
-                    <li><strong>Double Play</strong> — d20 + IF Fielding vs Speed of lead forced runner. Success turns two outs.</li>
-                    <li><strong>Force at Home</strong> (bases loaded) — runner from 3rd is thrown out, others advance, batter on 1st.</li>
-                    <li><span className="rules-house">HOUSE</span> <strong>Hold Runners</strong> — defense elects to hold all runners in place; the infield play must still be made on the batter, who is out at 1st.</li>
-                </ul>
+                <h4>Double Play <span className="rules-note-inline">(requires runner on 1st)</span></h4>
+                <pre className="rules-formula">
+Runner on 1st is out automatically (no roll).
+Other runners advance.
+
+d20 + IF Fielding  vs  Batter Speed
+
+if defense &gt; batter speed → batter OUT (double play, 2 outs total)
+else                        → batter SAFE at 1st (1 out, runner on 1st gone)
+                </pre>
+
+                <h4>Force at Home <span className="rules-note-inline">(requires bases loaded)</span></h4>
+                <p>
+                    Runner from 3rd is thrown out at home (no roll). Other runners advance one base. Batter
+                    reaches 1st on a fielder's choice.
+                </p>
+
+                <h4>
+                    <span className="rules-house">HOUSE</span> Hold Runners
+                    <span className="rules-note-inline">(offered in specific base states where runners aren't forced)</span>
+                </h4>
+                <pre className="rules-formula">
+Target = round((Batter Speed + Lead Runner Speed) / 2)
+
+d20 + IF Fielding  vs  Target
+
+if defense &gt; target → batter OUT at 1st, runners held
+else                   → batter SAFE at 1st, runners held
+                </pre>
+                <p>
+                    The lead runner is the one furthest along (3rd → 2nd → 1st priority). This option is
+                    available when no runner on 1st forces the play (runners only on 2nd and/or 3rd), or in
+                    the runner-on-1st-and-3rd-without-2nd scenario where the defense can prefer the force at
+                    2nd while holding the runner on 3rd.
+                </p>
             </section>
 
             <section id="fielding">
@@ -515,8 +587,8 @@ Defense Roll = d20 + Catcher Arm
 
 Runner Target = Runner Speed
 
-if Defense Roll ≥ Target → runner CAUGHT STEALING (out)
-else                      → runner SAFE
+if Defense Roll &gt; Target → runner CAUGHT STEALING (out)
+else                      → runner SAFE  (ties go to the runner)
                 </pre>
                 <p>
                     Home plate cannot be actively stolen in this implementation.
