@@ -532,10 +532,14 @@ export async function ensureNextSeriesGame(
         if (error) throw error;
         return data;
     } catch (e: any) {
-        // Race: the other client (or we) inserted first and the
-        // games_series_game_number_unique constraint is now rejecting
-        // our INSERT. Treat that as success — refetch and return the
-        // existing row. Only rethrow if refetch also comes up empty.
+        // Only swallow the UNIQUE-constraint race (Postgres 23505 on
+        // games_series_id_game_number_key) — the other client inserted
+        // first, so we refetch and return their row. Any other error
+        // (RLS, FK, network) is a real failure and must bubble up; if
+        // we refetched blindly we'd return a stale row that doesn't
+        // match game_number and mask the underlying problem.
+        const isUniqueViolation = e?.code === '23505' || /duplicate key|unique/i.test(e?.message || '');
+        if (!isUniqueViolation) throw e;
         const refetched = await getSeriesGames(seriesId);
         const found = refetched.find(g => g.game_number === gameNumber);
         if (found) return found;

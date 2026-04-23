@@ -43,28 +43,47 @@ export async function saveGameStats(gameId: string, seriesId: string | null, gam
         return parts.join(' ');
     };
 
-    // Batter stats
-    for (const player of myTeam.lineup) {
-        const bs = myTeam.batterStats?.[player.cardId];
-        if (!bs) continue;
+    // Resolve a cardId to its PlayerSlot across current + archived pools.
+    // Critical for subbed-out players: a pinch-hit batter or subbed-out
+    // pitcher is no longer in lineup/bench/bullpen — their full data lives
+    // in archivedPlayers. Without this lookup, stats get saved with the
+    // raw cardId as the name and career aggregation breaks.
+    const findPlayer = (cardId: string): any => {
+        return myTeam.lineup.find((p: any) => p.cardId === cardId)
+            || myTeam.bench?.find((p: any) => p.cardId === cardId)
+            || (myTeam.pitcher?.cardId === cardId ? myTeam.pitcher : null)
+            || myTeam.bullpen?.find((p: any) => p.cardId === cardId)
+            || myTeam.archivedPlayers?.[cardId]
+            || null;
+    };
+
+    // Batter stats — iterate every cardId with a batterStats entry (covers
+    // current lineup AND subbed-out hitters whose PAs happened earlier in
+    // the game). Skip phantoms with no plate appearances.
+    for (const [cardId, bs] of Object.entries(myTeam.batterStats || {})) {
+        const b = bs as any;
+        if (!b || !b.pa) continue;
+        const player = findPlayer(cardId);
+        if (!player) continue;
         rows.push({
             game_id: gameId, series_id: seriesId, user_id: user.id,
-            card_id: player.cardId, card_name: cardDisplayName(player), card_type: 'hitter',
-            pa: bs.pa || 0, ab: bs.ab || 0, h: bs.h || 0, r: bs.r || 0, rbi: bs.rbi || 0,
-            bb: bs.bb || 0, ibb: bs.ibb || 0, so: bs.so || 0, hr: bs.hr || 0,
-            db: bs.db || 0, tr: bs.tr || 0, tb: bs.tb || 0,
-            sb: bs.sb || 0, cs: bs.cs || 0,
-            gidp: bs.gidp || 0, sh: bs.sh || 0, sf: bs.sf || 0,
+            card_id: cardId, card_name: cardDisplayName(player), card_type: 'hitter',
+            pa: b.pa || 0, ab: b.ab || 0, h: b.h || 0, r: b.r || 0, rbi: b.rbi || 0,
+            bb: b.bb || 0, ibb: b.ibb || 0, so: b.so || 0, hr: b.hr || 0,
+            db: b.db || 0, tr: b.tr || 0, tb: b.tb || 0,
+            sb: b.sb || 0, cs: b.cs || 0,
+            gidp: b.gidp || 0, sh: b.sh || 0, sf: b.sf || 0,
             win: won,
         });
     }
 
-    // Pitcher stats — only pitchers who faced at least 1 batter
+    // Pitcher stats — only pitchers who faced at least 1 batter. Lookup
+    // falls through to archivedPlayers so a starter pulled mid-game still
+    // gets their real card name saved (not the raw cardId).
     for (const [cardId, ps] of Object.entries(myTeam.pitcherStats || {})) {
         const s = ps as any;
         if (!s.bf || s.bf === 0) continue; // skip pitchers who never entered the game
-        const pitcher = myTeam.pitcher.cardId === cardId ? myTeam.pitcher
-            : myTeam.bullpen?.find((p: any) => p.cardId === cardId);
+        const pitcher = findPlayer(cardId);
         const name = pitcher ? cardDisplayName(pitcher) : cardId;
         const pWin = cardId === myWinPitcher;
         const pLoss = cardId === myLossPitcher;

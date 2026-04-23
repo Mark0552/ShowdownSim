@@ -515,7 +515,7 @@ function DisconnectModal({ onExit }: { onExit: () => void }) {
         <div style={{
             position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
             background: 'rgba(10,20,40,0.95)', border: '2px solid #d4a018', borderRadius: '10px',
-            padding: '20px 30px', zIndex: 2000, textAlign: 'center', minWidth: 280,
+            padding: '20px 30px', zIndex: 2600, textAlign: 'center', minWidth: 280,
         }}>
             <div style={{ color: '#d4a018', fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>Opponent Disconnected</div>
             <div style={{ color: '#8aade0', fontSize: '13px' }}>

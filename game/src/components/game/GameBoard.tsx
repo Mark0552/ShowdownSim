@@ -595,6 +595,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 <DefenseSetupModal
                     state={state}
                     myRole={myRole}
+                    isMyTurn={isMyTurn}
                     onAction={onAction}
                 />
             )}

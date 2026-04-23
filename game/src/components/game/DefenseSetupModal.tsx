@@ -24,10 +24,13 @@ type SlotKey = (typeof FIELD_SLOTS)[number];
 interface Props {
     state: GameState;
     myRole: 'home' | 'away';
+    /** Matches GamePage's isMyTurn — includes the opponent-disconnected
+     *  guard so we disable Accept while the server is rejecting actions. */
+    isMyTurn: boolean;
     onAction: (a: GameAction) => void;
 }
 
-export default function DefenseSetupModal({ state, myRole, onAction }: Props) {
+export default function DefenseSetupModal({ state, myRole, isMyTurn, onAction }: Props) {
     const defSide = state.halfInning === 'top' ? 'homeTeam' : 'awayTeam';
     const myDef: 'home' | 'away' = defSide === 'homeTeam' ? 'home' : 'away';
     const team: TeamState = state[defSide];
@@ -146,7 +149,7 @@ export default function DefenseSetupModal({ state, myRole, onAction }: Props) {
     }, [alignment, origBenchIds, byId, canBackup, isHomeDef]);
 
     const submit = () => {
-        if (!canAccept || backupIssues.length > 0) return;
+        if (!canAccept || backupIssues.length > 0 || !isMyTurn) return;
         onAction({ type: 'DEFENSE_SETUP_COMMIT', alignment });
     };
 
@@ -224,14 +227,17 @@ export default function DefenseSetupModal({ state, myRole, onAction }: Props) {
                             <div className="dsm-warn">A valid native arrangement exists — fix OOP positions to continue.</div>
                         )}
                         {backupIssues.map((msg, i) => <div key={i} className="dsm-warn">{msg}</div>)}
+                        {!isMyTurn && (
+                            <div className="dsm-warn">Opponent disconnected — Accept disabled until they reconnect.</div>
+                        )}
                     </div>
 
                     <button
                         className="dsm-accept"
                         onClick={submit}
-                        disabled={!canAccept || backupIssues.length > 0}
+                        disabled={!canAccept || backupIssues.length > 0 || !isMyTurn}
                     >
-                        ACCEPT &amp; CONTINUE
+                        {isMyTurn ? 'ACCEPT & CONTINUE' : 'WAITING FOR OPPONENT…'}
                     </button>
                 </div>
             </div>
