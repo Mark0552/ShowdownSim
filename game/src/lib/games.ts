@@ -185,11 +185,33 @@ export async function updateGameState(gameId: string, state: any): Promise<void>
 }
 
 export async function deleteGame(gameId: string): Promise<void> {
+    // Capture series_id before deleting so we can clean up a now-orphaned
+    // series row (the dangling-series case: solo lobby, game 1 cancelled).
+    const { data: row } = await supabase
+        .from('games')
+        .select('series_id')
+        .eq('id', gameId)
+        .maybeSingle();
+
     const { error } = await supabase
         .from('games')
         .delete()
         .eq('id', gameId);
     if (error) throw error;
+
+    const seriesId = row?.series_id;
+    if (!seriesId) return;
+
+    // Only delete the series if no sibling games remain. RLS further limits
+    // this to the creator's still-waiting series, so mid-series or finished
+    // series are naturally left alone.
+    const { count } = await supabase
+        .from('games')
+        .select('id', { count: 'exact', head: true })
+        .eq('series_id', seriesId);
+    if ((count ?? 0) === 0) {
+        await supabase.from('series').delete().eq('id', seriesId);
+    }
 }
 
 export async function getGame(gameId: string): Promise<GameRow> {
