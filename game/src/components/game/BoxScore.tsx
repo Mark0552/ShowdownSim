@@ -146,8 +146,10 @@ export default function BoxScore({ awayTeam, homeTeam, awayName, homeName, onCar
                     <tbody>
                         {pitcherIds.map((id, i) => {
                             const s: PitcherStats = stats[id] || { ip: 0, h: 0, r: 0, bb: 0, ibb: 0, so: 0, hr: 0, bf: 0 };
+                            const archived = (team as any).archivedPlayers || {};
                             const p = team.pitcher.cardId === id ? team.pitcher
-                                : team.bullpen.find(bp => bp.cardId === id);
+                                : team.bullpen.find(bp => bp.cardId === id)
+                                ?? archived[id];
                             const name = p?.name || id;
                             return (
                                 <tr key={`pit-${i}`}>

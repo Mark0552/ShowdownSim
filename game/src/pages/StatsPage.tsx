@@ -88,13 +88,17 @@ export default function StatsPage({ onBack }: Props) {
     const sortedBatting = [...battingStats].sort((a, b) => {
         const av = calcBatVal(a, sortKey);
         const bv = calcBatVal(b, sortKey);
-        return sortDir === 'desc' ? bv - av : av - bv;
+        const primary = sortDir === 'desc' ? bv - av : av - bv;
+        if (primary !== 0) return primary;
+        return (a.card_id || '').localeCompare(b.card_id || '');
     });
 
     const sortedPitching = [...pitchingStats].sort((a, b) => {
         const av = sortKey === 'era' ? (a.ip > 0 ? (a.r * 9) / (a.ip / 3) : 99) : (a[sortKey] ?? 0);
         const bv = sortKey === 'era' ? (b.ip > 0 ? (b.r * 9) / (b.ip / 3) : 99) : (b[sortKey] ?? 0);
-        return sortDir === 'desc' ? bv - av : av - bv;
+        const primary = sortDir === 'desc' ? bv - av : av - bv;
+        if (primary !== 0) return primary;
+        return (a.card_id || '').localeCompare(b.card_id || '');
     });
 
     const fmt3 = (n: number) => n === 0 ? '.000' : n.toFixed(3).replace(/^0/, '');
