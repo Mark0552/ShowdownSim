@@ -206,7 +206,7 @@ function AdvancedRules() {
                         </tr>
                         <tr>
                             <td><strong>V</strong></td>
-                            <td>Reroll an out (SO/GB/FB/PU).</td>
+                            <td>Reroll an out (SO/GB/FB/PU). <strong>Cannot be used to reroll a K-induced strikeout</strong> — the K icon's conversion is final.</td>
                             <td>2× per game</td>
                         </tr>
                         <tr>
@@ -287,7 +287,7 @@ function AdvancedRules() {
                     <li><strong>bunt_decision</strong> <em>(offense, conditional)</em> — offered only when runners are on 1st and/or 2nd, no runner on 3rd, and fewer than 2 outs. Accept rolls the bunt on the pitcher's chart (PU = hold runners, any other = runners advance 1). Skip proceeds to pitch.</li>
                     <li><strong>pitch</strong> <em>(defense rolls)</em> — d20 + Effective Control compared to the batter's On-Base number. Chooses pitcher's or hitter's chart.</li>
                     <li><strong>swing</strong> <em>(offense rolls)</em> — d20 resolved against the selected chart. Produces an outcome code (SO / GB / FB / PU / W / S / S+ / DB / TR / HR).</li>
-                    <li><strong>result_icons</strong> <em>(conditional)</em> — defense icons resolve first (K converts hit/walk → strikeout); then offense icons (HR, V for reroll, S for single→double). The server prompts each eligible team in order; an empty prompt is skipped automatically.</li>
+                    <li><strong>result_icons</strong> <em>(conditional)</em> — defense icons resolve first (K converts hit/walk → strikeout); then offense icons (HR, V for reroll, S for single→double). The server prompts each eligible team in order; an empty prompt is skipped automatically. <strong>V cannot reroll a K-induced strikeout</strong>.</li>
                     <li><strong>baserunning</strong> <em>(not a user-facing phase)</em> — the engine applies the outcome: moves runners, scores runs, records outs, archives subbed-out players. May push one of the conditional phases below.</li>
                 </ol>
 

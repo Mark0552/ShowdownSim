@@ -74,9 +74,12 @@ export function computeRunnerMovements(oldState: GameState | null, newState: Gam
         return oldTeam.lineup[idx < 0 ? oldTeam.lineup.length - 1 : idx];
     };
 
-    // Existing runners that moved (or scored, or were thrown out)
+    // Existing runners that moved (or scored, or were thrown out).
+    // Iterate LEAD runner first (3rd → 2nd → 1st): runners can't pass each
+    // other, so the furthest-along missing runner is the one who scored.
     if (basesChanged) {
-        for (const fromBase of BASE_KEYS) {
+        const LEAD_FIRST = ['third', 'second', 'first'] as const;
+        for (const fromBase of LEAD_FIRST) {
             const cardId = oldBases[fromBase];
             if (!cardId) continue;
             if (newBases[fromBase] === cardId) continue;

@@ -72,17 +72,13 @@ export function handleUseIcon(state, action) {
 
     switch (icon) {
         case 'K': {
+            // Community / tournament ruling: the K icon's conversion to SO is
+            // final. V (Veteran) may NOT reroll a K-induced strikeout — this
+            // prevents an infinite reroll loop and matches the stricter
+            // interpretation most groups play under.
             let team = recordIconUse(state[fieldingSide], cardId, 'K');
             let newState = { ...state, [fieldingSide]: team, lastOutcome: 'SO', iconPrompt: null, iconChangeSequence: bumpIconChange(state) };
             newState.gameLog = [...state.gameLog, `K icon used! Result changed to Strikeout`];
-            const battingTeam = newState[battingSide];
-            if (playerHasIcon(batter, 'V') && canUseIcon(battingTeam, batter.cardId, 'V')) {
-                const offense = state.halfInning === 'top' ? 'away' : 'home';
-                return {
-                    ...newState, phase: 'result_icons',
-                    iconPrompt: { team: offense, availableIcons: [{ cardId: batter.cardId, icon: 'V', description: 'V: Reroll this Strikeout' }] },
-                };
-            }
             return applyResult(newState, 'SO', batter.cardId);
         }
 

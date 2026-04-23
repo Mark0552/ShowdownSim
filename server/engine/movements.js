@@ -65,8 +65,14 @@ export function computeRunnerMovements(oldState, newState) {
     };
 
     // === SECTION 1: Existing runners that moved ===
+    // Iterate LEAD runner first (3rd → 2nd → 1st). Runners can't pass each
+    // other in baseball, so when multiple runners leave the bases and runs
+    // scored, the furthest-along runner is the one who scored. Iterating
+    // 1st → 3rd misattributes a forced-out trailing runner as the scorer
+    // (e.g. DP-failed with bases loaded: R3 scores, R1 is force-out at 2nd,
+    // but the old order assigned 'scored' to R1's animation).
     if (basesChanged) {
-        for (const fromBase of BASE_KEYS) {
+        for (const fromBase of ['third', 'second', 'first']) {
             const cardId = oldBases[fromBase];
             if (!cardId) continue;
             if (newBases[fromBase] === cardId) continue;
