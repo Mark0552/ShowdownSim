@@ -20,6 +20,13 @@ interface ActionButtonsProps {
      *  holds off rendering until this flips back to false so users see the
      *  final roll resolve before "YOU WIN!" takes over. */
     diceAnimating?: boolean;
+    /** Ready-for-next-series-game state. If onToggleReadyForNext is provided,
+     *  the game-over card shows a Ready toggle (and an opponent indicator)
+     *  instead of an immediate NEXT GAME button. Game advances automatically
+     *  once both players are ready; GamePage handles that side. */
+    myReadyForNext?: boolean;
+    oppReadyForNext?: boolean;
+    onToggleReadyForNext?: () => void;
 }
 
 // Layout constants for the bottom-left actions section (x=2..820, y=750..948)
@@ -33,7 +40,7 @@ const ROW2 = ROW1 + ROW1_H + 4; // secondary row (G sub-buttons) below buttons
 const LABEL_Y = ROW1 - 6;  // context label above buttons
 
 /** All phase-specific action button groups rendered as an SVG <g> element */
-export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onAction, battingTeam, fieldingTeam, hasRunners, outcomeNames, onShowSubPanel, onNextSeriesGame, seriesStatus, diceAnimating }: ActionButtonsProps) {
+export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onAction, battingTeam, fieldingTeam, hasRunners, outcomeNames, onShowSubPanel, onNextSeriesGame, seriesStatus, diceAnimating, myReadyForNext, oppReadyForNext, onToggleReadyForNext }: ActionButtonsProps) {
     const curBatter = getCurrentBatter(state);
     const curPitcher = getCurrentPitcher(state);
     const ctrl = curPitcher.control || 0;
@@ -684,8 +691,33 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                         <text x={CX} y={ROW1 + 58} textAnchor="middle" fontSize="22" fill="white" fontWeight="normal" fontFamily="Impact,sans-serif" letterSpacing="2">
                             {state.score.away} {'\u2013'} {state.score.home}
                         </text>
-                        {/* Series progression button */}
-                        {onNextSeriesGame && seriesStatus === 'in-progress' && (
+                        {/* Ready-up toggle for the next series game. Clicking
+                            toggles your flag; GamePage auto-advances once both
+                            players are ready, so you can freely browse box
+                            score / logs / dice rolls while waiting. */}
+                        {onToggleReadyForNext && seriesStatus === 'in-progress' && (() => {
+                            const fill = myReadyForNext ? '#4ade80' : '#d4a018';
+                            const stroke = myReadyForNext ? '#86efac' : '#f0c840';
+                            const label = myReadyForNext ? 'READY ✓' : 'READY UP';
+                            const subLabel = myReadyForNext
+                                ? 'Click to cancel'
+                                : 'Toggle ready for next game';
+                            const oppState = oppReadyForNext ? 'Opponent: READY ✓' : 'Opponent: not ready';
+                            const oppColor = oppReadyForNext ? '#4ade80' : '#94a3b8';
+                            return (
+                                <>
+                                    <g cursor="pointer" className="roll-button" onClick={onToggleReadyForNext}>
+                                        <rect x={CX + 210} y={ROW1 - 10} width="180" height="86" rx="10" fill={fill} stroke={stroke} strokeWidth="2"/>
+                                        <text x={CX + 300} y={ROW1 + 32} textAnchor="middle" fontSize="20" fill="#002" fontWeight="normal" fontFamily="Impact,sans-serif" letterSpacing="2">{label}</text>
+                                        <text x={CX + 300} y={ROW1 + 58} textAnchor="middle" fontSize="11" fill="rgba(0,0,0,0.7)" fontFamily="Arial">{subLabel}</text>
+                                    </g>
+                                    {/* Opponent indicator below the Ready button */}
+                                    <text x={CX + 300} y={ROW1 + 92} textAnchor="middle" fontSize="11" fill={oppColor} fontFamily="Arial" fontWeight="600" letterSpacing="1">{oppState}</text>
+                                </>
+                            );
+                        })()}
+                        {/* Fallback: legacy NEXT GAME button if no toggle handler is wired */}
+                        {!onToggleReadyForNext && onNextSeriesGame && seriesStatus === 'in-progress' && (
                             <g cursor="pointer" className="roll-button" onClick={onNextSeriesGame}>
                                 <rect x={CX + 210} y={ROW1 - 10} width="180" height="86" rx="10" fill="#d4a018" stroke="#f0c840" strokeWidth="2"/>
                                 <text x={CX + 300} y={ROW1 + 32} textAnchor="middle" fontSize="20" fill="#002" fontWeight="normal" fontFamily="Impact,sans-serif" letterSpacing="2">NEXT GAME</text>

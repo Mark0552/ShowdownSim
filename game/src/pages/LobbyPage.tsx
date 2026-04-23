@@ -215,6 +215,10 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
         }
         if (game.status === 'lineup_select') {
             setActiveGame(game);
+        } else if (game.status === 'finished' && game.series_id) {
+            // Finished series game that's awaiting next-game. Navigate to
+            // the game-over screen so the user can toggle Ready Up.
+            onGameStart(game.id);
         } else if (game.status === 'in_progress') {
             onGameStart(game.id);
         }
@@ -425,7 +429,9 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
                                             )}
                                             <span className={`game-status status-${game.status}`}>{game.status === 'in_progress' && game.state?.inning
                                                 ? `${game.state.halfInning === 'top' ? '\u25B2' : '\u25BC'}${game.state.inning} | ${game.state.score?.away ?? 0} - ${game.state.score?.home ?? 0}`
-                                                : game.status.replace('_', ' ')}</span>
+                                                : game.status === 'finished' && game.series_id
+                                                    ? 'Ready for next game'
+                                                    : game.status.replace('_', ' ')}</span>
                                             {game.status === 'in_progress' && game.state?.score && (
                                                 <span className="game-role-hint" style={{ fontSize: '11px', color: '#6a8aba' }}>
                                                     ({role === 'home' ? 'Home' : 'Away'})
@@ -434,7 +440,11 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
                                         </div>
                                         <div className="game-actions">
                                             <button className="game-resume" onClick={() => handleResumeGame(game)}>
-                                                {game.status === 'in_progress' ? 'Resume' : 'Continue'}
+                                                {game.status === 'in_progress'
+                                                    ? 'Resume'
+                                                    : game.status === 'finished' && game.series_id
+                                                        ? 'Ready Up'
+                                                        : 'Continue'}
                                             </button>
                                             {isCreator && (
                                                 <button className="game-delete" onClick={async () => {

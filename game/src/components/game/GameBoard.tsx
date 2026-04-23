@@ -53,6 +53,13 @@ interface Props {
      *  so users always land on the lobby instead of whatever was last in
      *  browser history (which could be the "waiting for opponent" screen). */
     onExit?: () => void;
+    /** Ready-up-for-next-game state (series, post game-over). Clicking the
+     *  Ready button toggles the current player's flag; when both flags are
+     *  true, GamePage auto-advances. Users can browse box score / logs /
+     *  dice rolls freely while waiting. */
+    myReadyForNext?: boolean;
+    oppReadyForNext?: boolean;
+    onToggleReadyForNext?: () => void;
 }
 
 // Layout constants
@@ -168,7 +175,7 @@ function RunnerAnimOverlay({ anim, baseCoords, baseAnimMs }: {
     );
 }
 
-export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName, awayName, pendingMovements = [], onMovementsConsumed, seriesInfo, onNextSeriesGame, onExit }: Props) {
+export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName, awayName, pendingMovements = [], onMovementsConsumed, seriesInfo, onNextSeriesGame, onExit, myReadyForNext, oppReadyForNext, onToggleReadyForNext }: Props) {
     const [hoveredPlayer, setHoveredPlayer] = useState<PlayerSlot | null>(null);
     const [showAwayBullpen, setShowAwayBullpen] = useState(false);
     const [showHomeBullpen, setShowHomeBullpen] = useState(false);
@@ -829,6 +836,9 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                            ? 'complete' : 'in-progress')
                         : undefined}
                     diceAnimating={diceAnimating}
+                    myReadyForNext={myReadyForNext}
+                    oppReadyForNext={oppReadyForNext}
+                    onToggleReadyForNext={onToggleReadyForNext}
                 />
 
                 {/* DICE SECTION (26%: x=820..1180) — spinner + settled display */}

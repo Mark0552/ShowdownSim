@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { GameState, GameAction } from '../engine/gameEngine';
 import { computeRunnerMovements } from '../engine/movements';
-import { getGame, getMyRole, getSeries, ensureNextSeriesGame, syncSeriesWinsFromGames, syncSeriesRelieverHistoryFromGames, syncSeriesStarterOffsetFromGames, findGame1StarterNumber, updateSeries, subscribeToSeriesGames, getSeriesGames } from '../lib/games';
+import { getGame, getMyRole, getSeries, ensureNextSeriesGame, syncSeriesWinsFromGames, syncSeriesRelieverHistoryFromGames, syncSeriesStarterOffsetFromGames, findGame1StarterNumber, updateSeries, subscribeToSeriesGames, getSeriesGames, setReadyForNextGame } from '../lib/games';
 import { getLineups } from '../lib/lineups';
 import { saveGameStats } from '../lib/stats';
 import { getUser } from '../lib/auth';
@@ -44,6 +44,11 @@ export default function GamePage({ gameId, onBack }: Props) {
     const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const pumpedUpPlayedRef = useRef(false);
     const starterOffsetSyncedRef = useRef(false);
+    // Ready-for-next-game flags live on the current game's pending_action.
+    // Both clients poll / subscribe to the game row and update local state;
+    // when both are true, each client auto-advances to the next series game.
+    const [readyNext, setReadyNext] = useState<{ home: boolean; away: boolean }>({ home: false, away: false });
+    const advancingRef = useRef(false);
 
     // Play "I'm pumped up" once when the game first finishes loading
     useEffect(() => {
@@ -157,6 +162,10 @@ export default function GamePage({ gameId, onBack }: Props) {
 
                 const game = await getGame(gameId);
                 setGameRow(game);
+                // Hydrate readyNext from the row's pending_action (may be null)
+                const pa: any = (game as any).pending_action || {};
+                const rn = pa.readyNext || {};
+                setReadyNext({ home: !!rn.home, away: !!rn.away });
                 const role = getMyRole(game, user.id);
                 if (!role) throw new Error('Not a participant');
 
@@ -253,6 +262,63 @@ export default function GamePage({ gameId, onBack }: Props) {
             syncSeriesStarterOffsetFromGames(gameRow.series_id).catch(console.error);
         }
     }, [gameState?.isOver, gameId, gameRow?.series_id]);
+
+    // Subscribe to the current game's row so both players see each other's
+    // ready-for-next-game flag flips in realtime. When both sides flip to
+    // true, auto-advance via ensureNextSeriesGame (race-safe).
+    useEffect(() => {
+        if (!gameId) return;
+        const ch = supabase
+            .channel(`game-row-${gameId}`)
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${gameId}` }, (payload) => {
+                const pa: any = (payload.new as any)?.pending_action || {};
+                const rn = pa.readyNext || {};
+                setReadyNext({ home: !!rn.home, away: !!rn.away });
+            })
+            .subscribe();
+        return () => { ch.unsubscribe(); };
+    }, [gameId]);
+
+    // Auto-advance when both players are ready for the next game in the series.
+    useEffect(() => {
+        if (!readyNext.home || !readyNext.away) return;
+        if (advancingRef.current) return;
+        if (!gameRow?.series_id) return;
+        if (!gameState?.isOver) return;
+        // Series already decided — nothing to advance to
+        const bestOf = seriesRow?.best_of || 1;
+        const maxWins = Math.max(seriesRow?.home_wins || 0, seriesRow?.away_wins || 0);
+        if (maxWins > bestOf / 2) return;
+        advancingRef.current = true;
+        (async () => {
+            try {
+                const next = await ensureNextSeriesGame(
+                    gameRow.series_id!,
+                    (gameRow.game_number || 1) + 1,
+                    gameRow.home_user_id, gameRow.away_user_id || '',
+                    gameRow.home_user_email || '', gameRow.away_user_email || '',
+                );
+                window.location.hash = `game/${next.id}`;
+            } catch (e) {
+                console.error('Auto-advance failed', e);
+                advancingRef.current = false;
+            }
+        })();
+    }, [readyNext.home, readyNext.away, gameState?.isOver, gameRow?.series_id, seriesRow?.best_of, seriesRow?.home_wins, seriesRow?.away_wins]); // eslint-disable-line
+
+    const toggleReadyForNext = useCallback(async () => {
+        if (!gameId || !myRole) return;
+        const newValue = !readyNext[myRole];
+        // Optimistic update — the realtime subscription will reconcile.
+        setReadyNext(prev => ({ ...prev, [myRole]: newValue }));
+        try {
+            await setReadyForNextGame(gameId, myRole, newValue);
+        } catch (e) {
+            console.error('Failed to toggle ready', e);
+            // Revert on failure
+            setReadyNext(prev => ({ ...prev, [myRole]: !newValue }));
+        }
+    }, [gameId, myRole, readyNext]);
 
     // Write series.starter_offset as soon as game 1's SP roll has resolved.
     // Reads the Starter-N from the LIVE in-memory state (not Supabase) to
@@ -353,6 +419,9 @@ export default function GamePage({ gameId, onBack }: Props) {
                 } : undefined}
                 onNextSeriesGame={seriesRow ? handleNextSeriesGame : undefined}
                 onExit={onBack}
+                myReadyForNext={myRole ? readyNext[myRole] : false}
+                oppReadyForNext={myRole ? readyNext[myRole === 'home' ? 'away' : 'home'] : false}
+                onToggleReadyForNext={toggleReadyForNext}
             />
             {opponentDisconnected && !gameState.isOver && (
                 <div style={{

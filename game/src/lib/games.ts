@@ -41,14 +41,68 @@ export async function getMyGames(): Promise<GameRow[]> {
     const user = await getUser();
     if (!user) throw new Error('Not logged in');
 
-    const { data, error } = await supabase
+    // Actively-playable games (lineup-select / in-progress)
+    const { data: active, error: e1 } = await supabase
         .from('games')
         .select('*')
         .or(`home_user_id.eq.${user.id},away_user_id.eq.${user.id}`)
         .in('status', ['lineup_select', 'in_progress'])
         .order('updated_at', { ascending: false });
+    if (e1) throw e1;
+
+    // Finished SERIES games that are still "awaiting-next" — the series
+    // isn't decided yet and no later game_number exists. These render in
+    // My Games as a Ready-Up entry so both players can meet back up and
+    // toggle ready for the next series game after exiting the end-screen.
+    const { data: finished, error: e2 } = await supabase
+        .from('games')
+        .select('*')
+        .or(`home_user_id.eq.${user.id},away_user_id.eq.${user.id}`)
+        .eq('status', 'finished')
+        .not('series_id', 'is', null)
+        .order('game_number', { ascending: false });
+    if (e2) throw e2;
+
+    // Group all my series games (active + finished) by series so we can
+    // pick "latest game in its series" without a separate query per row.
+    const allBySeries: Record<string, GameRow[]> = {};
+    for (const g of [...(active || []), ...(finished || [])]) {
+        if (!g.series_id) continue;
+        (allBySeries[g.series_id] ??= []).push(g);
+    }
+
+    // Load each series's status (so we can skip decided series)
+    const seriesIds = Array.from(new Set((finished || []).map(f => f.series_id).filter(Boolean) as string[]));
+    const seriesStatus = new Map<string, string>();
+    if (seriesIds.length > 0) {
+        const { data: rows } = await supabase.from('series').select('id,status').in('id', seriesIds);
+        for (const r of (rows || []) as Array<{ id: string; status: string }>) seriesStatus.set(r.id, r.status);
+    }
+
+    const awaitingNext: GameRow[] = [];
+    for (const f of finished || []) {
+        if (!f.series_id) continue;
+        if (seriesStatus.get(f.series_id) === 'finished') continue; // series decided
+        const games = allBySeries[f.series_id] || [];
+        const maxNum = Math.max(...games.map(g => g.game_number || 0));
+        if ((f.game_number || 0) !== maxNum) continue; // not the latest; a newer game exists
+        awaitingNext.push(f);
+    }
+
+    return [...(active || []), ...awaitingNext];
+}
+
+/** Toggle the current player's "ready for next series game" flag on the
+ *  game row's pending_action JSON. Both players subscribe to the game row;
+ *  when both flags are true, each client independently triggers
+ *  ensureNextSeriesGame and navigates to the new game. */
+export async function setReadyForNextGame(gameId: string, role: PlayerRole, ready: boolean): Promise<void> {
+    const { data } = await supabase.from('games').select('pending_action').eq('id', gameId).single();
+    const pa: any = (data?.pending_action && typeof data.pending_action === 'object') ? data.pending_action : {};
+    const readyNext = { ...(pa.readyNext || {}) };
+    readyNext[role] = ready;
+    const { error } = await supabase.from('games').update({ pending_action: { ...pa, readyNext } }).eq('id', gameId);
     if (error) throw error;
-    return data || [];
 }
 
 export async function joinGame(gameId: string): Promise<GameRow> {
