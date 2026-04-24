@@ -620,6 +620,10 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     myRole={myRole}
                     isMyTurn={isMyTurn}
                     onAction={onAction}
+                    onToggleBoxScore={() => setShowStats(s => !s)}
+                    onToggleLog={() => setShowFullLog(s => !s)}
+                    onToggleDiceRolls={() => setShowDiceRolls(s => !s)}
+                    onExit={onExit}
                 />
             )}
 

@@ -76,9 +76,17 @@ export function handlePinchHit(state, action) {
     team.catcherArm = catcherArm;
     syncAlignment(team);
 
-    const newState = { ...state, [battingSide]: team };
-    newState.gameLog = [...state.gameLog, `${newPlayer.name} pinch-hits for ${oldPlayer.name}`];
-    return { ...newState, phase: 'defense_sub', subPhaseStep: 'defense' };
+    const newState = {
+        ...state,
+        [battingSide]: team,
+        // Re-log the matchup now that the pinch hitter is the batter.
+        matchupLogged: false,
+        gameLog: [...state.gameLog, `${newPlayer.name} pinch-hits for ${oldPlayer.name}`],
+    };
+    // Stay in pre_atbat so the offense can also pinch-run, steal, or use an
+    // SB icon before ending their sub phase. enterPreAtBat auto-skips to
+    // defense_sub if no further offense options remain (matches the PR flow).
+    return enterPreAtBat(newState);
 }
 
 export function handlePitchingChange(state, action) {

@@ -178,8 +178,15 @@ export default function AlignmentEditor({
 
     const reset = () => setAlignment(initialAlignment);
 
+    // When a native arrangement IS possible we gate on hasChanges so the
+    // user can't Accept a no-op that leaves an OOP in place. When no native
+    // arrangement is possible (the forced / free-for-all case), the current
+    // alignment is already a legal "do nothing" — user should be able to
+    // Accept immediately without having to drag anything.
+    const requiresChange = nativePossible;
     const commit = () => {
-        if (!canAccept || backupIssues.length > 0 || !isMyTurn || !hasChanges) return;
+        if (!canAccept || backupIssues.length > 0 || !isMyTurn) return;
+        if (requiresChange && !hasChanges) return;
         onCommit({ type: 'DEFENSE_SETUP_COMMIT', alignment });
     };
 
@@ -275,8 +282,8 @@ export default function AlignmentEditor({
                 <button
                     className="ae-accept"
                     onClick={commit}
-                    disabled={!canAccept || backupIssues.length > 0 || !isMyTurn || !hasChanges}
-                    title={!hasChanges ? 'No changes to accept' : undefined}
+                    disabled={!canAccept || backupIssues.length > 0 || !isMyTurn || (requiresChange && !hasChanges)}
+                    title={requiresChange && !hasChanges ? 'Fix the OOP slots before accepting' : undefined}
                 >
                     {isMyTurn ? 'ACCEPT DEFENSE' : 'WAITING FOR OPPONENT…'}
                 </button>
