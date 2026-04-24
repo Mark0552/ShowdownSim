@@ -3,7 +3,7 @@ import {
     syncSeriesStarterOffsetFromGames,
     syncSeriesRelieverHistoryFromGames,
     syncSeriesWinsFromGames,
-} from '../games';
+} from './sync';
 
 /**
  * Run every series-level aggregation sync against a single series and

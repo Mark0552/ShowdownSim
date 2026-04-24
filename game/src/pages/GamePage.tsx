@@ -1,8 +1,17 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { GameState, GameAction } from '../engine/gameEngine';
 import { computeRunnerMovements } from '../engine/movements';
-import { getGame, getMyRole, getSeries, ensureNextSeriesGame, syncSeriesWinsFromGames, findGame1StarterNumber, updateSeries, subscribeToSeriesGames, setReadyForNextGame } from '../lib/games';
-import { finalizeSeriesGame } from '../lib/series/finalize';
+import { getGame, getMyRole } from '../lib/games';
+import {
+    getSeries,
+    ensureNextSeriesGame,
+    syncSeriesWinsFromGames,
+    findGame1StarterNumber,
+    updateSeries,
+    subscribeToSeriesGames,
+    setReadyForNextGame,
+    finalizeSeriesGame,
+} from '../lib/series';
 import { getLineups } from '../lib/lineups';
 import { saveGameStats } from '../lib/stats';
 import { getUser } from '../lib/auth';

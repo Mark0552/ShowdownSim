@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import type { GameRow, SeriesRow } from '../types/game';
 import type { SavedLineup } from '../lib/lineups';
-import { createGame, getOpenGames, getMyGames, joinGame, selectLineup, deleteGame, deleteSeries, subscribeToGame, subscribeToLobby, subscribeToMyGames, getMyRole, createSeries, getSeries } from '../lib/games';
+import { createGame, getOpenGames, getMyGames, joinGame, selectLineup, deleteGame, subscribeToGame, subscribeToLobby, subscribeToMyGames, getMyRole } from '../lib/games';
+import { createSeries, getSeries, deleteSeries } from '../lib/series';
 import SeriesCard from '../components/lobby/SeriesCard';
 import { getLineups } from '../lib/lineups';
 import { validateTeam } from '../logic/teamRules';

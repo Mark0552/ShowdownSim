@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { getGameHistory, getCareerBattingStats, getCareerPitchingStats } from '../lib/stats';
 import { supabase } from '../lib/supabase';
 import { getUser } from '../lib/auth';
-import { getSeries } from '../lib/games';
+import { getSeries } from '../lib/series';
 import type { GameRow, SeriesRow } from '../types/game';
 import type { Card } from '../types/cards';
 import { loadCards } from '../data/cardData';
