@@ -182,8 +182,22 @@ export default function AlignmentEditor({
 
     const fmt = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
 
+    // Headline status — biggest message at the top so the user knows
+    // immediately whether they MUST fix something or have free rein.
+    const headlineStatus = !nativePossible
+        ? { kind: 'info' as const, text: 'No native arrangement possible — align however you want.' }
+        : oopSlots.length > 0
+            ? { kind: 'warn' as const, text: 'You must play a fully native arrangement. Fix the highlighted positions before accepting.' }
+            : null;
+
     return (
         <div className="ae-root">
+            {headlineStatus && (
+                <div className={`ae-headline ae-headline-${headlineStatus.kind}`}>
+                    {headlineStatus.text}
+                </div>
+            )}
+
             <div className="ae-totals-bar">
                 <span className="ae-tot-label">IF</span>
                 <span className="ae-tot-val">{fmt(totals.inf)}</span>
@@ -241,12 +255,6 @@ export default function AlignmentEditor({
             </div>
 
             <div className="ae-status">
-                {!nativePossible && (
-                    <div className="ae-info">No fully-native arrangement is possible with the current roster — align however you like.</div>
-                )}
-                {nativePossible && oopSlots.length > 0 && (
-                    <div className="ae-warn">A native arrangement IS possible — every position except 1B and DH must be filled by an eligible player before you can Accept.</div>
-                )}
                 {backupIssues.map((msg, i) => (
                     <div key={i} className="ae-warn">
                         {msg.name}: backups cannot enter until {isHomeDefense ? 'the bottom of the 6th inning' : 'the top of the 7th inning'}.

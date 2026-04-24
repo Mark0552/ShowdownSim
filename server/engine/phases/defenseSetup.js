@@ -122,9 +122,19 @@ export function handleDefenseSetupCommit(state, action) {
         }
     }
 
-    // Build the proposed new lineup (9 PlayerSlots with updated positions)
-    const newLineup = ALL_SLOTS.map(slotKey => {
-        const card = byId[alignment[slotKey]];
+    // Build the new lineup PRESERVING batting order. The old lineup array is
+    // ordered by batting slot; we walk it in order and produce a 9-element
+    // array where index = batting position. Players who survive keep their
+    // batting position (with updated field assignment). Subbed-out players
+    // hand their batting position to the subbed-in players in canonical
+    // slot order (the order alignment lists them).
+    //
+    // BUG WAS: iterating ALL_SLOTS produced an array whose index meant
+    // field-slot rather than batting-position, so state.currentBatterIndex
+    // ended up pointing at the wrong player after a defensive sub.
+    const newAlignmentIds = new Set(Object.values(alignment));
+    const slotOf = (cardId) => ALL_SLOTS.find(s => alignment[s] === cardId);
+    const applySlot = (card, slotKey) => {
         const updated = { ...card };
         updated.assignedPosition = slotKey;
         const norm = slotKey.replace(/-\d+$/, '');
@@ -133,6 +143,22 @@ export function handleDefenseSetupCommit(state, action) {
         updated.fielding = isCatcher ? 0 : raw;
         updated.arm = isCatcher ? raw : 0;
         return updated;
+    };
+    // Subbed-in players in canonical alignment order — used to fill the
+    // batting slots vacated by subbed-out players, in the order they appear.
+    const subbedIn = ALL_SLOTS
+        .map(s => alignment[s])
+        .filter(cardId => cardId && !oldLineupIds.has(cardId));
+    let subInIdx = 0;
+    const newLineup = oldLineup.map(oldPlayer => {
+        if (newAlignmentIds.has(oldPlayer.cardId)) {
+            // Same player keeps their batting slot, possibly at a new position.
+            return applySlot(oldPlayer, slotOf(oldPlayer.cardId));
+        }
+        // Subbed out — next subbed-in card takes this batting slot.
+        const newCardId = subbedIn[subInIdx++];
+        const newCard = byId[newCardId];
+        return applySlot(newCard, slotOf(newCardId));
     });
 
     // Forced-OOP rule: allow OOP placements ONLY when there is no possible

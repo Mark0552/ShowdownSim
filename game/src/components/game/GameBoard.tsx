@@ -610,7 +610,11 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     onClose={() => setShowSubPanel(false)}
                 />
             )}
-            {state.phase === 'defense_setup' && (
+            {/* Wait for the play animation to finish before opening the half-
+                inning defense modal — gating on displayPhase (frozen) instead
+                of state.phase keeps the modal from popping up while the 3rd
+                out is still being animated. */}
+            {displayPhase === 'defense_setup' && state.phase === 'defense_setup' && (
                 <DefenseSetupModal
                     state={state}
                     myRole={myRole}

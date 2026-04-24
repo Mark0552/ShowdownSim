@@ -70,12 +70,18 @@ export function playerSlotToCard(p: PlayerSlot): Card {
     }
     // hitter
     const chart = (p.chart || {}) as any;
-    // Derive a single position string (e.g. "SS") from the assignedPosition
-    // plus fielding, since PlayerSlot doesn't carry the raw positions array.
+    // Use the player's actual native-positions array. Earlier code synthesized
+    // a single entry from assignedPosition + p.fielding, which meant the
+    // tooltip only ever showed the CURRENT slot at the CURRENT effective
+    // fielding (penalty applied) — wrong for a "card detail" view that
+    // should show the static card's own positions. PlayerSlot now carries
+    // p.positions directly, so use it.
     const assigned = (p.assignedPosition || '').replace(/-\d+$/, '');
-    const positions: ParsedPosition[] = assigned && assigned !== 'bench' && assigned !== 'DH'
-        ? [{ position: assigned as FieldPosition, fielding: p.fielding ?? 0 }]
-        : (assigned === 'DH' ? [{ position: 'DH' as FieldPosition, fielding: 0 }] : []);
+    const positions: ParsedPosition[] = (p.positions && p.positions.length > 0)
+        ? p.positions as ParsedPosition[]
+        : assigned === 'DH'
+            ? [{ position: 'DH' as FieldPosition, fielding: 0 }]
+            : [];
     return {
         ...common,
         onBase: p.onBase ?? 0,
