@@ -273,6 +273,13 @@ async function handleJoinGame(ws, msg, setContext) {
                         loadedState = data.state;
                     }
                 }
+                // Self-heal: series game 2+ should never be in sp_roll. If a
+                // prior race persisted one, discard so we re-init fresh with
+                // the authoritative seriesContext below.
+                if (loadedState && dbGameNumber > 1 && loadedState.phase === 'sp_roll') {
+                    console.warn(`Discarding corrupt sp_roll state for series game ${dbGameNumber} (${gameId})`);
+                    loadedState = null;
+                }
             } catch (e) { /* no saved state, start fresh */ }
         }
 
