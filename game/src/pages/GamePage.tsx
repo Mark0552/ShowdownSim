@@ -296,7 +296,17 @@ export default function GamePage({ gameId, onBack }: Props) {
         const ch = supabase
             .channel(`game-row-${gameId}`)
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${gameId}` }, (payload) => {
-                const pa: any = (payload.new as any)?.pending_action || {};
+                // With the games table's REPLICA IDENTITY set to DEFAULT
+                // (the Postgres default), UPDATE events only include the
+                // columns that actually changed. An update that touches
+                // `state` but not `pending_action` therefore arrives without
+                // pending_action in payload.new — treating that as "empty"
+                // would wipe our optimistic ready-up value after every
+                // saveState. Only reconcile when the column is actually
+                // present in the payload.
+                const n = payload.new as any;
+                if (!n || !Object.prototype.hasOwnProperty.call(n, 'pending_action')) return;
+                const pa = n.pending_action || {};
                 const rn = pa.readyNext || {};
                 setReadyNext({ home: !!rn.home, away: !!rn.away });
             })
