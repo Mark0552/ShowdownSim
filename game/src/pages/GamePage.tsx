@@ -58,6 +58,11 @@ export default function GamePage({ gameId, onBack }: Props) {
     // Both clients poll / subscribe to the game row and update local state;
     // when both are true, each client auto-advances to the next series game.
     const [readyNext, setReadyNext] = useState<{ home: boolean; away: boolean }>({ home: false, away: false });
+    // Grace window after a local ready-up click. During this window, reconciles
+    // (realtime / poll) keep the local role's optimistic value — only the
+    // opponent's value is pulled from the DB. Prevents the classic bounce where
+    // an in-flight fetch started before our RPC lands and overwrites our click.
+    const readyWriteDeadlineRef = useRef(0);
     const advancingRef = useRef(false);
 
     // Play "I'm pumped up" once when the game first finishes loading
@@ -277,42 +282,59 @@ export default function GamePage({ gameId, onBack }: Props) {
         }
     }, [gameState?.isOver, gameId, gameRow?.series_id]);
 
-    // Subscribe to the current game's row so both players see each other's
-    // ready-for-next-game flag flips in realtime. Also does an initial
-    // fetch so a post-reconnect mount (when the subscription may have
-    // missed a UPDATE during reconnect) re-hydrates readyNext correctly.
+    // Keep readyNext in sync with the DB's pending_action.readyNext via
+    // both realtime AND a 3s poll. Realtime alone has repeatedly proved
+    // unreliable (missed events, replication-identity filtering on the
+    // games table that drops pending_action from UPDATE payloads when
+    // the server's saveState touches only state+status), so the poll is
+    // the authoritative source of truth and the subscription is just a
+    // latency optimization.
     useEffect(() => {
         if (!gameId) return;
-        supabase
-            .from('games')
-            .select('pending_action')
-            .eq('id', gameId)
-            .single()
-            .then(({ data }) => {
-                const pa: any = (data as any)?.pending_action || {};
-                const rn = pa.readyNext || {};
-                if (mountedRef.current) setReadyNext({ home: !!rn.home, away: !!rn.away });
+
+        const applyFromDb = (rn: any) => {
+            setReadyNext(prev => {
+                const next = { home: !!rn?.home, away: !!rn?.away };
+                // During a local write, preserve my optimistic value so a
+                // reconcile that raced the RPC can't flip the button back.
+                // Opponent's value is always pulled from the DB.
+                if (myRole && Date.now() < readyWriteDeadlineRef.current) {
+                    next[myRole] = prev[myRole];
+                }
+                if (prev.home === next.home && prev.away === next.away) return prev;
+                return next;
             });
+        };
+
+        const fetchAndApply = async () => {
+            const { data } = await supabase
+                .from('games')
+                .select('pending_action')
+                .eq('id', gameId)
+                .maybeSingle();
+            if (!mountedRef.current) return;
+            const pa: any = (data as any)?.pending_action || {};
+            applyFromDb(pa.readyNext || {});
+        };
+
+        fetchAndApply();
+        const poll = setInterval(fetchAndApply, 3000);
+
         const ch = supabase
             .channel(`game-row-${gameId}`)
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${gameId}` }, (payload) => {
-                // With the games table's REPLICA IDENTITY set to DEFAULT
-                // (the Postgres default), UPDATE events only include the
-                // columns that actually changed. An update that touches
-                // `state` but not `pending_action` therefore arrives without
-                // pending_action in payload.new — treating that as "empty"
-                // would wipe our optimistic ready-up value after every
-                // saveState. Only reconcile when the column is actually
-                // present in the payload.
                 const n = payload.new as any;
+                // Replica-identity default drops unchanged columns from the
+                // payload. If pending_action isn't in the payload, ignore it
+                // (the 3s poll is the source of truth anyway).
                 if (!n || !Object.prototype.hasOwnProperty.call(n, 'pending_action')) return;
                 const pa = n.pending_action || {};
-                const rn = pa.readyNext || {};
-                setReadyNext({ home: !!rn.home, away: !!rn.away });
+                applyFromDb(pa.readyNext || {});
             })
             .subscribe();
-        return () => { ch.unsubscribe(); };
-    }, [gameId]);
+
+        return () => { clearInterval(poll); ch.unsubscribe(); };
+    }, [gameId, myRole]);
 
     // Auto-advance when both players are ready for the next game in the series.
     // Hold the advance for 2.5s with a visible countdown so the game-over
@@ -371,13 +393,21 @@ export default function GamePage({ gameId, onBack }: Props) {
     const toggleReadyForNext = useCallback(async () => {
         if (!gameId || !myRole) return;
         const newValue = !readyNext[myRole];
-        // Optimistic update — the realtime subscription will reconcile.
+        // Open a grace window BEFORE the optimistic flip so any reconcile
+        // fetch that's already in flight will honor the optimistic value
+        // when its response lands. 2s covers RPC round-trip + realtime event
+        // delivery comfortably; extended again at RPC success so a slow poll
+        // response doesn't clobber immediately after.
+        readyWriteDeadlineRef.current = Date.now() + 2000;
         setReadyNext(prev => ({ ...prev, [myRole]: newValue }));
         try {
             await setReadyForNextGame(gameId, myRole, newValue);
+            // Keep the grace window alive briefly after the RPC lands so a
+            // poll that raced the write can't still overwrite with stale data.
+            readyWriteDeadlineRef.current = Date.now() + 1500;
         } catch (e) {
             console.error('Failed to toggle ready', e);
-            // Revert on failure
+            readyWriteDeadlineRef.current = 0;
             setReadyNext(prev => ({ ...prev, [myRole]: !newValue }));
         }
     }, [gameId, myRole, readyNext]);
