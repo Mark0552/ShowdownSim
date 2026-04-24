@@ -26,6 +26,47 @@ const supabase = SUPABASE_SERVICE_KEY
     : null;
 
 /**
+ * Fallback for seriesContext when series.reliever_history hasn't been synced
+ * yet. Scans every finished game's bullpen + archivedPlayers for non-starter
+ * pitchers with bf > 0 and attributes them to the creator or opponent bucket
+ * based on each game's home_user_id. Mirrors the client's
+ * syncSeriesRelieverHistoryFromGames. Takes an array of games and the
+ * creator's user_id.
+ */
+function deriveRelieverHistoryFromGames(games, creatorUserId) {
+    const history = { creator: {}, opponent: {} };
+    const finished = games
+        .filter(g => g.status === 'finished' && g.state)
+        .sort((a, b) => a.game_number - b.game_number);
+    for (const game of finished) {
+        for (const side of ['home', 'away']) {
+            const team = game.state && game.state[`${side}Team`];
+            if (!team) continue;
+            const sideUserId = side === 'home' ? game.home_user_id : game.away_user_id;
+            const bucket = sideUserId === creatorUserId ? 'creator' : 'opponent';
+            const pitcherStats = team.pitcherStats || {};
+            const pool = [];
+            if (team.pitcher) pool.push(team.pitcher);
+            for (const p of team.bullpen || []) pool.push(p);
+            if (team.archivedPlayers) {
+                for (const id of Object.keys(team.archivedPlayers)) {
+                    if (team.archivedPlayers[id].type === 'pitcher') pool.push(team.archivedPlayers[id]);
+                }
+            }
+            for (const p of pool) {
+                if (!p || !p.cardId) continue;
+                if (p.role === 'Starter') continue;
+                const stats = pitcherStats[p.cardId];
+                if (!stats || (stats.bf || 0) === 0) continue;
+                const list = history[bucket][p.cardId] = history[bucket][p.cardId] || [];
+                if (!list.includes(game.game_number)) list.push(game.game_number);
+            }
+        }
+    }
+    return history;
+}
+
+/**
  * Fallback for seriesContext when series.starter_offset hasn't been synced
  * yet. Scans game 1's home team for the Starter-N assignment (active pitcher
  * + bullpen + archivedPlayers, so a mid-game pitching change doesn't hide
@@ -262,11 +303,35 @@ async function handleJoinGame(ws, msg, setContext) {
                     } catch { /* fall through */ }
                 }
                 if (!offset) offset = 1;
+
+                // Same race for reliever_history — the client's sync is
+                // fire-and-forget at game-over, and the advance countdown is
+                // only 2s. Derive from finished games directly when the
+                // stored history is empty / absent.
+                let relieverHistory = series?.reliever_history;
+                const emptyHistory = !relieverHistory
+                    || (Object.keys(relieverHistory.creator || {}).length === 0
+                        && Object.keys(relieverHistory.opponent || {}).length === 0
+                        && Object.keys(relieverHistory.home || {}).length === 0
+                        && Object.keys(relieverHistory.away || {}).length === 0);
+                if (emptyHistory && series?.home_user_id) {
+                    try {
+                        const { data: siblingGames } = await supabase
+                            .from('games')
+                            .select('game_number, status, state, home_user_id, away_user_id')
+                            .eq('series_id', dbSeriesId);
+                        if (siblingGames && siblingGames.length > 0) {
+                            relieverHistory = deriveRelieverHistoryFromGames(siblingGames, series.home_user_id);
+                        }
+                    } catch { /* fall through */ }
+                }
+                if (!relieverHistory) relieverHistory = { creator: {}, opponent: {} };
+
                 authoritativeSeriesContext = {
                     gameNumber: dbGameNumber,
                     homeStarterOffset: offset,
                     awayStarterOffset: offset,
-                    relieverHistory: series?.reliever_history || { creator: {}, opponent: {} },
+                    relieverHistory,
                     creatorUserId: series?.home_user_id || null,
                 };
             } catch (e) {

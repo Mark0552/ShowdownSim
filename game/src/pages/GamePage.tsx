@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { GameState, GameAction } from '../engine/gameEngine';
 import { computeRunnerMovements } from '../engine/movements';
-import { getGame, getMyRole, getSeries, ensureNextSeriesGame, syncSeriesWinsFromGames, syncSeriesRelieverHistoryFromGames, syncSeriesStarterOffsetFromGames, findGame1StarterNumber, updateSeries, subscribeToSeriesGames, getSeriesGames, setReadyForNextGame } from '../lib/games';
+import { getGame, getMyRole, getSeries, ensureNextSeriesGame, syncSeriesWinsFromGames, syncSeriesRelieverHistoryFromGames, syncSeriesStarterOffsetFromGames, findGame1StarterNumber, updateSeries, subscribeToSeriesGames, setReadyForNextGame } from '../lib/games';
 import { getLineups } from '../lib/lineups';
 import { saveGameStats } from '../lib/stats';
 import { getUser } from '../lib/auth';
@@ -183,7 +183,6 @@ export default function GamePage({ gameId, onBack }: Props) {
                     if (lineup) lineupData = lineup.data;
                 }
 
-                let seriesContext = undefined;
                 if (game.series_id) {
                     try {
                         const seriesId = game.series_id;
@@ -195,30 +194,15 @@ export default function GamePage({ gameId, onBack }: Props) {
                             ? await syncSeriesWinsFromGames(seriesId).catch(() => getSeries(seriesId))
                             : await getSeries(seriesId);
                         setSeriesRow(series);
-                        if (game.game_number > 1) {
-                            // Prefer the stored series.starter_offset; if it
-                            // hasn't been synced yet (race with game-1 over),
-                            // derive it by scanning game 1's state across
-                            // pitcher + bullpen + archivedPlayers so a mid-
-                            // game pitching change doesn't hide the starter.
-                            let offset = series.starter_offset;
-                            if (!offset) {
-                                try {
-                                    const allGames = await getSeriesGames(game.series_id);
-                                    const game1 = allGames.find(g => g.game_number === 1);
-                                    if (game1?.state) offset = findGame1StarterNumber(game1.state) ?? 0;
-                                } catch { /* fall through */ }
-                            }
-                            offset = offset || 1;
-                            seriesContext = {
-                                gameNumber: game.game_number,
-                                homeStarterOffset: offset,
-                                awayStarterOffset: offset,
-                                relieverHistory: series.reliever_history || { home: {}, away: {} },
-                            };
-                        }
-                    } catch (e) { /* series context optional */ }
+                    } catch (e) { /* series row optional for UI */ }
                 }
+
+                // The server builds its own authoritative seriesContext from
+                // the game + series rows, so we don't need to send one — any
+                // client-side race (e.g. starter_offset not yet synced) would
+                // be harder to recover from there than in the server's DB-read
+                // path, which has its own fallbacks.
+                const seriesContext = undefined;
 
                 // Cache connection data for reconnects
                 connDataRef.current = { userId: user.id, role, lineupData, seriesContext };
