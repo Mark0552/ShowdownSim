@@ -338,7 +338,6 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const prevHalfRef = useRef(state.halfInning);
     const prevInningRef = useRef(state.inning);
     const gameStartedRef = useRef(false);
-    const victoryPlayedRef = useRef(false);
     useEffect(() => {
         preloadSounds();
         if (!gameStartedRef.current && state.inning >= 1) gameStartedRef.current = true;
@@ -346,12 +345,6 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         // Everything below waits for dice to finish
         if (diceAnimating) return;
 
-        // Game over (play once only)
-        if (state.isOver && state.winnerId && !victoryPlayedRef.current) {
-            victoryPlayedRef.current = true;
-            const iWon = state.winnerId === (myRole === 'home' ? state.homeTeam.userId : state.awayTeam.userId);
-            if (iWon) playSound('victory');
-        }
 
         // At-bat outcome sounds
         if (state.lastOutcome && state.lastOutcome !== prevOutcomeRef.current) {
