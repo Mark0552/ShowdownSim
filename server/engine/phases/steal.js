@@ -52,103 +52,129 @@ export function handleSteal(state, action) {
         catcherGPlayers.push({ cardId: catcher.cardId, name: catcher.name, position: 'C' });
     }
 
-    const sbAvailable = playerHasIcon(runner, 'SB') && canUseIcon(battingTeam, runnerId, 'SB');
+    const leadSbAvailable = playerHasIcon(runner, 'SB') && canUseIcon(battingTeam, runnerId, 'SB');
     const autoAdvanceFirst = !!(fromBase === 'second' && bases.first);
 
-    // Throw targets the defense can pick from. Single-runner steals offer one
-    // target (the stealer); the auto-advance scenario (2nd steals 3rd while
-    // 1st is on base) is treated as a true double steal — the catcher can
-    // throw at either the lead stealer (3rd) or the trailing runner (advancing
-    // to 2nd). The non-targeted runner reaches their base safely.
+    // Build the per-runner decision targets. The lead runner is committed to
+    // attempting (the offense already clicked STEAL for them); their only
+    // remaining choice is whether to use the SB icon. The trailing runner
+    // (auto-advance scenario) is a separate decision: STEAL or STAY, and
+    // then SB if applicable.
     const targets = [{
         runnerId, runnerName: runner.name, runnerSpeed: runner.speed,
         fromBase, toBase, throwBonus: stealThirdBonus,
+        // Outcome resolved as offense decides. 'pending-sb' = SB icon decision
+        // pending. 'pending-go' = STEAL/STAY decision pending (trailing only).
+        // 'sb' = automatic safe via icon. 'steal' = attempting (defense may
+        // throw). 'stay' = not moving.
+        sbAvailable: leadSbAvailable,
+        outcome: leadSbAvailable ? 'pending-sb' : 'steal',
     }];
     if (autoAdvanceFirst && bases.first) {
         const trailing = battingTeam.lineup.find(p => p.cardId === bases.first);
         if (trailing) {
+            const trailingSbAvailable = playerHasIcon(trailing, 'SB') && canUseIcon(battingTeam, trailing.cardId, 'SB');
             targets.push({
                 runnerId: trailing.cardId, runnerName: trailing.name, runnerSpeed: trailing.speed,
                 fromBase: 'first', toBase: 'second', throwBonus: 0,
+                sbAvailable: trailingSbAvailable,
+                outcome: 'pending-go',
             });
         }
     }
 
     const pendingSteal = {
-        // Primary stealer fields kept for back-compat with UI that hasn't
-        // been migrated to multi-target yet.
+        // Primary stealer fields kept for legacy code paths.
         runnerId, runnerName: runner.name, runnerSpeed: runner.speed,
         fromBase, toBase, catcherArm: catcherArmVal, stealThirdBonus,
-        catcherGPlayers, sbAvailable,
+        catcherGPlayers, sbAvailable: leadSbAvailable,
         autoAdvanceFirst,
-        // Multi-target throw choice (defense picks).
         targets,
     };
 
     const logs = [`${runner.name} attempts to steal ${toBase}!`];
     if (autoAdvanceFirst && targets.length > 1) {
-        logs.push(`${targets[1].runnerName} taking off from 1st on the play.`);
+        logs.push(`${targets[1].runnerName} on 1st may also attempt to steal.`);
     }
 
-    // If runner has SB icon, prompt offense first
-    if (sbAvailable) {
-        return {
-            ...state,
-            phase: 'steal_sb',
-            pendingSteal,
-            gameLog: [...state.gameLog, ...logs],
-        };
-    }
-
-    // Always go to defense-picks-throw — no auto-resolve. The defense must
-    // explicitly pick a target (and optionally a Gold Glove) before the
-    // catcher's throw is rolled.
-    return {
-        ...state,
-        phase: 'steal_resolve',
-        pendingSteal,
-        gameLog: [...state.gameLog, ...logs],
-    };
+    return advanceStealDecisions({ ...state, pendingSteal, gameLog: [...state.gameLog, ...logs] });
 }
 
+/**
+ * Walk the targets list and pick the next phase based on what's still
+ * 'pending-*'. If everyone's resolved, transition to either 'steal_resolve'
+ * (defense throws at any 'steal' target) or skip directly to enterPreAtBat
+ * (no one is attempting). Re-callable after every offense decision.
+ */
+function advanceStealDecisions(state) {
+    const ps = state.pendingSteal;
+    if (!ps || !ps.targets) return state;
+    // Find the first unresolved target. Decisions go in order so the lead
+    // resolves before the trailing runner is offered any choice.
+    const next = ps.targets.find(t => t.outcome === 'pending-sb' || t.outcome === 'pending-go');
+    if (next) {
+        // Phase mapping:
+        //   pending-sb (lead OR trailing) → steal_sb
+        //   pending-go (trailing only)    → steal_trailing_decision
+        const phase = next.outcome === 'pending-sb' ? 'steal_sb' : 'steal_trailing_decision';
+        return { ...state, phase };
+    }
+    // All decisions made.
+    const anyAttempting = ps.targets.some(t => t.outcome === 'steal');
+    if (anyAttempting) {
+        return { ...state, phase: 'steal_resolve' };
+    }
+    // Everyone is SB-safe or stayed — resolve immediately (no catcher throw).
+    return resolveSteal(state, null, null);
+}
+
+/**
+ * SB icon decision for the current pending-sb target. Updates that target's
+ * outcome and advances to the next decision (or resolves if all done).
+ */
 export function handleStealSbDecision(state, action) {
     if (state.phase !== 'steal_sb' || !state.pendingSteal) return state;
-    const steal = state.pendingSteal;
-    const battingSide = state.halfInning === 'top' ? 'awayTeam' : 'homeTeam';
-
+    const ps = state.pendingSteal;
+    const idx = ps.targets.findIndex(t => t.outcome === 'pending-sb');
+    if (idx < 0) return state;
+    const target = ps.targets[idx];
+    const newTargets = [...ps.targets];
     if (action.useSB) {
-        // SB icon used — automatic safe steal, no roll
-        let battingTeam = { ...state[battingSide] };
-        battingTeam = recordIconUse(battingTeam, steal.runnerId, 'SB');
-        battingTeam = addBatterStat(battingTeam, steal.runnerId, 'sb');
-        const bases = { ...state.bases };
-        bases[steal.toBase] = bases[steal.fromBase];
-        bases[steal.fromBase] = null;
-        const logs = [`SB icon used! ${steal.runnerName} steals ${steal.toBase} automatically!`];
-        if (steal.autoAdvanceFirst && bases.first) {
-            bases.second = bases.first;
-            bases.first = null;
-            logs.push('Runner on 1st advances to 2nd');
-        }
-        const pendingStealResult = {
-            runnerId: steal.runnerId, runnerName: steal.runnerName,
-            roll: 0, defenseTotal: 0, runnerSpeed: steal.runnerSpeed, safe: true, goldGloveUsed: false,
-        };
-        const runnersAlreadyStole = [
-            ...(state.runnersAlreadyStole || []),
-            steal.runnerId,
-        ];
-        return enterPreAtBat({
-            ...state, bases, [battingSide]: battingTeam,
-            pendingSteal: null, pendingStealResult,
-            stealUsedThisPreAtBat: true,
-            runnersAlreadyStole,
-            gameLog: [...state.gameLog, ...logs],
-        });
+        newTargets[idx] = { ...target, outcome: 'sb' };
+    } else {
+        // Declined SB — runner is still attempting; defense may throw at them.
+        newTargets[idx] = { ...target, outcome: 'steal' };
     }
+    return advanceStealDecisions({
+        ...state,
+        pendingSteal: { ...ps, targets: newTargets },
+    });
+}
 
-    // Declined SB — proceed to defense-picks-throw flow.
-    return { ...state, phase: 'steal_resolve' };
+/**
+ * Trailing-runner STEAL/STAY decision. If they choose STEAL, check whether
+ * they have an SB icon — if so, queue the SB sub-decision; otherwise mark
+ * outcome as 'steal'.
+ */
+export function handleStealTrailingDecision(state, action) {
+    if (state.phase !== 'steal_trailing_decision' || !state.pendingSteal) return state;
+    const ps = state.pendingSteal;
+    const idx = ps.targets.findIndex(t => t.outcome === 'pending-go');
+    if (idx < 0) return state;
+    const target = ps.targets[idx];
+    const newTargets = [...ps.targets];
+    if (!action.attempt) {
+        newTargets[idx] = { ...target, outcome: 'stay' };
+    } else if (target.sbAvailable) {
+        // Wants to attempt + has SB icon — offense decides SB next.
+        newTargets[idx] = { ...target, outcome: 'pending-sb' };
+    } else {
+        newTargets[idx] = { ...target, outcome: 'steal' };
+    }
+    return advanceStealDecisions({
+        ...state,
+        pendingSteal: { ...ps, targets: newTargets },
+    });
 }
 
 export function handleStealGDecision(state, action) {
@@ -160,22 +186,29 @@ export function resolveSteal(state, goldGloveCardId, targetRunnerId) {
     const steal = state.pendingSteal;
     if (!steal) return state;
 
-    // Pick which target the catcher is throwing at. Default to primary
-    // (the stealer) for back-compat. For autoAdvanceFirst with two targets,
-    // defense's STEAL_G_DECISION action carries targetRunnerId.
     const targets = steal.targets && steal.targets.length > 0 ? steal.targets : [{
         runnerId: steal.runnerId, runnerName: steal.runnerName, runnerSpeed: steal.runnerSpeed,
         fromBase: steal.fromBase, toBase: steal.toBase, throwBonus: steal.stealThirdBonus,
+        outcome: 'steal', sbAvailable: false,
     }];
-    const target = (targetRunnerId && targets.find(t => t.runnerId === targetRunnerId)) || targets[0];
-    const otherTargets = targets.filter(t => t.runnerId !== target.runnerId);
+    // Categorize targets by their resolved outcome.
+    const sbTargets = targets.filter(t => t.outcome === 'sb');
+    const stealTargets = targets.filter(t => t.outcome === 'steal');
+    // The catcher only throws if at least one runner is attempting. Pick the
+    // chosen target if specified, else default to the first 'steal' target.
+    const target = stealTargets.length > 0
+        ? ((targetRunnerId && stealTargets.find(t => t.runnerId === targetRunnerId)) || stealTargets[0])
+        : null;
+    // Other 'steal' targets that the catcher didn't throw at — they reach
+    // safely on the throw.
+    const otherStealTargets = target ? stealTargets.filter(t => t.runnerId !== target.runnerId) : [];
 
     const fieldingSide = state.halfInning === 'top' ? 'homeTeam' : 'awayTeam';
     const battingSide = state.halfInning === 'top' ? 'awayTeam' : 'homeTeam';
     let fieldingTeam = state[fieldingSide];
 
-    const roll = rollD20();
-    let armTotal = (steal.catcherArm || 0) + (target.throwBonus || 0);
+    const roll = target ? rollD20() : 0;
+    let armTotal = target ? (steal.catcherArm || 0) + (target.throwBonus || 0) : 0;
     let goldGloveUsed = false;
 
     if (goldGloveCardId) {
@@ -190,58 +223,72 @@ export function resolveSteal(state, goldGloveCardId, targetRunnerId) {
         }
     }
 
-    const defenseTotal = roll + armTotal;
-    const safe = !(defenseTotal > target.runnerSpeed); // defense must BEAT speed; ties go to runner
+    const defenseTotal = target ? roll + armTotal : 0;
+    const safe = target ? !(defenseTotal > target.runnerSpeed) : true;
 
     const bases = { ...state.bases };
     let outs = state.outs;
     const logs = [];
+    let battingTeam = { ...state[battingSide] };
 
-    const pendingStealResult = {
-        runnerId: target.runnerId, runnerName: target.runnerName,
-        roll, defenseTotal, runnerSpeed: target.runnerSpeed, safe, goldGloveUsed,
-    };
-
-    // Resolve the throw against the chosen target.
-    if (safe) {
-        bases[target.toBase] = bases[target.fromBase];
-        bases[target.fromBase] = null;
-        logs.push(`${target.runnerName} steals ${target.toBase}! Spd ${target.runnerSpeed} vs d20(${roll})+Arm(${armTotal})=${defenseTotal}`);
-    } else {
-        outs++;
-        bases[target.fromBase] = null;
-        logs.push(`${target.runnerName} caught stealing! Spd ${target.runnerSpeed} vs d20(${roll})+Arm(${armTotal})=${defenseTotal}`);
-        fieldingTeam = { ...fieldingTeam, outsRecordedByCurrentPitcher: (fieldingTeam.outsRecordedByCurrentPitcher || 0) + 1 };
+    // 1. SB-icon advances first — those runners are auto-safe regardless of throw.
+    for (const sbT of sbTargets) {
+        battingTeam = recordIconUse(battingTeam, sbT.runnerId, 'SB');
+        if (bases[sbT.fromBase] === sbT.runnerId) {
+            bases[sbT.toBase] = bases[sbT.fromBase];
+            bases[sbT.fromBase] = null;
+        }
+        logs.push(`SB icon used! ${sbT.runnerName} automatically reaches ${sbT.toBase}.`);
     }
 
-    // Other steal targets (the catcher couldn't throw at them — they're safe).
-    for (const other of otherTargets) {
-        if (bases[other.fromBase] === other.runnerId) {
-            bases[other.toBase] = bases[other.fromBase];
-            bases[other.fromBase] = null;
-            logs.push(`${other.runnerName} reaches ${other.toBase} on the throw to ${target.toBase}.`);
+    // 2. Resolve the catcher's throw against the chosen target (if any).
+    const pendingStealResult = target ? {
+        runnerId: target.runnerId, runnerName: target.runnerName,
+        roll, defenseTotal, runnerSpeed: target.runnerSpeed, safe, goldGloveUsed,
+    } : null;
+    if (target) {
+        if (safe) {
+            if (bases[target.fromBase] === target.runnerId) {
+                bases[target.toBase] = bases[target.fromBase];
+                bases[target.fromBase] = null;
+            }
+            logs.push(`${target.runnerName} steals ${target.toBase}! Spd ${target.runnerSpeed} vs d20(${roll})+Arm(${armTotal})=${defenseTotal}`);
+        } else {
+            outs++;
+            bases[target.fromBase] = null;
+            logs.push(`${target.runnerName} caught stealing! Spd ${target.runnerSpeed} vs d20(${roll})+Arm(${armTotal})=${defenseTotal}`);
+            fieldingTeam = { ...fieldingTeam, outsRecordedByCurrentPitcher: (fieldingTeam.outsRecordedByCurrentPitcher || 0) + 1 };
         }
     }
 
-    // Record SB/CS stats. The targeted runner gets SB on safe / CS on out.
-    // Any non-targeted runner who advanced gets credit for the steal too.
-    let battingTeam = { ...state[battingSide] };
-    if (safe) {
-        battingTeam = addBatterStat(battingTeam, target.runnerId, 'sb');
-    } else {
-        battingTeam = addBatterStat(battingTeam, target.runnerId, 'cs');
+    // 3. Other 'steal' targets (catcher didn't throw at them) reach safely.
+    for (const other of otherStealTargets) {
+        if (bases[other.fromBase] === other.runnerId) {
+            bases[other.toBase] = bases[other.fromBase];
+            bases[other.fromBase] = null;
+            logs.push(`${other.runnerName} reaches ${other.toBase} on the throw.`);
+        }
     }
-    for (const other of otherTargets) {
+
+    // 'stay' outcomes: do nothing.
+
+    // Stats. Each safe advance counts as SB; the thrown-at-out target gets CS.
+    for (const sbT of sbTargets) {
+        battingTeam = addBatterStat(battingTeam, sbT.runnerId, 'sb');
+    }
+    if (target) {
+        battingTeam = addBatterStat(battingTeam, target.runnerId, safe ? 'sb' : 'cs');
+    }
+    for (const other of otherStealTargets) {
         battingTeam = addBatterStat(battingTeam, other.runnerId, 'sb');
     }
 
-    // One-shot per pre-at-bat (flag set on both success and fail).
-    // Tag any runner who successfully advanced (target if safe, plus any
-    // other-target who reached their base on the throw) so they can't try
-    // another active steal on the same trip.
+    // One-shot tagging: every runner who successfully advanced is now flagged
+    // so they can't try another active steal on the same trip to the bases.
     const tagged = [];
-    if (safe) tagged.push(target.runnerId);
-    for (const other of otherTargets) tagged.push(other.runnerId);
+    for (const sbT of sbTargets) tagged.push(sbT.runnerId);
+    if (target && safe) tagged.push(target.runnerId);
+    for (const other of otherStealTargets) tagged.push(other.runnerId);
     const runnersAlreadyStole = tagged.length > 0
         ? [...(state.runnersAlreadyStole || []), ...tagged]
         : (state.runnersAlreadyStole || []);
@@ -253,12 +300,12 @@ export function resolveSteal(state, goldGloveCardId, targetRunnerId) {
         pendingSteal: null, pendingStealResult,
         stealUsedThisPreAtBat: true,
         runnersAlreadyStole,
-        lastRoll: roll, lastRollType: 'fielding', rollSequence: getRollSequence(),
+        // Only stamp roll metadata if a roll actually happened (for animation).
+        ...(target ? { lastRoll: roll, lastRollType: 'fielding', rollSequence: getRollSequence() } : {}),
         gameLog: [...state.gameLog, ...logs],
     };
 
     if (outs >= 3) return endHalfInning(newState);
 
-    // Return to pre_atbat for remaining decisions, then pitch
     return enterPreAtBat(newState);
 }

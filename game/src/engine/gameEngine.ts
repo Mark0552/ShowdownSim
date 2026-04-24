@@ -22,8 +22,9 @@ export type Phase =
     | 'swing'
     | 'result_icons'     // post-result icon decisions (K, HR, V, S)
     | 'gb_decision'      // defense chooses GB handling (DP, hold, force home)
-    | 'steal_sb'         // offense decides whether to use SB icon on steal
-    | 'steal_resolve'    // defense decides whether to use G on steal throw
+    | 'steal_sb'                 // offense decides whether to use SB icon for the current pending-sb runner
+    | 'steal_trailing_decision'  // offense decides STEAL or STAY for a trailing runner on 1st
+    | 'steal_resolve'            // defense picks throw target + optional G icon
     | 'extra_base_offer' // offense decides whether to send runners
     | 'extra_base'       // defense chooses which runner to throw at
     | 'game_over';
@@ -173,6 +174,8 @@ export interface GbOptions {
 // STEAL
 // ============================================================================
 
+export type StealOutcome = 'pending-sb' | 'pending-go' | 'sb' | 'steal' | 'stay';
+
 export interface StealThrowTarget {
     runnerId: string;
     runnerName: string;
@@ -181,6 +184,11 @@ export interface StealThrowTarget {
     toBase: string;
     /** +5 if throwing to 3rd (stays on the catcher's roll, not on speed). */
     throwBonus: number;
+    /** Per-runner decision state. Resolved by the offense before the defense
+     *  picks a throw target. */
+    outcome?: StealOutcome;
+    /** Whether this runner has an SB icon available. */
+    sbAvailable?: boolean;
 }
 
 export interface StealAttempt {
@@ -320,6 +328,7 @@ export type GameAction =
     | { type: 'STEAL'; runnerId: string }
     | { type: 'STEAL_SB_DECISION'; useSB: boolean }
     | { type: 'STEAL_G_DECISION'; goldGloveCardId?: string; targetRunnerId?: string }
+    | { type: 'STEAL_TRAILING_DECISION'; attempt: boolean }
     | { type: 'SKIP_SUB' }
     | { type: 'SKIP_ICONS' }
     | { type: 'SKIP_EXTRA_BASE' }

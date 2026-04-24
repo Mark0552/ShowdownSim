@@ -389,8 +389,9 @@ const VALID_ACTIONS = {
     'swing':             ['ROLL_SWING'],
     'result_icons':      ['USE_ICON', 'SKIP_ICONS'],
     'gb_decision':       ['GB_DECISION'],
-    'steal_sb':          ['STEAL_SB_DECISION'],
-    'steal_resolve':     ['STEAL_G_DECISION'],
+    'steal_sb':                  ['STEAL_SB_DECISION'],
+    'steal_trailing_decision':   ['STEAL_TRAILING_DECISION'],
+    'steal_resolve':             ['STEAL_G_DECISION'],
     'extra_base_offer':  ['SEND_RUNNERS', 'HOLD_RUNNERS'],
     'extra_base':        ['EXTRA_BASE_THROW'],
 };

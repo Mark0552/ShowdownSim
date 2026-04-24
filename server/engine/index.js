@@ -12,7 +12,7 @@ import {
 import { handleDefenseSetupCommit, handlePositionSwap } from './phases/defenseSetup.js';
 import { handleUseIcon, handleSkipIcons } from './phases/resultIcons.js';
 import { handleGbDecision } from './phases/groundball.js';
-import { handleSteal, handleStealSbDecision, handleStealGDecision } from './phases/steal.js';
+import { handleSteal, handleStealSbDecision, handleStealTrailingDecision, handleStealGDecision } from './phases/steal.js';
 import { handleSendRunners, handleHoldRunners, handleExtraBaseThrow, handleSkipExtraBase } from './phases/extrabase.js';
 import { handleSacBunt } from './phases/bunt.js';
 import { handleIntentionalWalk, handleSkipIBB, handleSkipBunt } from './phases/ibb.js';
@@ -34,8 +34,9 @@ export function whoseTurn(state) {
         case 'swing':             return offense;
         case 'result_icons':      return state.iconPrompt?.team || offense;
         case 'gb_decision':       return defense;
-        case 'steal_sb':          return offense;  // offense decides whether to use SB icon
-        case 'steal_resolve':     return defense;
+        case 'steal_sb':                return offense;  // offense decides SB icon usage
+        case 'steal_trailing_decision': return offense;  // offense picks STEAL/STAY for trailing runner
+        case 'steal_resolve':           return defense;
         case 'extra_base_offer':  return offense;
         case 'extra_base':        return defense;
         default: return null;
@@ -57,8 +58,9 @@ export function processAction(state, action) {
         case 'USE_ICON':           return handleUseIcon(state, action);
         case 'GB_DECISION':        return handleGbDecision(state, action);
         case 'STEAL':              return handleSteal(state, action);
-        case 'STEAL_SB_DECISION':  return handleStealSbDecision(state, action);
-        case 'STEAL_G_DECISION':   return handleStealGDecision(state, action);
+        case 'STEAL_SB_DECISION':       return handleStealSbDecision(state, action);
+        case 'STEAL_TRAILING_DECISION': return handleStealTrailingDecision(state, action);
+        case 'STEAL_G_DECISION':        return handleStealGDecision(state, action);
         case 'SEND_RUNNERS':       return handleSendRunners(state, action);
         case 'HOLD_RUNNERS':       return handleHoldRunners(state);
         case 'EXTRA_BASE_THROW':   return handleExtraBaseThrow(state, action);

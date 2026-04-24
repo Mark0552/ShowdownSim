@@ -549,23 +549,57 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
             })()}
 
             {/* Steal SB phase: offense decides whether to use SB icon */}
-            {!state.isOver && isMyTurn && state.phase === 'steal_sb' && state.pendingSteal && (
-                <g>
-                    <text x={CX} y={LABEL_Y} textAnchor="middle" fontSize="14" fill="#4ade80" fontWeight="normal" fontFamily="Arial">
-                        {state.pendingSteal.runnerName} stealing {state.pendingSteal.toBase} — Use SB icon for automatic safe?
-                    </text>
-                    <g className="roll-button" onClick={() => onAction({ type: 'STEAL_SB_DECISION', useSB: true })} cursor="pointer">
-                        <rect x={CX - 206} y={ROW1} width="200" height={ROW1_H} rx="6" fill="#4ade80" stroke="#6bff9a" strokeWidth="1.5"/>
-                        <text x={CX - 106} y={ROW1 + 32} textAnchor="middle" fontSize="20" fill="#002" fontWeight="normal" fontFamily="Impact">USE SB (AUTO SAFE)</text>
-                        <text x={CX - 106} y={ROW1 + 58} textAnchor="middle" fontSize="14" fill="rgba(0,0,0,0.75)" fontFamily="Arial">Runner safe automatically</text>
+            {!state.isOver && isMyTurn && state.phase === 'steal_sb' && state.pendingSteal && (() => {
+                // Could be the lead runner OR a trailing runner — find whoever
+                // is currently 'pending-sb'. Show their name + target base.
+                const ps: any = state.pendingSteal;
+                const targets: any[] = ps.targets || [];
+                const t = targets.find(x => x.outcome === 'pending-sb') || targets[0] || ps;
+                const arm = ps.catcherArm || 0;
+                const bonus = t.throwBonus ?? ps.stealThirdBonus ?? 0;
+                return (
+                    <g>
+                        <text x={CX} y={LABEL_Y} textAnchor="middle" fontSize="14" fill="#4ade80" fontWeight="normal" fontFamily="Arial">
+                            {t.runnerName} {t.fromBase ? `(${t.fromBase} → ${t.toBase})` : ''} — Use SB icon for automatic safe?
+                        </text>
+                        <g className="roll-button" onClick={() => onAction({ type: 'STEAL_SB_DECISION', useSB: true })} cursor="pointer">
+                            <rect x={CX - 206} y={ROW1} width="200" height={ROW1_H} rx="6" fill="#4ade80" stroke="#6bff9a" strokeWidth="1.5"/>
+                            <text x={CX - 106} y={ROW1 + 32} textAnchor="middle" fontSize="20" fill="#002" fontWeight="normal" fontFamily="Impact">USE SB (AUTO SAFE)</text>
+                            <text x={CX - 106} y={ROW1 + 58} textAnchor="middle" fontSize="14" fill="rgba(0,0,0,0.75)" fontFamily="Arial">Runner safe automatically</text>
+                        </g>
+                        <g className="roll-button" onClick={() => onAction({ type: 'STEAL_SB_DECISION', useSB: false })} cursor="pointer">
+                            <rect x={CX + 6} y={ROW1} width="200" height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
+                            <text x={CX + 106} y={ROW1 + 32} textAnchor="middle" fontSize="20" fill="#ccc" fontWeight="normal" fontFamily="Impact">NORMAL STEAL</text>
+                            <text x={CX + 106} y={ROW1 + 58} textAnchor="middle" fontSize="12" fill="rgba(204,204,204,0.85)" fontFamily="monospace">Spd {t.runnerSpeed} vs d20+Arm({arm}){bonus ? `+${bonus}` : ''}</text>
+                        </g>
                     </g>
-                    <g className="roll-button" onClick={() => onAction({ type: 'STEAL_SB_DECISION', useSB: false })} cursor="pointer">
-                        <rect x={CX + 6} y={ROW1} width="200" height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
-                        <text x={CX + 106} y={ROW1 + 32} textAnchor="middle" fontSize="20" fill="#ccc" fontWeight="normal" fontFamily="Impact">NORMAL STEAL</text>
-                        <text x={CX + 106} y={ROW1 + 58} textAnchor="middle" fontSize="12" fill="rgba(204,204,204,0.85)" fontFamily="monospace">Spd {state.pendingSteal.runnerSpeed} vs d20+Arm({state.pendingSteal.catcherArm}){state.pendingSteal.stealThirdBonus ? `+${state.pendingSteal.stealThirdBonus}` : ''}</text>
+                );
+            })()}
+
+            {/* Trailing runner: STEAL or STAY decision */}
+            {!state.isOver && isMyTurn && state.phase === 'steal_trailing_decision' && state.pendingSteal && (() => {
+                const ps: any = state.pendingSteal;
+                const targets: any[] = ps.targets || [];
+                const t = targets.find(x => x.outcome === 'pending-go');
+                if (!t) return null;
+                return (
+                    <g>
+                        <text x={CX} y={LABEL_Y} textAnchor="middle" fontSize="14" fill="#4ade80" fontWeight="normal" fontFamily="Arial">
+                            Trailing runner {t.runnerName} on {t.fromBase} — attempt to steal {t.toBase}?
+                        </text>
+                        <g className="roll-button" onClick={() => onAction({ type: 'STEAL_TRAILING_DECISION', attempt: true })} cursor="pointer">
+                            <rect x={CX - 206} y={ROW1} width="200" height={ROW1_H} rx="6" fill="#4ade80" stroke="#6bff9a" strokeWidth="1.5"/>
+                            <text x={CX - 106} y={ROW1 + 32} textAnchor="middle" fontSize="20" fill="#002" fontWeight="normal" fontFamily="Impact">ATTEMPT STEAL</text>
+                            <text x={CX - 106} y={ROW1 + 58} textAnchor="middle" fontSize="12" fill="rgba(0,0,0,0.75)" fontFamily="Arial">{t.runnerName} → {t.toBase}</text>
+                        </g>
+                        <g className="roll-button" onClick={() => onAction({ type: 'STEAL_TRAILING_DECISION', attempt: false })} cursor="pointer">
+                            <rect x={CX + 6} y={ROW1} width="200" height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
+                            <text x={CX + 106} y={ROW1 + 32} textAnchor="middle" fontSize="20" fill="#ccc" fontWeight="normal" fontFamily="Impact">STAY ON {String(t.fromBase).toUpperCase()}</text>
+                            <text x={CX + 106} y={ROW1 + 58} textAnchor="middle" fontSize="12" fill="rgba(204,204,204,0.85)" fontFamily="Arial">{t.runnerName} holds</text>
+                        </g>
                     </g>
-                </g>
-            )}
+                );
+            })()}
 
             {/* Steal resolve phase: defense decides whether to use G */}
             {!state.isOver && isMyTurn && state.phase === 'steal_resolve' && state.pendingSteal && (() => {
@@ -575,10 +609,17 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 // single-target steals there's just one. For the auto-advance-
                 // first scenario (2nd steals 3rd, 1st on base) there are two —
                 // catcher can throw at the lead stealer OR the trailing runner.
-                const targets = (ps.targets && ps.targets.length > 0)
+                // Only show throw buttons for runners who actually have
+                // outcome 'steal' (an SB-iconed runner is auto-safe and not
+                // throw-eligible). Fall back to legacy single-target shape
+                // when targets[] is missing.
+                const allTargets = (ps.targets && ps.targets.length > 0)
                     ? ps.targets
                     : [{ runnerId: ps.runnerId, runnerName: ps.runnerName, runnerSpeed: ps.runnerSpeed,
-                         fromBase: ps.fromBase, toBase: ps.toBase, throwBonus: ps.stealThirdBonus || 0 }];
+                         fromBase: ps.fromBase, toBase: ps.toBase, throwBonus: ps.stealThirdBonus || 0,
+                         outcome: 'steal' }];
+                const targets = allTargets.filter((t: any) => !t.outcome || t.outcome === 'steal');
+                if (targets.length === 0) return null;
                 const catchers = ps.catcherGPlayers || [];
                 const hasG = catchers.length > 0;
                 const isMulti = targets.length > 1;
@@ -704,6 +745,7 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                     extra_base_offer: 'Offense deciding extra bases...',
                     extra_base: 'Defense choosing throw...',
                     steal_sb: 'Runner deciding steal...',
+                    steal_trailing_decision: 'Trailing runner deciding steal...',
                     steal_resolve: 'Defense deciding throw...',
                     result_icons: 'Deciding on icon use...',
                     offense_re: 'Batter choosing action...',
