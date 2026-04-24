@@ -28,12 +28,14 @@ export default function DefenseSetupModal({ state, myRole, isMyTurn, onAction }:
     const isHomeDefense = state.halfInning === 'top';
 
     if (!isMine) {
-        // Non-blocking banner — opponent can still browse Box Score, Log,
-        // Dice Rolls, and Exit.
+        // Full-screen blocking overlay — neither side should be able to take
+        // any action while the defense modal is open. The opponent waits.
         return (
-            <div className="dsm-opp-banner">
-                <div className="dsm-wait-title">OPPONENT ARRANGING DEFENSE</div>
-                <div className="dsm-wait-sub">Waiting for the opposing manager to set the field.</div>
+            <div className="dsm-overlay dsm-opp">
+                <div className="dsm-opp-card">
+                    <div className="dsm-wait-title">OPPONENT ARRANGING DEFENSE</div>
+                    <div className="dsm-wait-sub">Waiting for the opposing manager to set the field.</div>
+                </div>
             </div>
         );
     }

@@ -173,15 +173,30 @@ export interface GbOptions {
 // STEAL
 // ============================================================================
 
+export interface StealThrowTarget {
+    runnerId: string;
+    runnerName: string;
+    runnerSpeed: number;
+    fromBase: string;
+    toBase: string;
+    /** +5 if throwing to 3rd (stays on the catcher's roll, not on speed). */
+    throwBonus: number;
+}
+
 export interface StealAttempt {
+    // Primary stealer (kept for back-compat with code paths that haven't
+    // migrated to multi-target yet).
     runnerId: string;
     runnerName: string;
     runnerSpeed: number;
     fromBase: string;
     toBase: string;
     catcherArm: number;
-    stealThirdBonus: number;  // +5 if stealing 3rd
-    catcherGPlayers: GPlayerOption[];  // catchers with unused G icon
+    stealThirdBonus: number;
+    catcherGPlayers: GPlayerOption[];
+    /** All throw targets the defense can pick from. Single-runner steals
+     *  list one target; the auto-advance-on-1st scenario lists two. */
+    targets?: StealThrowTarget[];
 }
 
 export interface StealResult {
@@ -304,7 +319,7 @@ export type GameAction =
     | { type: 'GB_DECISION'; choice: 'dp' | 'hold' | 'force_home'; goldGloveCardId?: string }
     | { type: 'STEAL'; runnerId: string }
     | { type: 'STEAL_SB_DECISION'; useSB: boolean }
-    | { type: 'STEAL_G_DECISION'; goldGloveCardId?: string }
+    | { type: 'STEAL_G_DECISION'; goldGloveCardId?: string; targetRunnerId?: string }
     | { type: 'SKIP_SUB' }
     | { type: 'SKIP_ICONS' }
     | { type: 'SKIP_EXTRA_BASE' }

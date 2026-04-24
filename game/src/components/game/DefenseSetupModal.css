@@ -240,21 +240,15 @@
 }
 .dsm-accept:hover:not(:disabled) { filter: brightness(1.1); }
 
-/* Opponent banner — non-blocking, pinned to top of screen so the user
-   can still interact with Box Score, Log, Dice Rolls, Exit. */
-.dsm-opp-banner {
-    position: fixed;
-    top: 56px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(10, 22, 40, 0.95);
+/* Opponent overlay — full-screen blocking so neither side can take an
+   action while defense is being arranged. */
+.dsm-opp-card {
+    background: rgba(10, 22, 40, 0.98);
     border: 1px solid #d4a018;
     border-radius: 8px;
-    padding: 14px 28px;
+    padding: 28px 48px;
     text-align: center;
-    z-index: 1500;
-    pointer-events: none;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.6);
 }
 .dsm-wait-title {
     color: #d4a018;

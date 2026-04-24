@@ -569,38 +569,77 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
 
             {/* Steal resolve phase: defense decides whether to use G */}
             {!state.isOver && isMyTurn && state.phase === 'steal_resolve' && state.pendingSteal && (() => {
-                const ps = state.pendingSteal;
+                const ps: any = state.pendingSteal;
                 const arm = ps.catcherArm || 0;
-                const bonus = ps.stealThirdBonus || 0;
-                const baseDef = `d20+Arm(${arm})${bonus ? `+${bonus}(3rd)` : ''} vs Spd ${ps.runnerSpeed}`;
-                const gDef = `d20+Arm(${arm}+10)${bonus ? `+${bonus}(3rd)` : ''} vs Spd ${ps.runnerSpeed}`;
+                // Multi-target: defense picks which runner to throw at. For
+                // single-target steals there's just one. For the auto-advance-
+                // first scenario (2nd steals 3rd, 1st on base) there are two —
+                // catcher can throw at the lead stealer OR the trailing runner.
+                const targets = (ps.targets && ps.targets.length > 0)
+                    ? ps.targets
+                    : [{ runnerId: ps.runnerId, runnerName: ps.runnerName, runnerSpeed: ps.runnerSpeed,
+                         fromBase: ps.fromBase, toBase: ps.toBase, throwBonus: ps.stealThirdBonus || 0 }];
                 const catchers = ps.catcherGPlayers || [];
-                const btnW = 240;
-                const noGW = 200;
+                const hasG = catchers.length > 0;
+                const isMulti = targets.length > 1;
+                const btnW = 260;
                 const gap = 10;
-                const totalW = catchers.length * (btnW + gap) + noGW;
-                let bx = CX - totalW / 2;
+                const rowCount = (1 + (hasG ? 1 : 0)); // throw row, optional G row
+                const headerY = LABEL_Y;
+                const headerText = isMulti
+                    ? `Double steal! Catcher chooses throw target.`
+                    : `${targets[0].runnerName} stealing ${targets[0].toBase} — defense throws.`;
+                // First row: one button per throw target (no G).
+                const totalW1 = targets.length * btnW + (targets.length - 1) * gap;
+                let bx1 = CX - totalW1 / 2;
+                // Second row (only if catcher has G): same buttons, adds +10 arm.
+                const totalW2 = hasG ? targets.length * btnW + (targets.length - 1) * gap : 0;
+                let bx2 = CX - totalW2 / 2;
+                const ROW2 = ROW1 + ROW1_H + 10;
+                void rowCount;
                 return (
                     <g>
-                        <text x={CX} y={LABEL_Y} textAnchor="middle" fontSize="14" fill="#e94560" fontWeight="normal" fontFamily="Arial">
-                            {ps.runnerName} stealing {ps.toBase} — Use Gold Glove?
+                        <text x={CX} y={headerY} textAnchor="middle" fontSize="14" fill="#e94560" fontWeight="normal" fontFamily="Arial">
+                            {headerText}
                         </text>
-                        {catchers.map((gp: any, i: number) => {
-                            const x = bx;
-                            bx += btnW + gap;
+                        {/* Plain throw — one button per target */}
+                        {targets.map((t: any, i: number) => {
+                            const def = `d20+Arm(${arm})${t.throwBonus ? `+${t.throwBonus}(${t.toBase})` : ''} vs Spd ${t.runnerSpeed}`;
+                            const x = bx1;
+                            bx1 += btnW + gap;
                             return (
-                                <g key={`sg-${i}`} className="roll-button" onClick={() => onAction({ type: 'STEAL_G_DECISION', goldGloveCardId: gp.cardId })} cursor="pointer">
-                                    <rect x={x} y={ROW1} width={btnW} height={ROW1_H} rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
-                                    <text x={x + btnW / 2} y={ROW1 + 32} textAnchor="middle" fontSize="20" fill="#002" fontWeight="normal" fontFamily="Impact">USE G: {gp.name}</text>
-                                    <text x={x + btnW / 2} y={ROW1 + 58} textAnchor="middle" fontSize="12" fill="rgba(0,0,0,0.8)" fontFamily="monospace">{gDef}</text>
+                                <g key={`thr-${i}`} className="roll-button" cursor="pointer"
+                                   onClick={() => onAction({ type: 'STEAL_G_DECISION', targetRunnerId: t.runnerId })}>
+                                    <rect x={x} y={ROW1} width={btnW} height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
+                                    <text x={x + btnW / 2} y={ROW1 + 30} textAnchor="middle" fontSize="18" fill="#fff" fontWeight="normal" fontFamily="Impact">
+                                        THROW TO {String(t.toBase).toUpperCase()}
+                                    </text>
+                                    <text x={x + btnW / 2} y={ROW1 + 50} textAnchor="middle" fontSize="11" fill="rgba(255,255,255,0.85)" fontFamily="monospace">
+                                        ({t.runnerName})
+                                    </text>
+                                    <text x={x + btnW / 2} y={ROW1 + 66} textAnchor="middle" fontSize="11" fill="rgba(255,255,255,0.7)" fontFamily="monospace">{def}</text>
                                 </g>
                             );
                         })}
-                        <g className="roll-button" onClick={() => onAction({ type: 'STEAL_G_DECISION' })} cursor="pointer">
-                            <rect x={bx} y={ROW1} width={noGW} height={ROW1_H} rx="6" fill="#334155" stroke="#64748b" strokeWidth="1.5"/>
-                            <text x={bx + noGW / 2} y={ROW1 + 32} textAnchor="middle" fontSize="20" fill="#ccc" fontWeight="normal" fontFamily="Impact">NO GOLD GLOVE</text>
-                            <text x={bx + noGW / 2} y={ROW1 + 58} textAnchor="middle" fontSize="12" fill="rgba(204,204,204,0.85)" fontFamily="monospace">{baseDef}</text>
-                        </g>
+                        {/* Optional second row: G-icon throw target buttons */}
+                        {hasG && targets.map((t: any, i: number) => {
+                            const def = `d20+Arm(${arm}+10)${t.throwBonus ? `+${t.throwBonus}(${t.toBase})` : ''} vs Spd ${t.runnerSpeed}`;
+                            const x = bx2;
+                            bx2 += btnW + gap;
+                            return (
+                                <g key={`gt-${i}`} className="roll-button" cursor="pointer"
+                                   onClick={() => onAction({ type: 'STEAL_G_DECISION', targetRunnerId: t.runnerId, goldGloveCardId: catchers[0].cardId })}>
+                                    <rect x={x} y={ROW2} width={btnW} height={ROW1_H} rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
+                                    <text x={x + btnW / 2} y={ROW2 + 30} textAnchor="middle" fontSize="18" fill="#002" fontWeight="normal" fontFamily="Impact">
+                                        USE G + THROW TO {String(t.toBase).toUpperCase()}
+                                    </text>
+                                    <text x={x + btnW / 2} y={ROW2 + 50} textAnchor="middle" fontSize="11" fill="rgba(0,0,0,0.85)" fontFamily="monospace">
+                                        ({catchers[0].name})
+                                    </text>
+                                    <text x={x + btnW / 2} y={ROW2 + 66} textAnchor="middle" fontSize="11" fill="rgba(0,0,0,0.7)" fontFamily="monospace">{def}</text>
+                                </g>
+                            );
+                        })}
                     </g>
                 );
             })()}
