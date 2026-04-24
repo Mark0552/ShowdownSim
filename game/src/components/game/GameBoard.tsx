@@ -206,6 +206,9 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         bases: state.bases, outs: state.outs, score: state.score,
         battingTeam: state.halfInning === 'top' ? state.awayTeam : state.homeTeam,
         fieldingTeam: state.halfInning === 'top' ? state.homeTeam : state.awayTeam,
+        homeTeam: state.homeTeam,
+        awayTeam: state.awayTeam,
+        icon20UsedThisInning: !!state.icon20UsedThisInning,
         halfInning: state.halfInning as string,
         inning: state.inning,
         phase: state.phase as string,
@@ -304,7 +307,13 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
 
     // Update frozen display values when NOT animating
     if (!animatingRef.current) {
-        frozenRef.current = { bases: state.bases, outs: state.outs, score: state.score, battingTeam, fieldingTeam, halfInning: state.halfInning, inning: state.inning, phase: state.phase };
+        frozenRef.current = {
+            bases: state.bases, outs: state.outs, score: state.score,
+            battingTeam, fieldingTeam,
+            homeTeam: state.homeTeam, awayTeam: state.awayTeam,
+            icon20UsedThisInning: !!state.icon20UsedThisInning,
+            halfInning: state.halfInning, inning: state.inning, phase: state.phase,
+        };
     }
 
     // Consume server-driven movements: wait for dice to finish, then animate
@@ -447,6 +456,9 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const displayScore = frozenRef.current.score;
     const displayTeam = frozenRef.current.battingTeam;
     const displayFieldingTeam = frozenRef.current.fieldingTeam;
+    const displayHomeTeam = frozenRef.current.homeTeam;
+    const displayAwayTeam = frozenRef.current.awayTeam;
+    const displayIcon20Used = frozenRef.current.icon20UsedThisInning;
     const displayHalfInning = frozenRef.current.halfInning;
     const displayInning = frozenRef.current.inning;
     const displayPhase = frozenRef.current.phase;
@@ -494,16 +506,19 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         if (!player.icons || player.icons.length === 0) return null;
         const usage = team.iconUsage?.[player.cardId] || {};
         const maxUses: Record<string, number> = { V: 2 };
-        // Determine if this pitcher is actively fielding this half-inning
+        // Determine if this pitcher is actively fielding this half-inning.
+        // Uses FROZEN display values so the 20-icon crossed-out state doesn't
+        // flip the moment the server broadcasts the half-inning end — that
+        // would reveal the 3rd out before the play animation completes.
         const isActivePitcher = team.pitcher.cardId === player.cardId;
-        const isFieldingHalf = (team === state.homeTeam && state.halfInning === 'top') || (team === state.awayTeam && state.halfInning === 'bottom');
+        const isFieldingHalf = (team === displayHomeTeam && displayHalfInning === 'top') || (team === displayAwayTeam && displayHalfInning === 'bottom');
         const items: { icon: string; used: boolean }[] = [];
         for (const icon of player.icons) {
             // CY is never crossed out (passive ability checked at end of inning)
             if (icon === 'CY') { items.push({ icon, used: false }); continue; }
             // 20 only crossed out when this pitcher is actively pitching and used it this inning
             if (icon === '20') {
-                const crossed = isActivePitcher && isFieldingHalf && !!state.icon20UsedThisInning;
+                const crossed = isActivePitcher && isFieldingHalf && displayIcon20Used;
                 items.push({ icon, used: crossed });
                 continue;
             }
@@ -554,7 +569,11 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         });
     };
 
-    // Pitcher row renderer
+    // Pitcher row renderer — all inputs routed through the frozen team
+    // (passed as `team`) and `displayInning` so the IP counter doesn't tick
+    // up the instant the server broadcasts the 3rd-out state change. Without
+    // this, the half-inning inning bump would reveal the out ahead of the
+    // play animation concluding.
     const renderPitcher = (team: typeof state.homeTeam, panelX: number) => {
         const w = PW - 12;
         const py = MAIN_TOP + 66 + 9 * 58 + 6;
@@ -562,7 +581,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         const pRuns = team.pitcherStats?.[team.pitcher.cardId]?.r || 0;
         const pCyBonus = team.cyBonusInnings || 0;
         const pEffIp = Math.max(0, pCardIp - Math.floor(pRuns / 3) + pCyBonus);
-        const pCurInn = state.inning - (team.pitcherEntryInning || 1) + 1;
+        const pCurInn = displayInning - (team.pitcherEntryInning || 1) + 1;
         return (
             <g cursor="pointer" onMouseEnter={(e) => handlePlayerHover(team.pitcher, e.nativeEvent as any)} onMouseLeave={handlePlayerLeave}>
                 <rect x={panelX + 6} y={py} width={w} height="48" rx="3" fill="#0c1a40" stroke="#1a3060" strokeWidth="0.5"/>
@@ -748,8 +767,8 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 <rect x="4" y={MAIN_TOP + 4} width={PW - 8} height="30" rx="3" fill="url(#navyGrad)"/>
                 <text x={PW / 2} y={MAIN_TOP + 24} textAnchor="middle" fontSize="14" fill="white" fontWeight="normal" letterSpacing="2" fontFamily="Impact,sans-serif">AWAY {'\u2014'} {awayName.toUpperCase()}</text>
                 <text x={PW / 2} y={MAIN_TOP + 54} textAnchor="middle" fontSize="16" fill="#d4a018" fontWeight="normal" letterSpacing="3" fontFamily="Impact">LINEUP</text>
-                {renderLineup(state.awayTeam, 0, false)}
-                {renderPitcher(state.awayTeam, 0)}
+                {renderLineup(displayAwayTeam, 0, false)}
+                {renderPitcher(displayAwayTeam, 0)}
                 <g cursor="pointer" className="roll-button" onClick={() => setShowAwayBullpen(!showAwayBullpen)}>
                     <rect x="6" y={MAIN_BOT - 40} width={PW - 12} height="34" rx="4" fill="#0a1830" stroke="#d4a018" strokeWidth="1"/>
                     <text x={PW / 2} y={MAIN_BOT - 19} textAnchor="middle" fontSize="13" fill="#d4a018" fontWeight="normal" fontFamily="Impact" letterSpacing="1">{showAwayBullpen ? '\u25B2 BULLPEN / BENCH' : '\u25BC BULLPEN / BENCH'}</text>
@@ -760,8 +779,8 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 <rect x={HX + 4} y={MAIN_TOP + 4} width={PW - 8} height="30" rx="3" fill="url(#redGrad)"/>
                 <text x={HX + PW / 2} y={MAIN_TOP + 24} textAnchor="middle" fontSize="14" fill="white" fontWeight="normal" letterSpacing="2" fontFamily="Impact,sans-serif">HOME {'\u2014'} {homeName.toUpperCase()}</text>
                 <text x={HX + PW / 2} y={MAIN_TOP + 54} textAnchor="middle" fontSize="16" fill="#d4a018" fontWeight="normal" letterSpacing="3" fontFamily="Impact">LINEUP</text>
-                {renderLineup(state.homeTeam, HX, true)}
-                {renderPitcher(state.homeTeam, HX)}
+                {renderLineup(displayHomeTeam, HX, true)}
+                {renderPitcher(displayHomeTeam, HX)}
                 <g cursor="pointer" className="roll-button" onClick={() => setShowHomeBullpen(!showHomeBullpen)}>
                     <rect x={HX + 6} y={MAIN_BOT - 40} width={PW - 12} height="34" rx="4" fill="#0a1830" stroke="#d4a018" strokeWidth="1"/>
                     <text x={HX + PW / 2} y={MAIN_BOT - 19} textAnchor="middle" fontSize="13" fill="#d4a018" fontWeight="normal" fontFamily="Impact" letterSpacing="1">{showHomeBullpen ? '\u25B2 BULLPEN / BENCH' : '\u25BC BULLPEN / BENCH'}</text>
