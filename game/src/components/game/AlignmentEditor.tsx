@@ -15,7 +15,7 @@
 
 import { useMemo, useState } from 'react';
 import type { GameState, GameAction, PlayerSlot, TeamState } from '../../engine/gameEngine';
-import { penaltyForAssignment } from '../../lib/fielding';
+import { penaltyForAssignment, rawFieldingForAssignment } from '../../lib/fielding';
 import './AlignmentEditor.css';
 
 const FIELD_SLOTS = ['C', '1B', '2B', '3B', 'SS', 'LF-RF-1', 'CF', 'LF-RF-2', 'DH'] as const;
@@ -156,9 +156,12 @@ export default function AlignmentEditor({
             const cardId = alignment[slot];
             const card = cardId ? byId.get(cardId) : undefined;
             if (!card) continue;
-            const norm = (slot as string).replace(/-\d+$/, '');
-            const raw = (norm === 'C') ? (card.arm || 0) : (card.fielding || 0);
+            // Raw value at the staged slot (NOT the player's current live slot).
+            // Using card.fielding/card.arm here would have shown 0 whenever a
+            // player was newly moved into a position they could play natively.
+            const raw = rawFieldingForAssignment(card.positions, slot);
             const pen = penaltyForAssignment(card.positions, slot);
+            const norm = (slot as string).replace(/-\d+$/, '');
             if (norm === 'C') arm = raw + pen;
             else if (['1B', '2B', '3B', 'SS'].includes(norm)) inf += raw + pen;
             else if (['LF-RF', 'CF'].includes(norm)) outf += raw + pen;
@@ -297,17 +300,13 @@ function SlotCell({
     onDrop: (e: React.DragEvent) => void;
     onDragOver: (e: React.DragEvent) => void;
 }) {
-    // Penalty of the currently-assigned card at this slot (for display on
-    // non-drag state).
+    // Penalty + raw fielding at the staged slot (NOT card.fielding/card.arm,
+    // which carry the player's live slot's effective values and would read 0
+    // for any newly-moved player). Effective = raw + penalty.
     const penalty = card && slot ? penaltyForAssignment(card.positions, slot) : 0;
     const posLabel = slot ? (slot as string).replace(/-\d+$/, '') : 'BENCH';
-    // Effective fielding at the current slot, including OOP penalty. For
-    // catcher, use arm + penalty; everyone else is fielding + penalty.
-    const effFld = card && slot
-        ? ((slot as string).replace(/-\d+$/, '') === 'C'
-            ? (card.arm || 0) + penalty
-            : (card.fielding || 0) + penalty)
-        : 0;
+    const rawFld = card && slot ? rawFieldingForAssignment(card.positions, slot) : 0;
+    const effFld = card && slot ? rawFld + penalty : 0;
     const effFldLabel = card && slot ? (effFld >= 0 ? `+${effFld}` : `${effFld}`) : '';
     const nativePositions = (card?.positions || []).map(p => p.position).join(', ') || 'DH';
 

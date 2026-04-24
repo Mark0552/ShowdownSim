@@ -119,5 +119,30 @@ export function penaltyForAssignment(
     return -3;
 }
 
+/**
+ * Raw fielding/arm value the card brings to a given slot, derived from its
+ * native positions list. Returns 0 for OOP placements (the player has no
+ * native fielding at that slot) and for DH / bench.
+ *
+ * Catcher arm and infield/outfield fielding are stored under the same
+ * `fielding` key on each ParsedPosition entry — this helper returns that
+ * raw number; callers decide whether to count it as arm or fielding based
+ * on the slot's normalized position.
+ */
+export function rawFieldingForAssignment(
+    positions: { position: string; fielding: number }[] | undefined,
+    assignedPosition: string | undefined,
+): number {
+    const pos = normalizePosition(assignedPosition || '');
+    if (!pos || pos === 'DH' || pos === 'bench') return 0;
+    const ps = positions || [];
+    if (pos === 'LF-RF') {
+        const match = ps.find(p => p.position === 'LF' || p.position === 'RF' || p.position === 'LF-RF');
+        return match?.fielding ?? 0;
+    }
+    const match = ps.find(p => p.position === pos);
+    return match?.fielding ?? 0;
+}
+
 // Re-export type aliases used by callers
 export type { PitcherCard };
