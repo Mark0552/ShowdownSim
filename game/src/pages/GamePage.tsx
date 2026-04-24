@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { GameState, GameAction } from '../engine/gameEngine';
 import { computeRunnerMovements } from '../engine/movements';
-import { getGame, getMyRole, getSeries, ensureNextSeriesGame, syncSeriesWinsFromGames, syncSeriesRelieverHistoryFromGames, syncSeriesStarterOffsetFromGames, findGame1StarterNumber, updateSeries, subscribeToSeriesGames, setReadyForNextGame } from '../lib/games';
+import { getGame, getMyRole, getSeries, ensureNextSeriesGame, syncSeriesWinsFromGames, findGame1StarterNumber, updateSeries, subscribeToSeriesGames, setReadyForNextGame } from '../lib/games';
+import { finalizeSeriesGame } from '../lib/series/finalize';
 import { getLineups } from '../lib/lineups';
 import { saveGameStats } from '../lib/stats';
 import { getUser } from '../lib/auth';
@@ -258,15 +259,12 @@ export default function GamePage({ gameId, onBack }: Props) {
             })();
         }
         if (gameRow?.series_id) {
-            syncSeriesWinsFromGames(gameRow.series_id)
+            // Consolidate wins + reliever history + starter offset into a
+            // single call. finalizeSeriesGame awaits each sync in order and
+            // returns the updated series row for the scoreboard.
+            finalizeSeriesGame(gameRow.series_id)
                 .then(setSeriesRow)
                 .catch(console.error);
-            // Update reliever history so the next game's init applies
-            // the correct stacking IP penalty for back-to-back appearances.
-            syncSeriesRelieverHistoryFromGames(gameRow.series_id).catch(console.error);
-            // Capture the SP rotation start from game 1 so subsequent games
-            // cycle through SP1→SP2→SP3→SP4 from the correct starting point.
-            syncSeriesStarterOffsetFromGames(gameRow.series_id).catch(console.error);
         }
     }, [gameState?.isOver, gameId, gameRow?.series_id]);
 
@@ -322,6 +320,14 @@ export default function GamePage({ gameId, onBack }: Props) {
                 setAdvanceCountdown(0);
                 (async () => {
                     try {
+                        // Finalize series aggregates BEFORE creating the next
+                        // game so the server's authoritative init sees fully-
+                        // synced starter_offset / reliever_history / wins.
+                        // Idempotent — also called on game-over, so this is
+                        // a belt-and-suspenders await that closes the race
+                        // that otherwise relied on server-side derivation
+                        // fallbacks.
+                        await finalizeSeriesGame(gameRow.series_id!).catch(console.error);
                         const next = await ensureNextSeriesGame(
                             gameRow.series_id!,
                             (gameRow.game_number || 1) + 1,
