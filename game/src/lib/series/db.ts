@@ -207,17 +207,28 @@ export async function ensureNextSeriesGame(seriesId: string, gameNumber: number)
 // ============================================================================
 
 /**
- * Toggle the current player's "ready for next series game" flag on the game
- * row's pending_action JSON. Uses the set_ready_for_next_game RPC (Postgres
- * function, jsonb_set under the hood) so the read-modify-write is atomic —
- * a client-side read→patch→write could lose the other player's flag when
- * both clicked Ready simultaneously.
+ * Toggle the current player's "ready for next series game" flag using a
+ * dedicated boolean column per role (home_ready_next / away_ready_next).
+ *
+ * Each role only writes its own column, so there's no read-modify-write
+ * race even if both players click simultaneously. We .select() so the DB
+ * returns the affected row(s); 0 rows means RLS or some other filter
+ * silently swallowed the UPDATE, which is the failure mode that produced
+ * the long-standing "ready bounces back" bug. Throw loudly so the caller
+ * can roll back the optimistic UI flip instead of leaving the user
+ * staring at a fake ✓ that never advances the game.
  */
 export async function setReadyForNextGame(gameId: string, role: PlayerRole, ready: boolean): Promise<void> {
-    const { error } = await supabase.rpc('set_ready_for_next_game', {
-        p_game_id: gameId, p_role: role, p_ready: ready,
-    });
+    const column = role === 'home' ? 'home_ready_next' : 'away_ready_next';
+    const { data, error } = await supabase
+        .from('games')
+        .update({ [column]: ready })
+        .eq('id', gameId)
+        .select('id');
     if (error) throw error;
+    if (!data || data.length === 0) {
+        throw new Error(`Ready-up write affected 0 rows (gameId=${gameId}, role=${role}). RLS denied or row missing.`);
+    }
 }
 
 // ============================================================================

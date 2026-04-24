@@ -15,6 +15,8 @@ export interface GameRow {
     away_lineup_name: string | null;
     home_ready: boolean;
     away_ready: boolean;
+    home_ready_next: boolean;
+    away_ready_next: boolean;
     state: any;
     pending_action: any;
     password: string | null;

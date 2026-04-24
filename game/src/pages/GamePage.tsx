@@ -54,14 +54,16 @@ export default function GamePage({ gameId, onBack }: Props) {
     const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const pumpedUpPlayedRef = useRef(false);
     const starterOffsetSyncedRef = useRef(false);
-    // Ready-for-next-game flags live on the current game's pending_action.
-    // Both clients poll / subscribe to the game row and update local state;
-    // when both are true, each client auto-advances to the next series game.
+    // Ready-for-next-game flags live on dedicated boolean columns
+    // (home_ready_next / away_ready_next). Each role writes only its own
+    // column, so there's no jsonb merge race; both clients poll + subscribe
+    // and auto-advance when both are true.
     const [readyNext, setReadyNext] = useState<{ home: boolean; away: boolean }>({ home: false, away: false });
     // Grace window after a local ready-up click. During this window, reconciles
     // (realtime / poll) keep the local role's optimistic value — only the
     // opponent's value is pulled from the DB. Prevents the classic bounce where
-    // an in-flight fetch started before our RPC lands and overwrites our click.
+    // a fetch already in flight when we clicked overwrites our optimistic value
+    // with the pre-write DB row.
     const readyWriteDeadlineRef = useRef(0);
     const advancingRef = useRef(false);
 
@@ -177,10 +179,11 @@ export default function GamePage({ gameId, onBack }: Props) {
 
                 const game = await getGame(gameId);
                 setGameRow(game);
-                // Hydrate readyNext from the row's pending_action (may be null)
-                const pa: any = (game as any).pending_action || {};
-                const rn = pa.readyNext || {};
-                setReadyNext({ home: !!rn.home, away: !!rn.away });
+                // Hydrate readyNext from the row's dedicated boolean columns
+                setReadyNext({
+                    home: !!(game as any).home_ready_next,
+                    away: !!(game as any).away_ready_next,
+                });
                 const role = getMyRole(game, user.id);
                 if (!role) throw new Error('Not a participant');
 
@@ -282,21 +285,19 @@ export default function GamePage({ gameId, onBack }: Props) {
         }
     }, [gameState?.isOver, gameId, gameRow?.series_id]);
 
-    // Keep readyNext in sync with the DB's pending_action.readyNext via
-    // both realtime AND a 3s poll. Realtime alone has repeatedly proved
-    // unreliable (missed events, replication-identity filtering on the
-    // games table that drops pending_action from UPDATE payloads when
-    // the server's saveState touches only state+status), so the poll is
-    // the authoritative source of truth and the subscription is just a
-    // latency optimization.
+    // Keep readyNext in sync with the DB's home_ready_next / away_ready_next
+    // columns via both realtime AND a 3s poll. The poll is the authoritative
+    // source of truth; realtime is a latency optimization that we can't fully
+    // trust here (UPDATE payloads only carry changed columns, and missed
+    // events have happened in practice).
     useEffect(() => {
         if (!gameId) return;
 
-        const applyFromDb = (rn: any) => {
+        const applyFromDb = (home: boolean, away: boolean) => {
             setReadyNext(prev => {
-                const next = { home: !!rn?.home, away: !!rn?.away };
+                const next = { home, away };
                 // During a local write, preserve my optimistic value so a
-                // reconcile that raced the RPC can't flip the button back.
+                // reconcile that raced the UPDATE can't flip the button back.
                 // Opponent's value is always pulled from the DB.
                 if (myRole && Date.now() < readyWriteDeadlineRef.current) {
                     next[myRole] = prev[myRole];
@@ -309,12 +310,12 @@ export default function GamePage({ gameId, onBack }: Props) {
         const fetchAndApply = async () => {
             const { data } = await supabase
                 .from('games')
-                .select('pending_action')
+                .select('home_ready_next, away_ready_next')
                 .eq('id', gameId)
                 .maybeSingle();
             if (!mountedRef.current) return;
-            const pa: any = (data as any)?.pending_action || {};
-            applyFromDb(pa.readyNext || {});
+            const row: any = data || {};
+            applyFromDb(!!row.home_ready_next, !!row.away_ready_next);
         };
 
         fetchAndApply();
@@ -324,12 +325,16 @@ export default function GamePage({ gameId, onBack }: Props) {
             .channel(`game-row-${gameId}`)
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${gameId}` }, (payload) => {
                 const n = payload.new as any;
-                // Replica-identity default drops unchanged columns from the
-                // payload. If pending_action isn't in the payload, ignore it
-                // (the 3s poll is the source of truth anyway).
-                if (!n || !Object.prototype.hasOwnProperty.call(n, 'pending_action')) return;
-                const pa = n.pending_action || {};
-                applyFromDb(pa.readyNext || {});
+                if (!n) return;
+                // Only react if at least one of the readyNext columns is in
+                // the payload — UPDATE payloads carry only changed columns,
+                // so the server's state-only writes won't trip us up.
+                const hasHome = Object.prototype.hasOwnProperty.call(n, 'home_ready_next');
+                const hasAway = Object.prototype.hasOwnProperty.call(n, 'away_ready_next');
+                if (!hasHome && !hasAway) return;
+                // Re-fetch instead of trusting partial payload — a single
+                // round trip is fine and guarantees we see both columns.
+                fetchAndApply();
             })
             .subscribe();
 
@@ -394,16 +399,15 @@ export default function GamePage({ gameId, onBack }: Props) {
         if (!gameId || !myRole) return;
         const newValue = !readyNext[myRole];
         // Open a grace window BEFORE the optimistic flip so any reconcile
-        // fetch that's already in flight will honor the optimistic value
-        // when its response lands. 2s covers RPC round-trip + realtime event
-        // delivery comfortably; extended again at RPC success so a slow poll
+        // fetch that's already in flight honors the optimistic value when
+        // its response lands. 3s covers UPDATE round trip + realtime event
+        // delivery comfortably; extended again at success so a slow poll
         // response doesn't clobber immediately after.
-        readyWriteDeadlineRef.current = Date.now() + 2000;
+        readyWriteDeadlineRef.current = Date.now() + 3000;
         setReadyNext(prev => ({ ...prev, [myRole]: newValue }));
         try {
             await setReadyForNextGame(gameId, myRole, newValue);
-            // Keep the grace window alive briefly after the RPC lands so a
-            // poll that raced the write can't still overwrite with stale data.
+            // Brief tail so a poll that raced the write can't overwrite.
             readyWriteDeadlineRef.current = Date.now() + 1500;
         } catch (e) {
             console.error('Failed to toggle ready', e);
