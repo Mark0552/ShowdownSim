@@ -98,14 +98,17 @@ export async function saveGameStats(gameId: string, seriesId: string | null, gam
     }
 
     if (rows.length > 0) {
-        // Upsert on the (game_id, user_id, card_id) unique constraint so
-        // repeat calls (both players online, one reconnects post-game,
-        // useEffect firing twice, etc.) just overwrite the same rows
-        // instead of creating duplicates that would double-count in
-        // career aggregations.
+        // Stats are immutable after game-over, so on conflict we just skip
+        // rather than update. This dodges an RLS corner case where the
+        // UPDATE path on `game_player_stats` could fail its USING check
+        // during rejoin-after-finish, and more importantly matches the
+        // actual semantic — a repeat save (both players online, one
+        // reconnects post-game, user navigates back from the lobby, the
+        // useEffect fires twice, etc.) has identical rows, so ignoring
+        // the conflict is the correct outcome.
         const { error } = await supabase
             .from('game_player_stats')
-            .upsert(rows, { onConflict: 'game_id,user_id,card_id' });
+            .upsert(rows, { onConflict: 'game_id,user_id,card_id', ignoreDuplicates: true });
         if (error) throw error;
     }
 }
