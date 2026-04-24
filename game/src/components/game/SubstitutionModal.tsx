@@ -15,6 +15,7 @@ import type { Card } from '../../types/cards';
 import { fieldingPenalty } from '../../lib/fielding';
 import { loadCards } from '../../data/cardData';
 import CardTooltip from '../cards/CardTooltip';
+import AlignmentEditor from './AlignmentEditor';
 import './SubstitutionModal.css';
 
 interface Props {
@@ -40,8 +41,8 @@ const ALL_TABS: TabDef[] = [
         unavailableReason: 'Pinch running is done by the offense before the pitcher rolls.' },
     { key: 'PC', label: 'Pitching Change', phases: ['defense_sub'],
         unavailableReason: 'Pitching changes are made by the defense before the pitcher rolls.' },
-    { key: 'DS', label: 'Defensive Sub', phases: ['pre_atbat', 'defense_sub'],
-        unavailableReason: 'Defensive substitutions are made before the pitcher rolls.' },
+    { key: 'DS', label: 'Defensive Sub', phases: ['defense_sub'],
+        unavailableReason: 'Defensive substitutions are made by the defense before the pitcher rolls.' },
 ];
 
 function renderPenalty(penalty: number, valid: boolean): { text: string; cls: string } {
@@ -113,7 +114,7 @@ export default function SubstitutionModal({ state, myRole, onAction, onClose }: 
                 {tab === 'PH' && <PinchHitTab team={myTeam} onAction={onAction} onClose={onClose} {...tabProps} />}
                 {tab === 'PR' && <PinchRunTab state={state} team={myTeam} onAction={onAction} onClose={onClose} {...tabProps} />}
                 {tab === 'PC' && <PitchingChangeTab team={myTeam} onAction={onAction} onClose={onClose} {...tabProps} />}
-                {tab === 'DS' && <DefensiveSubTab team={myTeam} onAction={onAction} onClose={onClose} {...tabProps} />}
+                {tab === 'DS' && <DefensiveSubTab state={state} myRole={myRole} team={myTeam} onAction={onAction} onClose={onClose} />}
             </div>
             {hoveredCard && <CardTooltip card={hoveredCard} />}
         </Overlay>
@@ -246,149 +247,36 @@ function PitchingChangeTab({ team, onAction, onClose, showCard, hideCard }: { te
 }
 
 // ============================================================================
-// DEFENSIVE SUB (drag-drop)
-// Drag a bench card onto a lineup slot = DEFENSIVE_SUB.
-// Drag a lineup slot onto another lineup slot = POSITION_SWAP (no sub).
+// DEFENSIVE SUB — thin wrapper around the shared AlignmentEditor.
+// All drag-drop, validation, and commit logic lives in AlignmentEditor.
+// This tab is only the bridge from SubstitutionModal's props to the editor.
 // ============================================================================
-const FIELD_SLOTS = ['C', '1B', '2B', '3B', 'SS', 'LF-RF-1', 'CF', 'LF-RF-2'];
-
-type DragSrc =
-    | { kind: 'bench'; cardId: string }
-    | { kind: 'lineup'; slot: string };
-
-function DefensiveSubTab({ team, onAction, onClose, showCard, hideCard }: { team: TeamState; onAction: (a: GameAction) => void; onClose: () => void } & HoverProps) {
-    const [drag, setDrag] = useState<DragSrc | null>(null);
-    const [hoverSlot, setHoverSlot] = useState<string | null>(null);
-
-    const slotPlayers = useMemo(() => {
-        const m: { [k: string]: PlayerSlot | undefined } = {};
-        for (const slot of FIELD_SLOTS) m[slot] = team.lineup.find(p => p.assignedPosition === slot);
-        return m;
-    }, [team.lineup]);
-
-    const dhPlayer = useMemo(() => team.lineup.find(p => p.assignedPosition === 'DH'), [team.lineup]);
-
-    const onDragStart = (src: DragSrc) => (e: React.DragEvent) => {
-        setDrag(src);
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', JSON.stringify(src));
-    };
-
-    const onDragOverSlot = (slot: string) => (e: React.DragEvent) => {
-        if (!drag) return;
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        if (hoverSlot !== slot) setHoverSlot(slot);
-    };
-
-    const onDragLeave = () => setHoverSlot(null);
-
-    const onDropOnSlot = (targetSlot: string) => (e: React.DragEvent) => {
-        e.preventDefault();
-        setHoverSlot(null);
-        if (!drag) return;
-        if (drag.kind === 'bench') {
-            onAction({ type: 'DEFENSIVE_SUB', position: targetSlot, benchCardId: drag.cardId });
-            onClose();
-        } else if (drag.kind === 'lineup') {
-            if (drag.slot === targetSlot) { setDrag(null); return; }
-            onAction({ type: 'POSITION_SWAP', slotA: drag.slot, slotB: targetSlot });
-            onClose();
-        }
-        setDrag(null);
-    };
-
-    const renderSlot = (slot: string) => {
-        const p = slotPlayers[slot];
-        const penalty = drag?.kind === 'bench' && team.bench.find(b => b.cardId === drag.cardId)
-            ? fieldingPenalty(asCard(team.bench.find(b => b.cardId === drag.cardId)!), slot)
-            : null;
-        const isDropTarget = !!drag && hoverSlot === slot && (
-            drag.kind === 'bench' || (drag.kind === 'lineup' && drag.slot !== slot)
-        );
-        const isSource = drag?.kind === 'lineup' && drag.slot === slot;
-        return (
-            <div
-                key={slot}
-                className={`sm-field-slot ${isDropTarget ? 'drop-target' : ''} ${isSource ? 'dragging' : ''}`}
-                onDragOver={onDragOverSlot(slot)}
-                onDragLeave={onDragLeave}
-                onDrop={onDropOnSlot(slot)}
-            >
-                <div className="sm-field-slot-label">{slot.replace(/-\d+$/, '')}</div>
-                {p ? (
-                    <div
-                        className="sm-field-card"
-                        draggable
-                        onDragStart={onDragStart({ kind: 'lineup', slot })}
-                        onMouseEnter={() => showCard?.(p.cardId)}
-                        onMouseLeave={() => hideCard?.()}
-                    >
-                        {p.imagePath && <img src={p.imagePath} alt="" draggable={false} />}
-                        <div className="sm-field-name">{p.name}</div>
-                        <div className="sm-field-meta">F{p.fielding} • {(p.positions || []).map(x => x.position).join('/') || 'DH'}</div>
-                    </div>
-                ) : (
-                    <div className="sm-field-empty">empty</div>
-                )}
-                {penalty && isDropTarget && (
-                    <div className={`sm-field-pen ${renderPenalty(penalty.penalty, penalty.valid).cls}`}>
-                        {renderPenalty(penalty.penalty, penalty.valid).text}
-                    </div>
-                )}
-            </div>
-        );
-    };
-
+function DefensiveSubTab({
+    state, myRole, team, onAction, onClose,
+}: {
+    state: GameState;
+    myRole: 'home' | 'away';
+    team: TeamState;
+    onAction: (a: GameAction) => void;
+    onClose: () => void;
+}) {
+    // This tab is only enabled during `defense_sub`, when the active player
+    // is the defending team. `myRole === 'home'` therefore implies we are
+    // the home defense (state.halfInning === 'top'), and vice versa.
+    const isHomeDefense = myRole === 'home';
+    // Parent gates on `showSubPanel && isMyTurn`; if the turn flips during
+    // editing the whole modal unmounts. Safe to pass isMyTurn=true here.
     return (
         <div className="sm-ds-wrap">
-            <div className="sm-ds-hint">
-                Drag a <strong>bench card</strong> onto a position to sub in. Drag a <strong>lineup card</strong> onto another to swap positions.
-            </div>
-            <div className="sm-ds-field">
-                {FIELD_SLOTS.map(renderSlot)}
-            </div>
-            {dhPlayer && (
-                <div className="sm-ds-dh">
-                    <div
-                        className="sm-field-slot sm-dh-slot"
-                        onDragOver={onDragOverSlot('DH')}
-                        onDragLeave={onDragLeave}
-                        onDrop={onDropOnSlot('DH')}
-                    >
-                        <div className="sm-field-slot-label">DH</div>
-                        <div
-                            className="sm-field-card"
-                            draggable
-                            onDragStart={onDragStart({ kind: 'lineup', slot: 'DH' })}
-                            onMouseEnter={() => showCard?.(dhPlayer.cardId)}
-                            onMouseLeave={() => hideCard?.()}
-                        >
-                            {dhPlayer.imagePath && <img src={dhPlayer.imagePath} alt="" draggable={false} />}
-                            <div className="sm-field-name">{dhPlayer.name}</div>
-                            <div className="sm-field-meta">DH</div>
-                        </div>
-                    </div>
-                </div>
-            )}
-            <div className="sm-ds-bench-title">BENCH</div>
-            <div className="sm-ds-bench">
-                {team.bench.length === 0 && <div className="sm-empty">No bench players available.</div>}
-                {team.bench.map(p => (
-                    <div
-                        key={p.cardId}
-                        className="sm-bench-card"
-                        draggable
-                        onDragStart={onDragStart({ kind: 'bench', cardId: p.cardId })}
-                        onMouseEnter={() => showCard?.(p.cardId)}
-                        onMouseLeave={() => hideCard?.()}
-                    >
-                        {p.imagePath && <img src={p.imagePath} alt="" draggable={false} />}
-                        <div className="sm-field-name">{p.name}</div>
-                        <div className="sm-field-meta">{(p.positions || []).map(x => x.position).join('/') || 'DH'}</div>
-                    </div>
-                ))}
-            </div>
+            <AlignmentEditor
+                state={state}
+                team={team}
+                isHomeDefense={isHomeDefense}
+                isMyTurn={true}
+                allowCancel={true}
+                onCommit={(a) => { onAction(a); onClose(); }}
+                onCancel={onClose}
+            />
         </div>
     );
 }

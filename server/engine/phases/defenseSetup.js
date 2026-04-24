@@ -68,9 +68,19 @@ export function enterDefenseSetupOrPreAtBat(state) {
  * alignment must cover all 9 slots (C, 1B, 2B, 3B, SS, LF-RF-1, LF-RF-2,
  * CF, DH) with cardIds drawn from the current lineup + bench. Any old
  * lineup card not in the new alignment is archived (subbed out).
+ *
+ * Accepted in two phases:
+ *   - defense_setup (half-inning boundary, mandatory editor)
+ *   - defense_sub   (mid-at-bat, defensive team opens the editor)
+ * After commit, we return to pre_atbat only when originating from
+ * defense_setup (the boundary transition). A defense_sub commit keeps
+ * the phase so the user's next action (ROLL_PITCH, etc.) flows normally.
  */
 export function handleDefenseSetupCommit(state, action) {
-    if (state.phase !== 'defense_setup') return state;
+    const originPhase = state.phase;
+    if (originPhase !== 'defense_setup' && originPhase !== 'defense_sub') {
+        return state;
+    }
     const defSide = defSideFromHalf(state.halfInning);
     const team = { ...state[defSide] };
     const isHome = isHomeDefense(state.halfInning);
@@ -125,8 +135,15 @@ export function handleDefenseSetupCommit(state, action) {
         return updated;
     });
 
-    // If validPossible on the new 9 cards, every non-1B non-DH must be native.
-    if (validPossible(newLineup)) {
+    // Forced-OOP rule: allow OOP placements ONLY when there is no possible
+    // native arrangement given the full eligible roster (current lineup
+    // cards + bench cards that can enter given the inning). If a native
+    // arrangement IS possible, the defense must use it — OOP is rejected.
+    // This is broader than checking the 9 staged cards alone: a bench
+    // player who could cover a gap natively disqualifies the forced case.
+    const eligibleBench = oldBench.filter(p => !p.isBackup || canBackupEnter(state, isHome));
+    const nativePool = [...oldLineup, ...eligibleBench];
+    if (validPossible(nativePool)) {
         for (const slotKey of ALL_SLOTS) {
             const norm = slotKey.replace(/-\d+$/, '');
             if (norm === 'DH' || norm === '1B') continue;
@@ -172,8 +189,13 @@ export function handleDefenseSetupCommit(state, action) {
     if (droppedNames.length > 0) logs.push(`Defense sub: ${addedNames.join(', ')} in for ${droppedNames.join(', ')}`);
     logs.push('Defense set');
 
-    let newState = { ...state, [defSide]: team, gameLog: [...state.gameLog, ...logs] };
-    return enterPreAtBat(newState);
+    const newState = { ...state, [defSide]: team, gameLog: [...state.gameLog, ...logs] };
+    // Only the half-inning boundary context advances into pre_atbat; mid-
+    // at-bat commits keep the phase so the current flow continues.
+    if (originPhase === 'defense_setup') {
+        return enterPreAtBat(newState);
+    }
+    return newState;
 }
 
 /**
