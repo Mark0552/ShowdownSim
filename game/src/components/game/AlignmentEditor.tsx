@@ -13,9 +13,11 @@
  * Accept enables regardless — user can align however they want.
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { GameState, GameAction, PlayerSlot, TeamState } from '../../engine/gameEngine';
 import { penaltyForAssignment, rawFieldingForAssignment } from '../../lib/fielding';
+import { playerSlotToCard } from '../cards/cardAdapters';
+import CardTooltip from '../cards/CardTooltip';
 import './AlignmentEditor.css';
 
 const FIELD_SLOTS = ['C', '1B', '2B', '3B', 'SS', 'LF-RF-1', 'CF', 'LF-RF-2', 'DH'] as const;
@@ -55,6 +57,21 @@ export default function AlignmentEditor({
     const [alignment, setAlignment] = useState<{ [k: string]: string }>(initialAlignment);
     const [dragCardId, setDragCardId] = useState<string | null>(null);
 
+    // Hover tooltip — delayed show, hidden while dragging. Same pattern the
+    // team builder's catalog / lineup / roster / bench panels use.
+    const [hoverCardId, setHoverCardId] = useState<string | null>(null);
+    const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const cancelHover = () => {
+        if (hoverTimerRef.current) { clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null; }
+    };
+    const queueHover = (cardId: string | null) => {
+        cancelHover();
+        if (!cardId) { setHoverCardId(null); return; }
+        hoverTimerRef.current = setTimeout(() => setHoverCardId(cardId), 400);
+    };
+    const hoveredPlayer = hoverCardId ? byId.get(hoverCardId) : undefined;
+    const hoveredCard = hoveredPlayer ? playerSlotToCard(hoveredPlayer) : null;
+
     const inLineupIds = useMemo(() => new Set(Object.values(alignment)), [alignment]);
     const benchCards = useMemo(() => allCards.filter(p => !inLineupIds.has(p.cardId)), [allCards, inLineupIds]);
 
@@ -79,6 +96,10 @@ export default function AlignmentEditor({
 
     const handleDragStart = (e: React.DragEvent, cardId: string) => {
         setDragCardId(cardId);
+        // Hide any pending or visible hover tooltip — it would obstruct the
+        // drag preview otherwise.
+        cancelHover();
+        setHoverCardId(null);
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', cardId);
     };
@@ -231,6 +252,8 @@ export default function AlignmentEditor({
                             onDragStart={handleDragStart}
                             onDrop={(e) => handleDropOnSlot(e, slot)}
                             onDragOver={handleDragOver}
+                            onMouseEnter={(id) => !dragCardId && queueHover(id)}
+                            onMouseLeave={() => queueHover(null)}
                             dropHighlight={dragCardId !== null && (!card || dragCardId !== card.cardId)}
                             dragPenalty={draggedCard && dragCardId !== cardId
                                 ? penaltyForAssignment(draggedCard.positions, slot)
@@ -258,11 +281,15 @@ export default function AlignmentEditor({
                                 onDragStart={handleDragStart}
                                 onDrop={() => { }}
                                 onDragOver={handleDragOver}
+                                onMouseEnter={(id) => !dragCardId && queueHover(id)}
+                                onMouseLeave={() => queueHover(null)}
                             />
                         );
                     })
                 )}
             </div>
+
+            {hoveredCard && !dragCardId && <CardTooltip card={hoveredCard} />}
 
             <div className="ae-status">
                 {backupIssues.map((msg, i) => (
@@ -296,6 +323,7 @@ function SlotCell({
     slot, card, displaced, blocked,
     dropHighlight, dragPenalty = 0,
     onDragStart, onDrop, onDragOver,
+    onMouseEnter, onMouseLeave,
 }: {
     slot: SlotKey | null;
     card?: PlayerSlot;
@@ -306,6 +334,8 @@ function SlotCell({
     onDragStart: (e: React.DragEvent, cardId: string) => void;
     onDrop: (e: React.DragEvent) => void;
     onDragOver: (e: React.DragEvent) => void;
+    onMouseEnter?: (cardId: string) => void;
+    onMouseLeave?: () => void;
 }) {
     // Penalty + raw fielding at the staged slot (NOT card.fielding/card.arm,
     // which carry the player's live slot's effective values and would read 0
@@ -338,6 +368,8 @@ function SlotCell({
                     className="ae-cell-card"
                     draggable
                     onDragStart={(e) => onDragStart(e, card.cardId)}
+                    onMouseEnter={() => onMouseEnter?.(card.cardId)}
+                    onMouseLeave={() => onMouseLeave?.()}
                 >
                     {card.imagePath && <img src={card.imagePath} alt="" className="ae-cell-img" draggable={false} />}
                 </div>
