@@ -268,7 +268,15 @@ async function handleJoinGame(ws, msg, setContext) {
                 if (data) {
                     dbSeriesId = data.series_id || null;
                     dbGameNumber = data.game_number || 1;
-                    if (data.state && data.status !== 'finished'
+                    // Load saved state regardless of status. handleAction already
+                    // blocks actions on isOver games, so restoring a finished
+                    // state is safe — the client just sees the game-over UI and
+                    // the ready-up button. Skipping this load for finished
+                    // games would fall through to initializeGame() and
+                    // overwrite the row with a fresh sp_roll, which previously
+                    // obliterated finished game 1 of a live series whenever
+                    // someone opened the awaiting-next lobby entry.
+                    if (data.state
                         && data.state.awayTeam?.lineup && data.state.homeTeam?.lineup) {
                         loadedState = data.state;
                     }
