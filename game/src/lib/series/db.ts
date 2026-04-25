@@ -128,8 +128,36 @@ export async function ensureNextSeriesGame(seriesId: string, gameNumber: number)
     const series = await getSeries(seriesId);
     const creatorUserId = series.home_user_id;
     const creatorUsername = series.home_user_email;
-    const opponentUserId = series.away_user_id;
-    const opponentUsername = series.away_user_email;
+    // series.away_user_id wasn't populated for older series (joinGame only
+    // wrote the games row). Fall back to deriving the opponent from any
+    // sibling game whose home/away spread reveals the non-creator.
+    let opponentUserId = series.away_user_id;
+    let opponentUsername = series.away_user_email;
+    if (!opponentUserId) {
+        for (const g of games) {
+            if (g.away_user_id && g.away_user_id !== creatorUserId) {
+                opponentUserId = g.away_user_id;
+                opponentUsername = g.away_user_email;
+                break;
+            }
+            if (g.home_user_id && g.home_user_id !== creatorUserId) {
+                opponentUserId = g.home_user_id;
+                opponentUsername = g.home_user_email;
+                break;
+            }
+        }
+        // Best-effort: backfill the series row so subsequent calls don't
+        // need to re-derive. Failures are non-fatal — RLS or transient
+        // errors shouldn't block advancement.
+        if (opponentUserId) {
+            try {
+                await updateSeries(seriesId, {
+                    away_user_id: opponentUserId,
+                    away_user_email: opponentUsername,
+                } as Partial<SeriesRow>);
+            } catch { /* non-fatal */ }
+        }
+    }
     if (!creatorUserId || !opponentUserId) {
         throw new Error('Cannot advance series: both players must be present.');
     }

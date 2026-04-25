@@ -121,6 +121,22 @@ export async function joinGame(gameId: string): Promise<GameRow> {
         throw new Error('That game is no longer available.');
     }
     if (error) throw error;
+
+    // Mirror the opponent onto the series row when joining a series game.
+    // ensureNextSeriesGame reads series.away_user_id to know who's playing
+    // game 2+; without this write the series stays half-populated and
+    // advancing throws "both players must be present". Best-effort — a
+    // failure here doesn't block the join.
+    if (data.series_id) {
+        try {
+            await supabase
+                .from('series')
+                .update({ away_user_id: user.id, away_user_email: getUsername(user) })
+                .eq('id', data.series_id)
+                .is('away_user_id', null);
+        } catch { /* non-fatal */ }
+    }
+
     return data;
 }
 
