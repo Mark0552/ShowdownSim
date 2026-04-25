@@ -24,6 +24,13 @@ export default function LoginPage({ onLogin }: Props) {
         }
 
         if (isSignUp) {
+            // Username doubles as the local part of a fake email
+            // (username@showdown.game) for Supabase auth, so keep it to
+            // email-safe characters. Spaces and most punctuation break it.
+            if (!/^[a-zA-Z0-9._-]+$/.test(username.trim())) {
+                setError('Username can only contain letters, numbers, periods, hyphens, and underscores.');
+                return;
+            }
             if (password !== confirmPassword) {
                 setError('Passwords do not match');
                 return;
