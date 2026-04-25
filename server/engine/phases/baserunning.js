@@ -274,8 +274,12 @@ export function endHalfInning(state) {
             iconPrompt: null, halfInningClean: true, icon20UsedThisInning: false, gbOptions: null,
             pendingSteal: null, pendingStealResult: null, matchupLogged: false,
             stealUsedThisPreAtBat: false, runnersAlreadyStole: [],
-            controlModifier: (s.rpActiveInning === state.inning && s.rpActiveTeam === 'home') ? s.controlModifier : 0,
-            rpActivePitcherId: (s.rpActiveInning === state.inning && s.rpActiveTeam === 'home') ? s.rpActivePitcherId : null,
+            // RP bonus is per-pitcher and only applies while that pitcher is on
+            // the mound. A new half-inning means a new pitcher (the other team's),
+            // so always reset. Leaving the home pitcher's +3 lingering caused
+            // a +6 stack when both teams activated RP in the same inning.
+            controlModifier: 0,
+            rpActivePitcherId: null,
             gameLog: [...s.gameLog, `--- Bottom of ${state.inning} ---`],
         };
         // Half-inning boundary — check if defense needs to set alignment first.
@@ -293,16 +297,17 @@ export function endHalfInning(state) {
     // Home team's next inning stays undefined until they actually bat
     while (away.runsPerInning.length < state.inning + 1) away.runsPerInning.push(0);
 
-    const rpCarriesOver = s.rpActiveInning === state.inning + 1 && s.rpActiveTeam === 'away';
-    const newControlMod = rpCarriesOver ? s.controlModifier : 0;
-
     const topState = {
         ...s, awayTeam: away, homeTeam: home,
         inning: state.inning + 1, halfInning: 'top',
         outs: 0, bases: { first: null, second: null, third: null },
         pendingDpResult: null, extraBaseEligible: null, pendingExtraBaseResult: null,
         iconPrompt: null, halfInningClean: true, icon20UsedThisInning: false,
-        controlModifier: newControlMod, rpActivePitcherId: rpCarriesOver ? s.rpActivePitcherId : null, gbOptions: null,
+        // Same as the top→bottom boundary: RP bonus belongs to the activating
+        // pitcher only. New half-inning, new pitcher, fresh slate. The old
+        // condition (rpActiveInning === inning+1) was never true anyway since
+        // rpActiveInning is set to the inning the icon fired in.
+        controlModifier: 0, rpActivePitcherId: null, gbOptions: null,
         pendingSteal: null, pendingStealResult: null, matchupLogged: false,
         stealUsedThisPreAtBat: false, runnersAlreadyStole: [],
         gameLog: [...s.gameLog, `--- Top of ${state.inning + 1} ---`],
