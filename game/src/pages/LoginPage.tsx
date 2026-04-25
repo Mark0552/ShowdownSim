@@ -28,10 +28,10 @@ export default function LoginPage({ onLogin, recoveryMode }: Props) {
         if (recoveryMode) setMode('reset-password');
     }, [recoveryMode]);
 
-    const switchMode = (next: Mode) => {
+    const switchMode = (next: Mode, opts?: { keepInfo?: boolean }) => {
         setMode(next);
         setError('');
-        setInfo('');
+        if (!opts?.keepInfo) setInfo('');
         setPassword('');
         setConfirmPassword('');
         if (next !== 'signup') setEmail('');
@@ -55,8 +55,8 @@ export default function LoginPage({ onLogin, recoveryMode }: Props) {
                 if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
                 setLoading(true);
                 await signUp(username, email, password);
-                setInfo('Check your email to confirm your account, then sign in.');
-                switchMode('signin');
+                setInfo('Account created — check your email to confirm, then sign in.');
+                switchMode('signin', { keepInfo: true });
             } else if (mode === 'forgot-password') {
                 if (!email.trim()) { setError('Email is required'); return; }
                 setLoading(true);
