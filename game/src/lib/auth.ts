@@ -55,6 +55,43 @@ export async function signOut() {
     if (error) throw error;
 }
 
+/**
+ * Send a password-reset email. The link lands at the app with a recovery
+ * session active; App.tsx listens for PASSWORD_RECOVERY and routes to
+ * LoginPage's reset-password mode so the user can pick a new password.
+ */
+export async function requestPasswordReset(email: string) {
+    const redirectTo = window.location.origin + (import.meta.env.BASE_URL || '/');
+    const { error } = await supabase.auth.resetPasswordForEmail(
+        email.toLowerCase().trim(),
+        { redirectTo }
+    );
+    if (error) throw error;
+}
+
+/**
+ * Update the password of the currently authenticated user. Used after the
+ * user clicks the reset email link and lands in recovery mode.
+ */
+export async function updatePassword(password: string) {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
+}
+
+/**
+ * Look up the username associated with an email. Returns null if there's
+ * no matching account. Used by the "forgot username" flow.
+ */
+export async function lookupUsernameByEmail(email: string): Promise<string | null> {
+    const { data, error } = await supabase
+        .from('usernames')
+        .select('username')
+        .eq('email', email.toLowerCase().trim())
+        .maybeSingle();
+    if (error) throw error;
+    return data?.username || null;
+}
+
 let _userPromise: Promise<User | null> | null = null;
 let _userCache: User | null = null;
 let _userCacheTime = 0;

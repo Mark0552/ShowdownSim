@@ -39,6 +39,11 @@ export default function App() {
     const [cardsLoading, setCardsLoading] = useState(true);
     const [page, setPageState] = useState<Page>('login');
     const [userEmail, setUserEmail] = useState('');
+    // True after Supabase fires PASSWORD_RECOVERY (user clicked a reset
+    // email link). Forces LoginPage into reset-password mode so the
+    // recovery session can pick a new password instead of dropping into
+    // the menu with a half-authenticated session.
+    const [recoveryMode, setRecoveryMode] = useState(false);
     const [editingLineup, setEditingLineup] = useState<SavedLineup | null>(null);
     const [activeGameId, setActiveGameId] = useState<string | null>(null);
     const teamStore = useTeamStore();
@@ -81,9 +86,16 @@ export default function App() {
         });
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-            if (event === 'SIGNED_OUT') {
+            if (event === 'PASSWORD_RECOVERY') {
+                // Recovery session is established but the user shouldn't be
+                // dropped into the menu — they need to pick a new password
+                // first. Pin them to LoginPage with a flag the page reads.
+                setRecoveryMode(true);
+                setPageState('login');
+            } else if (event === 'SIGNED_OUT') {
                 setPage('login');
                 setUserEmail('');
+                setRecoveryMode(false);
             }
         });
 
@@ -109,6 +121,7 @@ export default function App() {
         const user = await getUser();
         if (user) {
             setUserEmail(getUsername(user));
+            setRecoveryMode(false);
             setPage('menu');
         }
     };
@@ -146,7 +159,7 @@ export default function App() {
 
     const renderPage = () => { switch (page) {
         case 'login':
-            return <LoginPage onLogin={handleLogin} />;
+            return <LoginPage onLogin={handleLogin} recoveryMode={recoveryMode} />;
         case 'menu':
             return (
                 <MainMenu
