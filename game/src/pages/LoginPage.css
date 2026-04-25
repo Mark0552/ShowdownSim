@@ -106,6 +106,34 @@
 
 .login-link:hover { color: var(--accent); }
 
+.login-success-card {
+    background: rgba(74, 222, 128, 0.08);
+    border: 1px solid rgba(74, 222, 128, 0.3);
+    border-radius: 8px;
+    padding: 24px 20px;
+    text-align: center;
+    color: var(--text);
+    margin-bottom: 16px;
+}
+
+.login-success-card p {
+    margin: 8px 0;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.login-success-icon {
+    font-size: 36px;
+    color: var(--success);
+    margin-bottom: 8px;
+}
+
+.login-success-email {
+    font-weight: 600;
+    color: var(--accent);
+    word-break: break-all;
+}
+
 .login-success {
     color: var(--success);
     font-size: 14px;

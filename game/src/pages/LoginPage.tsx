@@ -12,7 +12,7 @@ interface Props {
     recoveryMode?: boolean;
 }
 
-type Mode = 'signin' | 'signup' | 'forgot-password' | 'forgot-username' | 'reset-password';
+type Mode = 'signin' | 'signup' | 'signup-success' | 'forgot-password' | 'forgot-username' | 'reset-password';
 
 export default function LoginPage({ onLogin, recoveryMode }: Props) {
     const [mode, setMode] = useState<Mode>(recoveryMode ? 'reset-password' : 'signin');
@@ -55,8 +55,12 @@ export default function LoginPage({ onLogin, recoveryMode }: Props) {
                 if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
                 setLoading(true);
                 await signUp(username, email, password);
-                setInfo('Account created — check your email to confirm, then sign in.');
-                switchMode('signin', { keepInfo: true });
+                // Take over the card with a dedicated success screen so the
+                // confirmation step is impossible to miss. Keep the email in
+                // state so we can echo it back to the user.
+                setMode('signup-success');
+                setPassword('');
+                setConfirmPassword('');
             } else if (mode === 'forgot-password') {
                 if (!email.trim()) { setError('Email is required'); return; }
                 setLoading(true);
@@ -90,6 +94,7 @@ export default function LoginPage({ onLogin, recoveryMode }: Props) {
     const subtitle = {
         signin: 'Sign In',
         signup: 'Create Account',
+        'signup-success': 'Almost There',
         'forgot-password': 'Reset Password',
         'forgot-username': 'Recover Username',
         'reset-password': 'Choose a New Password',
@@ -98,10 +103,31 @@ export default function LoginPage({ onLogin, recoveryMode }: Props) {
     const submitLabel = {
         signin: 'Sign In',
         signup: 'Create Account',
+        'signup-success': '',
         'forgot-password': 'Send Reset Link',
         'forgot-username': 'Look Up Username',
         'reset-password': 'Update Password',
     }[mode];
+
+    if (mode === 'signup-success') {
+        return (
+            <div className="login-page">
+                <div className="login-card">
+                    <h1>MLB Showdown</h1>
+                    <p className="login-subtitle">{subtitle}</p>
+                    <div className="login-success-card">
+                        <div className="login-success-icon">✉</div>
+                        <p>We sent a confirmation link to:</p>
+                        <p className="login-success-email">{email || 'your email'}</p>
+                        <p>Click the link to activate your account, then come back here to sign in.</p>
+                    </div>
+                    <button className="login-toggle" onClick={() => switchMode('signin')}>
+                        Back to Sign In
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="login-page">

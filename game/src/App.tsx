@@ -92,6 +92,33 @@ export default function App() {
                 // first. Pin them to LoginPage with a flag the page reads.
                 setRecoveryMode(true);
                 setPageState('login');
+            } else if (event === 'SIGNED_IN') {
+                // Fires whenever a session is established — including after
+                // an email-confirmation link processes the access_token hash
+                // on page load. The initial getUser() can race ahead of that
+                // hash processing and return null, leaving the user stranded
+                // on LoginPage. This handler catches up.
+                //
+                // Skip when the URL hash signals password recovery — Supabase
+                // fires SIGNED_IN alongside PASSWORD_RECOVERY, and we don't
+                // want to yank the user past the reset-password form.
+                if (window.location.hash.includes('type=recovery')) return;
+                getUser().then(user => {
+                    if (!user) return;
+                    setUserEmail(getUsername(user));
+                    setPageState(prev => {
+                        // Don't yank the user out of an active page (covers
+                        // normal sign-in, which already routed to menu via
+                        // handleLogin — both paths converge here harmlessly).
+                        if (prev !== 'login') return prev;
+                        // Clean up the access_token fragment left behind by
+                        // the email confirmation redirect.
+                        if (window.location.hash.includes('access_token')) {
+                            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+                        }
+                        return 'menu';
+                    });
+                });
             } else if (event === 'SIGNED_OUT') {
                 setPage('login');
                 setUserEmail('');
