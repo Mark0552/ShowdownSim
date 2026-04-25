@@ -39,11 +39,6 @@ export default function App() {
     const [cardsLoading, setCardsLoading] = useState(true);
     const [page, setPageState] = useState<Page>('login');
     const [userEmail, setUserEmail] = useState('');
-    // True after Supabase fires PASSWORD_RECOVERY (user clicked a reset
-    // email link). Forces LoginPage into reset-password mode so the
-    // recovery session can pick a new password instead of dropping into
-    // the menu with a half-authenticated session.
-    const [recoveryMode, setRecoveryMode] = useState(false);
     const [editingLineup, setEditingLineup] = useState<SavedLineup | null>(null);
     const [activeGameId, setActiveGameId] = useState<string | null>(null);
     const teamStore = useTeamStore();
@@ -86,43 +81,9 @@ export default function App() {
         });
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-            if (event === 'PASSWORD_RECOVERY') {
-                // Recovery session is established but the user shouldn't be
-                // dropped into the menu — they need to pick a new password
-                // first. Pin them to LoginPage with a flag the page reads.
-                setRecoveryMode(true);
-                setPageState('login');
-            } else if (event === 'SIGNED_IN') {
-                // Fires whenever a session is established — including after
-                // an email-confirmation link processes the access_token hash
-                // on page load. The initial getUser() can race ahead of that
-                // hash processing and return null, leaving the user stranded
-                // on LoginPage. This handler catches up.
-                //
-                // Skip when the URL hash signals password recovery — Supabase
-                // fires SIGNED_IN alongside PASSWORD_RECOVERY, and we don't
-                // want to yank the user past the reset-password form.
-                if (window.location.hash.includes('type=recovery')) return;
-                getUser().then(user => {
-                    if (!user) return;
-                    setUserEmail(getUsername(user));
-                    setPageState(prev => {
-                        // Don't yank the user out of an active page (covers
-                        // normal sign-in, which already routed to menu via
-                        // handleLogin — both paths converge here harmlessly).
-                        if (prev !== 'login') return prev;
-                        // Clean up the access_token fragment left behind by
-                        // the email confirmation redirect.
-                        if (window.location.hash.includes('access_token')) {
-                            window.history.replaceState(null, '', window.location.pathname + window.location.search);
-                        }
-                        return 'menu';
-                    });
-                });
-            } else if (event === 'SIGNED_OUT') {
+            if (event === 'SIGNED_OUT') {
                 setPage('login');
                 setUserEmail('');
-                setRecoveryMode(false);
             }
         });
 
@@ -148,7 +109,6 @@ export default function App() {
         const user = await getUser();
         if (user) {
             setUserEmail(getUsername(user));
-            setRecoveryMode(false);
             setPage('menu');
         }
     };
@@ -186,7 +146,7 @@ export default function App() {
 
     const renderPage = () => { switch (page) {
         case 'login':
-            return <LoginPage onLogin={handleLogin} recoveryMode={recoveryMode} />;
+            return <LoginPage onLogin={handleLogin} />;
         case 'menu':
             return (
                 <MainMenu

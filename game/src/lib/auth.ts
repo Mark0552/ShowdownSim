@@ -1,51 +1,32 @@
 import { supabase } from './supabase';
 import type { User } from '@supabase/supabase-js';
 
-/**
- * Sign up with email + username + password. The username is mirrored into
- * the public `usernames` table by a Postgres trigger on auth.users insert,
- * which enforces case-insensitive uniqueness. Email confirmation (managed
- * via Supabase Dashboard) gates first sign-in.
- */
-export async function signUp(username: string, email: string, password: string) {
+const FAKE_DOMAIN = '@showdown.game';
+
+function usernameToEmail(username: string): string {
+    return username.toLowerCase().trim() + FAKE_DOMAIN;
+}
+
+export function emailToUsername(email: string): string {
+    return email.replace(FAKE_DOMAIN, '');
+}
+
+export async function signUp(username: string, password: string) {
+    const email = usernameToEmail(username);
     const { data, error } = await supabase.auth.signUp({
-        email: email.toLowerCase().trim(),
+        email,
         password,
         options: {
             data: { username: username.trim() },
         },
     });
-    if (error) {
-        // The trigger throws a unique-violation when the username PK
-        // conflicts. Supabase wraps it as a 500 with the Postgres message
-        // bubbling through; surface a friendlier label.
-        if (/usernames_pkey|duplicate key|already exists/i.test(error.message)) {
-            throw new Error('Username already taken');
-        }
-        throw error;
-    }
+    if (error) throw error;
     return data;
 }
 
-/**
- * Sign in by username — looks up the email first, then defers to
- * signInWithPassword. Two round trips, but it lets us keep username as
- * the public-facing identifier while Supabase auth requires email.
- */
 export async function signIn(username: string, password: string) {
-    const lower = username.toLowerCase().trim();
-    const { data: row, error: lookupError } = await supabase
-        .from('usernames')
-        .select('email')
-        .eq('username', lower)
-        .maybeSingle();
-    if (lookupError) throw lookupError;
-    if (!row) throw new Error('Invalid login credentials');
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-        email: row.email,
-        password,
-    });
+    const email = usernameToEmail(username);
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
     return data;
 }
@@ -53,43 +34,6 @@ export async function signIn(username: string, password: string) {
 export async function signOut() {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
-}
-
-/**
- * Send a password-reset email. The link lands at the app with a recovery
- * session active; App.tsx listens for PASSWORD_RECOVERY and routes to
- * LoginPage's reset-password mode so the user can pick a new password.
- */
-export async function requestPasswordReset(email: string) {
-    const redirectTo = window.location.origin + (import.meta.env.BASE_URL || '/');
-    const { error } = await supabase.auth.resetPasswordForEmail(
-        email.toLowerCase().trim(),
-        { redirectTo }
-    );
-    if (error) throw error;
-}
-
-/**
- * Update the password of the currently authenticated user. Used after the
- * user clicks the reset email link and lands in recovery mode.
- */
-export async function updatePassword(password: string) {
-    const { error } = await supabase.auth.updateUser({ password });
-    if (error) throw error;
-}
-
-/**
- * Look up the username associated with an email. Returns null if there's
- * no matching account. Used by the "forgot username" flow.
- */
-export async function lookupUsernameByEmail(email: string): Promise<string | null> {
-    const { data, error } = await supabase
-        .from('usernames')
-        .select('username')
-        .eq('email', email.toLowerCase().trim())
-        .maybeSingle();
-    if (error) throw error;
-    return data?.username || null;
 }
 
 let _userPromise: Promise<User | null> | null = null;
@@ -116,8 +60,5 @@ export async function getUser(): Promise<User | null> {
 }
 
 export function getUsername(user: User): string {
-    // user_metadata.username is set at signup. Fall back to the email
-    // local-part for safety, though every account created post-migration
-    // will have the metadata field.
-    return user.user_metadata?.username || (user.email?.split('@')[0] || 'user');
+    return user.user_metadata?.username || emailToUsername(user.email || '');
 }
