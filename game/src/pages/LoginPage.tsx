@@ -8,15 +8,18 @@ interface Props {
 
 export default function LoginPage({ onLogin }: Props) {
     const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isSignUp, setIsSignUp] = useState(false);
     const [error, setError] = useState('');
+    const [info, setInfo] = useState('');
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        setInfo('');
 
         if (!username.trim()) {
             setError('Username is required');
@@ -24,6 +27,10 @@ export default function LoginPage({ onLogin }: Props) {
         }
 
         if (isSignUp) {
+            if (!email.trim()) {
+                setError('Email is required');
+                return;
+            }
             if (password !== confirmPassword) {
                 setError('Passwords do not match');
                 return;
@@ -37,10 +44,12 @@ export default function LoginPage({ onLogin }: Props) {
         setLoading(true);
         try {
             if (isSignUp) {
-                await signUp(username, password);
-                // No confirmation needed — sign in immediately
-                await signIn(username, password);
-                onLogin();
+                await signUp(username, email, password);
+                setInfo('Check your email to confirm your account, then sign in.');
+                setIsSignUp(false);
+                setPassword('');
+                setConfirmPassword('');
+                setEmail('');
             } else {
                 await signIn(username, password);
                 onLogin();
@@ -49,8 +58,10 @@ export default function LoginPage({ onLogin }: Props) {
             const msg = err.message || 'Authentication failed';
             if (msg.includes('Invalid login')) {
                 setError('Invalid username or password');
-            } else if (msg.includes('already registered')) {
-                setError('Username already taken');
+            } else if (/already registered|already exists|already taken/i.test(msg)) {
+                setError(msg);
+            } else if (/email not confirmed/i.test(msg)) {
+                setError('Please confirm your email before signing in.');
             } else {
                 setError(msg);
             }
@@ -74,6 +85,16 @@ export default function LoginPage({ onLogin }: Props) {
                         required
                         autoComplete="username"
                     />
+                    {isSignUp && (
+                        <input
+                            type="email"
+                            placeholder="Email"
+                            value={email}
+                            onChange={e => setEmail(e.target.value)}
+                            required
+                            autoComplete="email"
+                        />
+                    )}
                     <input
                         type="password"
                         placeholder="Password"
@@ -96,13 +117,20 @@ export default function LoginPage({ onLogin }: Props) {
                     )}
 
                     {error && <div className="login-error">{error}</div>}
+                    {info && <div className="login-info">{info}</div>}
 
                     <button className="login-btn" type="submit" disabled={loading}>
                         {loading ? '...' : isSignUp ? 'Create Account' : 'Sign In'}
                     </button>
                 </form>
 
-                <button className="login-toggle" onClick={() => { setIsSignUp(!isSignUp); setError(''); setConfirmPassword(''); }}>
+                <button className="login-toggle" onClick={() => {
+                    setIsSignUp(!isSignUp);
+                    setError('');
+                    setInfo('');
+                    setConfirmPassword('');
+                    setEmail('');
+                }}>
                     {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
                 </button>
             </div>
