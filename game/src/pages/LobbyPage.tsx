@@ -165,7 +165,12 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
             const { data } = await supabase.from('games').select('*').eq('id', activeGame.id).single();
             if (data) {
                 setActiveGame(data);
-                if (data.home_ready && data.away_ready) onGameStart(data.id);
+                if (data.home_ready && data.away_ready) {
+                    // For draft games: route to the draft page, NOT the game page.
+                    // Without this, the player who readies second ends up on
+                    // GamePage staring at a "Joined as home..." status.
+                    onGameStart(data.id, data.mode === 'draft' ? 'draft' : 'game');
+                }
             }
         } catch (err: any) {
             setError(err.message);

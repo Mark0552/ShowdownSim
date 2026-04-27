@@ -78,9 +78,11 @@ export default function DraftPage({ gameId, onBack, onPlayStart }: Props) {
             reconnectAttemptRef.current = 0;
             setStatus('Joining draft...');
             ws.send(JSON.stringify({ type: 'join_game', gameId, userId, role }));
-            // Tell the server we're ready for the draft to start (no-op if it's
-            // already running — server ignores duplicates).
-            ws.send(JSON.stringify({ type: 'action', action: { type: 'READY_FOR_DRAFT' } }));
+            // READY_FOR_DRAFT is sent below in onmessage when 'joined' /
+            // 'draft_waiting' arrives. Sending it here would race the server's
+            // mode-detection (handleJoinGame fetches games.mode async), and
+            // an action arriving before room.mode='draft' is set lands in the
+            // lineup-mode handler and gets rejected with "Not in a game".
         };
 
         ws.onmessage = (event) => {
@@ -90,9 +92,21 @@ export default function DraftPage({ gameId, onBack, onPlayStart }: Props) {
                 case 'joined':
                     setMyRole(msg.role as PlayerRole);
                     setStatus(msg.players < 2 ? 'Waiting for opponent...' : 'Connected.');
+                    // NOTE: do not send READY_FOR_DRAFT here. The server emits
+                    // 'joined' before its mode-detection fetch completes, so
+                    // an action sent now would be processed while
+                    // room.mode is still default 'lineup' and gets rejected.
                     break;
                 case 'draft_waiting':
                     setStatus('Waiting for both players to ready up...');
+                    // Safe to ready up: 'draft_waiting' is only sent after the
+                    // server has confirmed mode='draft' on the room.
+                    if (wsRef.current?.readyState === WebSocket.OPEN) {
+                        wsRef.current.send(JSON.stringify({
+                            type: 'action',
+                            action: { type: 'READY_FOR_DRAFT' },
+                        }));
+                    }
                     break;
                 case 'draft_state':
                     setDraftState(msg.state);
