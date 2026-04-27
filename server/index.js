@@ -16,6 +16,15 @@ import cors from 'cors';
 import { createClient } from '@supabase/supabase-js';
 import { initializeGame, processAction, whoseTurn } from './engine/index.js';
 import { computeRunnerMovements } from './engine/movements.js';
+import {
+    initializeDraft, applyDraftPick, isDraftComplete, whoseDraftTurn,
+    buildLineupFromDraftedTeam, validateSubmittedLineup,
+} from './engine/draft.js';
+import { getAllCards } from './cards.js';
+
+// Pre-load and parse the card pool. Crashes early if the data files are
+// missing rather than surprising the first draft pick with a 500.
+getAllCards();
 
 const PORT = process.env.PORT || 3001;
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://jdvgjiklswargnqrqiet.supabase.co';
@@ -125,9 +134,13 @@ class Room {
     constructor(gameId) {
         this.gameId = gameId;
         this.players = new Map(); // userId -> { ws, role }
-        this.state = null;
+        this.state = null;       // play state OR draft state (state.type==='draft')
         this.homeUserId = null;
         this.awayUserId = null;
+        this.mode = 'lineup';    // 'lineup' | 'draft' — set from games.mode on first join
+        // For draft mode: each player must signal READY_FOR_DRAFT before the
+        // draft state is initialized. Both must be present + ready to start.
+        this.draftReady = { home: false, away: false };
     }
 
     addPlayer(userId, role, ws) {
@@ -247,6 +260,23 @@ async function handleJoinGame(ws, msg, setContext) {
 
     // Store series context if provided
     if (seriesContext) room.seriesContext = seriesContext;
+
+    // Fork: draft-mode games take a totally separate path from lineup-mode.
+    // We need games.mode + games.state from the DB to decide. Lineup-mode
+    // games skip this and fall through to the existing flow below.
+    if (supabase) {
+        try {
+            const { data: gameRow } = await supabase
+                .from('games')
+                .select('mode, status, state')
+                .eq('id', gameId).single();
+            if (gameRow?.mode === 'draft') {
+                room.mode = 'draft';
+                await handleDraftJoin(ws, userId, room, gameRow);
+                return; // do NOT fall through to lineup-mode logic
+            }
+        } catch { /* fall through to lineup-mode logic */ }
+    }
 
     // If both players are in and we have lineups, start or resume the game
     if (room.homeUserId && room.awayUserId && room.homeLineup && room.awayLineup && !room.state) {
@@ -392,6 +422,306 @@ async function handleJoinGame(ws, msg, setContext) {
     }
 }
 
+// ============================================================================
+// DRAFT MODE
+// ============================================================================
+
+/**
+ * Draft-mode counterpart of the lineup-mode bottom of handleJoinGame.
+ * Restores draft state from the DB on reconnect, or waits for both players
+ * to send READY_FOR_DRAFT before initialising it.
+ *
+ * The play state machine is not involved here — room.state holds the draft
+ * state (with state.type === 'draft') until the draft completes.
+ */
+async function handleDraftJoin(ws, userId, room, gameRow) {
+    // Restore draft state from DB on reconnect (status='drafting' or
+    // 'setting_lineup' — both have a JSONB state we can resume from).
+    if (!room.state && gameRow.state) {
+        if (gameRow.status === 'drafting' && gameRow.state.type === 'draft') {
+            room.state = gameRow.state;
+            room.draftReady = { home: true, away: true };
+        } else if (gameRow.status === 'setting_lineup' && gameRow.state.type === 'setting_lineup') {
+            room.state = gameRow.state;
+            room.draftReady = { home: true, away: true };
+        }
+    }
+
+    // Reconnect path: send the appropriate state message and notify opponent.
+    if (room.state?.type === 'draft') {
+        ws.send(JSON.stringify({
+            type: 'draft_state',
+            state: room.state,
+            turn: whoseDraftTurn(room.state),
+        }));
+        room.broadcast({ type: 'player_joined', userId });
+        return;
+    }
+    if (room.state?.type === 'setting_lineup') {
+        ws.send(JSON.stringify({
+            type: 'draft_complete',
+            state: room.state,
+        }));
+        room.broadcast({ type: 'player_joined', userId });
+        return;
+    }
+
+    // Pre-draft: waiting for both players to mark ready.
+    ws.send(JSON.stringify({
+        type: 'draft_waiting',
+        ready: room.draftReady,
+        players: room.players.size,
+    }));
+}
+
+/**
+ * Both players have signalled READY_FOR_DRAFT. Build the initial draft
+ * state, persist, and broadcast.
+ */
+async function startDraftIfReady(room) {
+    if (room.state) return; // already started
+    if (!room.homeUserId || !room.awayUserId) return;
+    if (!room.draftReady.home || !room.draftReady.away) return;
+
+    room.state = initializeDraft();
+    await saveDraftState(room.gameId, room.state);
+    room.broadcast({
+        type: 'draft_state',
+        state: room.state,
+        turn: whoseDraftTurn(room.state),
+    });
+}
+
+function handleDraftAction(ws, msg, userId, room) {
+    // Both players must be present to take any draft action. The user wants
+    // the draft paused if either side leaves — same posture as in-game.
+    if (room.players.size < 2) {
+        ws.send(JSON.stringify({ type: 'error', message: 'Draft is paused — waiting for opponent' }));
+        return;
+    }
+    const role = room.getRole(userId);
+    if (!role) {
+        ws.send(JSON.stringify({ type: 'error', message: 'You are not in this draft' }));
+        return;
+    }
+    const actionType = msg.action?.type;
+
+    if (actionType === 'READY_FOR_DRAFT') {
+        if (room.state?.type === 'draft') return; // already started, ignore
+        room.draftReady[role] = true;
+        room.broadcast({ type: 'draft_ready_update', ready: room.draftReady });
+        startDraftIfReady(room);
+        return;
+    }
+
+    if (actionType === 'SUBMIT_LINEUP') {
+        if (room.state?.type !== 'setting_lineup') {
+            ws.send(JSON.stringify({ type: 'error', message: 'Not in setting-lineup phase' }));
+            return;
+        }
+        const submitted = msg.action.lineup;
+        const draftTeam = room.state.draft[role];
+        try {
+            validateSubmittedLineup(submitted, draftTeam, getAllCards());
+        } catch (e) {
+            ws.send(JSON.stringify({ type: 'error', message: e.message }));
+            return;
+        }
+        // Update the player's lineup + mark submitted
+        const lineupKey = `${role}Lineup`;
+        const submittedKey = `${role}Submitted`;
+        room.state = {
+            ...room.state,
+            [lineupKey]: submitted,
+            [submittedKey]: true,
+        };
+        room.broadcast({ type: 'set_lineup_update', state: room.state });
+
+        // Both submitted? Initialize the play state.
+        if (room.state.homeSubmitted && room.state.awaySubmitted) {
+            startPlayFromSubmittedLineups(room).catch(err => {
+                console.error('Failed to start play from drafted lineups:', err);
+            });
+        } else {
+            persistSettingLineup(room.gameId, room.state);
+        }
+        return;
+    }
+
+    if (actionType === 'DRAFT_PICK') {
+        if (room.state?.type !== 'draft') {
+            ws.send(JSON.stringify({ type: 'error', message: 'Draft has not started' }));
+            return;
+        }
+        const expected = whoseDraftTurn(room.state);
+        if (role !== expected) {
+            ws.send(JSON.stringify({ type: 'error', message: `Not your pick — waiting for ${expected}` }));
+            return;
+        }
+        try {
+            const next = applyDraftPick(
+                room.state,
+                { type: 'DRAFT_PICK', actor: role, cardId: msg.action.cardId, bucket: msg.action.bucket },
+                getAllCards(),
+            );
+            room.state = next;
+
+            // Draft complete? Convert to lineup data + transition to setting_lineup.
+            if (isDraftComplete(next)) {
+                completeDraft(room);
+                return;
+            }
+
+            // Otherwise broadcast updated draft state + persist.
+            room.broadcast({
+                type: 'draft_state',
+                state: room.state,
+                turn: whoseDraftTurn(room.state),
+            });
+            saveDraftState(room.gameId, room.state);
+        } catch (e) {
+            ws.send(JSON.stringify({ type: 'error', message: e.message }));
+        }
+        return;
+    }
+
+    ws.send(JSON.stringify({ type: 'error', message: `Unknown draft action: ${actionType}` }));
+}
+
+/**
+ * Called when the 40th pick completes. Builds default Team-shaped lineup
+ * objects from the drafted rosters and transitions the game to
+ * status='setting_lineup'. The post-draft set-lineup screen (task #103)
+ * will let each player edit their lineup before submitting.
+ *
+ * Until that screen ships, the room broadcasts the drafted teams so clients
+ * can render the result; the SUBMIT_LINEUP action will land alongside the UI.
+ */
+async function completeDraft(room) {
+    const cards = getAllCards();
+    const homeLineup = buildLineupFromDraftedTeam(room.state.home, cards, 'Home');
+    const awayLineup = buildLineupFromDraftedTeam(room.state.away, cards, 'Away');
+
+    // Stash the default lineups on the room. They become the seed for the
+    // post-draft set-lineup screen and the eventual initializeGame call.
+    room.draftedHomeLineup = homeLineup;
+    room.draftedAwayLineup = awayLineup;
+
+    if (supabase) {
+        try {
+            await supabase.from('games').update({
+                status: 'setting_lineup',
+                state: {
+                    type: 'setting_lineup',
+                    draft: room.state,
+                    homeLineup,
+                    awayLineup,
+                    homeSubmitted: false,
+                    awaySubmitted: false,
+                },
+            }).eq('id', room.gameId);
+        } catch (err) {
+            console.error('Failed to persist setting_lineup state:', err.message);
+        }
+    }
+
+    room.state = {
+        type: 'setting_lineup',
+        draft: room.state,
+        homeLineup, awayLineup,
+        homeSubmitted: false, awaySubmitted: false,
+    };
+    room.broadcast({
+        type: 'draft_complete',
+        state: room.state,
+    });
+}
+
+async function saveDraftState(gameId, draftState) {
+    if (!supabase) return;
+    try {
+        await supabase.from('games').update({
+            status: 'drafting',
+            state: draftState,
+        }).eq('id', gameId);
+    } catch (err) {
+        console.error('Failed to save draft state:', err.message);
+    }
+}
+
+async function persistSettingLineup(gameId, state) {
+    if (!supabase) return;
+    try {
+        await supabase.from('games').update({
+            status: 'setting_lineup',
+            state,
+        }).eq('id', gameId);
+    } catch (err) {
+        console.error('Failed to save setting_lineup state:', err.message);
+    }
+}
+
+/**
+ * Both players have submitted their final lineups. Convert to play state via
+ * the same path lineup-mode games take, then transition the room + DB to
+ * status='in_progress' and broadcast game_state.
+ *
+ * Series context: drafted games support series too. We follow the same
+ * authoritative-context pattern lineup-mode uses — read from games + series
+ * rows so the rotation formula has reliable inputs even on a server restart.
+ */
+async function startPlayFromSubmittedLineups(room) {
+    const { homeLineup, awayLineup } = room.state;
+
+    // Fetch series context for game 2+ (mirrors handleJoinGame's lineup path).
+    let seriesContext = null;
+    if (supabase) {
+        try {
+            const { data: gameRow } = await supabase
+                .from('games')
+                .select('series_id, game_number')
+                .eq('id', room.gameId).single();
+            if (gameRow?.series_id && (gameRow?.game_number || 1) > 1) {
+                const { data: series } = await supabase
+                    .from('series')
+                    .select('home_user_id, starter_offset, reliever_history')
+                    .eq('id', gameRow.series_id).single();
+                seriesContext = {
+                    gameNumber: gameRow.game_number,
+                    homeStarterOffset: series?.starter_offset || 1,
+                    awayStarterOffset: series?.starter_offset || 1,
+                    relieverHistory: series?.reliever_history || { creator: {}, opponent: {} },
+                    creatorUserId: series?.home_user_id || null,
+                };
+            }
+        } catch (e) {
+            console.warn('Series context fetch failed at draft completion:', e.message);
+        }
+    }
+
+    const playState = initializeGame(
+        homeLineup, awayLineup, room.homeUserId, room.awayUserId, seriesContext,
+    );
+    // Preserve the drafted lineups in the play state. Lineup-mode series
+    // games carry the lineup forward through home/away_lineup_id (FK to the
+    // lineups table); drafted teams aren't saved there, so we have to keep
+    // the data in state.homeLineup / state.awayLineup for ensureNextSeriesGame
+    // to pick up when creating game 2+. Engine handlers spread state on each
+    // mutation so these extra fields propagate through play.
+    playState.homeLineup = homeLineup;
+    playState.awayLineup = awayLineup;
+
+    room.state = playState;
+    saveState(room.gameId, playState);
+
+    // Broadcast game_state (the same shape lineup-mode sends).
+    room.broadcast({
+        type: 'game_state',
+        state: playState,
+        turn: whoseTurn(playState),
+    });
+}
+
 // Valid actions per game phase
 const VALID_ACTIONS = {
     'sp_roll':           ['ROLL_STARTERS'],
@@ -412,7 +742,23 @@ const VALID_ACTIONS = {
 };
 
 function handleAction(ws, msg, userId, room) {
-    if (!room || !room.state) {
+    if (!room) {
+        ws.send(JSON.stringify({ type: 'error', message: 'Not in a game' }));
+        return;
+    }
+
+    // Route draft / pre-draft actions through the draft handler. We allow
+    // READY_FOR_DRAFT before room.state exists, so don't gate on state here.
+    if (room.mode === 'draft' && (
+        !room.state ||
+        room.state.type === 'draft' ||
+        room.state.type === 'setting_lineup'
+    )) {
+        handleDraftAction(ws, msg, userId, room);
+        return;
+    }
+
+    if (!room.state) {
         ws.send(JSON.stringify({ type: 'error', message: 'Not in a game' }));
         return;
     }

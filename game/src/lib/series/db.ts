@@ -18,7 +18,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 // CRUD
 // ============================================================================
 
-export async function createSeries(bestOf: number, password?: string): Promise<{ series: SeriesRow; game: GameRow }> {
+export async function createSeries(bestOf: number, password?: string, mode: 'lineup' | 'draft' = 'lineup'): Promise<{ series: SeriesRow; game: GameRow }> {
     const user = await getUser();
     if (!user) throw new Error('Not logged in');
 
@@ -29,6 +29,7 @@ export async function createSeries(bestOf: number, password?: string): Promise<{
             home_user_email: getUsername(user),
             best_of: bestOf,
             status: 'waiting',
+            mode,
         })
         .select()
         .single();
@@ -40,6 +41,7 @@ export async function createSeries(bestOf: number, password?: string): Promise<{
         status: 'waiting',
         series_id: series.id,
         game_number: 1,
+        mode,
     };
     if (password) gameInsert.password = password;
 

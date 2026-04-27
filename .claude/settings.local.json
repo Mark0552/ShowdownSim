@@ -37,7 +37,32 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(ls -la *.js *.json README.md .gitignore)",
-      "Bash(gh repo:*)"
+      "Bash(gh repo:*)",
+      "Bash(npm run *)",
+      "Bash(cp /tmp/sim-rvar-test.ts C:/Repositories/ShowdownSim/game/_test-rvar.ts)",
+      "Bash(npx tsx *)",
+      "Bash(ping -n 2 github.com)",
+      "Bash(git -C /c/Repositories/ShowdownSim status)",
+      "Bash(git -C /c/Repositories/ShowdownSim diff --stat)",
+      "Bash(git -C /c/Repositories/ShowdownSim add game/src/components/roster/LineupBar.css game/src/components/roster/LineupBar.tsx game/src/logic/teamRules.ts game/src/store/dragStore.ts)",
+      "Bash(git -C /c/Repositories/ShowdownSim commit -m ' *)",
+      "Bash(git -C /c/Repositories/ShowdownSim push origin main)",
+      "Bash(git -C /c/Repositories/ShowdownSim add server/engine/defense.js server/engine/phases/defenseSetup.js server/engine/phases/baserunning.js server/engine/init.js server/engine/index.js server/index.js game/src/engine/gameEngine.ts)",
+      "Bash(git -C /c/Repositories/ShowdownSim add game/src/components/game/DefenseSetupModal.tsx game/src/components/game/DefenseSetupModal.css game/src/components/game/GameBoard.tsx)",
+      "Bash(git -C /c/Repositories/ShowdownSim add game/src/components/game/SubstitutionModal.tsx game/src/components/game/SubstitutionModal.css)",
+      "Bash(git -C /c/Repositories/ShowdownSim add game/src/lib/stats.ts game/src/lib/games.ts game/src/components/game/DefenseSetupModal.tsx game/src/components/game/GameBoard.tsx game/src/pages/GamePage.tsx)",
+      "Bash(npx vite *)",
+      "Bash(command -v magick)",
+      "Bash(command -v convert)",
+      "Bash(command -v ffmpeg)",
+      "Bash(ffmpeg -version)",
+      "Bash(ffmpeg -y -i /c/Repositories/ShowdownSim/game/src/assets/Fenway.jpg -vf \"scale=1920:-1\" -q:v 4 /c/Repositories/ShowdownSim/game/src/assets/Fenway.jpg.new)",
+      "Bash(ffmpeg -y -i /c/Repositories/ShowdownSim/game/src/assets/Fenway.jpg -vf \"scale=1920:-1\" -q:v 4 /tmp/Fenway-resized.jpg)",
+      "Bash(git check-ignore *)",
+      "Bash(sed -i '511,571d' src/pages/LobbyPage.tsx)",
+      "Read(//c/c/Repositories/ShowdownSim/game/src/pages/**)",
+      "Bash(sed -i '284,616d' src/lib/games.ts)",
+      "Read(//c/c/Repositories/ShowdownSim/game/src/lib/**)"
     ]
   }
 }

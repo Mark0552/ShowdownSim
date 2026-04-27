@@ -1,10 +1,12 @@
-export type GameStatus = 'waiting' | 'lineup_select' | 'in_progress' | 'finished';
+export type GameStatus = 'waiting' | 'lineup_select' | 'drafting' | 'setting_lineup' | 'in_progress' | 'finished';
 export type SeriesStatus = 'waiting' | 'in_progress' | 'finished';
 export type PlayerRole = 'home' | 'away';
+export type GameMode = 'lineup' | 'draft';
 
 export interface GameRow {
     id: string;
     status: GameStatus;
+    mode: GameMode;
     home_user_id: string;
     away_user_id: string | null;
     home_user_email: string | null;
@@ -29,6 +31,7 @@ export interface GameRow {
 
 export interface SeriesRow {
     id: string;
+    mode: GameMode;
     home_user_id: string;
     away_user_id: string | null;
     home_user_email: string | null;

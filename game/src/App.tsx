@@ -11,6 +11,7 @@ import MainMenu from './pages/MainMenu';
 import LineupsPage from './pages/LineupsPage';
 import LobbyPage from './pages/LobbyPage';
 import GamePage from './pages/GamePage';
+import DraftPage from './pages/DraftPage';
 import StatsPage from './pages/StatsPage';
 import SimulationPage from './pages/SimulationPage';
 import PricingPage from './pages/PricingPage';
@@ -18,7 +19,7 @@ import RulesPage from './pages/RulesPage';
 import TeamBuilder from './pages/TeamBuilder';
 import MusicPlayer from './components/MusicPlayer';
 
-type Page = 'login' | 'menu' | 'lineups' | 'builder' | 'lobby' | 'game' | 'stats' | 'simulation' | 'pricing' | 'rules';
+type Page = 'login' | 'menu' | 'lineups' | 'builder' | 'lobby' | 'game' | 'draft' | 'stats' | 'simulation' | 'pricing' | 'rules';
 
 /** Read page + gameId from URL hash */
 function readHash(): { page: Page | null; gameId: string | null } {
@@ -26,6 +27,9 @@ function readHash(): { page: Page | null; gameId: string | null } {
     if (!hash) return { page: null, gameId: null };
     if (hash.startsWith('game/')) {
         return { page: 'game', gameId: hash.slice(5) };
+    }
+    if (hash.startsWith('draft/')) {
+        return { page: 'draft', gameId: hash.slice(6) };
     }
     const validPages: Page[] = ['menu', 'lineups', 'builder', 'lobby', 'stats', 'simulation', 'pricing', 'rules'];
     if (validPages.includes(hash as Page)) {
@@ -49,6 +53,8 @@ export default function App() {
         setPageState(p);
         if (p === 'game' && gameId) {
             window.location.hash = `game/${gameId}`;
+        } else if (p === 'draft' && gameId) {
+            window.location.hash = `draft/${gameId}`;
         } else if (p === 'login') {
             window.location.hash = '';
         } else {
@@ -72,6 +78,9 @@ export default function App() {
                 if (hashPage === 'game' && gameId) {
                     setActiveGameId(gameId);
                     setPageState('game');
+                } else if (hashPage === 'draft' && gameId) {
+                    setActiveGameId(gameId);
+                    setPageState('draft');
                 } else if (hashPage) {
                     setPageState(hashPage);
                 } else {
@@ -97,6 +106,9 @@ export default function App() {
             if (hashPage === 'game' && gameId) {
                 setActiveGameId(gameId);
                 setPageState('game');
+            } else if (hashPage === 'draft' && gameId) {
+                setActiveGameId(gameId);
+                setPageState('draft');
             } else if (hashPage) {
                 setPageState(hashPage);
             }
@@ -131,9 +143,9 @@ export default function App() {
         setPage('builder');
     };
 
-    const handleGameStart = (gameId: string) => {
+    const handleGameStart = (gameId: string, target: 'game' | 'draft' = 'game') => {
         setActiveGameId(gameId);
-        setPage('game', gameId);
+        setPage(target, gameId);
     };
 
     if (cardsLoading) {
@@ -215,6 +227,16 @@ export default function App() {
                     key={activeGameId}
                     gameId={activeGameId}
                     onBack={() => { setActiveGameId(null); setPage('lobby'); }}
+                />
+            );
+        case 'draft':
+            if (!activeGameId) return null;
+            return (
+                <DraftPage
+                    key={activeGameId}
+                    gameId={activeGameId}
+                    onBack={() => { setActiveGameId(null); setPage('lobby'); }}
+                    onPlayStart={(id) => handleGameStart(id, 'game')}
                 />
             );
     } };

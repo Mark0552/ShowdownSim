@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import type { GameRow, SeriesRow } from '../types/game';
 import type { SavedLineup } from '../lib/lineups';
-import { createGame, getOpenGames, getMyGames, joinGame, selectLineup, deleteGame, subscribeToGame, subscribeToLobby, subscribeToMyGames, getMyRole } from '../lib/games';
+import { createGame, getOpenGames, getMyGames, joinGame, selectLineup, markReadyForDraft, deleteGame, subscribeToGame, subscribeToLobby, subscribeToMyGames, getMyRole } from '../lib/games';
+import type { GameMode } from '../types/game';
 import { createSeries, getSeries, deleteSeries } from '../lib/series';
 import SeriesCard from '../components/lobby/SeriesCard';
 import { getLineups } from '../lib/lineups';
@@ -12,7 +13,7 @@ import './LobbyPage.css';
 
 interface Props {
     onBack: () => void;
-    onGameStart: (gameId: string) => void;
+    onGameStart: (gameId: string, target?: 'game' | 'draft') => void;
 }
 
 export default function LobbyPage({ onBack, onGameStart }: Props) {
@@ -101,11 +102,13 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
             setSelectedLineup(null);
         };
 
+        const target = (g: GameRow): 'game' | 'draft' => g.mode === 'draft' ? 'draft' : 'game';
+
         // Realtime subscription — updates on UPDATE, kicks out on DELETE
         const channel = subscribeToGame(activeGame.id, (updated) => {
             setActiveGame(updated);
             if (updated.home_ready && updated.away_ready && updated.status === 'lineup_select') {
-                onGameStart(updated.id);
+                onGameStart(updated.id, target(updated));
             }
         }, handleGameGone);
 
@@ -117,7 +120,7 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
                 if (!data) { handleGameGone(); return; }
                 setActiveGame(data);
                 if (data.home_ready && data.away_ready && data.status === 'lineup_select') {
-                    onGameStart(data.id);
+                    onGameStart(data.id, target(data));
                 }
             } catch (e) { /* ignore */ }
         }, 3000);
@@ -132,19 +135,37 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [createBestOf, setCreateBestOf] = useState(1);
     const [createPassword, setCreatePassword] = useState('');
+    const [createMode, setCreateMode] = useState<GameMode>('lineup');
 
-    const handleCreate = async (bestOf: number, password?: string) => {
+    const handleCreate = async (bestOf: number, password?: string, mode: GameMode = 'lineup') => {
         try {
             setShowCreateModal(false);
             setCreateBestOf(1);
             setCreatePassword('');
+            setCreateMode('lineup');
             const pw = password && password.trim() ? password.trim() : undefined;
             if (bestOf === 1) {
-                const game = await createGame(pw);
+                const game = await createGame(pw, mode);
                 setActiveGame(game);
             } else {
-                const { game } = await createSeries(bestOf, pw);
+                const { game } = await createSeries(bestOf, pw, mode);
                 setActiveGame(game);
+            }
+        } catch (err: any) {
+            setError(err.message);
+        }
+    };
+
+    const handleReadyForDraft = async () => {
+        if (!activeGame || !userId) return;
+        const role = getMyRole(activeGame, userId);
+        if (!role) return;
+        try {
+            await markReadyForDraft(activeGame.id, role);
+            const { data } = await supabase.from('games').select('*').eq('id', activeGame.id).single();
+            if (data) {
+                setActiveGame(data);
+                if (data.home_ready && data.away_ready) onGameStart(data.id);
             }
         } catch (err: any) {
             setError(err.message);
@@ -208,11 +229,17 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
     };
 
     const handleResumeGame = (game: GameRow) => {
+        const target: 'game' | 'draft' = game.mode === 'draft' ? 'draft' : 'game';
         // Series games 2+ are pre-populated with both lineups + both ready=true
         // by ensureNextSeriesGame. Skip the lineup-select UI in that case and
         // go straight into the game.
         if (game.status === 'lineup_select' && game.home_ready && game.away_ready) {
-            onGameStart(game.id);
+            onGameStart(game.id, target);
+            return;
+        }
+        if (game.status === 'drafting' || game.status === 'setting_lineup') {
+            // Mid-draft / post-draft setup — go straight to the draft page.
+            onGameStart(game.id, 'draft');
             return;
         }
         if (game.status === 'lineup_select') {
@@ -220,9 +247,9 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
         } else if (game.status === 'finished' && game.series_id) {
             // Finished series game that's awaiting next-game. Navigate to
             // the game-over screen so the user can toggle Ready Up.
-            onGameStart(game.id);
+            onGameStart(game.id, target);
         } else if (game.status === 'in_progress') {
-            onGameStart(game.id);
+            onGameStart(game.id, target);
         }
     };
 
@@ -241,13 +268,18 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
         const oppReady = role === 'home' ? activeGame.away_ready : activeGame.home_ready;
         const oppEmail = role === 'home' ? activeGame.away_user_email : activeGame.home_user_email;
         const waiting = activeGame.status === 'waiting';
+        const isDraft = activeGame.mode === 'draft';
+
+        const headerLabel = waiting
+            ? 'Waiting for Opponent'
+            : isDraft ? 'Ready to Draft' : 'Select Lineup';
 
         return (
             <div className="lobby-page">
                 <div className="lobby-container">
                     <div className="lobby-header">
                         <button className="lobby-back" onClick={handleCancelGame}>&larr; Cancel</button>
-                        <h1>{waiting ? 'Waiting for Opponent' : 'Select Lineup'}</h1>
+                        <h1>{headerLabel}{isDraft && <span style={{ fontSize: 14, color: '#8aade0', marginLeft: 12 }}>DRAFT MODE</span>}</h1>
                         <div />
                     </div>
 
@@ -275,7 +307,23 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
                                 </div>
                             </div>
 
-                            {!myReady && (
+                            {!myReady && isDraft && (
+                                <div className="lineup-picker" style={{ textAlign: 'center', padding: '32px 24px' }}>
+                                    <h2>Snake Draft</h2>
+                                    <p style={{ color: 'var(--text-dim)', maxWidth: 480, margin: '8px auto 24px', lineHeight: 1.5 }}>
+                                        Each player drafts 20 cards from the full pool: 9 hitters, 4 starters, and 7 flex slots
+                                        (relievers + bench, in any combination). Snake draft order — home picks first overall.
+                                        Lineup, batting order, and SP rotation are set after the draft.
+                                    </p>
+                                    <button
+                                        className="lobby-create"
+                                        style={{ padding: '12px 36px', fontSize: 16 }}
+                                        onClick={handleReadyForDraft}
+                                    >READY FOR DRAFT</button>
+                                </div>
+                            )}
+
+                            {!myReady && !isDraft && (
                                 <div className="lineup-picker">
                                     <h2>Choose Your Lineup</h2>
                                     {myLineups.length === 0 && (
@@ -331,7 +379,7 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
                             {myReady && !oppReady && (
                                 <div className="lobby-waiting">
                                     <div className="waiting-spinner" />
-                                    <p>Waiting for opponent to select lineup...</p>
+                                    <p>{isDraft ? 'Waiting for opponent to ready up for the draft...' : 'Waiting for opponent to select lineup...'}</p>
                                 </div>
                             )}
                         </>
@@ -369,6 +417,27 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
                             </div>
 
                             <div className="create-modal-section">
+                                <label className="create-modal-label">Lineup</label>
+                                <div className="create-modal-series-row">
+                                    {([
+                                        { v: 'lineup' as GameMode, l: 'Pick a Lineup' },
+                                        { v: 'draft' as GameMode, l: 'Draft Teams' },
+                                    ]).map(opt => (
+                                        <button
+                                            key={opt.v}
+                                            className={`create-modal-series-btn ${createMode === opt.v ? 'active' : ''}`}
+                                            onClick={() => setCreateMode(opt.v)}
+                                        >{opt.l}</button>
+                                    ))}
+                                </div>
+                                {createMode === 'draft' && (
+                                    <p style={{ color: 'var(--text-dim)', fontSize: 12, marginTop: 8, lineHeight: 1.4 }}>
+                                        Both players draft 20 cards each from the full pool. Lineup is set after the draft.
+                                    </p>
+                                )}
+                            </div>
+
+                            <div className="create-modal-section">
                                 <label className="create-modal-label">Password (optional)</label>
                                 <input
                                     type="text"
@@ -392,7 +461,7 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
                             </div>
 
                             <div className="create-modal-actions">
-                                <button className="create-modal-create-btn" onClick={() => handleCreate(createBestOf, createPassword)}>CREATE</button>
+                                <button className="create-modal-create-btn" onClick={() => handleCreate(createBestOf, createPassword, createMode)}>CREATE</button>
                                 <button className="create-modal-cancel" onClick={() => setShowCreateModal(false)}>Cancel</button>
                             </div>
                         </div>

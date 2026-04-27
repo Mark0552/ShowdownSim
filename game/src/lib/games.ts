@@ -3,7 +3,9 @@ import { getUsername, getUser } from './auth';
 import type { GameRow, PlayerRole } from '../types/game';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
-export async function createGame(password?: string): Promise<GameRow> {
+export type GameMode = 'lineup' | 'draft';
+
+export async function createGame(password?: string, mode: GameMode = 'lineup'): Promise<GameRow> {
     const user = await getUser();
     if (!user) throw new Error('Not logged in');
 
@@ -11,6 +13,7 @@ export async function createGame(password?: string): Promise<GameRow> {
         home_user_id: user.id,
         home_user_email: getUsername(user),
         status: 'waiting',
+        mode,
     };
     if (password) insert.password = password;
 
@@ -41,12 +44,12 @@ export async function getMyGames(): Promise<GameRow[]> {
     const user = await getUser();
     if (!user) throw new Error('Not logged in');
 
-    // Actively-playable games (lineup-select / in-progress)
+    // Actively-playable games (lineup-select / drafting / setting-lineup / in-progress)
     const { data: active, error: e1 } = await supabase
         .from('games')
         .select('*')
         .or(`home_user_id.eq.${user.id},away_user_id.eq.${user.id}`)
-        .in('status', ['lineup_select', 'in_progress'])
+        .in('status', ['lineup_select', 'drafting', 'setting_lineup', 'in_progress'])
         .order('updated_at', { ascending: false });
     if (e1) throw e1;
 
@@ -138,6 +141,19 @@ export async function joinGame(gameId: string): Promise<GameRow> {
     }
 
     return data;
+}
+
+/**
+ * Mark a player ready for a draft-mode game. No lineup data is involved —
+ * the draft will populate it. Once both home_ready and away_ready are true
+ * the lobby routes both players to the draft page.
+ */
+export async function markReadyForDraft(gameId: string, role: PlayerRole): Promise<void> {
+    const update = role === 'home'
+        ? { home_ready: true }
+        : { away_ready: true };
+    const { error } = await supabase.from('games').update(update).eq('id', gameId);
+    if (error) throw error;
 }
 
 export async function selectLineup(gameId: string, role: PlayerRole, lineupId: string, lineupName: string, lineupData: any): Promise<void> {
