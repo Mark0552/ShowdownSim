@@ -16,6 +16,24 @@ interface Props {
     onGameStart: (gameId: string, target?: 'game' | 'draft') => void;
 }
 
+/**
+ * Route a game to the right page based on its CURRENT lifecycle phase.
+ *
+ * DraftPage handles only the pre-play phases of drafted games (drafting /
+ * setting_lineup, plus the brief lineup_select transition once both players
+ * are ready). In-progress and finished games — even drafted ones — go to
+ * GamePage, which knows how to fetch the persisted lineup from state.homeLineup
+ * and ship it to the server on join. Sending an in-progress drafted game to
+ * DraftPage hangs both clients because DraftPage's join_game payload skips
+ * lineupData, and the server's play-state restore needs it.
+ */
+function targetForGame(g: GameRow): 'game' | 'draft' {
+    if (g.mode !== 'draft') return 'game';
+    if (g.status === 'drafting' || g.status === 'setting_lineup') return 'draft';
+    if (g.status === 'lineup_select' && g.home_ready && g.away_ready) return 'draft';
+    return 'game';
+}
+
 export default function LobbyPage({ onBack, onGameStart }: Props) {
     const [openGames, setOpenGames] = useState<GameRow[]>([]);
     const [myGames, setMyGames] = useState<GameRow[]>([]);
@@ -102,13 +120,11 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
             setSelectedLineup(null);
         };
 
-        const target = (g: GameRow): 'game' | 'draft' => g.mode === 'draft' ? 'draft' : 'game';
-
         // Realtime subscription — updates on UPDATE, kicks out on DELETE
         const channel = subscribeToGame(activeGame.id, (updated) => {
             setActiveGame(updated);
             if (updated.home_ready && updated.away_ready && updated.status === 'lineup_select') {
-                onGameStart(updated.id, target(updated));
+                onGameStart(updated.id, targetForGame(updated));
             }
         }, handleGameGone);
 
@@ -120,7 +136,7 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
                 if (!data) { handleGameGone(); return; }
                 setActiveGame(data);
                 if (data.home_ready && data.away_ready && data.status === 'lineup_select') {
-                    onGameStart(data.id, target(data));
+                    onGameStart(data.id, targetForGame(data));
                 }
             } catch (e) { /* ignore */ }
         }, 3000);
@@ -234,27 +250,24 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
     };
 
     const handleResumeGame = (game: GameRow) => {
-        const target: 'game' | 'draft' = game.mode === 'draft' ? 'draft' : 'game';
         // Series games 2+ are pre-populated with both lineups + both ready=true
         // by ensureNextSeriesGame. Skip the lineup-select UI in that case and
         // go straight into the game.
         if (game.status === 'lineup_select' && game.home_ready && game.away_ready) {
-            onGameStart(game.id, target);
+            onGameStart(game.id, targetForGame(game));
             return;
         }
         if (game.status === 'drafting' || game.status === 'setting_lineup') {
-            // Mid-draft / post-draft setup — go straight to the draft page.
             onGameStart(game.id, 'draft');
             return;
         }
         if (game.status === 'lineup_select') {
             setActiveGame(game);
         } else if (game.status === 'finished' && game.series_id) {
-            // Finished series game that's awaiting next-game. Navigate to
-            // the game-over screen so the user can toggle Ready Up.
-            onGameStart(game.id, target);
+            // Finished series game awaiting next-game.
+            onGameStart(game.id, targetForGame(game));
         } else if (game.status === 'in_progress') {
-            onGameStart(game.id, target);
+            onGameStart(game.id, targetForGame(game));
         }
     };
 
