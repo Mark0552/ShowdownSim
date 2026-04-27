@@ -22,9 +22,16 @@ import {
 } from './engine/draft.js';
 import { getAllCards } from './cards.js';
 
-// Pre-load and parse the card pool. Crashes early if the data files are
-// missing rather than surprising the first draft pick with a 500.
-getAllCards();
+// Try to pre-load the card pool. If the data files aren't present (e.g. a
+// deploy that didn't ship server/data/*.json), don't crash the server —
+// lineup-mode games still work without it. Draft-mode games will surface
+// the error per-action when getAllCards() is called.
+try {
+    const n = getAllCards().length;
+    console.log(`Card pool loaded: ${n} cards`);
+} catch (err) {
+    console.warn('Card pool not available — draft mode will fail:', err.message);
+}
 
 const PORT = process.env.PORT || 3001;
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://jdvgjiklswargnqrqiet.supabase.co';

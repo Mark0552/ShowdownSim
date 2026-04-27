@@ -125,9 +125,14 @@ export function getAllCards() {
 
     // Try a few candidate paths so this works in dev (relative to server/)
     // and in deployment (cards copied next to the server bundle).
+    //
+    // server/data/*.json is the production location. Keep it in sync with
+    // game/public/*.json — whenever cards are re-scraped, copy the JSON
+    // files into both directories. Railway's Docker build context is
+    // server/, so it can't reach the sibling game/public dir.
     const candidates = [
-        join(__dirname, '..', 'game', 'public'),
         join(__dirname, 'data'),
+        join(__dirname, '..', 'game', 'public'),
         join(__dirname),
     ];
     let dir = null;
