@@ -268,20 +268,28 @@ async function handleJoinGame(ws, msg, setContext) {
     // Store series context if provided
     if (seriesContext) room.seriesContext = seriesContext;
 
-    // Fork: draft-mode games take a totally separate path from lineup-mode.
-    // We need games.mode + games.state from the DB to decide. Lineup-mode
-    // games skip this and fall through to the existing flow below.
+    // Fork: draft-mode games take a separate path from lineup-mode, but
+    // ONLY while they're still in the pre-play phases (waiting / lineup_select
+    // / drafting / setting_lineup). Once status='in_progress' or 'finished',
+    // the game has a normal play state and must use the lineup-mode logic
+    // below — otherwise reconnecting to an in-progress drafted game gets
+    // routed to handleDraftJoin, which sends 'draft_waiting' that the
+    // GamePage can't act on, and both clients hang on the loading screen.
     if (supabase) {
         try {
             const { data: gameRow } = await supabase
                 .from('games')
                 .select('mode, status, state')
                 .eq('id', gameId).single();
-            if (gameRow?.mode === 'draft') {
+            const draftPhases = new Set(['waiting', 'lineup_select', 'drafting', 'setting_lineup']);
+            if (gameRow?.mode === 'draft' && draftPhases.has(gameRow.status)) {
                 room.mode = 'draft';
                 await handleDraftJoin(ws, userId, room, gameRow);
                 return; // do NOT fall through to lineup-mode logic
             }
+            // mode='draft' + in_progress/finished falls through. The play
+            // state is in gameRow.state and the lineup-mode logic below will
+            // restore it via the same loadedState check used for everyone.
         } catch { /* fall through to lineup-mode logic */ }
     }
 

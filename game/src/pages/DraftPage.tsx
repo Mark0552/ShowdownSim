@@ -7,13 +7,17 @@ import { getGame, getMyRole } from '../lib/games';
 import { getUser } from '../lib/auth';
 import { loadCards } from '../data/cardData';
 import { canPlayPosition } from '../data/parsePosition';
-import { checkEligibility, buildAvailablePool, effectiveCost, flexUsed } from '../logic/draftConstraints';
+import { checkEligibility, buildAvailablePool } from '../logic/draftConstraints';
 import { STARTER_HITTER_CAP, STARTER_PITCHER_CAP, FLEX_CAP } from '../types/draft';
+import { DEFAULT_FILTERS, getFilterOptions, filterCards, type FilterState } from '../data/filters';
+import FilterBar from '../components/catalog/FilterBar';
+import CardTooltip from '../components/cards/CardTooltip';
 import './DraftPage.css';
 
 const WS_URL = 'wss://showdownsim-production.up.railway.app';
 const MAX_RECONNECT_ATTEMPTS = 10;
 const RECONNECT_BASE_DELAY = 1000;
+const HOVER_DELAY_MS = 400;
 
 interface Props {
     gameId: string;
@@ -21,20 +25,17 @@ interface Props {
     onPlayStart: (gameId: string) => void; // called when status flips to in_progress
 }
 
-type FilterCat = 'all' | 'hitter' | 'pitcher';
-
 export default function DraftPage({ gameId, onBack, onPlayStart }: Props) {
     const [allCards, setAllCards] = useState<Card[]>([]);
     const [cardsLoaded, setCardsLoaded] = useState(false);
 
-    const [gameRow, setGameRow] = useState<GameRow | null>(null);
+    const [, setGameRow] = useState<GameRow | null>(null);
     const [myRole, setMyRole] = useState<PlayerRole | null>(null);
     const [draftState, setDraftState] = useState<DraftState | null>(null);
     const [turn, setTurn] = useState<PlayerRole | null>(null);
     const [error, setError] = useState('');
     const [status, setStatus] = useState('Connecting...');
     const [opponentDisconnected, setOpponentDisconnected] = useState(false);
-    /** Setting-lineup phase state. Non-null once the draft completes. */
     const [settingLineup, setSettingLineup] = useState<{
         homeLineup: Team;
         awayLineup: Team;
@@ -42,9 +43,7 @@ export default function DraftPage({ gameId, onBack, onPlayStart }: Props) {
         awaySubmitted: boolean;
     } | null>(null);
 
-    // UI state
-    const [search, setSearch] = useState('');
-    const [filter, setFilter] = useState<FilterCat>('all');
+    const [filters, setFilters] = useState<FilterState>({ ...DEFAULT_FILTERS });
     const [pendingCard, setPendingCard] = useState<{ card: Card; buckets: DraftBucket[] } | null>(null);
 
     const wsRef = useRef<WebSocket | null>(null);
@@ -53,7 +52,6 @@ export default function DraftPage({ gameId, onBack, onPlayStart }: Props) {
     const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const connDataRef = useRef<{ userId: string; role: PlayerRole } | null>(null);
 
-    // Load card pool once.
     useEffect(() => {
         loadCards().then(({ all }) => {
             setAllCards(all);
@@ -65,7 +63,6 @@ export default function DraftPage({ gameId, onBack, onPlayStart }: Props) {
     const connectWs = useCallback(() => {
         if (!connDataRef.current || !mountedRef.current) return;
         const { userId, role } = connDataRef.current;
-
         if (wsRef.current) {
             wsRef.current.onclose = null;
             wsRef.current.close();
@@ -78,11 +75,8 @@ export default function DraftPage({ gameId, onBack, onPlayStart }: Props) {
             reconnectAttemptRef.current = 0;
             setStatus('Joining draft...');
             ws.send(JSON.stringify({ type: 'join_game', gameId, userId, role }));
-            // READY_FOR_DRAFT is sent below in onmessage when 'joined' /
-            // 'draft_waiting' arrives. Sending it here would race the server's
-            // mode-detection (handleJoinGame fetches games.mode async), and
-            // an action arriving before room.mode='draft' is set lands in the
-            // lineup-mode handler and gets rejected with "Not in a game".
+            // READY_FOR_DRAFT is sent on 'draft_waiting' below — sending it now
+            // races the server's mode-detection.
         };
 
         ws.onmessage = (event) => {
@@ -92,15 +86,9 @@ export default function DraftPage({ gameId, onBack, onPlayStart }: Props) {
                 case 'joined':
                     setMyRole(msg.role as PlayerRole);
                     setStatus(msg.players < 2 ? 'Waiting for opponent...' : 'Connected.');
-                    // NOTE: do not send READY_FOR_DRAFT here. The server emits
-                    // 'joined' before its mode-detection fetch completes, so
-                    // an action sent now would be processed while
-                    // room.mode is still default 'lineup' and gets rejected.
                     break;
                 case 'draft_waiting':
                     setStatus('Waiting for both players to ready up...');
-                    // Safe to ready up: 'draft_waiting' is only sent after the
-                    // server has confirmed mode='draft' on the room.
                     if (wsRef.current?.readyState === WebSocket.OPEN) {
                         wsRef.current.send(JSON.stringify({
                             type: 'action',
@@ -133,7 +121,6 @@ export default function DraftPage({ gameId, onBack, onPlayStart }: Props) {
                     });
                     break;
                 case 'game_state':
-                    // Server has flipped to active — bail to GamePage.
                     onPlayStart(gameId);
                     break;
                 case 'player_left':
@@ -165,7 +152,7 @@ export default function DraftPage({ gameId, onBack, onPlayStart }: Props) {
             }
         };
 
-        ws.onerror = () => { /* onclose will handle */ };
+        ws.onerror = () => { /* onclose handles */ };
     }, [gameId, onPlayStart]);
 
     useEffect(() => {
@@ -196,7 +183,7 @@ export default function DraftPage({ gameId, onBack, onPlayStart }: Props) {
         };
     }, [gameId, connectWs]);
 
-    // ----- Eligibility computation per render -----
+    // ----- Eligibility -----
     const draftedSet = useMemo(() => {
         const s = new Set<string>();
         if (!draftState) return s;
@@ -218,7 +205,7 @@ export default function DraftPage({ gameId, onBack, onPlayStart }: Props) {
     const oppTeam = draftState && myRole ? draftState[myRole === 'home' ? 'away' : 'home'] : null;
     const isMyTurn = turn === myRole;
 
-    /** Eligibility map: cardId -> { eligible, buckets, reason } */
+    /** Map of cardId -> eligibility result for the picker (myTeam). */
     const eligibility = useMemo(() => {
         const map = new Map<string, { eligible: boolean; buckets: DraftBucket[]; reason?: string }>();
         if (!myTeam || !draftState || !cardsLoaded) return map;
@@ -227,20 +214,18 @@ export default function DraftPage({ gameId, onBack, onPlayStart }: Props) {
                 map.set(c.id, { eligible: false, buckets: [], reason: 'drafted' });
                 continue;
             }
-            const r = checkEligibility(c, myTeam, allCards, draftedSet, availablePool);
-            map.set(c.id, r);
+            map.set(c.id, checkEligibility(c, myTeam, allCards, draftedSet, availablePool));
         }
         return map;
     }, [allCards, draftedSet, availablePool, myTeam, draftState, cardsLoaded]);
 
-    // ----- Filter pool for grid -----
-    const filteredCards = useMemo(() => {
-        const lower = search.trim().toLowerCase();
-        return allCards
-            .filter(c => filter === 'all' || c.type === filter)
-            .filter(c => !lower || c.name.toLowerCase().includes(lower) || c.team.toLowerCase().includes(lower))
-            .sort((a, b) => b.points - a.points);
-    }, [allCards, filter, search]);
+    /** Visible pool: filter via FilterBar, then drop ineligible cards entirely. */
+    const filterOptions = useMemo(() => getFilterOptions(allCards), [allCards]);
+    const visibleCards = useMemo(() => {
+        if (!cardsLoaded) return [];
+        const filtered = filterCards(allCards, filters);
+        return filtered.filter(c => eligibility.get(c.id)?.eligible);
+    }, [allCards, filters, eligibility, cardsLoaded]);
 
     // ----- Pick action -----
     const sendPick = (cardId: string, bucket: DraftBucket) => {
@@ -256,16 +241,12 @@ export default function DraftPage({ gameId, onBack, onPlayStart }: Props) {
     };
 
     const handleCardClick = (card: Card) => {
-        if (!isMyTurn) return;
-        if (opponentDisconnected) return;
+        if (!isMyTurn || opponentDisconnected) return;
         const r = eligibility.get(card.id);
         if (!r || !r.eligible) return;
-        if (r.buckets.length === 1) {
-            sendPick(card.id, r.buckets[0]);
-        } else {
-            // Hitter with both starter + bench available — ask which.
-            setPendingCard({ card, buckets: r.buckets });
-        }
+        // ALWAYS confirm — even single-bucket picks. Modal gives the user a
+        // chance to back out before the action commits.
+        setPendingCard({ card, buckets: r.buckets });
     };
 
     // ----- Render -----
@@ -287,7 +268,6 @@ export default function DraftPage({ gameId, onBack, onPlayStart }: Props) {
         );
     }
 
-    // Draft is done — render the set-lineup screen instead of the picking UI.
     if (settingLineup) {
         const myLineup = myRole === 'home' ? settingLineup.homeLineup : settingLineup.awayLineup;
         const mySubmitted = myRole === 'home' ? settingLineup.homeSubmitted : settingLineup.awaySubmitted;
@@ -318,7 +298,6 @@ export default function DraftPage({ gameId, onBack, onPlayStart }: Props) {
 
     return (
         <div className="draft-page">
-            {/* HEADER */}
             <div className="draft-header">
                 <button className="draft-back" onClick={onBack}>&larr; Leave Draft</button>
                 <div className="draft-pick-indicator">
@@ -340,56 +319,32 @@ export default function DraftPage({ gameId, onBack, onPlayStart }: Props) {
             )}
 
             <div className="draft-body">
-                {/* CARD POOL */}
                 <div className="draft-pool">
-                    <div className="draft-pool-controls">
-                        <input
-                            type="text"
-                            placeholder="Search…"
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            className="draft-search"
-                        />
-                        <div className="draft-filter-row">
-                            {(['all', 'hitter', 'pitcher'] as FilterCat[]).map(f => (
-                                <button
-                                    key={f}
-                                    className={`draft-filter-btn ${filter === f ? 'active' : ''}`}
-                                    onClick={() => setFilter(f)}
-                                >{f === 'all' ? 'All' : f === 'hitter' ? 'Hitters' : 'Pitchers'}</button>
-                            ))}
-                        </div>
-                    </div>
+                    <FilterBar
+                        filters={filters}
+                        options={filterOptions}
+                        onChange={(key, value) => setFilters(prev => ({ ...prev, [key]: value }))}
+                        onClear={() => setFilters({ ...DEFAULT_FILTERS })}
+                        resultCount={visibleCards.length}
+                        totalCount={allCards.length - draftedSet.size}
+                    />
                     <div className="draft-grid">
-                        {filteredCards.map(card => {
-                            const elig = eligibility.get(card.id) || { eligible: false, buckets: [] as DraftBucket[] };
-                            const greyed = !elig.eligible || !isMyTurn;
-                            const tip = !isMyTurn ? `Wait for ${turn} to pick`
-                                : elig.eligible ? ''
-                                : (elig as any).reason === 'drafted' ? 'Already drafted'
-                                : (elig as any).reason === 'matching' ? 'Would break starting-9 position coverage'
-                                : (elig as any).reason === 'budget' ? "Can't afford remaining slots after this pick"
-                                : 'Not eligible';
-                            return (
-                                <button
-                                    key={card.id}
-                                    className={`draft-card ${greyed ? 'greyed' : ''}`}
-                                    onClick={() => handleCardClick(card)}
-                                    disabled={greyed && !elig.eligible}
-                                    title={tip}
-                                >
-                                    <img src={card.imagePath} alt={card.name} />
-                                    <div className="draft-card-meta">
-                                        <span className="draft-card-name">{card.name}</span>
-                                        <span className="draft-card-pts">{card.points} pts</span>
-                                    </div>
-                                </button>
-                            );
-                        })}
+                        {visibleCards.map(card => (
+                            <DraftPoolCard
+                                key={card.id}
+                                card={card}
+                                onClick={() => handleCardClick(card)}
+                                disabled={!isMyTurn || opponentDisconnected}
+                            />
+                        ))}
+                        {visibleCards.length === 0 && (
+                            <div className="draft-grid-empty">
+                                No eligible cards match your filters. Adjust filters or wait — eligible cards may open up after the next pick.
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                {/* SIDEBAR */}
                 <div className="draft-sidebar">
                     <RosterMini label="Your Roster" team={myTeam!} cards={allCards} />
                     <RosterMini label="Opponent" team={oppTeam!} cards={allCards} />
@@ -397,36 +352,81 @@ export default function DraftPage({ gameId, onBack, onPlayStart }: Props) {
                 </div>
             </div>
 
-            {/* STARTER/BENCH PROMPT MODAL */}
             {pendingCard && (
-                <div className="draft-modal-overlay" onClick={() => setPendingCard(null)}>
-                    <div className="draft-modal" onClick={e => e.stopPropagation()}>
-                        <h3>{pendingCard.card.name}</h3>
-                        <p>Where does this player go?</p>
-                        <div className="draft-modal-actions">
-                            {pendingCard.buckets.includes('starterHitter') && (
-                                <button onClick={() => sendPick(pendingCard.card.id, 'starterHitter')}>
-                                    Starting Lineup ({pendingCard.card.points} pts)
-                                </button>
-                            )}
-                            {pendingCard.buckets.includes('benchHitter') && (
-                                <button onClick={() => sendPick(pendingCard.card.id, 'benchHitter')}>
-                                    Bench ({Math.ceil(pendingCard.card.points / 5)} pts)
-                                </button>
-                            )}
-                        </div>
-                        <button className="draft-modal-cancel" onClick={() => setPendingCard(null)}>Cancel</button>
-                    </div>
-                </div>
+                <ConfirmPickModal
+                    card={pendingCard.card}
+                    buckets={pendingCard.buckets}
+                    onConfirm={(bucket) => sendPick(pendingCard.card.id, bucket)}
+                    onCancel={() => setPendingCard(null)}
+                />
             )}
-
         </div>
     );
 }
 
-// ---------------------------------------------------------------------------
+// ===========================================================================
 // Sub-components
-// ---------------------------------------------------------------------------
+// ===========================================================================
+
+/** Card with a 400ms hover tooltip and click handler. Used in the draft grid. */
+function DraftPoolCard({ card, onClick, disabled }: { card: Card; onClick: () => void; disabled: boolean }) {
+    const [hover, setHover] = useState(false);
+    const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const onEnter = () => {
+        if (timer.current) clearTimeout(timer.current);
+        timer.current = setTimeout(() => setHover(true), HOVER_DELAY_MS);
+    };
+    const onLeave = () => {
+        if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+        setHover(false);
+    };
+    useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+    return (
+        <>
+            <button
+                className={`draft-card ${disabled ? 'disabled' : ''}`}
+                onClick={() => !disabled && onClick()}
+                disabled={disabled}
+                onMouseEnter={onEnter}
+                onMouseLeave={onLeave}
+            >
+                <img src={card.imagePath} alt={card.name} />
+                <div className="draft-card-meta">
+                    <span className="draft-card-name">{card.name}</span>
+                    <span className="draft-card-pts">{card.points} pts</span>
+                </div>
+            </button>
+            {hover && <CardTooltip card={card} />}
+        </>
+    );
+}
+
+/** Inline name span with hover tooltip — used in roster panels and pick history. */
+function HoverName({ card, suffix, mine }: { card: Card; suffix?: string; mine?: boolean }) {
+    const [hover, setHover] = useState(false);
+    const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const onEnter = () => {
+        if (timer.current) clearTimeout(timer.current);
+        timer.current = setTimeout(() => setHover(true), HOVER_DELAY_MS);
+    };
+    const onLeave = () => {
+        if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+        setHover(false);
+    };
+    useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+    return (
+        <>
+            <span
+                className={`draft-roster-name ${mine ? 'mine' : ''}`}
+                onMouseEnter={onEnter}
+                onMouseLeave={onLeave}
+            >
+                {card.name}{suffix ? <em> {suffix}</em> : null}
+            </span>
+            {hover && <CardTooltip card={card} />}
+        </>
+    );
+}
 
 function PointsBadge({ label, team, highlight }: { label: string; team: NonNullable<DraftState['home']>; highlight?: boolean }) {
     const slotsTaken = team.starterHitters.length + team.benchHitters.length + team.starterPitchers.length + team.reliefPitchers.length;
@@ -441,14 +441,14 @@ function PointsBadge({ label, team, highlight }: { label: string; team: NonNulla
 
 function RosterMini({ label, team, cards }: { label: string; team: NonNullable<DraftState['home']>; cards: Card[] }) {
     const byId = new Map(cards.map(c => [c.id, c]));
-    const renderRow = (rowLabel: string, ids: string[], cap: number) => {
+    const renderRow = (rowLabel: string, ids: string[], cap: number, suffix?: (c: Card) => string) => {
         const filled = ids.map(id => byId.get(id)).filter(Boolean) as Card[];
         return (
             <div className="draft-roster-row">
                 <div className="draft-roster-row-label">{rowLabel} ({filled.length}/{cap})</div>
                 <div className="draft-roster-cards">
                     {filled.map(c => (
-                        <span key={c.id} className="draft-roster-name">{c.name}</span>
+                        <HoverName key={c.id} card={c} suffix={suffix?.(c)} />
                     ))}
                     {Array.from({ length: cap - filled.length }).map((_, i) => (
                         <span key={`empty-${i}`} className="draft-roster-empty">·</span>
@@ -468,12 +468,12 @@ function RosterMini({ label, team, cards }: { label: string; team: NonNullable<D
                 <div className="draft-roster-row-label">Flex ({flexFilled}/{flexCap})</div>
                 <div className="draft-roster-cards">
                     {team.reliefPitchers.map(id => {
-                        const c = cards.find(x => x.id === id);
-                        return c ? <span key={id} className="draft-roster-name">{c.name} <em>(P)</em></span> : null;
+                        const c = byId.get(id);
+                        return c ? <HoverName key={id} card={c} suffix="(P)" /> : null;
                     })}
                     {team.benchHitters.map(id => {
-                        const c = cards.find(x => x.id === id);
-                        return c ? <span key={id} className="draft-roster-name">{c.name} <em>(B)</em></span> : null;
+                        const c = byId.get(id);
+                        return c ? <HoverName key={id} card={c} suffix="(B)" /> : null;
                     })}
                     {Array.from({ length: flexCap - flexFilled }).map((_, i) => (
                         <span key={`empty-${i}`} className="draft-roster-empty">·</span>
@@ -484,18 +484,71 @@ function RosterMini({ label, team, cards }: { label: string; team: NonNullable<D
     );
 }
 
-// ---------------------------------------------------------------------------
-// SetLineupScreen — post-draft, pre-game.
+function PickHistory({ state, cards, myRole }: { state: DraftState; cards: Card[]; myRole: PlayerRole }) {
+    const byId = new Map(cards.map(c => [c.id, c]));
+    return (
+        <div className="draft-history">
+            <div className="draft-history-title">Picks</div>
+            <div className="draft-history-list">
+                {state.picks.slice().reverse().map(p => {
+                    const card = byId.get(p.cardId);
+                    if (!card) return null;
+                    const mine = p.actor === myRole;
+                    return (
+                        <div key={p.pickNumber} className={`draft-history-item ${mine ? 'mine' : ''}`}>
+                            <span className="draft-history-num">{p.pickNumber}.</span>
+                            <span className="draft-history-actor">{p.actor === 'home' ? 'H' : 'A'}</span>
+                            <HoverName card={card} mine={mine} />
+                            <span className="draft-history-bucket">
+                                {p.bucket === 'starterHitter' ? 'starter' :
+                                 p.bucket === 'benchHitter' ? 'bench' :
+                                 p.bucket === 'starterPitcher' ? 'SP' : 'RP/CL'}
+                            </span>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+function ConfirmPickModal({ card, buckets, onConfirm, onCancel }: {
+    card: Card; buckets: DraftBucket[]; onConfirm: (b: DraftBucket) => void; onCancel: () => void;
+}) {
+    const labelFor = (b: DraftBucket) => {
+        switch (b) {
+            case 'starterHitter':  return `Starting Lineup — ${card.points} pts`;
+            case 'benchHitter':    return `Bench — ${Math.ceil(card.points / 5)} pts`;
+            case 'starterPitcher': return `Starting Rotation — ${card.points} pts`;
+            case 'reliefPitcher':  return `Bullpen — ${card.points} pts`;
+        }
+    };
+    const askingChoice = buckets.length > 1; // hitter that could go either starter or bench
+    return (
+        <div className="draft-modal-overlay" onClick={onCancel}>
+            <div className="draft-modal" onClick={e => e.stopPropagation()}>
+                <img src={card.imagePath} alt={card.name} className="draft-modal-img" />
+                <h3>{card.name}</h3>
+                <p>{askingChoice ? 'Where does this player go?' : 'Confirm this pick?'}</p>
+                <div className="draft-modal-actions">
+                    {buckets.map(b => (
+                        <button key={b} onClick={() => onConfirm(b)}>{labelFor(b)}</button>
+                    ))}
+                </div>
+                <button className="draft-modal-cancel" onClick={onCancel}>Cancel</button>
+            </div>
+        </div>
+    );
+}
+
+// ===========================================================================
+// SetLineupScreen — drag-and-drop, three rows
 //
-// Lets the player tweak the default position assignments and orderings the
-// server sent. Constraints enforced inline:
-//   - Each starting position used by exactly one hitter
-//   - Each batting order 1-9 used by exactly one starting hitter
-//   - Each Starter-1..4 slot used by exactly one SP
-//   - Bench picks stay bench (the user only edits orderings, not bench/starter
-//     distinction — that was finalised during the draft)
-// Submit is disabled until the lineup validates.
-// ---------------------------------------------------------------------------
+// Row 1: position assignment (drop a hitter onto a position slot — swaps if
+// occupied). Row 2: batting order (drag to reorder 1-9). Row 3: SP rotation
+// (drag to reorder Starter-1..4). Bullpen + bench stay read-only — the
+// starter/bench distinction was finalised during the draft.
+// ===========================================================================
 
 const HITTER_SLOTS_LABELS: { key: string; label: string }[] = [
     { key: 'C', label: 'C' },
@@ -533,64 +586,94 @@ interface SetLineupProps {
 }
 
 function SetLineupScreen({ lineup, allCards, mySubmitted, oppSubmitted, onSubmit, onLeave }: SetLineupProps) {
-    // Hydrate cards in slots from the canonical pool — server may have sent
-    // partial card objects, but the eligibility helpers want full cards.
-    const byId = new Map(allCards.map(c => [c.id, c]));
+    // Hydrate slot.card from canonical pool (server may send partial card objects).
+    const byId = useMemo(() => new Map(allCards.map(c => [c.id, c])), [allCards]);
     const hydratedSlots = useMemo<RosterSlot[]>(() => lineup.slots.map(s => {
         const full = byId.get(s.card.id) || s.card;
         return { ...s, card: full };
-    }), [lineup, allCards]);
+    }), [lineup, byId]);
 
     const [slots, setSlots] = useState<RosterSlot[]>(hydratedSlots);
-
-    // Reset when server re-sends (e.g. after my own submission echoed back)
     useEffect(() => { setSlots(hydratedSlots); }, [hydratedSlots]);
 
-    const updateSlot = (cardId: string, updates: Partial<RosterSlot>) => {
-        setSlots(prev => prev.map(s => s.card.id === cardId ? { ...s, ...updates } : s));
-    };
+    // Group slots
+    const startingHitters = slots.filter(s => s.card.type === 'hitter' && s.assignedPosition !== 'bench');
+    const benchHitters = slots.filter(s => s.assignedPosition === 'bench');
+    const sps = slots.filter(s => s.card.type === 'pitcher' && (s.assignedPosition || '').startsWith('Starter'));
+    const reliefs = slots.filter(s =>
+        s.card.type === 'pitcher' && (s.assignedPosition === 'Reliever' || s.assignedPosition === 'Closer')
+    );
 
-    /**
-     * Swap the position assignment between two starting hitters. Caller
-     * guarantees both slots are in the starting set.
-     */
-    const swapHitterPositions = (cardIdA: string, cardIdB: string) => {
+    /** Position view: which hitter is assigned to each of the 9 hitter slots. */
+    const hittersBySlot = new Map<string, RosterSlot>();
+    for (const s of startingHitters) hittersBySlot.set(s.assignedPosition, s);
+
+    /** Batting order view: array of length 9 sorted by battingOrder. */
+    const battingOrdered = [...startingHitters].sort((a, b) => (a.battingOrder ?? 99) - (b.battingOrder ?? 99));
+
+    /** Rotation view: array of length 4 sorted by Starter-N. */
+    const rotationOrdered = [...sps].sort((a, b) => {
+        const an = parseInt((a.assignedPosition.match(/\d+/) || ['9'])[0], 10);
+        const bn = parseInt((b.assignedPosition.match(/\d+/) || ['9'])[0], 10);
+        return an - bn;
+    });
+
+    // ----- Drag-drop helpers -----
+    const dragRef = useRef<{ kind: 'pos' | 'bat' | 'rot'; cardId: string } | null>(null);
+    const [dragging, setDragging] = useState(false); // suppresses tooltip during drag
+
+    const swapPositions = (cardA: string, cardB: string) => {
         setSlots(prev => {
-            const a = prev.find(s => s.card.id === cardIdA);
-            const b = prev.find(s => s.card.id === cardIdB);
+            const a = prev.find(s => s.card.id === cardA);
+            const b = prev.find(s => s.card.id === cardB);
             if (!a || !b) return prev;
             return prev.map(s => {
-                if (s.card.id === cardIdA) return { ...s, assignedPosition: b.assignedPosition };
-                if (s.card.id === cardIdB) return { ...s, assignedPosition: a.assignedPosition };
+                if (s.card.id === cardA) return { ...s, assignedPosition: b.assignedPosition };
+                if (s.card.id === cardB) return { ...s, assignedPosition: a.assignedPosition };
                 return s;
             });
         });
     };
 
-    // Group slots
-    const startingHitters = slots.filter(s =>
-        s.card.type === 'hitter' && s.assignedPosition !== 'bench'
-    );
-    const benchHitters = slots.filter(s => s.assignedPosition === 'bench');
-    const sps = slots.filter(s =>
-        s.card.type === 'pitcher' && (s.assignedPosition || '').startsWith('Starter')
-    );
-    const reliefs = slots.filter(s =>
-        s.card.type === 'pitcher' && (s.assignedPosition === 'Reliever' || s.assignedPosition === 'Closer')
-    );
+    const reorderBatting = (fromCard: string, toCard: string) => {
+        setSlots(prev => {
+            const from = prev.find(s => s.card.id === fromCard);
+            const to = prev.find(s => s.card.id === toCard);
+            if (!from || !to || from.battingOrder == null || to.battingOrder == null) return prev;
+            // Swap their battingOrder values.
+            return prev.map(s => {
+                if (s.card.id === fromCard) return { ...s, battingOrder: to.battingOrder };
+                if (s.card.id === toCard)   return { ...s, battingOrder: from.battingOrder };
+                return s;
+            });
+        });
+    };
 
-    // Validation
+    const reorderRotation = (fromCard: string, toCard: string) => {
+        setSlots(prev => {
+            const from = prev.find(s => s.card.id === fromCard);
+            const to = prev.find(s => s.card.id === toCard);
+            if (!from || !to) return prev;
+            return prev.map(s => {
+                if (s.card.id === fromCard) return { ...s, assignedPosition: to.assignedPosition };
+                if (s.card.id === toCard)   return { ...s, assignedPosition: from.assignedPosition };
+                return s;
+            });
+        });
+    };
+
+    // ----- Validation -----
     const errors: string[] = [];
     {
         const posSeen = new Set<string>();
         for (const s of startingHitters) {
             if (posSeen.has(s.assignedPosition)) errors.push(`Position ${s.assignedPosition} used twice`);
             posSeen.add(s.assignedPosition);
-            // Eligibility
             if (s.card.type === 'hitter') {
-                const ok = s.assignedPosition === '1B' || s.assignedPosition === 'DH'
-                    || eligibleSlotsForHitter(s.card as HitterCard).includes(s.assignedPosition);
-                if (!ok) errors.push(`${s.card.name} cannot play ${s.assignedPosition}`);
+                const pos = s.assignedPosition;
+                const ok = pos === '1B' || pos === 'DH'
+                    || eligibleSlotsForHitter(s.card as HitterCard).includes(pos);
+                if (!ok) errors.push(`${s.card.name} cannot play ${pos.replace(/-\d$/, '')}`);
             }
         }
         const orderSeen = new Set<number>();
@@ -599,18 +682,8 @@ function SetLineupScreen({ lineup, allCards, mySubmitted, oppSubmitted, onSubmit
             else if (orderSeen.has(s.battingOrder)) errors.push(`Batting order ${s.battingOrder} used twice`);
             else orderSeen.add(s.battingOrder);
         }
-        const spSeen = new Set<string>();
-        for (const s of sps) {
-            if (spSeen.has(s.assignedPosition)) errors.push(`${s.assignedPosition} used twice`);
-            spSeen.add(s.assignedPosition);
-        }
     }
     const valid = errors.length === 0;
-
-    const submit = () => {
-        if (!valid) return;
-        onSubmit({ ...lineup, slots });
-    };
 
     if (mySubmitted) {
         return (
@@ -642,138 +715,91 @@ function SetLineupScreen({ lineup, allCards, mySubmitted, oppSubmitted, onSubmit
             </div>
 
             <div className="setlineup-body">
-                {/* STARTING HITTERS */}
-                <section className="setlineup-section">
-                    <h3>Starting Lineup</h3>
-                    <table className="setlineup-table">
-                        <thead>
-                            <tr>
-                                <th>Card</th>
-                                <th>Player</th>
-                                <th>Position</th>
-                                <th>Batting Order</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {startingHitters.map(s => {
-                                const eligible = s.card.type === 'hitter'
-                                    ? eligibleSlotsForHitter(s.card as HitterCard)
-                                    : [];
-                                return (
-                                    <tr key={s.card.id}>
-                                        <td><img src={s.card.imagePath} alt="" className="setlineup-thumb" /></td>
-                                        <td>{s.card.name}</td>
-                                        <td>
-                                            <select
-                                                value={s.assignedPosition}
-                                                onChange={e => {
-                                                    const newPos = e.target.value;
-                                                    // If the new pos is already used by someone else, swap.
-                                                    const occupant = startingHitters.find(
-                                                        x => x.card.id !== s.card.id && x.assignedPosition === newPos
-                                                    );
-                                                    if (occupant) swapHitterPositions(s.card.id, occupant.card.id);
-                                                    else updateSlot(s.card.id, { assignedPosition: newPos });
-                                                }}
-                                            >
-                                                {HITTER_SLOTS_LABELS.map(({ key, label }) => (
-                                                    <option key={key} value={key} disabled={!eligible.includes(key)}>
-                                                        {label}{eligible.includes(key) ? '' : ' (×)'}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </td>
-                                        <td>
-                                            <select
-                                                value={s.battingOrder ?? ''}
-                                                onChange={e => {
-                                                    const newOrder = parseInt(e.target.value, 10);
-                                                    const occupant = startingHitters.find(
-                                                        x => x.card.id !== s.card.id && x.battingOrder === newOrder
-                                                    );
-                                                    setSlots(prev => prev.map(slot => {
-                                                        if (slot.card.id === s.card.id) return { ...slot, battingOrder: newOrder };
-                                                        if (occupant && slot.card.id === occupant.card.id) return { ...slot, battingOrder: s.battingOrder };
-                                                        return slot;
-                                                    }));
-                                                }}
-                                            >
-                                                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
-                                                    <option key={n} value={n}>{n}</option>
-                                                ))}
-                                            </select>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </section>
+                <DragRow
+                    title="Position Assignment"
+                    subtitle="Drag a hitter onto a position to swap. Each hitter must end up at an eligible position."
+                >
+                    {HITTER_SLOTS_LABELS.map(({ key, label }) => {
+                        const occupant = hittersBySlot.get(key);
+                        return (
+                            <DragSlot
+                                key={key}
+                                label={label}
+                                slot={occupant || null}
+                                eligible={!occupant ? true
+                                    : occupant.card.type === 'hitter'
+                                        ? (key === '1B' || key === 'DH'
+                                            || eligibleSlotsForHitter(occupant.card as HitterCard).includes(key))
+                                        : true}
+                                onDragStart={(cardId) => { dragRef.current = { kind: 'pos', cardId }; setDragging(true); }}
+                                onDragEnd={() => { dragRef.current = null; setDragging(false); }}
+                                onDrop={(droppedCardId) => {
+                                    if (!occupant) return; // nothing to swap with — keep simple model
+                                    if (occupant.card.id === droppedCardId) return;
+                                    swapPositions(occupant.card.id, droppedCardId);
+                                }}
+                                draggingNow={dragging}
+                            />
+                        );
+                    })}
+                </DragRow>
 
-                {/* STARTING PITCHERS */}
-                <section className="setlineup-section">
-                    <h3>Rotation</h3>
-                    <table className="setlineup-table">
-                        <thead>
-                            <tr>
-                                <th>Card</th>
-                                <th>Player</th>
-                                <th>Slot</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {sps.map(s => (
-                                <tr key={s.card.id}>
-                                    <td><img src={s.card.imagePath} alt="" className="setlineup-thumb" /></td>
-                                    <td>{s.card.name}</td>
-                                    <td>
-                                        <select
-                                            value={s.assignedPosition}
-                                            onChange={e => {
-                                                const newSlot = e.target.value;
-                                                const occupant = sps.find(
-                                                    x => x.card.id !== s.card.id && x.assignedPosition === newSlot
-                                                );
-                                                setSlots(prev => prev.map(slot => {
-                                                    if (slot.card.id === s.card.id) return { ...slot, assignedPosition: newSlot };
-                                                    if (occupant && slot.card.id === occupant.card.id) return { ...slot, assignedPosition: s.assignedPosition };
-                                                    return slot;
-                                                }));
-                                            }}
-                                        >
-                                            {SP_SLOT_KEYS.map(k => (
-                                                <option key={k} value={k}>{k.replace('Starter-', 'SP')}</option>
-                                            ))}
-                                        </select>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </section>
+                <DragRow
+                    title="Batting Order"
+                    subtitle="Drag a hitter onto a slot to swap their batting order."
+                >
+                    {battingOrdered.map(s => (
+                        <DragSlot
+                            key={s.card.id}
+                            label={`#${s.battingOrder}`}
+                            slot={s}
+                            eligible={true}
+                            onDragStart={(cardId) => { dragRef.current = { kind: 'bat', cardId }; setDragging(true); }}
+                            onDragEnd={() => { dragRef.current = null; setDragging(false); }}
+                            onDrop={(droppedCardId) => {
+                                if (s.card.id === droppedCardId) return;
+                                reorderBatting(droppedCardId, s.card.id);
+                            }}
+                            draggingNow={dragging}
+                        />
+                    ))}
+                </DragRow>
 
-                {/* BULLPEN + BENCH (read-only) */}
+                <DragRow
+                    title="Starting Rotation"
+                    subtitle="Drag a starter onto a slot to swap their rotation order."
+                >
+                    {rotationOrdered.map(s => (
+                        <DragSlot
+                            key={s.card.id}
+                            label={s.assignedPosition.replace('Starter-', 'SP')}
+                            slot={s}
+                            eligible={true}
+                            onDragStart={(cardId) => { dragRef.current = { kind: 'rot', cardId }; setDragging(true); }}
+                            onDragEnd={() => { dragRef.current = null; setDragging(false); }}
+                            onDrop={(droppedCardId) => {
+                                if (s.card.id === droppedCardId) return;
+                                reorderRotation(droppedCardId, s.card.id);
+                            }}
+                            draggingNow={dragging}
+                        />
+                    ))}
+                </DragRow>
+
                 <section className="setlineup-section">
                     <h3>Bullpen</h3>
                     <div className="setlineup-readonly-list">
                         {reliefs.map(s => (
-                            <div key={s.card.id} className="setlineup-readonly-row">
-                                <img src={s.card.imagePath} alt="" className="setlineup-thumb" />
-                                <span>{s.card.name}</span>
-                                <span className="setlineup-readonly-tag">{s.assignedPosition}</span>
-                            </div>
+                            <ReadonlyCardRow key={s.card.id} slot={s} />
                         ))}
                     </div>
                 </section>
+
                 <section className="setlineup-section">
                     <h3>Bench</h3>
                     <div className="setlineup-readonly-list">
                         {benchHitters.map(s => (
-                            <div key={s.card.id} className="setlineup-readonly-row">
-                                <img src={s.card.imagePath} alt="" className="setlineup-thumb" />
-                                <span>{s.card.name}</span>
-                                <span className="setlineup-readonly-tag">bench</span>
-                            </div>
+                            <ReadonlyCardRow key={s.card.id} slot={s} tag="bench" />
                         ))}
                     </div>
                 </section>
@@ -789,37 +815,109 @@ function SetLineupScreen({ lineup, allCards, mySubmitted, oppSubmitted, onSubmit
                 <button
                     className="setlineup-submit-btn"
                     disabled={!valid}
-                    onClick={submit}
+                    onClick={() => valid && onSubmit({ ...lineup, slots })}
                 >SUBMIT LINEUP</button>
             </div>
         </div>
     );
 }
 
-function PickHistory({ state, cards, myRole }: { state: DraftState; cards: Card[]; myRole: PlayerRole }) {
-    const byId = new Map(cards.map(c => [c.id, c]));
+function DragRow({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
     return (
-        <div className="draft-history">
-            <div className="draft-history-title">Picks</div>
-            <div className="draft-history-list">
-                {state.picks.slice().reverse().map(p => {
-                    const card = byId.get(p.cardId);
-                    if (!card) return null;
-                    const mine = p.actor === myRole;
-                    return (
-                        <div key={p.pickNumber} className={`draft-history-item ${mine ? 'mine' : ''}`}>
-                            <span className="draft-history-num">{p.pickNumber}.</span>
-                            <span className="draft-history-actor">{p.actor === 'home' ? 'H' : 'A'}</span>
-                            <span className="draft-history-name">{card.name}</span>
-                            <span className="draft-history-bucket">
-                                {p.bucket === 'starterHitter' ? 'starter' :
-                                 p.bucket === 'benchHitter' ? 'bench' :
-                                 p.bucket === 'starterPitcher' ? 'SP' : 'RP/CL'}
-                            </span>
-                        </div>
-                    );
-                })}
-            </div>
+        <section className="setlineup-section">
+            <h3>{title}</h3>
+            {subtitle && <p className="setlineup-subtitle">{subtitle}</p>}
+            <div className="setlineup-drag-row">{children}</div>
+        </section>
+    );
+}
+
+interface DragSlotProps {
+    label: string;
+    slot: RosterSlot | null;
+    eligible: boolean;
+    onDragStart: (cardId: string) => void;
+    onDragEnd: () => void;
+    onDrop: (droppedCardId: string) => void;
+    draggingNow: boolean;
+}
+
+function DragSlot({ label, slot, eligible, onDragStart, onDragEnd, onDrop, draggingNow }: DragSlotProps) {
+    const [hover, setHover] = useState(false);
+    const [over, setOver] = useState(false);
+    const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const onMouseEnter = () => {
+        if (draggingNow || !slot) return;
+        if (timer.current) clearTimeout(timer.current);
+        timer.current = setTimeout(() => setHover(true), HOVER_DELAY_MS);
+    };
+    const onMouseLeave = () => {
+        if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+        setHover(false);
+    };
+    useEffect(() => { if (draggingNow) setHover(false); }, [draggingNow]);
+    useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+    return (
+        <div
+            className={`setlineup-slot ${over ? 'over' : ''} ${!eligible ? 'invalid' : ''}`}
+            onDragOver={(e) => { e.preventDefault(); setOver(true); }}
+            onDragLeave={() => setOver(false)}
+            onDrop={(e) => {
+                e.preventDefault();
+                setOver(false);
+                const cardId = e.dataTransfer.getData('text/plain');
+                if (cardId) onDrop(cardId);
+            }}
+        >
+            <div className="setlineup-slot-label">{label}</div>
+            {slot ? (
+                <div
+                    className="setlineup-slot-card"
+                    draggable
+                    onDragStart={(e) => {
+                        e.dataTransfer.setData('text/plain', slot.card.id);
+                        e.dataTransfer.effectAllowed = 'move';
+                        onDragStart(slot.card.id);
+                    }}
+                    onDragEnd={onDragEnd}
+                    onMouseEnter={onMouseEnter}
+                    onMouseLeave={onMouseLeave}
+                >
+                    <img src={slot.card.imagePath} alt="" />
+                    <div className="setlineup-slot-name">{slot.card.name}</div>
+                </div>
+            ) : (
+                <div className="setlineup-slot-empty">empty</div>
+            )}
+            {hover && slot && <CardTooltip card={slot.card} />}
+        </div>
+    );
+}
+
+function ReadonlyCardRow({ slot, tag }: { slot: RosterSlot; tag?: string }) {
+    const [hover, setHover] = useState(false);
+    const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const onEnter = () => {
+        if (timer.current) clearTimeout(timer.current);
+        timer.current = setTimeout(() => setHover(true), HOVER_DELAY_MS);
+    };
+    const onLeave = () => {
+        if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+        setHover(false);
+    };
+    useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+    return (
+        <div
+            className="setlineup-readonly-row"
+            onMouseEnter={onEnter}
+            onMouseLeave={onLeave}
+        >
+            <img src={slot.card.imagePath} alt="" className="setlineup-thumb" />
+            <span>{slot.card.name}</span>
+            <span className="setlineup-readonly-tag">{tag || slot.assignedPosition}</span>
+            {hover && <CardTooltip card={slot.card} />}
         </div>
     );
 }
