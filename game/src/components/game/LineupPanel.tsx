@@ -77,7 +77,10 @@ export default function LineupPanel({
     const isFieldingHalf = (isHome && displayHalfInning === 'top') || (!isHome && displayHalfInning === 'bottom');
 
     if (layout === 'html') {
-        const renderHtmlRow = (player: PlayerSlot, i: number) => {
+        // Horizontal strip: 9 batters left-to-right in batting order. Each
+        // cell stacks pos+fielding above the card image and an abbreviated
+        // name + icons below. Pitcher is shown on the diamond, not here.
+        const renderStripCell = (player: PlayerSlot, i: number) => {
             const isAtBat = (isHome ? displayHalfInning === 'bottom' : displayHalfInning === 'top') && i === team.currentBatterIndex;
             const isOnDeck = (isHome ? displayHalfInning === 'top' : displayHalfInning === 'bottom') && i === team.currentBatterIndex;
             const rawPos = player.assignedPosition ? player.assignedPosition.replace(/-\d+$/, '') : '';
@@ -87,62 +90,33 @@ export default function LineupPanel({
             const effFld = rawFld + penalty;
             const fld = pos ? (effFld >= 0 ? `+${effFld}` : `${effFld}`) : '';
             const items = buildIconItems(player, team, isFieldingHalf, displayIcon20Used);
-            const rowCls = `gb-m-lineup-row${isAtBat ? ' at-bat' : isOnDeck ? ' on-deck' : ''}`;
+            const cellCls = `gb-m-strip-cell${isAtBat ? ' at-bat' : isOnDeck ? ' on-deck' : ''}`;
+            // Last name only, abbreviated. "Alex Rodriguez" -> "Rodriguez"
+            const shortName = player.name.includes(' ')
+                ? player.name.slice(player.name.lastIndexOf(' ') + 1)
+                : player.name;
             return (
-                <div key={`${isHome ? 'h' : 'a'}-${i}`} className={rowCls}
+                <div key={`${isHome ? 'h' : 'a'}-${i}`} className={cellCls}
                     onMouseEnter={(e) => onPlayerHover(player, e)} onMouseLeave={onPlayerLeave}>
-                    <span className="gb-m-lineup-num">{i + 1}.</span>
-                    {player.imagePath && <img className="gb-m-lineup-thumb" src={player.imagePath} alt=""/>}
-                    <div className="gb-m-lineup-info">
-                        <div className="gb-m-lineup-name">{player.name}</div>
-                        {items.length > 0 && (
-                            <div className="gb-m-lineup-icons">
-                                {items.map((item, idx) => (
-                                    <span key={idx} className={item.used ? 'used' : ''}>{item.icon}{idx < items.length - 1 ? ' ' : ''}</span>
-                                ))}
-                            </div>
-                        )}
+                    <div className={`gb-m-strip-pos${penalty < 0 ? ' penalty' : ''}`}>
+                        {pos && fld ? `${pos} ${fld}` : ' '}
                     </div>
-                    {pos && fld && (
-                        <div className={`gb-m-lineup-pos${penalty < 0 ? ' penalty' : ''}`}>{pos} {fld}</div>
+                    {player.imagePath && <img className="gb-m-strip-thumb" src={player.imagePath} alt=""/>}
+                    <div className="gb-m-strip-name">{shortName}</div>
+                    {items.length > 0 && (
+                        <div className="gb-m-strip-icons">
+                            {items.map((item, idx) => (
+                                <span key={idx} className={item.used ? 'used' : ''}>{item.icon}</span>
+                            ))}
+                        </div>
                     )}
                 </div>
             );
         };
 
-        const pitcher = team.pitcher;
-        const pCardIp = pitcher.ip || 0;
-        const pRuns = team.pitcherStats?.[pitcher.cardId]?.r || 0;
-        const pCyBonus = team.cyBonusInnings || 0;
-        const pEffIp = Math.max(0, pCardIp - Math.floor(pRuns / 3) + pCyBonus);
-        const pCurInn = displayInning - (team.pitcherEntryInning || 1) + 1;
-        const pitcherIcons = buildIconItems(pitcher, team, isFieldingHalf, displayIcon20Used);
-
         return (
-            <div className={`gb-m-lineup ${isHome ? 'home' : 'away'}`}>
-                <div className="gb-m-lineup-header">
-                    {isHome ? 'HOME' : 'AWAY'} — {teamName.toUpperCase()}
-                </div>
-                {team.lineup.map((p, i) => renderHtmlRow(p, i))}
-                <div className="gb-m-lineup-row gb-m-lineup-pitcher-row"
-                    onMouseEnter={(e) => onPlayerHover(pitcher, e)} onMouseLeave={onPlayerLeave}>
-                    <span className="gb-m-lineup-num" style={{ color: '#d4a018' }}>P</span>
-                    {pitcher.imagePath && <img className="gb-m-lineup-thumb" src={pitcher.imagePath} alt=""/>}
-                    <div className="gb-m-lineup-info">
-                        <div className="gb-m-lineup-name">{pitcher.name}</div>
-                        {pitcherIcons.length > 0 && (
-                            <div className="gb-m-lineup-icons">
-                                {pitcherIcons.map((item, idx) => (
-                                    <span key={idx} className={item.used ? 'used' : ''}>{item.icon}{idx < pitcherIcons.length - 1 ? ' ' : ''}</span>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                    <div className="gb-m-lineup-pos">IP {pCurInn}/{pEffIp}</div>
-                </div>
-                <button className="gb-m-lineup-bullpen-btn" onClick={onToggleBullpen}>
-                    {bullpenOpen ? '▲ BULLPEN / BENCH' : '▼ BULLPEN / BENCH'}
-                </button>
+            <div className={`gb-m-strip ${isHome ? 'home' : 'away'}`}>
+                {team.lineup.map((p, i) => renderStripCell(p, i))}
             </div>
         );
     }

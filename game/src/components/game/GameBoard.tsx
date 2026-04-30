@@ -512,6 +512,8 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     showStats={showStats}
                     onToggleStats={() => setShowStats(!showStats)}
                     onExit={onExit}
+                    onShowFullLog={() => setShowFullLog(true)}
+                    onShowDiceRolls={() => setShowDiceRolls(true)}
                 />
                 <Scoreboard
                     layout="html"
@@ -526,33 +528,23 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     displayOuts={displayOuts}
                     isOver={state.isOver}
                 />
+
+                {/* Opponent strip — above the diamond. Sandwiches the diamond
+                    between the two teams so the on-field perspective matches:
+                    opponent's hitters at top, my hitters at bottom. */}
                 <LineupPanel
                     layout="html"
-                    team={displayAwayTeam}
+                    team={myRole === 'home' ? displayAwayTeam : displayHomeTeam}
                     panelX={0}
-                    isHome={false}
-                    teamName={awayName}
+                    isHome={myRole !== 'home'}
+                    teamName={myRole === 'home' ? awayName : homeName}
                     displayHalfInning={displayHalfInning}
                     displayInning={displayInning}
                     displayIcon20Used={displayIcon20Used}
                     onPlayerHover={handlePlayerHover}
                     onPlayerLeave={handlePlayerLeave}
-                    bullpenOpen={showAwayBullpen}
-                    onToggleBullpen={() => setShowAwayBullpen(!showAwayBullpen)}
-                />
-                <LineupPanel
-                    layout="html"
-                    team={displayHomeTeam}
-                    panelX={0}
-                    isHome={true}
-                    teamName={homeName}
-                    displayHalfInning={displayHalfInning}
-                    displayInning={displayInning}
-                    displayIcon20Used={displayIcon20Used}
-                    onPlayerHover={handlePlayerHover}
-                    onPlayerLeave={handlePlayerLeave}
-                    bullpenOpen={showHomeBullpen}
-                    onToggleBullpen={() => setShowHomeBullpen(!showHomeBullpen)}
+                    bullpenOpen={myRole === 'home' ? showAwayBullpen : showHomeBullpen}
+                    onToggleBullpen={() => myRole === 'home' ? setShowAwayBullpen(!showAwayBullpen) : setShowHomeBullpen(!showHomeBullpen)}
                 />
 
                 {/* Diamond cell — own SVG with viewBox cropped to the diamond
@@ -584,6 +576,22 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                         <RunnerAnimOverlay key={`ra-${anim.cardId}`} anim={anim} baseCoords={BASE_COORDS} baseAnimMs={BASE_ANIM_MS} />
                     ))}
                 </svg>
+
+                {/* My team strip — below the diamond. */}
+                <LineupPanel
+                    layout="html"
+                    team={myRole === 'home' ? displayHomeTeam : displayAwayTeam}
+                    panelX={0}
+                    isHome={myRole === 'home'}
+                    teamName={myRole === 'home' ? homeName : awayName}
+                    displayHalfInning={displayHalfInning}
+                    displayInning={displayInning}
+                    displayIcon20Used={displayIcon20Used}
+                    onPlayerHover={handlePlayerHover}
+                    onPlayerLeave={handlePlayerLeave}
+                    bullpenOpen={myRole === 'home' ? showHomeBullpen : showAwayBullpen}
+                    onToggleBullpen={() => myRole === 'home' ? setShowHomeBullpen(!showHomeBullpen) : setShowAwayBullpen(!showAwayBullpen)}
+                />
 
                 {/* Action buttons cell — viewBox cropped to the original
                     actions region so internal CX/BOT_TOP coordinates work. */}
@@ -633,13 +641,6 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                         />
                     )}
                 </svg>
-
-                <GameLogFooter
-                    layout="html"
-                    displayedGameLog={displayedGameLog}
-                    onShowDiceRolls={() => setShowDiceRolls(true)}
-                    onShowFullLog={() => setShowFullLog(true)}
-                />
             </div>
         );
     }

@@ -14,6 +14,12 @@ interface Props {
      *  game-board SVG. "html" renders a flex-row HTML bar suitable for a
      *  CSS-grid mobile layout. */
     layout?: 'svg' | 'html';
+    /** Mobile-only: open the full game-log overlay. Required when
+     *  layout="html" so the log button has somewhere to go (the inline
+     *  gamelog footer is dropped on mobile). */
+    onShowFullLog?: () => void;
+    /** Mobile-only: open the dice-rolls overlay. */
+    onShowDiceRolls?: () => void;
 }
 
 /**
@@ -24,7 +30,7 @@ interface Props {
  */
 export default function TopBarControls({
     seriesInfo, homeName, awayName, showStats, onToggleStats, onExit,
-    layout = 'svg',
+    layout = 'svg', onShowFullLog, onShowDiceRolls,
 }: Props) {
     if (layout === 'html') {
         return (
@@ -32,13 +38,19 @@ export default function TopBarControls({
                 <button className="gb-m-topbar-exit" onClick={() => onExit?.()}>EXIT</button>
                 {seriesInfo && (
                     <div className="gb-m-topbar-series">
-                        <div>SERIES — GAME {seriesInfo.gameNumber} of {seriesInfo.bestOf}</div>
+                        <div>G{seriesInfo.gameNumber}/{seriesInfo.bestOf}</div>
                         <div className="gb-m-topbar-series-record">
-                            {homeName} {seriesInfo.homeWins} {'–'} {seriesInfo.awayWins} {awayName}
+                            {seriesInfo.homeWins}{'–'}{seriesInfo.awayWins}
                         </div>
                     </div>
                 )}
-                <button className="gb-m-topbar-boxscore" onClick={onToggleStats}>
+                {onShowFullLog && (
+                    <button className="gb-m-topbar-btn" onClick={onShowFullLog}>LOG</button>
+                )}
+                {onShowDiceRolls && (
+                    <button className="gb-m-topbar-btn" onClick={onShowDiceRolls}>ROLLS</button>
+                )}
+                <button className="gb-m-topbar-btn" onClick={onToggleStats}>
                     {showStats ? 'CLOSE' : 'BOX'}
                 </button>
             </div>
