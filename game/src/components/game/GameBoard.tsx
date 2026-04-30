@@ -27,6 +27,7 @@ import { PW, DX, DW, HX, TOP, MAIN_TOP, MAIN_BOT, BOT_Y } from './gameBoardLayou
 import CardTooltip from '../cards/CardTooltip';
 import { playerSlotToCard } from '../cards/cardAdapters';
 import './GameBoard.css';
+import './gameBoardMobile.css';
 
 interface RunnerMovement {
     cardId: string;

@@ -12,18 +12,79 @@ interface Props {
     displayScore: { away: number; home: number };
     displayOuts: number;
     isOver: boolean;
+    /** "svg" (default) renders SVG groups for the parent game-board SVG.
+     *  "html" renders a <table> + outs row for direct CSS-grid placement
+     *  on mobile. */
+    layout?: 'svg' | 'html';
 }
 
 /**
  * Centered scoreboard table + outs indicator at the top of the board.
- * Renders SVG groups using the same coordinate math as the original
- * inline IIFE in GameBoard.tsx.
  */
 export default function Scoreboard({
     awayTeam, homeTeam, awayName, homeName,
     innings, displayInning, displayHalfInning,
     displayScore, displayOuts, isOver,
+    layout = 'svg',
 }: Props) {
+    const curInnIdx = displayInning - 1;
+    const isBattingTeam = (team: TeamState) =>
+        (displayHalfInning === 'top' && team === awayTeam) || (displayHalfInning === 'bottom' && team === homeTeam);
+
+    if (layout === 'html') {
+        const renderHtmlRow = (team: TeamState, teamName: string) => (
+            <tr>
+                <td className="team-col">{teamName.slice(0, 10).toUpperCase()}</td>
+                {innings.slice(0, 9).map((inn, i) => {
+                    const isCurInning = i === curInnIdx && !isOver;
+                    const isBatting = isBattingTeam(team) && isCurInning;
+                    const hasBatted = i < curInnIdx || (i === curInnIdx && (
+                        team === awayTeam ||
+                        (team === homeTeam && displayHalfInning === 'bottom')
+                    ));
+                    const val = team.runsPerInning[i];
+                    const displayVal = !hasBatted
+                        ? undefined
+                        : (isBatting && val === undefined ? 0 : val);
+                    const cls = isBatting ? 'batting' : (displayVal === undefined ? 'empty' : '');
+                    return (
+                        <td key={`c-${team.userId}-${inn}`} className={cls}>
+                            {displayVal ?? '—'}
+                        </td>
+                    );
+                })}
+                <td className="r-col">{team === awayTeam ? displayScore.away : displayScore.home}</td>
+            </tr>
+        );
+
+        return (
+            <div className="gb-m-scoreboard">
+                <table className="gb-m-sb-table">
+                    <thead>
+                        <tr>
+                            <th className="team-col">TEAM</th>
+                            {innings.slice(0, 9).map((inn, i) => {
+                                const isCur = i === curInnIdx && !isOver;
+                                return <th key={`h-${inn}`} className={isCur ? 'cur' : ''}>{inn}</th>;
+                            })}
+                            <th className="r-col">R</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {renderHtmlRow(awayTeam, awayName)}
+                        {renderHtmlRow(homeTeam, homeName)}
+                    </tbody>
+                </table>
+                <div className="gb-m-outs">
+                    OUTS
+                    {[0, 1, 2].map(i => (
+                        <span key={`o-${i}`} className={`gb-m-outs-dot${displayOuts > i ? ' on' : ''}`} />
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
     const colW = 40, teamW = 100, rhW = 44;
     const sbTableW = teamW + 9 * colW + rhW; // scoreboard table width (no H column)
     const innW = 96; // outs section only (inning/halfInning indicated on scoreboard itself)
@@ -32,10 +93,6 @@ export default function Scoreboard({
     const unitX = (1400 - unitW) / 2;
     const hdrH = 20, rowH = 22;
     const sbY = 6; // top padding
-
-    const curInnIdx = displayInning - 1; // 0-based index using frozen inning
-    const isBattingTeam = (team: TeamState) =>
-        (displayHalfInning === 'top' && team === awayTeam) || (displayHalfInning === 'bottom' && team === homeTeam);
 
     const renderRow = (team: TeamState, teamName: string, ry: number) => (
         <g>

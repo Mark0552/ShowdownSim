@@ -1,25 +1,46 @@
 interface Props {
-    /** SVG coordinates for the foreignObject wrapper. */
-    x: number;
-    y: number;
-    width: number;
-    height: number;
+    /** SVG coordinates for the foreignObject wrapper. Required when layout="svg". */
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
     /** Frozen log slice — entries that have already settled (i.e. dice not animating). */
     displayedGameLog: string[];
     onShowDiceRolls: () => void;
     onShowFullLog: () => void;
+    /** "svg" (default) wraps the log HTML in a <foreignObject> for placement
+     *  inside the parent game-board SVG. "html" returns the same content as
+     *  a plain div for direct CSS-grid placement on mobile. */
+    layout?: 'svg' | 'html';
 }
 
 /**
- * Running game-log footer that lives inside the GameBoard SVG via a
- * <foreignObject>. Renders the last ~12 entries with color-coded styling
- * plus DICE ROLLS / EXPAND buttons.
+ * Running game-log footer with the last ~12 entries (color-coded) plus
+ * DICE ROLLS / EXPAND buttons.
  */
 export default function GameLogFooter({
     x, y, width, height,
     displayedGameLog,
     onShowDiceRolls, onShowFullLog,
+    layout = 'svg',
 }: Props) {
+    if (layout === 'html') {
+        return (
+            <div className="gb-m-gamelog">
+                <div className="gb-m-gamelog-buttons">
+                    <button className="gb-m-gamelog-btn" onClick={onShowDiceRolls} title="Show dice rolls and per-player averages">DICE ROLLS</button>
+                    <button className="gb-m-gamelog-btn" onClick={onShowFullLog} title="Expand log">EXPAND</button>
+                </div>
+                <div ref={(el) => { if (el) el.scrollTop = el.scrollHeight; }} className="gb-m-gamelog-entries">
+                    {displayedGameLog.slice(-12).map((entry, i) => {
+                        const cls = entryClass(entry);
+                        return <div key={`gl-${i}`} className={`gb-m-gamelog-entry ${cls}`}>{entry}</div>;
+                    })}
+                </div>
+            </div>
+        );
+    }
+
     return (
         <foreignObject x={x} y={y} width={width} height={height}>
             <div style={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -67,4 +88,12 @@ export default function GameLogFooter({
             </div>
         </foreignObject>
     );
+}
+
+function entryClass(entry: string): string {
+    if (/^--- /.test(entry)) return 'inning';
+    if (/icon/i.test(entry)) return 'icon';
+    if (/scores|homer|run/i.test(entry)) return 'score';
+    if (/strikeout|ground|fly|popup|Double Play|DP|caught|thrown out|Batter out|Force out/i.test(entry)) return 'out';
+    return '';
 }

@@ -10,17 +10,41 @@ interface Props {
     showStats: boolean;
     onToggleStats: () => void;
     onExit?: () => void;
+    /** "svg" (default) renders SVG groups for placement inside the parent
+     *  game-board SVG. "html" renders a flex-row HTML bar suitable for a
+     *  CSS-grid mobile layout. */
+    layout?: 'svg' | 'html';
 }
 
 /**
- * Three SVG controls anchored to the top bar of the game board:
+ * Three controls for the top bar of the game board:
  *   - EXIT GAME button (top-left)
  *   - Series indicator (left, below exit, when in a multi-game series)
  *   - BOX SCORE / CLOSE toggle (top-right)
  */
 export default function TopBarControls({
     seriesInfo, homeName, awayName, showStats, onToggleStats, onExit,
+    layout = 'svg',
 }: Props) {
+    if (layout === 'html') {
+        return (
+            <div className="gb-m-topbar">
+                <button className="gb-m-topbar-exit" onClick={() => onExit?.()}>EXIT</button>
+                {seriesInfo && (
+                    <div className="gb-m-topbar-series">
+                        <div>SERIES — GAME {seriesInfo.gameNumber} of {seriesInfo.bestOf}</div>
+                        <div className="gb-m-topbar-series-record">
+                            {homeName} {seriesInfo.homeWins} {'–'} {seriesInfo.awayWins} {awayName}
+                        </div>
+                    </div>
+                )}
+                <button className="gb-m-topbar-boxscore" onClick={onToggleStats}>
+                    {showStats ? 'CLOSE' : 'BOX'}
+                </button>
+            </div>
+        );
+    }
+
     return (
         <>
             {/* Exit button — goes straight to the lobby via the onExit

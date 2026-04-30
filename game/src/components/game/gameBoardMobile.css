@@ -1,0 +1,332 @@
+/* Mobile layout styles for GameBoard sub-components.
+ *
+ * These styles are only applied when sub-components render in `layout="html"`
+ * mode, which only happens below the mobile breakpoint in GameBoard.tsx.
+ * Above the breakpoint, components render in `layout="svg"` mode and these
+ * classes are unused.
+ *
+ * All classes are prefixed `gb-m-` so they're easy to grep / delete as a
+ * group if mobile support is ever rolled back.
+ */
+
+/* ---------- Top-bar controls ---------- */
+
+.gb-m-topbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: #07101e;
+    border-bottom: 1.5px solid #d4a018;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.gb-m-topbar-exit {
+    background: #3a0a0a;
+    border: 1px solid #e94560;
+    color: #e94560;
+    font-size: 12px;
+    font-family: Arial, sans-serif;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.gb-m-topbar-series {
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+    font-size: 10px;
+    color: #d4a018;
+    font-family: Arial, sans-serif;
+    line-height: 1.2;
+}
+
+.gb-m-topbar-series-record {
+    color: #fff;
+    font-size: 11px;
+}
+
+.gb-m-topbar-boxscore {
+    background: #0a1428;
+    border: 1px solid #d4a018;
+    color: #d4a018;
+    font-size: 11px;
+    font-family: Arial, sans-serif;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+/* ---------- Scoreboard ---------- */
+
+.gb-m-scoreboard {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: #07101e;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: auto;
+}
+
+.gb-m-sb-table {
+    border-collapse: collapse;
+    font-family: Arial, sans-serif;
+    flex: 1;
+}
+
+.gb-m-sb-table th, .gb-m-sb-table td {
+    padding: 2px 4px;
+    text-align: center;
+    border: 1px solid #1a3060;
+    font-size: 11px;
+    min-width: 18px;
+}
+
+.gb-m-sb-table th {
+    background: #002868;
+    color: #c8d8f8;
+    font-weight: normal;
+}
+
+.gb-m-sb-table th.cur {
+    background: #3a2a00;
+    color: #d4a018;
+    border-color: #d4a018;
+}
+
+.gb-m-sb-table th.team-col, .gb-m-sb-table td.team-col {
+    text-align: left;
+    color: #8aade0;
+    min-width: 60px;
+}
+
+.gb-m-sb-table th.r-col {
+    background: #9a0000;
+    color: #fff;
+}
+
+.gb-m-sb-table td.r-col {
+    background: #3a0a0a;
+    color: #fff;
+    font-family: Impact, sans-serif;
+    font-size: 13px;
+}
+
+.gb-m-sb-table td.batting {
+    background: rgba(212, 160, 24, 0.35);
+    color: #fff;
+}
+
+.gb-m-sb-table td.empty {
+    color: #1e3a7a;
+}
+
+.gb-m-outs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #d4a018;
+    font-family: Impact, sans-serif;
+    font-size: 11px;
+    letter-spacing: 1px;
+    flex-shrink: 0;
+}
+
+.gb-m-outs-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #140608;
+    border: 1.5px solid #d4a018;
+}
+
+.gb-m-outs-dot.on { background: #ff3030; }
+
+/* ---------- Lineup panel ---------- */
+
+.gb-m-lineup {
+    display: flex;
+    flex-direction: column;
+    background: #060f1e;
+    color: #c0d8f0;
+    font-family: Arial, sans-serif;
+    overflow-y: auto;
+    height: 100%;
+}
+
+.gb-m-lineup-header {
+    background: #1e42a0;
+    color: #fff;
+    text-align: center;
+    padding: 6px;
+    font-family: Impact, sans-serif;
+    letter-spacing: 2px;
+    font-size: 14px;
+}
+
+.gb-m-lineup.home .gb-m-lineup-header {
+    background: linear-gradient(180deg, #d42020 0%, #7a0808 100%);
+}
+
+.gb-m-lineup-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    border-bottom: 1px solid #0e1e38;
+    cursor: pointer;
+}
+
+.gb-m-lineup-row.at-bat {
+    background: #1a2858;
+    border-left: 3px solid #e94560;
+}
+
+.gb-m-lineup-row.on-deck {
+    background: #0e1a30;
+    border-left: 3px solid #60a5fa;
+}
+
+.gb-m-lineup-num {
+    color: #a0c0e0;
+    width: 20px;
+    text-align: right;
+    font-size: 13px;
+}
+
+.gb-m-lineup-row.at-bat .gb-m-lineup-num { color: #e94560; }
+.gb-m-lineup-row.on-deck .gb-m-lineup-num { color: #60a5fa; }
+
+.gb-m-lineup-thumb {
+    width: 28px;
+    height: 38px;
+    object-fit: cover;
+    border-radius: 2px;
+}
+
+.gb-m-lineup-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.gb-m-lineup-name {
+    font-size: 13px;
+    color: #c0d8f0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gb-m-lineup-row.at-bat .gb-m-lineup-name { color: #fff; }
+
+.gb-m-lineup-icons {
+    font-size: 11px;
+    color: #d4a018;
+}
+
+.gb-m-lineup-icons .used {
+    color: #4a3030;
+    text-decoration: line-through;
+}
+
+.gb-m-lineup-pos {
+    font-size: 11px;
+    color: #a0c0e0;
+    flex-shrink: 0;
+}
+
+.gb-m-lineup-pos.penalty {
+    color: #f87171;
+    font-weight: bold;
+}
+
+.gb-m-lineup-pitcher-row {
+    background: #0c1a40;
+}
+
+.gb-m-lineup-bullpen-btn {
+    margin: 6px 8px;
+    background: #0a1830;
+    border: 1px solid #d4a018;
+    color: #d4a018;
+    font-family: Impact, sans-serif;
+    letter-spacing: 1px;
+    padding: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+/* ---------- Game log footer ---------- */
+
+.gb-m-gamelog {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: #050c1a;
+    border-top: 1px solid #d4a01840;
+    box-sizing: border-box;
+}
+
+.gb-m-gamelog-buttons {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    display: flex;
+    gap: 4px;
+    z-index: 2;
+}
+
+.gb-m-gamelog-btn {
+    background: rgba(10, 20, 40, 0.85);
+    border: 1px solid #d4a018;
+    border-radius: 3px;
+    padding: 2px 6px;
+    cursor: pointer;
+    font-size: 9px;
+    color: #d4a018;
+    font-family: Arial, sans-serif;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+.gb-m-gamelog-entries {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 4px 6px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    scrollbar-width: thin;
+    scrollbar-color: #d4a01840 transparent;
+}
+
+.gb-m-gamelog-entry {
+    font-family: Arial, sans-serif;
+    font-size: 11px;
+    color: #8aade0;
+    padding: 1px 0;
+    line-height: 1.3;
+}
+
+.gb-m-gamelog-entry.inning {
+    color: #d4a018;
+    font-size: 12px;
+    border-top: 1px solid #d4a01840;
+    margin-top: 3px;
+}
+
+.gb-m-gamelog-entry.icon { color: #4ade80; }
+.gb-m-gamelog-entry.score { color: #e94560; }
+.gb-m-gamelog-entry.out { color: #ff6060; }

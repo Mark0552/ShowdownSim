@@ -22,10 +22,44 @@ interface Props {
     /** Bullpen panel open state + toggle. */
     bullpenOpen: boolean;
     onToggleBullpen: () => void;
+    /** "svg" (default) renders SVG groups for placement inside the parent
+     *  game-board SVG. "html" renders a flex/list panel for direct CSS-grid
+     *  placement on mobile. */
+    layout?: 'svg' | 'html';
+}
+
+interface IconItem { icon: string; used: boolean; }
+
+/** Build the per-player icon-display list (with used/unused state). Shared
+ *  between SVG and HTML render paths so the cross-out logic stays in sync. */
+function buildIconItems(
+    player: PlayerSlot,
+    team: TeamState,
+    isFieldingHalf: boolean,
+    displayIcon20Used: boolean,
+): IconItem[] {
+    if (!player.icons || player.icons.length === 0) return [];
+    const usage = team.iconUsage?.[player.cardId] || {};
+    const maxUses: Record<string, number> = { V: 2 };
+    const isActivePitcher = team.pitcher.cardId === player.cardId;
+    const items: IconItem[] = [];
+    for (const icon of player.icons) {
+        // CY is never crossed out (passive ability checked at end of inning)
+        if (icon === 'CY') { items.push({ icon, used: false }); continue; }
+        // 20 only crossed out when this pitcher is actively pitching and used it this inning
+        if (icon === '20') {
+            const crossed = isActivePitcher && isFieldingHalf && displayIcon20Used;
+            items.push({ icon, used: crossed });
+            continue;
+        }
+        const max = maxUses[icon] || 1; const used = usage[icon] || 0;
+        for (let i = 0; i < max; i++) items.push({ icon, used: i < used });
+    }
+    return items;
 }
 
 /**
- * One side's full lineup panel (away or home) inside the GameBoard SVG.
+ * One side's full lineup panel (away or home).
  * Renders: panel background, team header label, 9 batter rows, pitcher
  * row, and the BULLPEN/BENCH toggle button.
  */
@@ -34,6 +68,7 @@ export default function LineupPanel({
     displayHalfInning, displayInning, displayIcon20Used,
     onPlayerHover, onPlayerLeave,
     bullpenOpen, onToggleBullpen,
+    layout = 'svg',
 }: Props) {
     const w = PW - 12;
 
@@ -41,24 +76,80 @@ export default function LineupPanel({
     // used to decide if the 20-icon should display as crossed out.
     const isFieldingHalf = (isHome && displayHalfInning === 'top') || (!isHome && displayHalfInning === 'bottom');
 
+    if (layout === 'html') {
+        const renderHtmlRow = (player: PlayerSlot, i: number) => {
+            const isAtBat = (isHome ? displayHalfInning === 'bottom' : displayHalfInning === 'top') && i === team.currentBatterIndex;
+            const isOnDeck = (isHome ? displayHalfInning === 'top' : displayHalfInning === 'bottom') && i === team.currentBatterIndex;
+            const rawPos = player.assignedPosition ? player.assignedPosition.replace(/-\d+$/, '') : '';
+            const pos = rawPos === 'bench' ? '' : rawPos;
+            const penalty = pos ? penaltyForAssignment(player.positions, player.assignedPosition) : 0;
+            const rawFld = pos === 'C' ? (player.arm ?? 0) : (player.fielding ?? 0);
+            const effFld = rawFld + penalty;
+            const fld = pos ? (effFld >= 0 ? `+${effFld}` : `${effFld}`) : '';
+            const items = buildIconItems(player, team, isFieldingHalf, displayIcon20Used);
+            const rowCls = `gb-m-lineup-row${isAtBat ? ' at-bat' : isOnDeck ? ' on-deck' : ''}`;
+            return (
+                <div key={`${isHome ? 'h' : 'a'}-${i}`} className={rowCls}
+                    onMouseEnter={(e) => onPlayerHover(player, e)} onMouseLeave={onPlayerLeave}>
+                    <span className="gb-m-lineup-num">{i + 1}.</span>
+                    {player.imagePath && <img className="gb-m-lineup-thumb" src={player.imagePath} alt=""/>}
+                    <div className="gb-m-lineup-info">
+                        <div className="gb-m-lineup-name">{player.name}</div>
+                        {items.length > 0 && (
+                            <div className="gb-m-lineup-icons">
+                                {items.map((item, idx) => (
+                                    <span key={idx} className={item.used ? 'used' : ''}>{item.icon}{idx < items.length - 1 ? ' ' : ''}</span>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    {pos && fld && (
+                        <div className={`gb-m-lineup-pos${penalty < 0 ? ' penalty' : ''}`}>{pos} {fld}</div>
+                    )}
+                </div>
+            );
+        };
+
+        const pitcher = team.pitcher;
+        const pCardIp = pitcher.ip || 0;
+        const pRuns = team.pitcherStats?.[pitcher.cardId]?.r || 0;
+        const pCyBonus = team.cyBonusInnings || 0;
+        const pEffIp = Math.max(0, pCardIp - Math.floor(pRuns / 3) + pCyBonus);
+        const pCurInn = displayInning - (team.pitcherEntryInning || 1) + 1;
+        const pitcherIcons = buildIconItems(pitcher, team, isFieldingHalf, displayIcon20Used);
+
+        return (
+            <div className={`gb-m-lineup ${isHome ? 'home' : 'away'}`}>
+                <div className="gb-m-lineup-header">
+                    {isHome ? 'HOME' : 'AWAY'} — {teamName.toUpperCase()}
+                </div>
+                {team.lineup.map((p, i) => renderHtmlRow(p, i))}
+                <div className="gb-m-lineup-row gb-m-lineup-pitcher-row"
+                    onMouseEnter={(e) => onPlayerHover(pitcher, e)} onMouseLeave={onPlayerLeave}>
+                    <span className="gb-m-lineup-num" style={{ color: '#d4a018' }}>P</span>
+                    {pitcher.imagePath && <img className="gb-m-lineup-thumb" src={pitcher.imagePath} alt=""/>}
+                    <div className="gb-m-lineup-info">
+                        <div className="gb-m-lineup-name">{pitcher.name}</div>
+                        {pitcherIcons.length > 0 && (
+                            <div className="gb-m-lineup-icons">
+                                {pitcherIcons.map((item, idx) => (
+                                    <span key={idx} className={item.used ? 'used' : ''}>{item.icon}{idx < pitcherIcons.length - 1 ? ' ' : ''}</span>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    <div className="gb-m-lineup-pos">IP {pCurInn}/{pEffIp}</div>
+                </div>
+                <button className="gb-m-lineup-bullpen-btn" onClick={onToggleBullpen}>
+                    {bullpenOpen ? '▲ BULLPEN / BENCH' : '▼ BULLPEN / BENCH'}
+                </button>
+            </div>
+        );
+    }
+
     const renderIcons = (player: PlayerSlot, xPos: number, yPos: number) => {
-        if (!player.icons || player.icons.length === 0) return null;
-        const usage = team.iconUsage?.[player.cardId] || {};
-        const maxUses: Record<string, number> = { V: 2 };
-        const isActivePitcher = team.pitcher.cardId === player.cardId;
-        const items: { icon: string; used: boolean }[] = [];
-        for (const icon of player.icons) {
-            // CY is never crossed out (passive ability checked at end of inning)
-            if (icon === 'CY') { items.push({ icon, used: false }); continue; }
-            // 20 only crossed out when this pitcher is actively pitching and used it this inning
-            if (icon === '20') {
-                const crossed = isActivePitcher && isFieldingHalf && displayIcon20Used;
-                items.push({ icon, used: crossed });
-                continue;
-            }
-            const max = maxUses[icon] || 1; const used = usage[icon] || 0;
-            for (let i = 0; i < max; i++) items.push({ icon, used: i < used });
-        }
+        const items = buildIconItems(player, team, isFieldingHalf, displayIcon20Used);
+        if (items.length === 0) return null;
         return (
             <text x={xPos} y={yPos} fontSize="14" fontFamily="Arial" fontWeight="normal">
                 {items.map((item, i) => (
