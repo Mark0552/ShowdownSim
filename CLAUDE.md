@@ -2,6 +2,16 @@
 
 This document describes the exact current state of the application for Claude Code context.
 
+## Working with Mark
+
+Mark is a senior developer building a complete digital recreation of the MLB Showdown 2004-2005 trading card game. Deep knowledge of the game rules, strong UX opinions, prefers concise responses and practical implementations.
+
+**Workflow rules — do not violate:**
+- **Do NOT auto-push.** Present proposed changes and wait for explicit approval. Past incidents involved untested or misunderstood code being pushed.
+- **Understand each requirement before implementing.** When given a list of requirements, confirm understanding of each before writing code; ask clarifying questions if unsure.
+- **Never show a dead-end UI with only a skip option.** If the only available action is "skip", auto-skip to the next phase — every phase entry should check whether there are meaningful options before rendering UI.
+- **Check the data, don't make up numbers.** Card costs / onBase distributions / chart densities are all in `simulation/hitters.json` + `simulation/pitchers.json`. When discussing strategy or balance, query the actual data rather than guessing.
+
 ## Architecture Overview
 
 The project has three main parts:
@@ -32,16 +42,23 @@ React 19 + TypeScript + Vite SPA. No react-router — uses manual `useState<Page
 
 ### Backend: Supabase
 - **URL:** `https://jdvgjiklswargnqrqiet.supabase.co`
-- **Auth:** Email/password (emails are fake: `username@showdown.game`). No email confirmation.
+- **Auth:** Email/password (emails are fake: `username@showdown.game`). No email confirmation. See "Usernames vs Emails" below — the user always thinks in terms of usernames; the email is an internal artifact.
 - **Tables:**
   - `lineups` — id, user_id, name, data (JSONB), created_at, updated_at. RLS: users see only their own.
-  - `games` — id, status, home/away user IDs and emails, lineup IDs/names, ready flags, state (JSONB), pending_action (JSONB for away player moves), winner. RLS: anyone can see waiting games, participants see their games, anyone can join a waiting game.
+  - `games` — id, status, mode, home/away user IDs and emails, lineup IDs/names, ready flags, ready-next flags, state (JSONB), password, winner, series_id, game_number. RLS: anyone can see waiting games, participants see their games, anyone can join a waiting game.
+  - `series` — id, mode, home/away user IDs and emails, best_of, home_wins/away_wins, lineup IDs/names, status, winner, starter_offset, reliever_history (JSONB).
+  - `game_player_stats` — per-card per-game batting + pitching stats, used for the StatsPage. Unique on (game_id, user_id, card_id).
+- `games.status` values: `waiting` → `lineup_select` (lineup mode) OR `drafting` → `setting_lineup` (draft mode) → `in_progress` → `finished`.
+- `games.mode` / `series.mode` values: `'lineup'` (existing flow, players pick saved lineups) or `'draft'` (snake-draft flow added April 2026).
 - **Realtime:** Enabled on `games` table for live updates.
 
 ### Page Flow
 `LoginPage` → `MainMenu` → `LineupsPage` / `LobbyPage`
 - From LineupsPage: New/Edit → `TeamBuilder` → save to Supabase → back to LineupsPage
-- From LobbyPage: Create/Join → lineup select → both ready → `GamePage`
+- From LobbyPage (lineup mode): Create/Join → lineup select → both ready → `GamePage`
+- From LobbyPage (draft mode): Create/Join → both "Ready for Draft" → `DraftPage` (snake draft) → set-lineup screen → both submit → `GamePage`
+
+**Routing rule (`targetForGame()` in LobbyPage):** drafted games go to `DraftPage` only during pre-play phases (`drafting` / `setting_lineup`, plus `lineup_select` once both ready). Once a drafted game reaches `in_progress` or `finished`, it always routes to `GamePage` — DraftPage doesn't carry lineup data and would hang the play-state restore.
 
 ### Team Builder
 - `TeamBuilder.tsx` — Main page. Left: card catalog with filters. Bottom: lineup bar (9 positions). Right sidebar: starters, bullpen, bench.
@@ -58,6 +75,20 @@ Field positions use unique slot keys: `C`, `1B`, `2B`, `3B`, `SS`, `LF-RF-1`, `L
 Starters use: `Starter-1` through `Starter-4`.
 Bullpen cards use: `Reliever` or `Closer` (not unique — multiple allowed).
 Bench uses: `bench`.
+
+### Draft Mode (added April 2026)
+Snake-draft alternative to picking pre-built lineups. 20 picks per side, 40 picks total, home picks 1st overall.
+
+- `game/src/types/draft.ts` — DraftState / DraftTeamState / buildSnakeOrder.
+- `game/src/logic/draftConstraints.ts` — pure constraint engine: bipartite matching for the 9-hitter slate (Hall's theorem), budget lower bound for completing the roster. 24 unit tests in `draftConstraints.test.ts` (run with `npx tsx`).
+- `game/src/pages/DraftPage.tsx` — draft picking UI (FilterBar, pool grid with ineligible cards hidden, hover tooltips, always-confirm modal). Also hosts the post-draft `SetLineupScreen` (3 drag-drop rows: position assignment, batting order, SP rotation; bullpen + bench read-only — starter/bench distinction is locked at draft time).
+- `server/cards.js` — loads the 1196-card pool from `server/data/*.json` (kept in sync with `game/public/*.json`). Required for draft mode; lineup mode doesn't need it.
+- `server/engine/draft.js` + `server/engine/draftConstraints.js` — server-side port of the engine. New WS actions: `READY_FOR_DRAFT`, `DRAFT_PICK`, `SUBMIT_LINEUP`. The server is authoritative — every pick is re-validated.
+- `supabase-migration-draft-mode.sql` — `games.mode` + `series.mode` columns plus the `drafting` / `setting_lineup` status values.
+
+**Draft → play handoff:** server's `startPlayFromSubmittedLineups()` calls `initializeGame()` and writes `state.homeLineup` / `state.awayLineup` into the play state so series games 2+ can copy the drafted teams forward via the existing `ensureNextSeriesGame` path. Drafted teams are *not* saved to the lineups table.
+
+**Draft fork in `handleJoinGame`:** routes to `handleDraftJoin` only for `mode='draft'` games in pre-play phases (`waiting / lineup_select / drafting / setting_lineup`). In-progress and finished drafted games fall through to lineup-mode logic, which restores the play state from `gameRow.state` and pulls the lineup from `state.homeLineup`.
 
 ### Game Engine Architecture
 - **Server (`server/engine.js`)** — Single source of truth. All game logic lives here.
@@ -152,8 +183,45 @@ Images are 251x350px JPEGs from TCDB. Referenced via `imagePath` field on each c
 - **Base runner animations** — cards visually slide along base paths when runners advance. Currently cards teleport to new positions after dice animation completes. Implementation: animate the CardSlot x/y positions using CSS transitions or SVG `<animateTransform>` when `displayBases` changes. Track previous base positions in a ref, compute the path (e.g., 1st→2nd→3rd→home along the diamond), and interpolate over ~500ms. The delayed display state (`frozenRef`) already provides the before/after snapshots needed.
 - **Expert rules (Strategy cards)** — 175 strategy cards already have data + images scraped. Would add a strategy card hand, play timing rules, and card effects to the game engine. Major feature requiring new server phases and UI for card selection.
 
+## Rule Clarifications (do NOT "fix" these)
+
+These are user-confirmed interpretations of MLB Showdown Advanced rules and house rules. Past sessions have tried to "fix" them as bugs — don't.
+
+- **Pitch chart selection:** pitch total (d20 + control) must be **strictly greater than** (`>`, not `>=`) batter onBase to use the pitcher's chart. Current `>` operator is correct.
+- **S+ (Single Plus):** regular single advancement + batter auto-steals 2nd. Other runners do NOT get an extra base — they advance the same as on a regular single.
+- **GB hold/force-home placing batter on base:** by design. Defensive options (DP roll, force home, hold) represent different fielding plays. The batter out is already counted; this gives the defensive user strategic options.
+- **20 icon:** +3 to a single pitch roll, once per half-inning. No pitcher has both 20 and RP, so the combo edge case is moot.
+- **RP icon:** +3 control for the current pitcher for the remainder of the inning. Team-scoped, not game-level.
+- **K icon:** pitchers only. Hitters don't have K icons.
+- **Steal third:** catcher gets +5 bonus when throwing to 3rd. Intended.
+- **V after K:** V (Veteran) **CANNOT** reroll a K-induced strikeout. The K conversion is final. Matches community/tournament ruling, prevents infinite reroll loops. If you re-encounter the K handler in `server/engine/phases/resultIcons.js`, do NOT re-add a V prompt after K.
+- **Extra base attempts:** +5 bonuses (going home, 2 outs) go on the **runner target** (making them harder to throw out), not on the defense roll. Defense must BEAT (`>`) the target; ties go to the runner. See `server/engine/phases/extrabase.js` — `targetWithBonuses = speed + 5 + (2outs ? 5 : 0)`.
+- **GB Double Play:** the DP roll is vs **batter speed**, not the lead forced runner. Runner on 1st is out automatically (no roll); the d20 + IF roll determines whether the batter is thrown out at 1st.
+- **GB Hold Runners:** a real roll — d20 + IF vs `round((batter speed + lead runner speed) / 2)`. Lead runner = furthest along (3rd > 2nd > 1st priority).
+- **Runner animation attribution (`computeRunnerMovements`):** iterate **lead runner first** (third → second → first) when assigning who scored. Runners can't pass each other in baseball, so the furthest-along missing runner is always the scorer. Iterating first-to-third misattributes DP-failed bases-loaded scenarios.
+
+## Usernames vs Emails
+
+The app uses **usernames**, not emails. Auth uses a synthetic email (`username@showdown.game`) under the hood, but users only see and think in terms of usernames. `getUsername(user)` strips the `@showdown.game` suffix.
+
+- `home_user_email` and `away_user_email` columns on the `games` and `series` tables are **misnamed** — they actually store usernames (populated via `getUsername(user)`). When reading them for display, treat as a username.
+- Do **not** say "email" in any UI label, toast, error, or comment a user might read. Use "username".
+- Renaming the DB columns is a bigger migration; leave the schema alone unless explicitly asked. New code should use `username`-style variable names so the intent is clear.
+- `series.home_user_email` / `away_user_email` can stay null even after the opponent joins (only the `games` row gets updated on join). For series-level username display, fall back to scanning child game rows for a non-null value.
+
+## Lineup Strategy Notes (for design discussions)
+
+These were validated against the actual card data via `simulation/*.json`. When discussing balance or build strategy, defer to these and verify with the simulator if challenged.
+
+- **Optimal team construction is heavy on elite SPs.** 4 elite SPs (500+ pts, control 5-6, IP 7-8, CY + 20 icons) + 0 bullpen + ~280-pt average hitters + cheap bench is the canonical optimal build at the 5000-pt cap. Example rotation: Santana '05 (640) + Ford '04 CC (600) + Palmer '04 CC (610) + Halladay '04 (500) = 2350.
+- **Why no bullpen:** elite SPs with CY refunds (every 1-2-3 inning extends IP by 1) routinely go 9 with high control. Bullpen is mostly insurance against tail risk that's already minimised by the rotation quality.
+- **Why not "balanced":** going from 4-elite to 2-elite + 2-mid + bullpen only frees ~160 pts for hitting (the bullpen cost eats most of the SP-downgrade savings). 160 pts buys a single ~+1 onBase upgrade. The cost is ~3.5 starts of batting-practice innings vs control-3 SPs that fatigue at IP 6. Trade is decisively bad.
+- **OnBase ≠ OPS.** Walks contribute only to OBP; chart-density of singles/doubles/HRs drives SLG. A "walk-machine" OB-13 hitter can have lower OPS than an OB-12 hitter with denser hit ranges. **For lineup-order calls, trust the simulator OPS over my OB-based heuristics.**
+- **Hitter onBase distribution (median pts):** OB 9 = 110, OB 10 = 210, OB 11 = 320, OB 12 = 390, OB 13 = 480, OB 14 = 610. Source: `node` against `simulation/hitters.json`.
+
 ## Recently Completed
 
+- **Draft mode (April 2026)** — full snake-draft alternative to picking lineups. 20 picks per side, constraint engine with bipartite matching + budget LB, dedicated DraftPage with FilterBar and hover tooltips, drag-drop set-lineup screen, server-authoritative validation. Drafted lineups preserved in `state.homeLineup` so series games 2+ inherit them. Migration: `supabase-migration-draft-mode.sql`.
 - Reconnection handling: exponential backoff, opponent disconnect popup, action blocking during disconnect, player_joined broadcast on reconnect
 - GameLog overlay rendered in GameBoard (toggle via top-right button)
 - Box score with full batting/pitching stats (AVG, OBP, SLG, OPS, ERA, WHIP, W/L/SV)
