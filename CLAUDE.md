@@ -141,14 +141,20 @@ pre_atbat (offense: pinch hit / sac bunt / SB icon / skip)
 - State persisted to Supabase on phase transitions and game over
 
 ### Game UI Components
-- `GameBoard.tsx` — Primary SVG game board (1400x950). Bottom row: Actions (59%) | Dice (26%) | Result (16%). Shows scoreboard with live inning tracking, lineup panels (away/home), diamond with card slots, base runners with speed labels, action buttons for all phases with full numerical breakdowns, user-perspective color coding (green=my action, red=opponent), pitcher/hitter advantage indicator, player icon indicators. Handles all Advanced rule UI interactions.
+- `GameBoard.tsx` — Top-level board, dual-render. Above 900px viewport it renders the original 1400×950 SVG (scoreboard, lineup panels, diamond, action+dice strip, log footer all in one SVG). At/below 900px it returns a stacked HTML/grid layout for iOS Home Screen / phone-portrait use. Owns the `useState` + `matchMedia` switch.
+- `Scoreboard.tsx` / `LineupPanel.tsx` / `TopBarControls.tsx` / `GameLogFooter.tsx` — Sub-components extracted from GameBoard. Each takes a `layout?: 'svg' | 'html'` prop (default `'svg'`). SVG mode emits `<g>`/`<text>`/etc. inside the parent board SVG; HTML mode emits semantic markup styled by `gameBoardMobile.css`. Both modes share helpers like `LineupPanel.buildIconItems` so used/unused icon logic lives in one place.
+- `Diamond.tsx` — Decorative field paths + base/mound/home `CardSlot`s + runner-speed labels + pitcher IP/fatigue indicator. Always SVG. Exports `BASE_COORDS` so runner-animation overlays in GameBoard reference the same geometry. On mobile it's wrapped in its own `<svg viewBox="360 82 680 686">` so the diamond fills a portrait cell while keeping its original coordinate system.
+- `gameBoardLayout.ts` — Shared SVG layout constants (PW, DX, DW, HX, MAIN_TOP, MAIN_BOT, BOT_Y, etc).
+- `gameBoardMobile.css` — All mobile-mode styles. Classes prefixed `gb-m-` so they're easy to grep/delete as a group. Only applied when `layout="html"` is active in the corresponding component.
 - `GamePage.tsx` — WebSocket connection handler with reconnection logic (exponential backoff, max 10 attempts). Sends typed `GameAction` to server, receives `GameState` broadcasts. Blocks actions during opponent disconnect. Saves stats on game over.
-- `DiceSpinner.tsx` — SVG d20 number spinner. Dual pitch+swing side-by-side layout after swing. Linear equation display for pitch modifiers. User-perspective colors. Advantage bar.
-- `ActionButtons.tsx` — Phase-specific action buttons with full math breakdowns (fielding values, speed, bonuses). Phase-aware waiting messages.
+- `DiceSpinner.tsx` — SVG d20 number spinner. Dual pitch+swing side-by-side layout after swing. Linear equation display for pitch modifiers. User-perspective colors. Advantage bar. On mobile it's wrapped in `<svg viewBox="0 0 360 178">` and called with `cx={180} botY={0}` to recenter for the standalone cell.
+- `ActionButtons.tsx` — Phase-specific action buttons with full math breakdowns (fielding values, speed, bonuses). Phase-aware waiting messages. On mobile wrapped in `<svg viewBox="0 770 820 178">` (cropped to the original actions region so internal CX/BOT_TOP coordinates still work).
 - `BoxScore.tsx` — Full baseball-reference batting/pitching stats (AVG, OBP, SLG, OPS, ERA, WHIP).
 - `BullpenPanel.tsx` — Bullpen/bench expansion panel with starting rotation display.
 - `CardSlot.tsx` — Card image slots for field positions.
 - `GameLogOverlay.tsx` — Scrollable game log overlay.
+
+**Mobile target:** iOS Home Screen shortcut (Safari standalone), portrait. Breakpoint is `(max-width: 899px)`. Modals (`SubstitutionModal`, `DefenseSetupModal`, `CardTooltip`, etc.) intentionally stay `position: fixed` and full-viewport on both desktop and mobile — that's the right UX for tap-to-confirm interactions on a phone, and avoids reflow during dice animations.
 
 ## Card Images (`cards/`)
 
@@ -221,6 +227,7 @@ These were validated against the actual card data via `simulation/*.json`. When 
 
 ## Recently Completed
 
+- **Mobile portrait layout for GameBoard (April 2026)** — `GameBoard.tsx` branches on `(max-width: 899px)` to render a stacked HTML/grid layout instead of the 1400×950 SVG. Sub-components (Scoreboard, LineupPanel, TopBarControls, GameLogFooter) each grew a `layout?: 'svg' | 'html'` prop; Diamond was extracted into its own component with the original SVG coordinate system, wrapped in a cropped-viewBox `<svg>` on mobile. Desktop rendering is unchanged. ActionButtons/DiceSpinner stay SVG even on mobile (wrapped in their own scaled viewBox cells). Polish/tab UX still pending.
 - **Draft mode (April 2026)** — full snake-draft alternative to picking lineups. 20 picks per side, constraint engine with bipartite matching + budget LB, dedicated DraftPage with FilterBar and hover tooltips, drag-drop set-lineup screen, server-authoritative validation. Drafted lineups preserved in `state.homeLineup` so series games 2+ inherit them. Migration: `supabase-migration-draft-mode.sql`.
 - Reconnection handling: exponential backoff, opponent disconnect popup, action blocking during disconnect, player_joined broadcast on reconnect
 - GameLog overlay rendered in GameBoard (toggle via top-right button)

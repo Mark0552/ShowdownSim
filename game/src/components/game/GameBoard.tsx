@@ -170,6 +170,18 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const [showFullLog, setShowFullLog] = useState(false);
     const [showDiceRolls, setShowDiceRolls] = useState(false);
     const [diceAnimating, setDiceAnimating] = useState(false);
+    // Mobile breakpoint — narrow viewports get a stacked HTML/grid layout
+    // instead of the desktop 1400×950 SVG. Updates live on rotate / resize.
+    const [isMobile, setIsMobile] = useState(() =>
+        typeof window !== 'undefined' && window.matchMedia('(max-width: 899px)').matches
+    );
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const mq = window.matchMedia('(max-width: 899px)');
+        const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+        mq.addEventListener('change', handler);
+        return () => mq.removeEventListener('change', handler);
+    }, []);
     // Soft freeze for icon-driven outcome changes (no dice spin) — locks the
     // lineup highlight + frozenRef long enough for the user to see the change.
     const [iconFreezeActive, setIconFreezeActive] = useState(false);
@@ -459,6 +471,178 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const runner2 = getRunner('second');
     const runner3 = getRunner('third');
 
+
+
+
+    if (isMobile) {
+        return (
+            <div className="game-board-wrap gb-m-wrap">
+                {/* Modals + tooltips + overlays — same content as desktop, all
+                    use position: fixed/absolute with explicit z-index so DOM
+                    order doesn't affect stacking. */}
+                {hoveredPlayer && <CardTooltip card={playerSlotToCard(hoveredPlayer)} />}
+                {showAwayBullpen && <BullpenPanel team={state.awayTeam} side="away" onClose={() => setShowAwayBullpen(false)} onHover={handlePlayerHover} onLeave={handlePlayerLeave} />}
+                {showHomeBullpen && <BullpenPanel team={state.homeTeam} side="home" onClose={() => setShowHomeBullpen(false)} onHover={handlePlayerHover} onLeave={handlePlayerLeave} />}
+                {showSubPanel && isMyTurn && (
+                    <SubstitutionModal state={state} myRole={myRole} onAction={onAction} onClose={() => setShowSubPanel(false)} />
+                )}
+                {displayPhase === 'defense_setup' && state.phase === 'defense_setup' && (
+                    <DefenseSetupModal state={state} myRole={myRole} isMyTurn={isMyTurn} onAction={onAction}
+                        onToggleBoxScore={() => setShowStats(s => !s)} onToggleLog={() => setShowFullLog(s => !s)}
+                        onToggleDiceRolls={() => setShowDiceRolls(s => !s)} onExit={onExit} />
+                )}
+                <GameToast gameLog={state.gameLog} diceAnimating={diceAnimating} />
+                {showFullLog && <GameLogOverlay gameLog={state.gameLog} onClose={() => setShowFullLog(false)} />}
+                {showDiceRolls && <DiceRollsOverlay gameLog={state.gameLog} homeName={homeName} awayName={awayName} onClose={() => setShowDiceRolls(false)} />}
+                {showStats && (
+                    <div className="overlay-panel" style={{ minWidth: 'min(1200px, 95vw)', maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto', overflowX: 'auto' }}>
+                        <div className="overlay-panel-header">
+                            <span className="overlay-panel-title">BOX SCORE</span>
+                            <button className="overlay-close" onClick={() => setShowStats(false)}>CLOSE</button>
+                        </div>
+                        <BoxScore awayTeam={state.awayTeam} homeTeam={state.homeTeam} awayName={awayName} homeName={homeName} />
+                    </div>
+                )}
+
+                <TopBarControls
+                    layout="html"
+                    seriesInfo={seriesInfo}
+                    homeName={homeName}
+                    awayName={awayName}
+                    showStats={showStats}
+                    onToggleStats={() => setShowStats(!showStats)}
+                    onExit={onExit}
+                />
+                <Scoreboard
+                    layout="html"
+                    awayTeam={state.awayTeam}
+                    homeTeam={state.homeTeam}
+                    awayName={awayName}
+                    homeName={homeName}
+                    innings={innings}
+                    displayInning={displayInning}
+                    displayHalfInning={displayHalfInning}
+                    displayScore={displayScore}
+                    displayOuts={displayOuts}
+                    isOver={state.isOver}
+                />
+                <LineupPanel
+                    layout="html"
+                    team={displayAwayTeam}
+                    panelX={0}
+                    isHome={false}
+                    teamName={awayName}
+                    displayHalfInning={displayHalfInning}
+                    displayInning={displayInning}
+                    displayIcon20Used={displayIcon20Used}
+                    onPlayerHover={handlePlayerHover}
+                    onPlayerLeave={handlePlayerLeave}
+                    bullpenOpen={showAwayBullpen}
+                    onToggleBullpen={() => setShowAwayBullpen(!showAwayBullpen)}
+                />
+                <LineupPanel
+                    layout="html"
+                    team={displayHomeTeam}
+                    panelX={0}
+                    isHome={true}
+                    teamName={homeName}
+                    displayHalfInning={displayHalfInning}
+                    displayInning={displayInning}
+                    displayIcon20Used={displayIcon20Used}
+                    onPlayerHover={handlePlayerHover}
+                    onPlayerLeave={handlePlayerLeave}
+                    bullpenOpen={showHomeBullpen}
+                    onToggleBullpen={() => setShowHomeBullpen(!showHomeBullpen)}
+                />
+
+                {/* Diamond cell — own SVG with viewBox cropped to the diamond
+                    region of the original 1400×950 board so coordinates inside
+                    Diamond / RunnerAnimOverlay don't need to change. */}
+                <svg className="gb-m-diamond-svg" viewBox="360 82 680 686" preserveAspectRatio="xMidYMid meet">
+                    <Diamond
+                        runner1={runner1}
+                        runner2={runner2}
+                        runner3={runner3}
+                        pitcher={displayPitcher}
+                        batter={
+                            diceAnimating ? displayBatter :
+                            (runnerAnims.length === 0 &&
+                             pendingMovements.length === 0 &&
+                             !["extra_base_offer","extra_base"].includes(state.phase))
+                                ? displayBatter : null
+                        }
+                        displayPhase={displayPhase}
+                        displayIsOver={displayIsOver}
+                        inningsPitching={dInningsPitching}
+                        effectiveIp={dEffectiveIp}
+                        fatigueActive={dFatigueActive}
+                        fatiguePenalty={dFatiguePenalty}
+                        onPlayerHover={handlePlayerHover}
+                        onPlayerLeave={handlePlayerLeave}
+                    />
+                    {runnerAnims.map(anim => (
+                        <RunnerAnimOverlay key={`ra-${anim.cardId}`} anim={anim} baseCoords={BASE_COORDS} baseAnimMs={BASE_ANIM_MS} />
+                    ))}
+                </svg>
+
+                {/* Action buttons cell — viewBox cropped to the original
+                    actions region so internal CX/BOT_TOP coordinates work. */}
+                <svg className="gb-m-actions-svg" viewBox="0 770 820 178" preserveAspectRatio="xMidYMid meet">
+                    <ActionButtons
+                        state={state}
+                        myRole={myRole}
+                        isMyTurn={isMyTurn && !diceAnimating}
+                        iAmBatting={iAmBatting}
+                        onAction={onAction}
+                        battingTeam={battingTeam}
+                        fieldingTeam={fieldingTeam}
+                        hasRunners={hasRunners}
+                        outcomeNames={outcomeNames}
+                        onShowSubPanel={() => setShowSubPanel(true)}
+                        onNextSeriesGame={onNextSeriesGame}
+                        seriesStatus={seriesInfo
+                            ? (Math.max(seriesInfo.homeWins, seriesInfo.awayWins) > seriesInfo.bestOf / 2
+                               ? 'complete' : 'in-progress')
+                            : undefined}
+                        diceAnimating={diceAnimating}
+                        myReadyForNext={myReadyForNext}
+                        oppReadyForNext={oppReadyForNext}
+                        onToggleReadyForNext={onToggleReadyForNext}
+                    />
+                </svg>
+
+                {/* Dice cell — re-centered at cx=180 in a 360×178 viewBox so
+                    the spinner geometry fills the standalone cell. */}
+                <svg className="gb-m-dice-svg" viewBox="0 0 360 178" preserveAspectRatio="xMidYMid meet">
+                    {state.lastRoll && state.lastRollType && state.phase !== 'sp_roll' && (
+                        <DiceSpinner
+                            cx={180} botY={0}
+                            roll={state.lastRoll} rollType={state.lastRollType}
+                            triggerKey={rollKey}
+                            onAnimationComplete={handleDiceComplete}
+                            pitchRoll={state.lastPitchRoll}
+                            pitchControl={pitcher.control || 0}
+                            fatiguePenalty={state.fatiguePenalty || 0}
+                            controlModifier={state.lastPitchControlMod || 0}
+                            pitchTotal={state.lastPitchTotal}
+                            batterOnBase={batter.onBase}
+                            usedPitcherChart={state.usedPitcherChart}
+                            swingRoll={state.lastSwingRoll}
+                            iAmBatting={iAmBatting}
+                            pitcherCardId={pitcher.cardId}
+                        />
+                    )}
+                </svg>
+
+                <GameLogFooter
+                    layout="html"
+                    displayedGameLog={displayedGameLog}
+                    onShowDiceRolls={() => setShowDiceRolls(true)}
+                    onShowFullLog={() => setShowFullLog(true)}
+                />
+            </div>
+        );
+    }
 
     return (
         <div className="game-board-wrap">
