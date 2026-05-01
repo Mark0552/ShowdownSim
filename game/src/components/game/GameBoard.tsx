@@ -599,7 +599,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     cards and bullpen toggles, freeing up the strips to use
                     full row width for 9 batter cells. */}
                 <div className="gb-m-diamond-row">
-                    <svg className="gb-m-diamond-svg" viewBox="385 215 510 545" preserveAspectRatio="xMidYMid meet">
+                    <svg className="gb-m-diamond-svg" viewBox="388 230 503 524" preserveAspectRatio="xMidYMid meet">
                         <Diamond
                             runner1={runner1}
                             runner2={runner2}
@@ -711,25 +711,31 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     onToggleReadyForNext={onToggleReadyForNext}
                 />
 
-                {state.lastRoll && state.lastRollType && state.phase !== 'sp_roll' && (
-                    <DiceSpinner
-                        layout="html"
-                        cx={0} botY={0}
-                        roll={state.lastRoll} rollType={state.lastRollType}
-                        triggerKey={rollKey}
-                        onAnimationComplete={handleDiceComplete}
-                        pitchRoll={state.lastPitchRoll}
-                        pitchControl={pitcher.control || 0}
-                        fatiguePenalty={state.fatiguePenalty || 0}
-                        controlModifier={state.lastPitchControlMod || 0}
-                        pitchTotal={state.lastPitchTotal}
-                        batterOnBase={batter.onBase}
-                        usedPitcherChart={state.usedPitcherChart}
-                        swingRoll={state.lastSwingRoll}
-                        iAmBatting={iAmBatting}
-                        pitcherCardId={pitcher.cardId}
-                    />
-                )}
+                {/* Always-rendered dice cell — fixed height so the diamond
+                    row doesn't grow into its space when no roll has happened
+                    yet. The DiceSpinner inside only renders once we have
+                    a lastRoll to display. */}
+                <div className="gb-m-dice-wrap">
+                    {state.lastRoll && state.lastRollType && state.phase !== 'sp_roll' && (
+                        <DiceSpinner
+                            layout="html"
+                            cx={0} botY={0}
+                            roll={state.lastRoll} rollType={state.lastRollType}
+                            triggerKey={rollKey}
+                            onAnimationComplete={handleDiceComplete}
+                            pitchRoll={state.lastPitchRoll}
+                            pitchControl={pitcher.control || 0}
+                            fatiguePenalty={state.fatiguePenalty || 0}
+                            controlModifier={state.lastPitchControlMod || 0}
+                            pitchTotal={state.lastPitchTotal}
+                            batterOnBase={batter.onBase}
+                            usedPitcherChart={state.usedPitcherChart}
+                            swingRoll={state.lastSwingRoll}
+                            iAmBatting={iAmBatting}
+                            pitcherCardId={pitcher.cardId}
+                        />
+                    )}
+                </div>
             </div>
         );
     }

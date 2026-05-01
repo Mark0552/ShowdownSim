@@ -163,17 +163,19 @@ pre_atbat (offense: pinch hit / sac bunt / SB icon / skip)
 
 **Mobile target:** iOS Home Screen shortcut (Safari standalone), portrait. Breakpoint is `(max-width: 899px)`.
 
-**Mobile structural layout** (top to bottom, no scroll):
-1. Top bar: EXIT / Game N/M + username 0–0 username / LOG / ROLLS / BOX
-2. Scoreboard (HTML table; TEAM column wraps long usernames over 2 lines, R + inning columns thin)
-3. Opponent strip (9 batter cells full-width, batting order)
-4. **Diamond row** — flex row containing the diamond SVG and a fixed-width right sidebar:
-   - Sidebar order top-to-bottom: opp BENCH/PEN button → opp pitcher card → my pitcher card → my BENCH/PEN button
-   - Pitcher cards show image + last name + IP X/Y + icons; gold-highlighted when that team is currently fielding
-   - Sidebar = 76px wide; diamond fills the remaining row width
-5. My strip (9 batter cells)
-6. ActionButtons in HTML mode (flex-wrap row of native buttons that grows with content)
-7. DiceSpinner in HTML mode (compact die + equation + advantage stripe)
+**Mobile structural layout** (top to bottom, fixed-height cells; the strips, diamond row, and sidebar do NOT shift when phase / dice content changes):
+1. Scoreboard (HTML table; TEAM column 22% with `…` truncation, R col 8%, inning cols 7% each, OUTS as text "OUTS: N", menu button at right edge — opens a popup with BOX SCORE / GAME LOG / DICE ROLLS / EXIT GAME). The desktop top bar (`TopBarControls`) is not rendered on mobile.
+2. Opponent strip (9 batter cells full-width, batting order)
+3. **Diamond row** — flex row containing the diamond SVG and a fixed-width right sidebar:
+   - Diamond viewBox `388 230 503 524` (cropped tight to bases + card slots)
+   - Sidebar = 76px wide, three groups via `justify-content: space-between`:
+     - **Top group:** opp BENCH/PEN button + opp pitcher card (anchored top)
+     - **Middle:** series indicator (Game N/M + scores), only when in a series
+     - **Bottom group:** my pitcher card + my BENCH/PEN button (anchored bottom)
+   - Pitcher cards: image + last name + IP X/Y + icons; gold-highlighted when that team is currently fielding
+4. My strip (9 batter cells)
+5. ActionButtons in HTML mode — fixed `height: 110px; overflow-y: auto`. Phase content scrolls inside if it exceeds the cell.
+6. DiceSpinner in HTML mode — wrapped in an always-rendered outer `.gb-m-dice-wrap` (fixed `height: 90px`) so the diamond doesn't grow when no roll has happened yet. The DiceSpinner's own root class is `.gb-m-dice-inner` to avoid clashing with the parent wrapper.
 
 Modals (`SubstitutionModal`, `DefenseSetupModal`, `CardTooltip`, `BoxScore` overlay, `GameLogOverlay`, `DiceRollsOverlay`) stay `position: fixed` full-viewport on both desktop and mobile, with `@media (max-width: 899px)` rules that tighten panel widths / fonts / grid columns so they fit a portrait phone. `CardTooltip` becomes a bottom-sheet on mobile via the same media query.
 

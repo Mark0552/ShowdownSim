@@ -141,7 +141,7 @@ export default function DiceSpinner({
         const label = isPitch ? 'PITCH' : isSwing ? 'SWING' : rollType === 'fielding' ? 'FIELDING' : rollType.toUpperCase();
         const dieClass = (c: string) => c === '#e94560' ? 'red' : c === '#4ade80' ? 'green' : c === '#60a5fa' ? 'blue' : 'gold';
         return (
-            <div className="gb-m-dice-wrap">
+            <div className="gb-m-dice-inner">
                 <div className="gb-m-dice-row">
                     {showDual ? (
                         <>
