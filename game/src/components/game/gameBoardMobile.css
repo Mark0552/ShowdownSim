@@ -110,20 +110,21 @@
 /* ---------- Scoreboard ---------- */
 
 .gb-m-scoreboard {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto;
     align-items: center;
     gap: 8px;
     padding: 6px 8px;
     background: #07101e;
     width: 100%;
     box-sizing: border-box;
-    overflow-x: auto;
 }
 
 .gb-m-sb-table {
     border-collapse: collapse;
     font-family: Arial, sans-serif;
-    flex: 1;
+    width: 100%;
+    table-layout: fixed;
 }
 
 .gb-m-sb-table th, .gb-m-sb-table td {
@@ -308,16 +309,33 @@
     text-decoration: line-through;
 }
 
-/* Tiny bullpen toggle pinned to the right edge of each strip — opens the
-   existing BullpenPanel for that team. Sized so it doesn't steal space
-   from the 9 batter cells. */
+/* Pitcher cell — 10th cell on each strip so the team's current pitcher
+   (and IP / icon usage) is visible without opening the bullpen. Gold
+   tint distinguishes it from batter cells; .active fires when this team
+   is currently fielding (i.e. their pitcher is on the mound). */
+.gb-m-strip-cell-pitcher {
+    background: #1a1408;
+    border-color: #d4a01880;
+}
+.gb-m-strip-cell-pitcher.active {
+    background: #2a1f0c;
+    border-color: #d4a018;
+}
+.gb-m-strip-cell-pitcher .gb-m-strip-pos {
+    color: #d4a018;
+    font-weight: 600;
+}
+
+/* Bullpen / bench toggle pinned to the right edge of each strip — opens
+   the existing BullpenPanel for that team. Sized small so it doesn't
+   steal space from the 10 player cells. */
 .gb-m-strip-bp {
-    flex: 0 0 24px;
+    flex: 0 0 22px;
     align-self: stretch;
     background: #0a1830;
     border: 1px solid #d4a018;
     color: #d4a018;
-    font-size: 9px;
+    font-size: 8px;
     font-family: Arial, sans-serif;
     font-weight: 700;
     letter-spacing: 0.5px;
@@ -326,6 +344,7 @@
     cursor: pointer;
     writing-mode: vertical-rl;
     text-orientation: mixed;
+    line-height: 1;
 }
 
 /* ---------- Game log footer ---------- */
