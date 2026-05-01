@@ -659,32 +659,28 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     onToggleBullpen={() => myRole === 'home' ? setShowHomeBullpen(!showHomeBullpen) : setShowAwayBullpen(!showAwayBullpen)}
                 />
 
-                {/* Action buttons cell — viewBox cropped to just the active
-                    button rows (y=805..935) instead of the full bottom-bar
-                    region, so the buttons fill more of the cell. */}
-                <svg className="gb-m-actions-svg" viewBox="0 805 820 130" preserveAspectRatio="xMidYMid meet">
-                    <ActionButtons
-                        state={state}
-                        myRole={myRole}
-                        isMyTurn={isMyTurn && !diceAnimating}
-                        iAmBatting={iAmBatting}
-                        onAction={onAction}
-                        battingTeam={battingTeam}
-                        fieldingTeam={fieldingTeam}
-                        hasRunners={hasRunners}
-                        outcomeNames={outcomeNames}
-                        onShowSubPanel={() => setShowSubPanel(true)}
-                        onNextSeriesGame={onNextSeriesGame}
-                        seriesStatus={seriesInfo
-                            ? (Math.max(seriesInfo.homeWins, seriesInfo.awayWins) > seriesInfo.bestOf / 2
-                               ? 'complete' : 'in-progress')
-                            : undefined}
-                        diceAnimating={diceAnimating}
-                        myReadyForNext={myReadyForNext}
-                        oppReadyForNext={oppReadyForNext}
-                        onToggleReadyForNext={onToggleReadyForNext}
-                    />
-                </svg>
+                <ActionButtons
+                    layout="html"
+                    state={state}
+                    myRole={myRole}
+                    isMyTurn={isMyTurn && !diceAnimating}
+                    iAmBatting={iAmBatting}
+                    onAction={onAction}
+                    battingTeam={battingTeam}
+                    fieldingTeam={fieldingTeam}
+                    hasRunners={hasRunners}
+                    outcomeNames={outcomeNames}
+                    onShowSubPanel={() => setShowSubPanel(true)}
+                    onNextSeriesGame={onNextSeriesGame}
+                    seriesStatus={seriesInfo
+                        ? (Math.max(seriesInfo.homeWins, seriesInfo.awayWins) > seriesInfo.bestOf / 2
+                           ? 'complete' : 'in-progress')
+                        : undefined}
+                    diceAnimating={diceAnimating}
+                    myReadyForNext={myReadyForNext}
+                    oppReadyForNext={oppReadyForNext}
+                    onToggleReadyForNext={onToggleReadyForNext}
+                />
 
                 {/* Dice cell — viewBox tightened to drop empty top space.
                     DiceSpinner content starts at botY+15 (label) and ends

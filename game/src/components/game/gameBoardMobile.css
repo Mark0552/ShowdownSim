@@ -35,15 +35,152 @@
     display: block;
 }
 
-/* Action buttons cell — viewBox cropped to active buttons only, so a
-   shorter cell still gives readable / tappable button heights. */
-.gb-m-actions-svg {
-    width: 100%;
-    flex-shrink: 0;
-    height: 70px;
+/* ---------- Action buttons (HTML mode) ----------
+ * Native HTML buttons that grow with content — replaces the scaled-SVG
+ * wrapper that couldn't adapt to phases with 4+ buttons. */
+
+.gb-m-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 8px;
     background: #050c1a;
-    display: block;
     border-top: 1.5px solid #d4a018;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    width: 100%;
+    justify-content: center;
+}
+
+.gb-m-actions-sub {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 100%;
+    margin-top: 2px;
+    justify-content: center;
+}
+
+.gb-m-actions-label {
+    width: 100%;
+    text-align: center;
+    font: 600 11px/1.2 Arial, sans-serif;
+    color: #d4a018;
+    padding: 0 0 2px;
+}
+.gb-m-actions-label-go { color: #4ade80; }
+.gb-m-actions-label-bad { color: #e94560; }
+
+.gb-m-actions-wait {
+    text-align: center;
+    font: italic 12px/1.2 Arial, sans-serif;
+    color: #888;
+    padding: 16px 8px;
+    background: #050c1a;
+    border-top: 1.5px solid #d4a01840;
+    flex-shrink: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.gb-m-act-btn {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 auto;
+    min-width: 92px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    line-height: 1.1;
+    box-sizing: border-box;
+}
+
+.gb-m-act-btn-label {
+    font-family: Impact, sans-serif;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+}
+
+.gb-m-act-btn-sub {
+    font: 9px/1.2 'Consolas', 'Courier New', monospace;
+    opacity: 0.85;
+    margin-top: 2px;
+}
+
+.gb-m-act-btn-red    { background: #e94560; border-color: #ff6b8a; color: #fff; }
+.gb-m-act-btn-green  { background: #4ade80; border-color: #6bff9a; color: #002; }
+.gb-m-act-btn-blue   { background: #60a5fa; border-color: #93c5fd; color: #002; }
+.gb-m-act-btn-gold   { background: #d4a018; border-color: #f0c840; color: #002; }
+.gb-m-act-btn-purple { background: #8b5cf6; border-color: #a78bfa; color: #fff; }
+.gb-m-act-btn-gray   { background: #334155; border-color: #64748b; color: #ccc; }
+
+.gb-m-act-btn:active { filter: brightness(1.1); }
+
+/* ---------- Game over card (HTML mode) ---------- */
+
+.gb-m-actions-gameover {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.9);
+    border-top: 2px solid;
+    flex-shrink: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+.gb-m-actions-gameover.win { border-color: #4ade80; }
+.gb-m-actions-gameover.lose { border-color: #e94560; }
+
+.gb-m-go-title {
+    font: 22px/1 Impact, sans-serif;
+    letter-spacing: 2px;
+}
+.gb-m-actions-gameover.win .gb-m-go-title { color: #4ade80; }
+.gb-m-actions-gameover.lose .gb-m-go-title { color: #e94560; }
+
+.gb-m-go-score {
+    font: 16px/1 Impact, sans-serif;
+    letter-spacing: 2px;
+    color: #fff;
+}
+
+.gb-m-go-ready {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    background: #d4a018;
+    border: 2px solid #f0c840;
+    color: #002;
+    padding: 6px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 4px;
+}
+.gb-m-go-ready.on { background: #4ade80; border-color: #86efac; }
+
+.gb-m-go-opp {
+    font: 600 11px/1.2 Arial, sans-serif;
+    color: #94a3b8;
+    letter-spacing: 1px;
+}
+.gb-m-go-opp.on { color: #4ade80; }
+
+.gb-m-go-complete {
+    font: 18px/1 Impact, sans-serif;
+    letter-spacing: 2px;
+    color: #d4a018;
+    padding: 6px 16px;
+    border: 2px solid #d4a018;
+    border-radius: 8px;
+    background: rgba(212, 160, 24, 0.15);
+    margin-top: 4px;
 }
 
 /* Dice cell — viewBox cropped to drop empty space around the spinner. */
