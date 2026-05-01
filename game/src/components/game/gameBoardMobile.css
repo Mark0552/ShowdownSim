@@ -23,13 +23,14 @@
     color: #c0d8f0;
 }
 
-/* Diamond cell — fills the remaining vertical space between strips and
-   action area. preserveAspectRatio="xMidYMid meet" on the SVG keeps the
-   field correctly proportioned (letterboxes if cell aspect drifts). */
+/* Diamond cell — fills the remaining row width to the left of the
+   sidebar; height matches the row. preserveAspectRatio="xMidYMid meet"
+   on the SVG keeps the field correctly proportioned (letterboxes if
+   cell aspect drifts). */
 .gb-m-diamond-svg {
     flex: 1 1 0;
-    min-height: 0;
-    width: 100%;
+    min-width: 0;
+    height: 100%;
     background: #050c1a;
     display: block;
 }
@@ -128,12 +129,17 @@
 }
 
 .gb-m-sb-table th, .gb-m-sb-table td {
-    padding: 2px 4px;
+    padding: 1px 3px;
     text-align: center;
     border: 1px solid #1a3060;
     font-size: 11px;
-    min-width: 18px;
 }
+
+/* Explicit column widths — TEAM gets the most room (and wraps onto two
+   lines for long usernames), inning columns are narrow, R is medium. */
+.gb-m-sb-table th.team-col { width: 26%; }
+.gb-m-sb-table th.r-col    { width: 11%; }
+.gb-m-sb-table th:not(.team-col):not(.r-col) { width: 7%; }
 
 .gb-m-sb-table th {
     background: #002868;
@@ -161,7 +167,10 @@
 .gb-m-sb-table th.team-col, .gb-m-sb-table td.team-col {
     text-align: left;
     color: #8aade0;
-    min-width: 60px;
+    font-size: 10px;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.1;
 }
 
 .gb-m-sb-table th.r-col {
@@ -309,42 +318,97 @@
     text-decoration: line-through;
 }
 
-/* Pitcher cell — 10th cell on each strip so the team's current pitcher
-   (and IP / icon usage) is visible without opening the bullpen. Gold
-   tint distinguishes it from batter cells; .active fires when this team
-   is currently fielding (i.e. their pitcher is on the mound). */
-.gb-m-strip-cell-pitcher {
-    background: #1a1408;
-    border-color: #d4a01880;
-}
-.gb-m-strip-cell-pitcher.active {
-    background: #2a1f0c;
-    border-color: #d4a018;
-}
-.gb-m-strip-cell-pitcher .gb-m-strip-pos {
-    color: #d4a018;
-    font-weight: 600;
+/* ---------- Diamond row + right sidebar ----------
+ * Pitcher cards + bench/pen toggles sit in a vertical sidebar to the
+ * right of the diamond, so the strips can use full width for batters.
+ * Order top-to-bottom: opp bench, opp pitcher, my pitcher, my bench. */
+
+.gb-m-diamond-row {
+    display: flex;
+    flex-direction: row;
+    flex: 1 1 0;
+    min-height: 0;
+    width: 100%;
 }
 
-/* Bullpen / bench toggle pinned to the right edge of each strip — opens
-   the existing BullpenPanel for that team. Sized small so it doesn't
-   steal space from the 10 player cells. */
-.gb-m-strip-bp {
-    flex: 0 0 22px;
-    align-self: stretch;
+.gb-m-sidebar {
+    flex: 0 0 76px;
+    display: flex;
+    flex-direction: column;
+    background: #07101e;
+    border-left: 1px solid #1a3060;
+}
+
+.gb-m-sb-btn {
+    flex: 0 0 32px;
     background: #0a1830;
     border: 1px solid #d4a018;
     color: #d4a018;
-    font-size: 8px;
-    font-family: Arial, sans-serif;
-    font-weight: 700;
+    font: 700 9px/1 Arial, sans-serif;
     letter-spacing: 0.5px;
-    padding: 0;
-    border-radius: 3px;
+    padding: 4px 0;
+    margin: 4px;
+    border-radius: 4px;
     cursor: pointer;
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
-    line-height: 1;
+}
+
+.gb-m-sb-pitcher {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 3px;
+    background: #1a1408;
+    border-top: 1px solid #d4a01840;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.gb-m-sb-pitcher.active {
+    background: #2a1f0c;
+    border-color: #d4a018;
+}
+
+.gb-m-sb-pitcher img {
+    width: 100%;
+    aspect-ratio: 251 / 350;
+    object-fit: cover;
+    border-radius: 2px;
+    flex-shrink: 1;
+    min-height: 0;
+}
+
+.gb-m-sb-pitcher .name {
+    font: 600 10px/1.1 Arial, sans-serif;
+    color: #c0d8f0;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+    margin-top: 2px;
+}
+
+.gb-m-sb-pitcher .ip {
+    font: 9px/1.1 Arial, sans-serif;
+    color: #d4a018;
+}
+
+.gb-m-sb-pitcher .icons {
+    font: 8px/1.1 Arial, sans-serif;
+    color: #d4a018;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+    text-align: center;
+}
+
+.gb-m-sb-pitcher .icons .used {
+    color: #4a3030;
+    text-decoration: line-through;
 }
 
 /* ---------- Game log footer ---------- */

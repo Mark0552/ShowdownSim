@@ -28,11 +28,11 @@ interface Props {
     layout?: 'svg' | 'html';
 }
 
-interface IconItem { icon: string; used: boolean; }
+export interface IconItem { icon: string; used: boolean; }
 
 /** Build the per-player icon-display list (with used/unused state). Shared
  *  between SVG and HTML render paths so the cross-out logic stays in sync. */
-function buildIconItems(
+export function buildIconItems(
     player: PlayerSlot,
     team: TeamState,
     isFieldingHalf: boolean,
@@ -114,41 +114,9 @@ export default function LineupPanel({
             );
         };
 
-        // Pitcher cell — appended after the 9 batters so the user can see
-        // the team's current pitcher (and IP/icon usage) without opening the
-        // bullpen panel. The active fielding pitcher gets a gold highlight.
-        const pitcher = team.pitcher;
-        const pCardIp = pitcher.ip || 0;
-        const pRuns = team.pitcherStats?.[pitcher.cardId]?.r || 0;
-        const pCyBonus = team.cyBonusInnings || 0;
-        const pEffIp = Math.max(0, pCardIp - Math.floor(pRuns / 3) + pCyBonus);
-        const pCurInn = displayInning - (team.pitcherEntryInning || 1) + 1;
-        const pitcherIcons = buildIconItems(pitcher, team, isFieldingHalf, displayIcon20Used);
-        const shortPitcherName = pitcher.name.includes(' ')
-            ? pitcher.name.slice(pitcher.name.lastIndexOf(' ') + 1)
-            : pitcher.name;
-        const pitcherCellCls = `gb-m-strip-cell gb-m-strip-cell-pitcher${isFieldingHalf ? ' active' : ''}`;
-
         return (
             <div className={`gb-m-strip ${isHome ? 'home' : 'away'}`}>
                 {team.lineup.map((p, i) => renderStripCell(p, i))}
-                <div className={pitcherCellCls}
-                    onMouseEnter={(e) => onPlayerHover(pitcher, e)} onMouseLeave={onPlayerLeave}>
-                    <div className="gb-m-strip-pos">P {pCurInn}/{pEffIp}</div>
-                    {pitcher.imagePath && <img className="gb-m-strip-thumb" src={pitcher.imagePath} alt=""/>}
-                    <div className="gb-m-strip-name">{shortPitcherName}</div>
-                    {pitcherIcons.length > 0 && (
-                        <div className="gb-m-strip-icons">
-                            {pitcherIcons.map((item, idx) => (
-                                <span key={idx} className={item.used ? 'used' : ''}>{item.icon}</span>
-                            ))}
-                        </div>
-                    )}
-                </div>
-                <button className="gb-m-strip-bp" onClick={onToggleBullpen}
-                    title="Bullpen / bench">
-                    BENCH/PEN
-                </button>
             </div>
         );
     }

@@ -19,7 +19,7 @@ import BoxScore from './BoxScore';
 import ActionButtons from './ActionButtons';
 import DiceSpinner from './DiceSpinner';
 import Scoreboard from './Scoreboard';
-import LineupPanel from './LineupPanel';
+import LineupPanel, { buildIconItems } from './LineupPanel';
 import TopBarControls from './TopBarControls';
 import GameLogFooter from './GameLogFooter';
 import Diamond, { BASE_COORDS } from './Diamond';
@@ -158,6 +158,44 @@ function RunnerAnimOverlay({ anim, baseCoords, baseAnimMs }: {
                     fill="rgba(200, 20, 20, 0.7)" stroke="rgba(255, 30, 30, 0.9)" strokeWidth="3" />
             )}
         </g>
+    );
+}
+
+/** One pitcher card for the mobile right-sidebar — image, last name, IP,
+ *  and icons line. Highlights gold when this team's pitcher is currently
+ *  on the mound (their team is fielding). */
+function SidebarPitcher({ team, isFielding, displayInning, displayIcon20Used, onHover, onLeave }: {
+    team: import('../../engine/gameEngine').TeamState;
+    isFielding: boolean;
+    displayInning: number;
+    displayIcon20Used: boolean;
+    onHover: (player: PlayerSlot, e: React.MouseEvent) => void;
+    onLeave: () => void;
+}) {
+    const pitcher = team.pitcher;
+    const cardIp = pitcher.ip || 0;
+    const runs = team.pitcherStats?.[pitcher.cardId]?.r || 0;
+    const cyBonus = team.cyBonusInnings || 0;
+    const effIp = Math.max(0, cardIp - Math.floor(runs / 3) + cyBonus);
+    const curInn = displayInning - (team.pitcherEntryInning || 1) + 1;
+    const icons = buildIconItems(pitcher, team, isFielding, displayIcon20Used);
+    const shortName = pitcher.name.includes(' ')
+        ? pitcher.name.slice(pitcher.name.lastIndexOf(' ') + 1)
+        : pitcher.name;
+    return (
+        <div className={`gb-m-sb-pitcher${isFielding ? ' active' : ''}`}
+            onMouseEnter={(e) => onHover(pitcher, e)} onMouseLeave={onLeave}>
+            {pitcher.imagePath && <img src={pitcher.imagePath} alt=""/>}
+            <div className="name">{shortName}</div>
+            <div className="ip">IP {curInn}/{effIp}</div>
+            {icons.length > 0 && (
+                <div className="icons">
+                    {icons.map((item, idx) => (
+                        <span key={idx} className={item.used ? 'used' : ''}>{item.icon}</span>
+                    ))}
+                </div>
+            )}
+        </div>
     );
 }
 
@@ -547,36 +585,63 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     onToggleBullpen={() => myRole === 'home' ? setShowAwayBullpen(!showAwayBullpen) : setShowHomeBullpen(!showHomeBullpen)}
                 />
 
-                {/* Diamond cell — viewBox tightened to the bases + card-slot
-                    bounding box (instead of the full panel rect). Drops the
-                    ~120px of dead space above 2nd base + ~50px below home so
-                    the diamond fills more of the mobile cell. */}
-                <svg className="gb-m-diamond-svg" viewBox="385 215 510 545" preserveAspectRatio="xMidYMid meet">
-                    <Diamond
-                        runner1={runner1}
-                        runner2={runner2}
-                        runner3={runner3}
-                        pitcher={displayPitcher}
-                        batter={
-                            diceAnimating ? displayBatter :
-                            (runnerAnims.length === 0 &&
-                             pendingMovements.length === 0 &&
-                             !["extra_base_offer","extra_base"].includes(state.phase))
-                                ? displayBatter : null
-                        }
-                        displayPhase={displayPhase}
-                        displayIsOver={displayIsOver}
-                        inningsPitching={dInningsPitching}
-                        effectiveIp={dEffectiveIp}
-                        fatigueActive={dFatigueActive}
-                        fatiguePenalty={dFatiguePenalty}
-                        onPlayerHover={handlePlayerHover}
-                        onPlayerLeave={handlePlayerLeave}
-                    />
-                    {runnerAnims.map(anim => (
-                        <RunnerAnimOverlay key={`ra-${anim.cardId}`} anim={anim} baseCoords={BASE_COORDS} baseAnimMs={BASE_ANIM_MS} />
-                    ))}
-                </svg>
+                {/* Diamond + right sidebar (opp bench btn / opp pitcher /
+                    my pitcher / my bench btn) — sandwiched between the two
+                    lineup strips. The sidebar holds the per-team pitcher
+                    cards and bullpen toggles, freeing up the strips to use
+                    full row width for 9 batter cells. */}
+                <div className="gb-m-diamond-row">
+                    <svg className="gb-m-diamond-svg" viewBox="385 215 510 545" preserveAspectRatio="xMidYMid meet">
+                        <Diamond
+                            runner1={runner1}
+                            runner2={runner2}
+                            runner3={runner3}
+                            pitcher={displayPitcher}
+                            batter={
+                                diceAnimating ? displayBatter :
+                                (runnerAnims.length === 0 &&
+                                 pendingMovements.length === 0 &&
+                                 !["extra_base_offer","extra_base"].includes(state.phase))
+                                    ? displayBatter : null
+                            }
+                            displayPhase={displayPhase}
+                            displayIsOver={displayIsOver}
+                            inningsPitching={dInningsPitching}
+                            effectiveIp={dEffectiveIp}
+                            fatigueActive={dFatigueActive}
+                            fatiguePenalty={dFatiguePenalty}
+                            onPlayerHover={handlePlayerHover}
+                            onPlayerLeave={handlePlayerLeave}
+                        />
+                        {runnerAnims.map(anim => (
+                            <RunnerAnimOverlay key={`ra-${anim.cardId}`} anim={anim} baseCoords={BASE_COORDS} baseAnimMs={BASE_ANIM_MS} />
+                        ))}
+                    </svg>
+                    <aside className="gb-m-sidebar">
+                        <button className="gb-m-sb-btn" onClick={() => myRole === 'home' ? setShowAwayBullpen(!showAwayBullpen) : setShowHomeBullpen(!showHomeBullpen)}>
+                            BENCH/PEN
+                        </button>
+                        <SidebarPitcher
+                            team={myRole === 'home' ? displayAwayTeam : displayHomeTeam}
+                            isFielding={myRole === 'home' ? displayHalfInning === 'top' : displayHalfInning === 'bottom'}
+                            displayInning={displayInning}
+                            displayIcon20Used={displayIcon20Used}
+                            onHover={handlePlayerHover}
+                            onLeave={handlePlayerLeave}
+                        />
+                        <SidebarPitcher
+                            team={myRole === 'home' ? displayHomeTeam : displayAwayTeam}
+                            isFielding={myRole === 'home' ? displayHalfInning === 'bottom' : displayHalfInning === 'top'}
+                            displayInning={displayInning}
+                            displayIcon20Used={displayIcon20Used}
+                            onHover={handlePlayerHover}
+                            onLeave={handlePlayerLeave}
+                        />
+                        <button className="gb-m-sb-btn" onClick={() => myRole === 'home' ? setShowHomeBullpen(!showHomeBullpen) : setShowAwayBullpen(!showAwayBullpen)}>
+                            BENCH/PEN
+                        </button>
+                    </aside>
+                </div>
 
                 {/* My team strip — below the diamond. */}
                 <LineupPanel
