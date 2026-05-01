@@ -24,13 +24,16 @@
 }
 
 /* Diamond cell — fills the remaining row width to the left of the
-   sidebar; height matches the row. preserveAspectRatio="xMidYMid meet"
-   on the SVG keeps the field correctly proportioned (letterboxes if
-   cell aspect drifts). */
+   sidebar. aspect-ratio matches the SVG viewBox (503/524) so the
+   cell sizes itself by aspect rather than stretching to whatever
+   height the row's flex sizing assigns. The row's height ends up
+   driven by this cell, and the sidebar (align-items: stretch)
+   matches it exactly — pitcher pane height = diamond height. */
 .gb-m-diamond-svg {
     flex: 1 1 0;
     min-width: 0;
-    height: 100%;
+    aspect-ratio: 503 / 524;
+    height: auto;
     background: #050c1a;
     display: block;
 }
@@ -335,36 +338,44 @@
 
 /* ---------- Scoreboard ---------- */
 
+/* 3-column grid: scoreboard table | OUTS indicator | menu button.
+   Was 2 columns previously, which forced the menu button to wrap to
+   its own row. The table sits in 1fr; OUTS + menu are auto-sized so
+   the table consumes whatever horizontal space they don't. */
 .gb-m-scoreboard {
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr auto auto;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     padding: 6px 8px;
     background: #07101e;
     width: 100%;
     box-sizing: border-box;
 }
 
+/* width: auto (not 100%) so the column pixel widths below actually
+   shrink the table — when the table was 100%-wide, the cells just
+   redistributed proportions inside a fixed total. */
 .gb-m-sb-table {
     border-collapse: collapse;
     font-family: Arial, sans-serif;
-    width: 100%;
+    width: auto;
     table-layout: fixed;
 }
 
 .gb-m-sb-table th, .gb-m-sb-table td {
-    padding: 1px 3px;
+    padding: 1px 2px;
     text-align: center;
     border: 1px solid #1a3060;
     font-size: 11px;
 }
 
-/* Explicit column widths — TEAM gets the most room (long usernames
-   truncate with `…`), inning columns are narrow, R is thin. */
-.gb-m-sb-table th.team-col { width: 22%; }
-.gb-m-sb-table th.r-col    { width: 8%; }
-.gb-m-sb-table th:not(.team-col):not(.r-col) { width: 7%; }
+/* Pixel widths: TEAM keeps the most room (long usernames truncate
+   with ellipsis), inning columns + R are narrowed to free horizontal
+   space for OUTS + menu button on the right of the row. */
+.gb-m-sb-table th.team-col { width: 76px; }
+.gb-m-sb-table th.r-col    { width: 22px; }
+.gb-m-sb-table th:not(.team-col):not(.r-col) { width: 20px; }
 
 .gb-m-sb-table th {
     background: #002868;
@@ -421,13 +432,21 @@
     color: #1e3a7a;
 }
 
+/* Stacked label above value — narrower than the previous inline
+   "OUTS: N" so the menu button can sit beside it on the same row. */
 .gb-m-outs {
     color: #d4a018;
-    font: 11px/1 Impact, sans-serif;
+    font-family: Impact, sans-serif;
     letter-spacing: 1px;
     flex-shrink: 0;
-    padding: 0 6px;
+    padding: 0 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1;
 }
+.gb-m-outs-label { font-size: 9px; }
+.gb-m-outs-value { font-size: 14px; margin-top: 3px; }
 
 /* Menu button (right edge of scoreboard row) — replaces the old top bar's
    EXIT / LOG / ROLLS / BOX. Opens .gb-m-menu-overlay. */
@@ -585,16 +604,26 @@
  * right of the diamond, so the strips can use full width for batters.
  * Order top-to-bottom: opp bench, opp pitcher, my pitcher, my bench. */
 
+/* flex: 0 0 auto (was 1 1 0) — the row no longer absorbs leftover
+   vertical space. Its height is driven by the diamond SVG's aspect
+   ratio, and the sidebar stretches to match.
+   Padding gives equal gutter on all four sides so the home-plate
+   card doesn't sit against the screen's left edge and the sidebar
+   doesn't sit against the screen's right edge — matching gutter
+   above and below the diamond per Mark's spec. */
 .gb-m-diamond-row {
     display: flex;
     flex-direction: row;
-    flex: 1 1 0;
+    flex: 0 0 auto;
     min-height: 0;
     width: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+    background: #050c1a;
 }
 
 .gb-m-sidebar {
-    flex: 0 0 76px;
+    flex: 0 0 64px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;

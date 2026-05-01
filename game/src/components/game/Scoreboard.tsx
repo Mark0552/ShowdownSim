@@ -82,7 +82,10 @@ export default function Scoreboard({
                         {renderHtmlRow(homeTeam, homeName)}
                     </tbody>
                 </table>
-                <div className="gb-m-outs">OUTS: {displayOuts}</div>
+                <div className="gb-m-outs">
+                    <span className="gb-m-outs-label">OUTS</span>
+                    <span className="gb-m-outs-value">{displayOuts}</span>
+                </div>
                 {onMenuClick && (
                     <button className="gb-m-sb-menu-btn" onClick={onMenuClick} aria-label="Menu">
                         {'☰'}
