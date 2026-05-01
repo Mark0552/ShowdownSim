@@ -143,18 +143,32 @@ pre_atbat (offense: pinch hit / sac bunt / SB icon / skip)
 ### Game UI Components
 - `GameBoard.tsx` — Top-level board, dual-render. Above 900px viewport it renders the original 1400×950 SVG (scoreboard, lineup panels, diamond, action+dice strip, log footer all in one SVG). At/below 900px it returns a stacked HTML/grid layout for iOS Home Screen / phone-portrait use. Owns the `useState` + `matchMedia` switch.
 - `Scoreboard.tsx` / `LineupPanel.tsx` / `TopBarControls.tsx` / `GameLogFooter.tsx` — Sub-components extracted from GameBoard. Each takes a `layout?: 'svg' | 'html'` prop (default `'svg'`). SVG mode emits `<g>`/`<text>`/etc. inside the parent board SVG; HTML mode emits semantic markup styled by `gameBoardMobile.css`. Both modes share helpers like `LineupPanel.buildIconItems` so used/unused icon logic lives in one place.
-- `Diamond.tsx` — Decorative field paths + base/mound/home `CardSlot`s + runner-speed labels + pitcher IP/fatigue indicator. Always SVG. Exports `BASE_COORDS` so runner-animation overlays in GameBoard reference the same geometry. On mobile it's wrapped in its own `<svg viewBox="360 82 680 686">` so the diamond fills a portrait cell while keeping its original coordinate system.
+- `Diamond.tsx` — Decorative field paths + base/mound/home `CardSlot`s + runner-speed labels + pitcher IP/fatigue indicator. Always SVG. Exports `BASE_COORDS` so runner-animation overlays in GameBoard reference the same geometry. On mobile it's wrapped in its own `<svg viewBox="385 215 510 545">` (tightened to the bases + card-slot bounding box) and lives in a flex row alongside a vertical sidebar.
 - `gameBoardLayout.ts` — Shared SVG layout constants (PW, DX, DW, HX, MAIN_TOP, MAIN_BOT, BOT_Y, etc).
-- `gameBoardMobile.css` — All mobile-mode styles. Classes prefixed `gb-m-` so they're easy to grep/delete as a group. Only applied when `layout="html"` is active in the corresponding component.
+- `gameBoardMobile.css` — All mobile-mode styles. Classes prefixed `gb-m-` so they're easy to grep/delete as a group. Only applied when `layout="html"` is active in the corresponding component (or for the mobile-only sidebar / action / dice / scoreboard rules).
 - `GamePage.tsx` — WebSocket connection handler with reconnection logic (exponential backoff, max 10 attempts). Sends typed `GameAction` to server, receives `GameState` broadcasts. Blocks actions during opponent disconnect. Saves stats on game over.
-- `DiceSpinner.tsx` — SVG d20 number spinner. Dual pitch+swing side-by-side layout after swing. Linear equation display for pitch modifiers. User-perspective colors. Advantage bar. On mobile it's wrapped in `<svg viewBox="0 0 360 178">` and called with `cx={180} botY={0}` to recenter for the standalone cell.
-- `ActionButtons.tsx` — Phase-specific action buttons with full math breakdowns (fielding values, speed, bonuses). Phase-aware waiting messages. On mobile wrapped in `<svg viewBox="0 770 820 178">` (cropped to the original actions region so internal CX/BOT_TOP coordinates still work).
+- `DiceSpinner.tsx` — d20 number spinner with dual SVG/HTML modes via `layout?: 'svg' | 'html'`. SVG mode (default, desktop) renders inside the parent board SVG with hex die + linear equation + advantage bar. HTML mode (mobile) renders a compact flex row: round die badge + (optional) pitch equation + dual-roll layout when both rolls present + advantage stripe. Spin animation logic (`triggerKey`, `setInterval` number flip, `SPIN_DURATION` / `SETTLE_PAUSE`) and sound calls are shared between modes.
+- `ActionButtons.tsx` — Phase-specific action buttons with full math breakdowns. Dual SVG/HTML modes via `layout?: 'svg' | 'html'`. SVG mode (desktop) renders inside the parent board SVG with hardcoded x/y. HTML mode (mobile) emits native `<button>` elements via a `<MobileBtn>` helper and a phase switch covering every game phase the SVG branch handles (sp_roll, pre_atbat, defense_sub, ibb_decision, bunt_decision, pitch, swing, result_icons, extra_base_offer, gb_decision, steal_*, extra_base + opponent waiting messages + game-over card). HTML container uses `flex-wrap: wrap` so 4+ buttons reflow rather than crop.
 - `BoxScore.tsx` — Full baseball-reference batting/pitching stats (AVG, OBP, SLG, OPS, ERA, WHIP).
 - `BullpenPanel.tsx` — Bullpen/bench expansion panel with starting rotation display.
 - `CardSlot.tsx` — Card image slots for field positions.
 - `GameLogOverlay.tsx` — Scrollable game log overlay.
 
-**Mobile target:** iOS Home Screen shortcut (Safari standalone), portrait. Breakpoint is `(max-width: 899px)`. Modals (`SubstitutionModal`, `DefenseSetupModal`, `CardTooltip`, etc.) intentionally stay `position: fixed` and full-viewport on both desktop and mobile — that's the right UX for tap-to-confirm interactions on a phone, and avoids reflow during dice animations.
+**Mobile target:** iOS Home Screen shortcut (Safari standalone), portrait. Breakpoint is `(max-width: 899px)`.
+
+**Mobile structural layout** (top to bottom, no scroll):
+1. Top bar: EXIT / Game N/M + username 0–0 username / LOG / ROLLS / BOX
+2. Scoreboard (HTML table; TEAM column wraps long usernames over 2 lines, R + inning columns thin)
+3. Opponent strip (9 batter cells full-width, batting order)
+4. **Diamond row** — flex row containing the diamond SVG and a fixed-width right sidebar:
+   - Sidebar order top-to-bottom: opp BENCH/PEN button → opp pitcher card → my pitcher card → my BENCH/PEN button
+   - Pitcher cards show image + last name + IP X/Y + icons; gold-highlighted when that team is currently fielding
+   - Sidebar = 76px wide; diamond fills the remaining row width
+5. My strip (9 batter cells)
+6. ActionButtons in HTML mode (flex-wrap row of native buttons that grows with content)
+7. DiceSpinner in HTML mode (compact die + equation + advantage stripe)
+
+Modals (`SubstitutionModal`, `DefenseSetupModal`, `CardTooltip`, `BoxScore` overlay, `GameLogOverlay`, `DiceRollsOverlay`) stay `position: fixed` full-viewport on both desktop and mobile, with `@media (max-width: 899px)` rules that tighten panel widths / fonts / grid columns so they fit a portrait phone. `CardTooltip` becomes a bottom-sheet on mobile via the same media query.
 
 ## Card Images (`cards/`)
 

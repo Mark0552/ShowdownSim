@@ -682,29 +682,25 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     onToggleReadyForNext={onToggleReadyForNext}
                 />
 
-                {/* Dice cell — viewBox tightened to drop empty top space.
-                    DiceSpinner content starts at botY+15 (label) and ends
-                    around botY+170 (advantage bar), so y=10..170 fits. */}
-                <svg className="gb-m-dice-svg" viewBox="0 10 360 160" preserveAspectRatio="xMidYMid meet">
-                    {state.lastRoll && state.lastRollType && state.phase !== 'sp_roll' && (
-                        <DiceSpinner
-                            cx={180} botY={0}
-                            roll={state.lastRoll} rollType={state.lastRollType}
-                            triggerKey={rollKey}
-                            onAnimationComplete={handleDiceComplete}
-                            pitchRoll={state.lastPitchRoll}
-                            pitchControl={pitcher.control || 0}
-                            fatiguePenalty={state.fatiguePenalty || 0}
-                            controlModifier={state.lastPitchControlMod || 0}
-                            pitchTotal={state.lastPitchTotal}
-                            batterOnBase={batter.onBase}
-                            usedPitcherChart={state.usedPitcherChart}
-                            swingRoll={state.lastSwingRoll}
-                            iAmBatting={iAmBatting}
-                            pitcherCardId={pitcher.cardId}
-                        />
-                    )}
-                </svg>
+                {state.lastRoll && state.lastRollType && state.phase !== 'sp_roll' && (
+                    <DiceSpinner
+                        layout="html"
+                        cx={0} botY={0}
+                        roll={state.lastRoll} rollType={state.lastRollType}
+                        triggerKey={rollKey}
+                        onAnimationComplete={handleDiceComplete}
+                        pitchRoll={state.lastPitchRoll}
+                        pitchControl={pitcher.control || 0}
+                        fatiguePenalty={state.fatiguePenalty || 0}
+                        controlModifier={state.lastPitchControlMod || 0}
+                        pitchTotal={state.lastPitchTotal}
+                        batterOnBase={batter.onBase}
+                        usedPitcherChart={state.usedPitcherChart}
+                        swingRoll={state.lastSwingRoll}
+                        iAmBatting={iAmBatting}
+                        pitcherCardId={pitcher.cardId}
+                    />
+                )}
             </div>
         );
     }

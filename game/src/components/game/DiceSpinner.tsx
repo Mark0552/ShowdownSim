@@ -20,6 +20,10 @@ interface DiceSpinnerProps {
     iAmBatting?: boolean;
     /** Current pitcher's cardId for custom roll sounds */
     pitcherCardId?: string;
+    /** "svg" (default) renders inside the parent game-board SVG using the
+     *  cx/botY props as positioning anchors. "html" renders a compact flex
+     *  row of HTML elements (cx/botY ignored). */
+    layout?: 'svg' | 'html';
 }
 
 const SPIN_DURATION = 900;
@@ -61,6 +65,7 @@ export default function DiceSpinner({
     pitchTotal, batterOnBase, usedPitcherChart, swingRoll,
     iAmBatting = false,
     pitcherCardId,
+    layout = 'svg',
 }: DiceSpinnerProps) {
     const [displayValue, setDisplayValue] = useState<number>(roll || 1);
     const [spinning, setSpinning] = useState(false);
@@ -130,6 +135,51 @@ export default function DiceSpinner({
     // Advantage bar: full width of dice section at bottom, solid color, white text
     const advH = 32;
     const advY = botY + 178 - advH - 4; // 4px from bottom edge
+
+    // ============ HTML mobile mode ============
+    if (layout === 'html') {
+        const label = isPitch ? 'PITCH' : isSwing ? 'SWING' : rollType === 'fielding' ? 'FIELDING' : rollType.toUpperCase();
+        const dieClass = (c: string) => c === '#e94560' ? 'red' : c === '#4ade80' ? 'green' : c === '#60a5fa' ? 'blue' : 'gold';
+        return (
+            <div className="gb-m-dice-wrap">
+                <div className="gb-m-dice-row">
+                    {showDual ? (
+                        <>
+                            <div className="gb-m-die-cell">
+                                <div className="gb-m-die-label" style={{ color: pitchColor }}>PITCH</div>
+                                <div className={`gb-m-die ${dieClass(pitchColor)}`}>{pitchRoll}</div>
+                            </div>
+                            <div className="gb-m-die-eq">
+                                <div>{buildPitchEquation(pitchRoll!, pitchControl, fatiguePenalty, controlModifier, pitchTotal!)}</div>
+                                <div>vs OB {batterOnBase}</div>
+                            </div>
+                            <div className="gb-m-die-cell">
+                                <div className="gb-m-die-label" style={{ color: swingColor }}>SWING</div>
+                                <div className={`gb-m-die ${dieClass(swingColor)}`}>{swingRoll}</div>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="gb-m-die-cell">
+                                <div className="gb-m-die-label" style={{ color }}>{label}</div>
+                                <div className={`gb-m-die ${dieClass(color)}${spinning && !settled ? ' spinning' : ''}`}>{displayValue}</div>
+                            </div>
+                            {isPitch && settled && !spinning && hasPitchData && (
+                                <div className="gb-m-die-eq">
+                                    <div>{buildPitchEquation(pitchRoll!, pitchControl, fatiguePenalty, controlModifier, pitchTotal!)}</div>
+                                    <div>vs OB {batterOnBase}</div>
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
+                {((isPitch && settled && !spinning && hasPitchData) || (isSwing && settled && !spinning)) && (
+                    <div className={`gb-m-die-adv ${advantageGreen ? 'green' : 'red'}`}>{advantageText}</div>
+                )}
+            </div>
+        );
+    }
+    // ============ END HTML mode ============
 
     // ======== DUAL PITCH + SWING LAYOUT (side by side) ========
     if (showDual) {
