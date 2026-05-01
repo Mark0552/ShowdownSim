@@ -630,7 +630,8 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             the opp strip above the diamond). */}
                         <div className="gb-m-sb-top">
                             <button className="gb-m-sb-btn" onClick={() => myRole === 'home' ? setShowAwayBullpen(!showAwayBullpen) : setShowHomeBullpen(!showHomeBullpen)}>
-                                BENCH/PEN
+                                <span>BENCH</span>
+                                <span>PEN</span>
                             </button>
                             <SidebarPitcher
                                 team={myRole === 'home' ? displayAwayTeam : displayHomeTeam}
@@ -666,7 +667,8 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                                 onLeave={handlePlayerLeave}
                             />
                             <button className="gb-m-sb-btn" onClick={() => myRole === 'home' ? setShowHomeBullpen(!showHomeBullpen) : setShowAwayBullpen(!showAwayBullpen)}>
-                                BENCH/PEN
+                                <span>BENCH</span>
+                                <span>PEN</span>
                             </button>
                         </div>
                     </aside>

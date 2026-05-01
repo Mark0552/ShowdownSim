@@ -623,7 +623,7 @@
 }
 
 .gb-m-sidebar {
-    flex: 0 0 52px;
+    flex: 0 0 46px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -668,16 +668,21 @@
     white-space: nowrap;
 }
 
-/* Compact bench/pen toggle. Tightened margin + font so the sidebar
-   can drop to 52px wide; "BENCH/PEN" still fits one line at 8px /
-   no letter-spacing. */
+/* Compact bench/pen toggle — text stacks BENCH / PEN on two lines
+   so the sidebar can drop to 46px (the width that makes the sidebar
+   pitcher card image equal to a strip hitter card image). The two
+   <span>s inside auto-stack via flex-direction: column. */
 .gb-m-sb-btn {
     flex: 0 0 26px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     background: #0a1830;
     border: 1px solid #d4a018;
     color: #d4a018;
-    font: 700 8px/1 Arial, sans-serif;
-    padding: 3px 0;
+    font: 700 8px/1.05 Arial, sans-serif;
+    padding: 2px 0;
     margin: 3px 2px;
     border-radius: 4px;
     cursor: pointer;
