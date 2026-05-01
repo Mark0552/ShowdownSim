@@ -623,7 +623,7 @@
 }
 
 .gb-m-sidebar {
-    flex: 0 0 64px;
+    flex: 0 0 52px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -668,15 +668,17 @@
     white-space: nowrap;
 }
 
+/* Compact bench/pen toggle. Tightened margin + font so the sidebar
+   can drop to 52px wide; "BENCH/PEN" still fits one line at 8px /
+   no letter-spacing. */
 .gb-m-sb-btn {
-    flex: 0 0 32px;
+    flex: 0 0 26px;
     background: #0a1830;
     border: 1px solid #d4a018;
     color: #d4a018;
-    font: 700 9px/1 Arial, sans-serif;
-    letter-spacing: 0.5px;
-    padding: 4px 0;
-    margin: 4px;
+    font: 700 8px/1 Arial, sans-serif;
+    padding: 3px 0;
+    margin: 3px 2px;
     border-radius: 4px;
     cursor: pointer;
 }
