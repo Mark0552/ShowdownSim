@@ -293,8 +293,18 @@ async function handleJoinGame(ws, msg, setContext) {
         } catch { /* fall through to lineup-mode logic */ }
     }
 
-    // If both players are in and we have lineups, start or resume the game
-    if (room.homeUserId && room.awayUserId && room.homeLineup && room.awayLineup && !room.state) {
+    // Track whether we just set room.state here (so we broadcast to all
+    // current room members — the other player has been waiting). If state
+    // was already set when we entered (typical reconnect mid-game), we
+    // only need to send game_state to the joining ws.
+    let stateJustSet = false;
+
+    // Try to start or resume the game once both players are present. We try
+    // the DB-load path BEFORE checking for lineupData so a reconnect after
+    // a server restart can recover even when the client couldn't source
+    // lineupData (drafted games have no lineup-table row, and non-draft
+    // games can lose their lineup row if the user edited/deleted it).
+    if (room.homeUserId && room.awayUserId && !room.state) {
         // Try to load existing state from Supabase first (reconnection after room expired).
         // Also fetch the game row's series_id + game_number so we can build an
         // authoritative seriesContext server-side — the client's seriesContext
@@ -411,27 +421,53 @@ async function handleJoinGame(ws, msg, setContext) {
 
         if (loadedState) {
             room.state = loadedState;
+            stateJustSet = true;
+            // Re-populate room.homeLineup / room.awayLineup from the loaded
+            // state when present, so a subsequent series advance has the
+            // raw lineup data on hand for ensureNextSeriesGame.
+            if (loadedState.homeLineup && !room.homeLineup) room.homeLineup = loadedState.homeLineup;
+            if (loadedState.awayLineup && !room.awayLineup) room.awayLineup = loadedState.awayLineup;
             console.log(`Restored game ${gameId} from Supabase`);
-        } else {
+        } else if (room.homeLineup && room.awayLineup) {
             const ctx = authoritativeSeriesContext || room.seriesContext;
             room.state = initializeGame(room.homeLineup, room.awayLineup, room.homeUserId, room.awayUserId, ctx);
+            stateJustSet = true;
+            // Stamp the raw lineup data onto the play state so future
+            // reconnects can source lineupData from state.homeLineup /
+            // awayLineup even when the lineups-table row is gone (deleted)
+            // or never existed (drafts have no lineup-table row at all).
+            // Mirrors what startPlayFromSubmittedLineups does for the
+            // initial draft handoff. Without this, server restarts mid-
+            // series-game-2+ leave both clients hanging on "Waiting for
+            // opponent..." because the lineup gate (next-join check)
+            // can't be satisfied.
+            room.state.homeLineup = room.homeLineup;
+            room.state.awayLineup = room.awayLineup;
             saveState(gameId, room.state);
         }
+        // else: still missing lineups and no DB state → fall through to "waiting"
+    }
 
-        room.broadcast({
-            type: 'game_state',
-            state: room.state,
-            turn: whoseTurn(room.state),
-        });
-    } else if (room.state) {
-        // Game already in progress — send current state to reconnecting player
-        ws.send(JSON.stringify({
-            type: 'game_state',
-            state: room.state,
-            turn: whoseTurn(room.state),
-        }));
-        // Notify other player that opponent reconnected
-        room.broadcast({ type: 'player_joined', userId });
+    if (room.state) {
+        if (stateJustSet) {
+            // First time state was set — broadcast to ALL current room
+            // members so the player who joined earlier (and was waiting)
+            // also picks up the state.
+            room.broadcast({
+                type: 'game_state',
+                state: room.state,
+                turn: whoseTurn(room.state),
+            });
+        } else {
+            // State was already set on the room — just send to the joining
+            // player and notify others they reconnected.
+            ws.send(JSON.stringify({
+                type: 'game_state',
+                state: room.state,
+                turn: whoseTurn(room.state),
+            }));
+            room.broadcast({ type: 'player_joined', userId });
+        }
     } else {
         ws.send(JSON.stringify({ type: 'waiting', message: 'Waiting for opponent...' }));
     }
