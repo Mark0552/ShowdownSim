@@ -38,9 +38,9 @@ export default function TopBarControls({
                 <button className="gb-m-topbar-exit" onClick={() => onExit?.()}>EXIT</button>
                 {seriesInfo && (
                     <div className="gb-m-topbar-series">
-                        <div>G{seriesInfo.gameNumber}/{seriesInfo.bestOf}</div>
+                        <div>Game {seriesInfo.gameNumber}/{seriesInfo.bestOf}</div>
                         <div className="gb-m-topbar-series-record">
-                            {seriesInfo.homeWins}{'–'}{seriesInfo.awayWins}
+                            {homeName} {seriesInfo.homeWins}{'–'}{seriesInfo.awayWins} {awayName}
                         </div>
                     </div>
                 )}

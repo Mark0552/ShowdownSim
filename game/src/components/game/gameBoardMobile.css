@@ -140,10 +140,21 @@
     font-weight: normal;
 }
 
-.gb-m-sb-table th.cur {
+/* Inset box-shadow draws a 1.5px gold ring inside each .cur cell. Using
+   shadow instead of border because border-collapse: collapse merges
+   adjacent borders and the LEFT edge of the column was being hidden by
+   the previous cell's right border. */
+.gb-m-sb-table th.cur,
+.gb-m-sb-table td.cur {
     background: #3a2a00;
     color: #d4a018;
-    border-color: #d4a018;
+    box-shadow: inset 1.5px 0 0 #d4a018, inset -1.5px 0 0 #d4a018;
+}
+.gb-m-sb-table th.cur {
+    box-shadow: inset 1.5px 1.5px 0 #d4a018, inset -1.5px 1.5px 0 #d4a018;
+}
+.gb-m-sb-table tbody tr:last-child td.cur {
+    box-shadow: inset 1.5px -1.5px 0 #d4a018, inset -1.5px -1.5px 0 #d4a018;
 }
 
 .gb-m-sb-table th.team-col, .gb-m-sb-table td.team-col {
@@ -175,13 +186,21 @@
 
 .gb-m-outs {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
     color: #d4a018;
     font-family: Impact, sans-serif;
-    font-size: 11px;
+    font-size: 10px;
     letter-spacing: 1px;
     flex-shrink: 0;
+}
+
+.gb-m-outs-label { line-height: 1; }
+
+.gb-m-outs-dots {
+    display: flex;
+    gap: 4px;
 }
 
 .gb-m-outs-dot {

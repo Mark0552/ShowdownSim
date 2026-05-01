@@ -46,9 +46,12 @@ export default function Scoreboard({
                     const displayVal = !hasBatted
                         ? undefined
                         : (isBatting && val === undefined ? 0 : val);
-                    const cls = isBatting ? 'batting' : (displayVal === undefined ? 'empty' : '');
+                    const classes: string[] = [];
+                    if (isBatting) classes.push('batting');
+                    else if (displayVal === undefined) classes.push('empty');
+                    if (isCurInning) classes.push('cur');
                     return (
-                        <td key={`c-${team.userId}-${inn}`} className={cls}>
+                        <td key={`c-${team.userId}-${inn}`} className={classes.join(' ')}>
                             {displayVal ?? '—'}
                         </td>
                     );
@@ -76,10 +79,12 @@ export default function Scoreboard({
                     </tbody>
                 </table>
                 <div className="gb-m-outs">
-                    OUTS
-                    {[0, 1, 2].map(i => (
-                        <span key={`o-${i}`} className={`gb-m-outs-dot${displayOuts > i ? ' on' : ''}`} />
-                    ))}
+                    <div className="gb-m-outs-label">OUTS</div>
+                    <div className="gb-m-outs-dots">
+                        {[0, 1, 2].map(i => (
+                            <span key={`o-${i}`} className={`gb-m-outs-dot${displayOuts > i ? ' on' : ''}`} />
+                        ))}
+                    </div>
                 </div>
             </div>
         );
