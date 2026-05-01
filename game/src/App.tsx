@@ -17,7 +17,6 @@ import SimulationPage from './pages/SimulationPage';
 import PricingPage from './pages/PricingPage';
 import RulesPage from './pages/RulesPage';
 import TeamBuilder from './pages/TeamBuilder';
-import MusicPlayer from './components/MusicPlayer';
 
 type Page = 'login' | 'menu' | 'lineups' | 'builder' | 'lobby' | 'game' | 'draft' | 'stats' | 'simulation' | 'pricing' | 'rules';
 
@@ -221,7 +220,7 @@ export default function App() {
             // (e.g. after finishing one series game and advancing to the next).
             // That resets all per-game refs (reconnect attempts, pumped-up
             // played, stats-saved, starter-offset-synced, ...) cleanly without
-            // needing a full-page reload that would also kill the music.
+            // needing a full-page reload.
             return (
                 <GamePage
                     key={activeGameId}
@@ -244,7 +243,6 @@ export default function App() {
     return (
         <>
             {renderPage()}
-            {page !== 'login' && <MusicPlayer />}
         </>
     );
 }
