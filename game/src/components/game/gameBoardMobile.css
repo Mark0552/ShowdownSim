@@ -24,7 +24,7 @@
 }
 
 /* Diamond cell — fills the remaining row width to the left of the
-   sidebar. aspect-ratio matches the SVG viewBox (503/524) so the
+   sidebar. aspect-ratio matches the SVG viewBox (580/524) so the
    cell sizes itself by aspect rather than stretching to whatever
    height the row's flex sizing assigns. The row's height ends up
    driven by this cell, and the sidebar (align-items: stretch)
@@ -32,7 +32,7 @@
 .gb-m-diamond-svg {
     flex: 1 1 0;
     min-width: 0;
-    aspect-ratio: 503 / 524;
+    aspect-ratio: 580 / 524;
     height: auto;
     background: #050c1a;
     display: block;
