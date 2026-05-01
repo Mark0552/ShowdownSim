@@ -16,6 +16,10 @@ interface Props {
      *  "html" renders a <table> + outs row for direct CSS-grid placement
      *  on mobile. */
     layout?: 'svg' | 'html';
+    /** Mobile only: render a menu button at the right edge of the
+     *  scoreboard row (replaces the old top bar). When set, opens a
+     *  popup with BOX SCORE / LOG / DICE ROLLS / EXIT GAME. */
+    onMenuClick?: () => void;
 }
 
 /**
@@ -25,7 +29,7 @@ export default function Scoreboard({
     awayTeam, homeTeam, awayName, homeName,
     innings, displayInning, displayHalfInning,
     displayScore, displayOuts, isOver,
-    layout = 'svg',
+    layout = 'svg', onMenuClick,
 }: Props) {
     const curInnIdx = displayInning - 1;
     const isBattingTeam = (team: TeamState) =>
@@ -78,14 +82,12 @@ export default function Scoreboard({
                         {renderHtmlRow(homeTeam, homeName)}
                     </tbody>
                 </table>
-                <div className="gb-m-outs">
-                    <div className="gb-m-outs-label">OUTS</div>
-                    <div className="gb-m-outs-dots">
-                        {[0, 1, 2].map(i => (
-                            <span key={`o-${i}`} className={`gb-m-outs-dot${displayOuts > i ? ' on' : ''}`} />
-                        ))}
-                    </div>
-                </div>
+                <div className="gb-m-outs">OUTS: {displayOuts}</div>
+                {onMenuClick && (
+                    <button className="gb-m-sb-menu-btn" onClick={onMenuClick} aria-label="Menu">
+                        {'☰'}
+                    </button>
+                )}
             </div>
         );
     }

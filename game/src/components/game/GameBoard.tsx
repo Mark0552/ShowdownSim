@@ -220,6 +220,10 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         mq.addEventListener('change', handler);
         return () => mq.removeEventListener('change', handler);
     }, []);
+    // Mobile-only: top bar is gone; this is the popup behind the menu button
+    // in the scoreboard row, holding the BOX SCORE / LOG / DICE ROLLS / EXIT
+    // affordances that used to live up top.
+    const [menuOpen, setMenuOpen] = useState(false);
     // Soft freeze for icon-driven outcome changes (no dice spin) — locks the
     // lineup highlight + frozenRef long enough for the user to see the change.
     const [iconFreezeActive, setIconFreezeActive] = useState(false);
@@ -542,17 +546,20 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     </div>
                 )}
 
-                <TopBarControls
-                    layout="html"
-                    seriesInfo={seriesInfo}
-                    homeName={homeName}
-                    awayName={awayName}
-                    showStats={showStats}
-                    onToggleStats={() => setShowStats(!showStats)}
-                    onExit={onExit}
-                    onShowFullLog={() => setShowFullLog(true)}
-                    onShowDiceRolls={() => setShowDiceRolls(true)}
-                />
+                {/* Mobile menu popup — the four affordances that used to live
+                    in the top bar (BOX SCORE / LOG / DICE ROLLS / EXIT GAME).
+                    Tap the menu button in the scoreboard row to open. */}
+                {menuOpen && (
+                    <div className="gb-m-menu-overlay" onClick={() => setMenuOpen(false)}>
+                        <div className="gb-m-menu-sheet" onClick={(e) => e.stopPropagation()}>
+                            <button className="gb-m-menu-btn" onClick={() => { setShowStats(true); setMenuOpen(false); }}>BOX SCORE</button>
+                            <button className="gb-m-menu-btn" onClick={() => { setShowFullLog(true); setMenuOpen(false); }}>GAME LOG</button>
+                            <button className="gb-m-menu-btn" onClick={() => { setShowDiceRolls(true); setMenuOpen(false); }}>DICE ROLLS</button>
+                            <button className="gb-m-menu-btn gb-m-menu-btn-exit" onClick={() => { setMenuOpen(false); onExit?.(); }}>EXIT GAME</button>
+                        </div>
+                    </div>
+                )}
+
                 <Scoreboard
                     layout="html"
                     awayTeam={state.awayTeam}
@@ -565,6 +572,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     displayScore={displayScore}
                     displayOuts={displayOuts}
                     isOver={state.isOver}
+                    onMenuClick={() => setMenuOpen(true)}
                 />
 
                 {/* Opponent strip — above the diamond. Sandwiches the diamond
