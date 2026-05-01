@@ -626,28 +626,49 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                         ))}
                     </svg>
                     <aside className="gb-m-sidebar">
-                        <button className="gb-m-sb-btn" onClick={() => myRole === 'home' ? setShowAwayBullpen(!showAwayBullpen) : setShowHomeBullpen(!showHomeBullpen)}>
-                            BENCH/PEN
-                        </button>
-                        <SidebarPitcher
-                            team={myRole === 'home' ? displayAwayTeam : displayHomeTeam}
-                            isFielding={myRole === 'home' ? displayHalfInning === 'top' : displayHalfInning === 'bottom'}
-                            displayInning={displayInning}
-                            displayIcon20Used={displayIcon20Used}
-                            onHover={handlePlayerHover}
-                            onLeave={handlePlayerLeave}
-                        />
-                        <SidebarPitcher
-                            team={myRole === 'home' ? displayHomeTeam : displayAwayTeam}
-                            isFielding={myRole === 'home' ? displayHalfInning === 'bottom' : displayHalfInning === 'top'}
-                            displayInning={displayInning}
-                            displayIcon20Used={displayIcon20Used}
-                            onHover={handlePlayerHover}
-                            onLeave={handlePlayerLeave}
-                        />
-                        <button className="gb-m-sb-btn" onClick={() => myRole === 'home' ? setShowHomeBullpen(!showHomeBullpen) : setShowAwayBullpen(!showAwayBullpen)}>
-                            BENCH/PEN
-                        </button>
+                        {/* Top group anchors to the top of the sidebar (matches
+                            the opp strip above the diamond). */}
+                        <div className="gb-m-sb-top">
+                            <button className="gb-m-sb-btn" onClick={() => myRole === 'home' ? setShowAwayBullpen(!showAwayBullpen) : setShowHomeBullpen(!showHomeBullpen)}>
+                                BENCH/PEN
+                            </button>
+                            <SidebarPitcher
+                                team={myRole === 'home' ? displayAwayTeam : displayHomeTeam}
+                                isFielding={myRole === 'home' ? displayHalfInning === 'top' : displayHalfInning === 'bottom'}
+                                displayInning={displayInning}
+                                displayIcon20Used={displayIcon20Used}
+                                onHover={handlePlayerHover}
+                                onLeave={handlePlayerLeave}
+                            />
+                        </div>
+                        {/* Middle: series indicator (only when in a series).
+                            Fills whatever vertical gap remains between the
+                            two anchored groups. */}
+                        {seriesInfo && (
+                            <div className="gb-m-sb-series">
+                                <div className="gb-m-sb-series-game">Game {seriesInfo.gameNumber}/{seriesInfo.bestOf}</div>
+                                <div className="gb-m-sb-series-score">
+                                    <span title={homeName}>{homeName}</span>
+                                    <span> {seriesInfo.homeWins}{'–'}{seriesInfo.awayWins} </span>
+                                    <span title={awayName}>{awayName}</span>
+                                </div>
+                            </div>
+                        )}
+                        {/* Bottom group anchors to the bottom (matches my
+                            strip below the diamond). */}
+                        <div className="gb-m-sb-bot">
+                            <SidebarPitcher
+                                team={myRole === 'home' ? displayHomeTeam : displayAwayTeam}
+                                isFielding={myRole === 'home' ? displayHalfInning === 'bottom' : displayHalfInning === 'top'}
+                                displayInning={displayInning}
+                                displayIcon20Used={displayIcon20Used}
+                                onHover={handlePlayerHover}
+                                onLeave={handlePlayerLeave}
+                            />
+                            <button className="gb-m-sb-btn" onClick={() => myRole === 'home' ? setShowHomeBullpen(!showHomeBullpen) : setShowAwayBullpen(!showAwayBullpen)}>
+                                BENCH/PEN
+                            </button>
+                        </div>
                     </aside>
                 </div>
 
