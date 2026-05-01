@@ -301,3 +301,32 @@
     margin-bottom: 6px;
 }
 .dsm-wait-sub { color: #c8d8f8; font-size: 13px; }
+
+/* ---------- Mobile (iOS Home Screen, portrait) ----------
+ * The desktop layout uses a 9-column field grid that's unworkable below
+ * ~700px. On mobile, collapse the field + bench grids to two columns so
+ * cards stay tappable. Header + buttons also tighten. */
+@media (max-width: 899px) {
+    .dsm-overlay { padding: 8px; }
+    .dsm-panel { max-width: none; max-height: calc(100vh - 16px); border-radius: 8px; }
+    .dsm-header { padding: 8px 12px; gap: 8px; flex-wrap: wrap; }
+    .dsm-title { font-size: 13px; letter-spacing: 1px; }
+    .dsm-totals { gap: 6px; font-size: 10px; }
+    .dsm-tot-label { font-size: 10px; letter-spacing: 0; }
+    .dsm-stat { font-size: 12px; }
+    .dsm-reset { font-size: 11px; padding: 4px 8px; }
+    .dsm-body { padding: 8px 10px; }
+    .dsm-section-title { font-size: 11px; margin-top: 10px; }
+    .dsm-field-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 4px;
+    }
+    .dsm-bench-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 4px;
+    }
+    .dsm-slot { padding: 4px; }
+    .dsm-slot-label { font-size: 9px; }
+    .dsm-card-img { width: 100%; height: auto; aspect-ratio: 251 / 350; }
+    .dsm-card-name { font-size: 10px; }
+}

@@ -457,3 +457,22 @@
 .sm-btn-primary:hover:not(:disabled) {
     filter: brightness(1.1);
 }
+
+
+/* ---------- Mobile (iOS Home Screen, portrait) ----------
+ * Tighten the substitution modal for portrait phones — full viewport,
+ * smaller fonts, reduced padding, tabs become single-row scroll. */
+@media (max-width: 899px) {
+    .sm-overlay { padding: 8px; }
+    .sm-panel { max-width: none; max-height: calc(100vh - 16px); border-radius: 8px; }
+    .sm-header { padding: 8px 12px; }
+    .sm-title { font-size: 13px; letter-spacing: 1px; }
+    .sm-close { font-size: 11px; padding: 3px 8px; }
+    .sm-tabs { overflow-x: auto; flex-wrap: nowrap; }
+    .sm-tab { font-size: 11px; padding: 6px 10px; flex-shrink: 0; }
+    .sm-body { padding: 8px 10px; }
+    .sm-grid { gap: 8px; }
+    .sm-section { padding: 8px 10px; border-radius: 6px; }
+    .sm-section-title { font-size: 10px; margin-bottom: 6px; }
+    .sm-section-body { font-size: 11px; }
+}

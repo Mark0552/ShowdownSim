@@ -262,3 +262,50 @@
     from { transform: translateY(-40px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
 }
+
+/* ---------- Mobile (iOS Home Screen, portrait) ----------
+ * Box-Score / Game-Log / Dice-Rolls overlays all share .overlay-panel.
+ * On a phone the desktop min-width: 500px and large stats-table padding
+ * push the modal off-screen; tighten everything for portrait. */
+@media (max-width: 899px) {
+    .overlay-panel {
+        min-width: 0;
+        width: calc(100vw - 16px);
+        max-width: calc(100vw - 16px);
+        max-height: calc(100vh - 16px);
+        padding: 10px;
+        border-radius: 8px;
+    }
+    .overlay-panel-header { margin-bottom: 8px; padding-bottom: 6px; }
+    .overlay-panel-title { font-size: 13px; letter-spacing: 1px; }
+    .overlay-close { font-size: 11px; padding: 3px 8px; }
+
+    .stats-table { font-size: 9px; }
+    .stats-table th {
+        padding: 3px 4px;
+        font-size: 8px;
+        letter-spacing: 0;
+    }
+    .stats-table th:first-child { min-width: 70px; }
+    .stats-table td { padding: 2px 4px; }
+    .stats-section-label { font-size: 11px; letter-spacing: 1px; margin: 10px 0 4px; }
+
+    .game-log-entries { font-size: 10px; }
+    .log-entry, .log-entry-inning { padding: 1px 0; }
+
+    /* Bullpen / bench panel — pinned full-width to bottom edge instead of
+       cramped 20px corners. Becomes a bottom sheet on phones. */
+    .bullpen-panel {
+        left: 8px !important;
+        right: 8px !important;
+        bottom: 8px !important;
+        max-height: 60vh;
+        min-width: 0;
+        padding: 10px;
+    }
+    .bp-cards { gap: 4px; }
+    .bp-card { padding: 3px; }
+    .bp-card img { width: 30px; height: 42px; }
+    .bp-card-name { font-size: 12px; }
+    .bp-card-icons { font-size: 11px; }
+}
