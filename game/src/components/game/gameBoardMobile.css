@@ -288,6 +288,26 @@
     text-decoration: line-through;
 }
 
+/* Tiny bullpen toggle pinned to the right edge of each strip — opens the
+   existing BullpenPanel for that team. Sized so it doesn't steal space
+   from the 9 batter cells. */
+.gb-m-strip-bp {
+    flex: 0 0 24px;
+    align-self: stretch;
+    background: #0a1830;
+    border: 1px solid #d4a018;
+    color: #d4a018;
+    font-size: 9px;
+    font-family: Arial, sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 0;
+    border-radius: 3px;
+    cursor: pointer;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+}
+
 /* ---------- Game log footer ---------- */
 
 .gb-m-gamelog {

@@ -547,10 +547,11 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     onToggleBullpen={() => myRole === 'home' ? setShowAwayBullpen(!showAwayBullpen) : setShowHomeBullpen(!showHomeBullpen)}
                 />
 
-                {/* Diamond cell — own SVG with viewBox cropped to the diamond
-                    region of the original 1400×950 board so coordinates inside
-                    Diamond / RunnerAnimOverlay don't need to change. */}
-                <svg className="gb-m-diamond-svg" viewBox="360 82 680 686" preserveAspectRatio="xMidYMid meet">
+                {/* Diamond cell — viewBox tightened to the bases + card-slot
+                    bounding box (instead of the full panel rect). Drops the
+                    ~120px of dead space above 2nd base + ~50px below home so
+                    the diamond fills more of the mobile cell. */}
+                <svg className="gb-m-diamond-svg" viewBox="385 215 510 545" preserveAspectRatio="xMidYMid meet">
                     <Diamond
                         runner1={runner1}
                         runner2={runner2}

@@ -117,6 +117,10 @@ export default function LineupPanel({
         return (
             <div className={`gb-m-strip ${isHome ? 'home' : 'away'}`}>
                 {team.lineup.map((p, i) => renderStripCell(p, i))}
+                <button className="gb-m-strip-bp" onClick={onToggleBullpen}
+                    title="Bullpen / bench">
+                    PEN
+                </button>
             </div>
         );
     }
