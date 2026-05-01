@@ -594,9 +594,10 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     onToggleBullpen={() => myRole === 'home' ? setShowHomeBullpen(!showHomeBullpen) : setShowAwayBullpen(!showAwayBullpen)}
                 />
 
-                {/* Action buttons cell — viewBox cropped to the original
-                    actions region so internal CX/BOT_TOP coordinates work. */}
-                <svg className="gb-m-actions-svg" viewBox="0 770 820 178" preserveAspectRatio="xMidYMid meet">
+                {/* Action buttons cell — viewBox cropped to just the active
+                    button rows (y=805..935) instead of the full bottom-bar
+                    region, so the buttons fill more of the cell. */}
+                <svg className="gb-m-actions-svg" viewBox="0 805 820 130" preserveAspectRatio="xMidYMid meet">
                     <ActionButtons
                         state={state}
                         myRole={myRole}
@@ -620,9 +621,10 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     />
                 </svg>
 
-                {/* Dice cell — re-centered at cx=180 in a 360×178 viewBox so
-                    the spinner geometry fills the standalone cell. */}
-                <svg className="gb-m-dice-svg" viewBox="0 0 360 178" preserveAspectRatio="xMidYMid meet">
+                {/* Dice cell — viewBox tightened to drop empty top space.
+                    DiceSpinner content starts at botY+15 (label) and ends
+                    around botY+170 (advantage bar), so y=10..170 fits. */}
+                <svg className="gb-m-dice-svg" viewBox="0 10 360 160" preserveAspectRatio="xMidYMid meet">
                     {state.lastRoll && state.lastRollType && state.phase !== 'sp_roll' && (
                         <DiceSpinner
                             cx={180} botY={0}
