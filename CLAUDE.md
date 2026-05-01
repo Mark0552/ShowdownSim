@@ -88,6 +88,13 @@ Snake-draft alternative to picking pre-built lineups. 20 picks per side, 40 pick
 
 **Draft → play handoff:** server's `startPlayFromSubmittedLineups()` calls `initializeGame()` and writes `state.homeLineup` / `state.awayLineup` into the play state so series games 2+ can copy the drafted teams forward via the existing `ensureNextSeriesGame` path. Drafted teams are *not* saved to the lineups table.
 
+**Lineup data on play state — always stamped:** `handleJoinGame()`'s init path also writes `state.homeLineup` / `state.awayLineup` after `initializeGame()`, mirroring the draft handoff. This means **every** play state in the DB carries the raw lineup data, regardless of mode or whether the lineups-table row still exists. Required because:
+- Drafts have no lineups-table row at all (so `home_lineup_id` / `away_lineup_id` are null).
+- Non-draft users can edit/delete the lineups-table row mid-series.
+- After a server restart (Railway redeploy), reconnecting clients source `lineupData` from `state.homeLineup` first — without it, both clients hang on "Waiting for opponent..." because the server's join gate can't be satisfied.
+
+`handleJoinGame()` also tries the Supabase state-load **before** checking `room.homeLineup` / `room.awayLineup`. A loaded state restores everything needed; lineup data is only required when falling through to `initializeGame()` for a fresh game.
+
 **Draft fork in `handleJoinGame`:** routes to `handleDraftJoin` only for `mode='draft'` games in pre-play phases (`waiting / lineup_select / drafting / setting_lineup`). In-progress and finished drafted games fall through to lineup-mode logic, which restores the play state from `gameRow.state` and pulls the lineup from `state.homeLineup`.
 
 ### Game Engine Architecture
