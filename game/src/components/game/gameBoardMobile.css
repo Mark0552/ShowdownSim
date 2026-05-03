@@ -624,17 +624,22 @@
 
 .gb-m-sidebar {
     flex: 0 0 46px;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     background: #07101e;
     border-left: 1px solid #1a3060;
+    overflow: hidden;
 }
 
 /* Top + bottom groups anchor to their team's side of the sidebar
-   (matching the opp / my strips above and below the diamond). */
+   (matching the opp / my strips above and below the diamond).
+   min-width: 0 prevents nowrap text inside (e.g. pitcher .name)
+   from pushing the sidebar wider than its 46px basis. */
 .gb-m-sb-top, .gb-m-sb-bot {
     flex: 0 0 auto;
+    min-width: 0;
     display: flex;
     flex-direction: column;
 }
@@ -644,6 +649,7 @@
 .gb-m-sb-series {
     flex: 1 1 0;
     min-height: 0;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -690,6 +696,7 @@
 
 .gb-m-sb-pitcher {
     flex: 0 0 auto;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
