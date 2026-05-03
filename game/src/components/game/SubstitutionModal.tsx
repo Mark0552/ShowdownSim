@@ -116,7 +116,7 @@ export default function SubstitutionModal({ state, myRole, onAction, onClose }: 
                 {tab === 'PC' && <PitchingChangeTab team={myTeam} onAction={onAction} onClose={onClose} {...tabProps} />}
                 {tab === 'DS' && <DefensiveSubTab state={state} myRole={myRole} team={myTeam} onAction={onAction} onClose={onClose} />}
             </div>
-            {hoveredCard && <CardTooltip card={hoveredCard} />}
+            {hoveredCard && <CardTooltip card={hoveredCard} onClose={hideCard} />}
         </Overlay>
     );
 }

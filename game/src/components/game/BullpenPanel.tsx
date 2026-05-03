@@ -63,8 +63,12 @@ export default function BullpenPanel({ team, side, onClose, onHover, onLeave }: 
 
     return (
         <div className={panelClass}>
-            <div className="bp-header" onClick={onClose}>{label} BULLPEN & BENCH &#x25B2;</div>
-            <div className="bp-cards">
+            <div className="bp-header">
+                <span className="bp-title">{label} BULLPEN &amp; BENCH</span>
+                <button className="bp-close" onClick={onClose} aria-label="Close">&#x2715;</button>
+            </div>
+            <div className="bp-body">
+                <div className="bp-cards">
                 {/* Available Bullpen */}
                 {availableBullpen.length > 0 && (
                     <>
@@ -161,6 +165,7 @@ export default function BullpenPanel({ team, side, onClose, onHover, onLeave }: 
                 {availableBullpen.length === 0 && availableBench.length === 0 && startingRotation.length === 0 && usedPlayerIds.length === 0 && (
                     <div className="bp-empty">No bullpen or bench players available</div>
                 )}
+                </div>
             </div>
         </div>
     );

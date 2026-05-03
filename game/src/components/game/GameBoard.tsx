@@ -522,7 +522,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 {/* Modals + tooltips + overlays — same content as desktop, all
                     use position: fixed/absolute with explicit z-index so DOM
                     order doesn't affect stacking. */}
-                {hoveredPlayer && <CardTooltip card={playerSlotToCard(hoveredPlayer)} />}
+                {hoveredPlayer && <CardTooltip card={playerSlotToCard(hoveredPlayer)} onClose={handlePlayerLeave} />}
                 {showAwayBullpen && <BullpenPanel team={state.awayTeam} side="away" onClose={() => setShowAwayBullpen(false)} onHover={handlePlayerHover} onLeave={handlePlayerLeave} />}
                 {showHomeBullpen && <BullpenPanel team={state.homeTeam} side="home" onClose={() => setShowHomeBullpen(false)} onHover={handlePlayerHover} onLeave={handlePlayerLeave} />}
                 {showSubPanel && isMyTurn && (
@@ -537,12 +537,14 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 {showFullLog && <GameLogOverlay gameLog={state.gameLog} onClose={() => setShowFullLog(false)} />}
                 {showDiceRolls && <DiceRollsOverlay gameLog={state.gameLog} homeName={homeName} awayName={awayName} onClose={() => setShowDiceRolls(false)} />}
                 {showStats && (
-                    <div className="overlay-panel" style={{ minWidth: 'min(1200px, 95vw)', maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto', overflowX: 'auto' }}>
+                    <div className="overlay-panel" style={{ minWidth: 'min(1200px, 95vw)', maxWidth: '95vw', maxHeight: '90vh' }}>
                         <div className="overlay-panel-header">
                             <span className="overlay-panel-title">BOX SCORE</span>
                             <button className="overlay-close" onClick={() => setShowStats(false)}>CLOSE</button>
                         </div>
-                        <BoxScore awayTeam={state.awayTeam} homeTeam={state.homeTeam} awayName={awayName} homeName={homeName} />
+                        <div className="overlay-panel-body" style={{ overflowX: 'auto' }}>
+                            <BoxScore awayTeam={state.awayTeam} homeTeam={state.homeTeam} awayName={awayName} homeName={homeName} />
+                        </div>
                     </div>
                 )}
 
@@ -552,6 +554,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 {menuOpen && (
                     <div className="gb-m-menu-overlay" onClick={() => setMenuOpen(false)}>
                         <div className="gb-m-menu-sheet" onClick={(e) => e.stopPropagation()}>
+                            <button className="gb-m-menu-close" onClick={() => setMenuOpen(false)} aria-label="Close">&#x2715;</button>
                             <button className="gb-m-menu-btn" onClick={() => { setShowStats(true); setMenuOpen(false); }}>BOX SCORE</button>
                             <button className="gb-m-menu-btn" onClick={() => { setShowFullLog(true); setMenuOpen(false); }}>GAME LOG</button>
                             <button className="gb-m-menu-btn" onClick={() => { setShowDiceRolls(true); setMenuOpen(false); }}>DICE ROLLS</button>
@@ -962,12 +965,14 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             )}
 
             {showStats && (
-                <div className="overlay-panel" style={{ minWidth: 'min(1200px, 95vw)', maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto', overflowX: 'auto' }}>
+                <div className="overlay-panel" style={{ minWidth: 'min(1200px, 95vw)', maxWidth: '95vw', maxHeight: '90vh' }}>
                     <div className="overlay-panel-header">
                         <span className="overlay-panel-title">BOX SCORE</span>
                         <button className="overlay-close" onClick={() => setShowStats(false)}>CLOSE</button>
                     </div>
-                    <BoxScore awayTeam={state.awayTeam} homeTeam={state.homeTeam} awayName={awayName} homeName={homeName} />
+                    <div className="overlay-panel-body" style={{ overflowX: 'auto' }}>
+                        <BoxScore awayTeam={state.awayTeam} homeTeam={state.homeTeam} awayName={awayName} homeName={homeName} />
+                    </div>
                 </div>
             )}
         </div>

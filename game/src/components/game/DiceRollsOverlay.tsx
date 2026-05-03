@@ -100,9 +100,11 @@ export default function DiceRollsOverlay({ gameLog, homeName, awayName, onClose 
                 <span className="overlay-panel-title">DICE ROLLS</span>
                 <button className="overlay-close" onClick={onClose}>CLOSE</button>
             </div>
-            <div style={{ display: 'flex', gap: 8, overflowY: 'auto', flexWrap: 'wrap' }}>
-                {renderSide(`AWAY — ${awayName || 'Away'}`, away)}
-                {renderSide(`HOME — ${homeName || 'Home'}`, home)}
+            <div className="overlay-panel-body">
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {renderSide(`AWAY — ${awayName || 'Away'}`, away)}
+                    {renderSide(`HOME — ${homeName || 'Home'}`, home)}
+                </div>
             </div>
         </div>
     );

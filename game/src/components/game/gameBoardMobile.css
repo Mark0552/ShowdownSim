@@ -489,15 +489,39 @@
 }
 
 .gb-m-menu-sheet {
+    position: relative;
     background: #0a1628;
     border: 2px solid #d4a018;
     border-radius: 12px;
-    padding: 12px;
+    padding: 36px 12px 12px;
     display: flex;
     flex-direction: column;
     gap: 8px;
     min-width: 220px;
 }
+
+/* × in the top-right corner. Tap-outside still works as the secondary
+   dismiss path (overlay's onClick) — the × is just the discoverable
+   primary affordance. */
+.gb-m-menu-close {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border: 1px solid #4a6a90;
+    color: #8aade0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0;
+}
+.gb-m-menu-close:hover { border-color: #d4a018; color: #d4a018; }
 
 .gb-m-menu-btn {
     background: #0a1830;

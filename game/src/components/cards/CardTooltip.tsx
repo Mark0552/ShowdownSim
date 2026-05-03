@@ -4,9 +4,14 @@ import './CardTooltip.css';
 
 interface Props {
     card: Card;
+    /** Optional dismiss callback. When provided, mobile mode renders a tap
+     *  backdrop + × button so the tooltip can be closed by touch (hover-out
+     *  doesn't fire reliably on iOS). Desktop ignores this — the parent's
+     *  mouseleave still drives dismissal there. */
+    onClose?: () => void;
 }
 
-export default function CardTooltip({ card }: Props) {
+export default function CardTooltip({ card, onClose }: Props) {
     const ref = useRef<HTMLDivElement>(null);
     const isHitter = card.type === 'hitter';
     const h = card as HitterCard;
@@ -25,8 +30,13 @@ export default function CardTooltip({ card }: Props) {
     }, [card]);
 
     return (
-        <div className="card-tooltip" ref={ref}>
-            <div className="ct-layout">
+        <>
+            {onClose && <div className="ct-backdrop" onClick={onClose} />}
+            <div className="card-tooltip" ref={ref}>
+                {onClose && (
+                    <button className="ct-close" onClick={onClose} aria-label="Close">✕</button>
+                )}
+                <div className="ct-layout">
                 <img src={card.imagePath} alt="" className="ct-image" />
                 <div className="ct-info">
                     <h3>{card.name}</h3>
@@ -79,6 +89,7 @@ export default function CardTooltip({ card }: Props) {
                     </div>
                 </div>
             </div>
-        </div>
+            </div>
+        </>
     );
 }
