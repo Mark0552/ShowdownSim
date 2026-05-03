@@ -751,26 +751,26 @@
     align-items: center;
     padding: 2px 1px;
     box-sizing: border-box;
-    background: #1a1408;
-    border-top: 1px solid #d4a01840;
+    /* Transparent so the sidebar's navy (#07101e) shows through on the
+       not-fielding pitcher. The fielding pitcher gets the dark-gold
+       .active background below as the only differentiator — the gold
+       accent border itself is always solid on both cards. */
+    background: transparent;
+    border-top: 1px solid #d4a018;
     cursor: pointer;
     overflow: hidden;
 }
 
 .gb-m-sb-pitcher.active {
     background: #2a1f0c;
-    border-color: #d4a018;
 }
 
-/* The pitcher card's gold accent line is on whichever edge faces the
-   middle of the sidebar (the series indicator / open space) — for the
-   top pitcher (opponent) that's the BOTTOM edge; for the bottom
-   pitcher (mine) that's the TOP edge. The .active border-color rule
-   above colors whichever border is set, so the gold-line indicator
-   shows up on the correct side of each card. */
+/* Top pitcher (opponent) puts its gold accent line on the BOTTOM edge
+   so the line points into the sidebar's middle (the series indicator).
+   Bottom pitcher (mine) keeps the default border-top above. */
 .gb-m-sb-top .gb-m-sb-pitcher {
     border-top: none;
-    border-bottom: 1px solid #d4a01840;
+    border-bottom: 1px solid #d4a018;
 }
 
 .gb-m-sb-pitcher img {
