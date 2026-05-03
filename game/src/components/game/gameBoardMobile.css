@@ -398,15 +398,20 @@
 /* Inset box-shadow draws a 1.5px gold ring inside each .cur cell. Using
    shadow instead of border because border-collapse: collapse merges
    adjacent borders and the LEFT edge of the column was being hidden by
-   the previous cell's right border. */
-.gb-m-sb-table th.cur,
-.gb-m-sb-table td.cur {
+   the previous cell's right border.
+   Only the column header gets the dark-gold fill — for the team rows
+   we keep the gold ring (column highlight) but skip the fill. The
+   actively-batting team's cell adds its own lighter fill via .batting
+   below, so only ONE of the two team cells in the current column ends
+   up tinted gold. */
+.gb-m-sb-table th.cur {
     background: #3a2a00;
     color: #d4a018;
-    box-shadow: inset 1.5px 0 0 #d4a018, inset -1.5px 0 0 #d4a018;
-}
-.gb-m-sb-table th.cur {
     box-shadow: inset 1.5px 1.5px 0 #d4a018, inset -1.5px 1.5px 0 #d4a018;
+}
+.gb-m-sb-table td.cur {
+    color: #d4a018;
+    box-shadow: inset 1.5px 0 0 #d4a018, inset -1.5px 0 0 #d4a018;
 }
 .gb-m-sb-table tbody tr:last-child td.cur {
     box-shadow: inset 1.5px -1.5px 0 #d4a018, inset -1.5px -1.5px 0 #d4a018;
@@ -755,6 +760,17 @@
 .gb-m-sb-pitcher.active {
     background: #2a1f0c;
     border-color: #d4a018;
+}
+
+/* The pitcher card's gold accent line is on whichever edge faces the
+   middle of the sidebar (the series indicator / open space) — for the
+   top pitcher (opponent) that's the BOTTOM edge; for the bottom
+   pitcher (mine) that's the TOP edge. The .active border-color rule
+   above colors whichever border is set, so the gold-line indicator
+   shows up on the correct side of each card. */
+.gb-m-sb-top .gb-m-sb-pitcher {
+    border-top: none;
+    border-bottom: 1px solid #d4a01840;
 }
 
 .gb-m-sb-pitcher img {
