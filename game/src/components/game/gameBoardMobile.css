@@ -50,6 +50,65 @@
     display: block;
 }
 
+/* ---------- Action bar (HTML mode) ----------
+ * Single horizontal bar at the bottom of the mobile board: dice on
+ * the left, action buttons on the right. Replaces the two stacked
+ * cells (110 + 90 = 200px always reserved). The bar sizes to content
+ * with min-height 70px so quiet phases collapse to ~70px instead of
+ * always reserving 200, and phases with 4+ buttons grow naturally
+ * (the buttons wrap to a second row inside the actions cell). */
+
+.gb-m-action-bar {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    background: #050c1a;
+    border-top: 1.5px solid #d4a018;
+    width: 100%;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    flex-grow: 0;
+    min-height: 70px;
+}
+
+.gb-m-action-bar-dice {
+    flex: 0 0 auto;
+    /* width auto: typically ~80px for a single die, expands to fit
+       the dual pitch+swing layout; min-width keeps the column from
+       collapsing to 0 when there's no roll yet. */
+    min-width: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid #d4a01840;
+    box-sizing: border-box;
+}
+
+.gb-m-action-bar-actions {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* Inside the bar, drop the per-cell border-top + fixed height that
+   the standalone .gb-m-actions / .gb-m-actions-wait / -gameover used
+   when they were the bar themselves. The bar's own border-top + min-
+   height takes over. */
+.gb-m-action-bar-actions .gb-m-actions {
+    border-top: none;
+    height: auto;
+    width: 100%;
+    overflow-y: visible;
+}
+.gb-m-action-bar-actions .gb-m-actions-wait {
+    border-top: none;
+}
+.gb-m-action-bar-actions .gb-m-actions-gameover {
+    border-top: none;
+}
+
 /* ---------- Action buttons (HTML mode) ----------
  * Native HTML buttons that grow with content — replaces the scaled-SVG
  * wrapper that couldn't adapt to phases with 4+ buttons. */
@@ -203,28 +262,15 @@
 }
 
 /* ---------- Dice spinner (HTML mode) ----------
- * Compact horizontal layout: [label/die] + (optional equation) + (dual
- * swing die) + advantage stripe. Replaces the scaled-SVG cell. */
+ * Sits inside .gb-m-action-bar-dice (the left column of the unified
+ * action bar). Contains: [die-cell] (label above die) + (optional
+ * equation column) + (optional second die-cell for dual pitch+swing)
+ * + advantage stripe across the bottom. */
 
-.gb-m-dice-wrap {
-    display: flex;
-    flex-direction: column;
-    background: #050c1a;
-    border-top: 1px solid #d4a01840;
-    flex-shrink: 0;
-    flex-grow: 0;
-    width: 100%;
-    height: 90px;
-    box-sizing: border-box;
-    overflow: hidden;
-}
-
-/* DiceSpinner's HTML-mode root — sits inside .gb-m-dice-wrap, fills it. */
 .gb-m-dice-inner {
     display: flex;
     flex-direction: column;
     width: 100%;
-    height: 100%;
     box-sizing: border-box;
 }
 
@@ -233,8 +279,8 @@
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    padding: 6px 8px;
+    gap: 6px;
+    padding: 4px 6px;
 }
 
 .gb-m-die-cell {

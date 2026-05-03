@@ -695,53 +695,58 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     onToggleBullpen={() => myRole === 'home' ? setShowHomeBullpen(!showHomeBullpen) : setShowAwayBullpen(!showAwayBullpen)}
                 />
 
-                <ActionButtons
-                    layout="html"
-                    state={state}
-                    myRole={myRole}
-                    isMyTurn={isMyTurn && !diceAnimating}
-                    iAmBatting={iAmBatting}
-                    onAction={onAction}
-                    battingTeam={battingTeam}
-                    fieldingTeam={fieldingTeam}
-                    hasRunners={hasRunners}
-                    outcomeNames={outcomeNames}
-                    onShowSubPanel={() => setShowSubPanel(true)}
-                    onNextSeriesGame={onNextSeriesGame}
-                    seriesStatus={seriesInfo
-                        ? (Math.max(seriesInfo.homeWins, seriesInfo.awayWins) > seriesInfo.bestOf / 2
-                           ? 'complete' : 'in-progress')
-                        : undefined}
-                    diceAnimating={diceAnimating}
-                    myReadyForNext={myReadyForNext}
-                    oppReadyForNext={oppReadyForNext}
-                    onToggleReadyForNext={onToggleReadyForNext}
-                />
-
-                {/* Always-rendered dice cell — fixed height so the diamond
-                    row doesn't grow into its space when no roll has happened
-                    yet. The DiceSpinner inside only renders once we have
-                    a lastRoll to display. */}
-                <div className="gb-m-dice-wrap">
-                    {state.lastRoll && state.lastRollType && state.phase !== 'sp_roll' && (
-                        <DiceSpinner
+                {/* Combined action bar — dice on the left, action buttons on
+                    the right. Replaces the previous two stacked cells (110px
+                    + 90px = 200px reserved). The bar sizes to its content
+                    with min-height 70px, so quiet phases ("Pitcher choosing
+                    action…") collapse to ~70px instead of always reserving
+                    the full 200. */}
+                <div className="gb-m-action-bar">
+                    <div className="gb-m-action-bar-dice">
+                        {state.lastRoll && state.lastRollType && state.phase !== 'sp_roll' && (
+                            <DiceSpinner
+                                layout="html"
+                                cx={0} botY={0}
+                                roll={state.lastRoll} rollType={state.lastRollType}
+                                triggerKey={rollKey}
+                                onAnimationComplete={handleDiceComplete}
+                                pitchRoll={state.lastPitchRoll}
+                                pitchControl={pitcher.control || 0}
+                                fatiguePenalty={state.fatiguePenalty || 0}
+                                controlModifier={state.lastPitchControlMod || 0}
+                                pitchTotal={state.lastPitchTotal}
+                                batterOnBase={batter.onBase}
+                                usedPitcherChart={state.usedPitcherChart}
+                                swingRoll={state.lastSwingRoll}
+                                iAmBatting={iAmBatting}
+                                pitcherCardId={pitcher.cardId}
+                            />
+                        )}
+                    </div>
+                    <div className="gb-m-action-bar-actions">
+                        <ActionButtons
                             layout="html"
-                            cx={0} botY={0}
-                            roll={state.lastRoll} rollType={state.lastRollType}
-                            triggerKey={rollKey}
-                            onAnimationComplete={handleDiceComplete}
-                            pitchRoll={state.lastPitchRoll}
-                            pitchControl={pitcher.control || 0}
-                            fatiguePenalty={state.fatiguePenalty || 0}
-                            controlModifier={state.lastPitchControlMod || 0}
-                            pitchTotal={state.lastPitchTotal}
-                            batterOnBase={batter.onBase}
-                            usedPitcherChart={state.usedPitcherChart}
-                            swingRoll={state.lastSwingRoll}
+                            state={state}
+                            myRole={myRole}
+                            isMyTurn={isMyTurn && !diceAnimating}
                             iAmBatting={iAmBatting}
-                            pitcherCardId={pitcher.cardId}
+                            onAction={onAction}
+                            battingTeam={battingTeam}
+                            fieldingTeam={fieldingTeam}
+                            hasRunners={hasRunners}
+                            outcomeNames={outcomeNames}
+                            onShowSubPanel={() => setShowSubPanel(true)}
+                            onNextSeriesGame={onNextSeriesGame}
+                            seriesStatus={seriesInfo
+                                ? (Math.max(seriesInfo.homeWins, seriesInfo.awayWins) > seriesInfo.bestOf / 2
+                                   ? 'complete' : 'in-progress')
+                                : undefined}
+                            diceAnimating={diceAnimating}
+                            myReadyForNext={myReadyForNext}
+                            oppReadyForNext={oppReadyForNext}
+                            onToggleReadyForNext={onToggleReadyForNext}
                         />
-                    )}
+                    </div>
                 </div>
             </div>
         );
