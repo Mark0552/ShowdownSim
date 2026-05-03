@@ -599,32 +599,34 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     cards and bullpen toggles, freeing up the strips to use
                     full row width for 9 batter cells. */}
                 <div className="gb-m-diamond-row">
-                    <svg className="gb-m-diamond-svg" viewBox="350 230 580 524" preserveAspectRatio="xMidYMid meet">
-                        <Diamond
-                            runner1={runner1}
-                            runner2={runner2}
-                            runner3={runner3}
-                            pitcher={displayPitcher}
-                            batter={
-                                diceAnimating ? displayBatter :
-                                (runnerAnims.length === 0 &&
-                                 pendingMovements.length === 0 &&
-                                 !["extra_base_offer","extra_base"].includes(state.phase))
-                                    ? displayBatter : null
-                            }
-                            displayPhase={displayPhase}
-                            displayIsOver={displayIsOver}
-                            inningsPitching={dInningsPitching}
-                            effectiveIp={dEffectiveIp}
-                            fatigueActive={dFatigueActive}
-                            fatiguePenalty={dFatiguePenalty}
-                            onPlayerHover={handlePlayerHover}
-                            onPlayerLeave={handlePlayerLeave}
-                        />
-                        {runnerAnims.map(anim => (
-                            <RunnerAnimOverlay key={`ra-${anim.cardId}`} anim={anim} baseCoords={BASE_COORDS} baseAnimMs={BASE_ANIM_MS} />
-                        ))}
-                    </svg>
+                    <div className="gb-m-diamond-svg-wrap">
+                        <svg className="gb-m-diamond-svg" viewBox="360 200 680 580" preserveAspectRatio="xMidYMid meet">
+                            <Diamond
+                                runner1={runner1}
+                                runner2={runner2}
+                                runner3={runner3}
+                                pitcher={displayPitcher}
+                                batter={
+                                    diceAnimating ? displayBatter :
+                                    (runnerAnims.length === 0 &&
+                                     pendingMovements.length === 0 &&
+                                     !["extra_base_offer","extra_base"].includes(state.phase))
+                                        ? displayBatter : null
+                                }
+                                displayPhase={displayPhase}
+                                displayIsOver={displayIsOver}
+                                inningsPitching={dInningsPitching}
+                                effectiveIp={dEffectiveIp}
+                                fatigueActive={dFatigueActive}
+                                fatiguePenalty={dFatiguePenalty}
+                                onPlayerHover={handlePlayerHover}
+                                onPlayerLeave={handlePlayerLeave}
+                            />
+                            {runnerAnims.map(anim => (
+                                <RunnerAnimOverlay key={`ra-${anim.cardId}`} anim={anim} baseCoords={BASE_COORDS} baseAnimMs={BASE_ANIM_MS} />
+                            ))}
+                        </svg>
+                    </div>
                     <aside className="gb-m-sidebar">
                         {/* Top group anchors to the top of the sidebar (matches
                             the opp strip above the diamond). */}
