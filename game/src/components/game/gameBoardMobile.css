@@ -37,7 +37,7 @@
 .gb-m-diamond-svg-wrap {
     flex: 1 1 0;
     min-width: 0;
-    aspect-ratio: 680 / 580;
+    aspect-ratio: 680 / 620;
     align-self: flex-start;
     background: #050c1a;
     overflow: hidden;
