@@ -741,7 +741,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             </button>
                             <SidebarPitcher
                                 team={myRole === 'home' ? displayAwayTeam : displayHomeTeam}
-                                isFielding={myRole === 'home' ? displayHalfInning === 'top' : displayHalfInning === 'bottom'}
+                                isFielding={myRole === 'home' ? displayHalfInning === 'bottom' : displayHalfInning === 'top'}
                                 displayInning={displayInning}
                                 displayIcon20Used={displayIcon20Used}
                                 onHover={handlePlayerHover}
@@ -770,7 +770,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             <MobileRollBox roll={myRoll} onSpinComplete={handleDiceComplete}/>
                             <SidebarPitcher
                                 team={myRole === 'home' ? displayHomeTeam : displayAwayTeam}
-                                isFielding={myRole === 'home' ? displayHalfInning === 'bottom' : displayHalfInning === 'top'}
+                                isFielding={myRole === 'home' ? displayHalfInning === 'top' : displayHalfInning === 'bottom'}
                                 displayInning={displayInning}
                                 displayIcon20Used={displayIcon20Used}
                                 onHover={handlePlayerHover}
