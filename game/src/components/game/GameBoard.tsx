@@ -730,29 +730,29 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             ))}
                         </svg>
                     </div>
-                    <aside className="gb-m-sidebar">
-                        {/* Top group anchors to the top of the sidebar — opp
-                            BENCH/PEN button, opp pitcher card, then the
-                            opponent's most recent roll. */}
-                        <div className="gb-m-sb-top">
-                            <button className="gb-m-sb-btn" onClick={() => myRole === 'home' ? setShowAwayBullpen(!showAwayBullpen) : setShowHomeBullpen(!showHomeBullpen)}>
-                                <span>BENCH</span>
-                                <span>PEN</span>
-                            </button>
-                            <SidebarPitcher
-                                team={myRole === 'home' ? displayAwayTeam : displayHomeTeam}
-                                isFielding={myRole === 'home' ? displayHalfInning === 'bottom' : displayHalfInning === 'top'}
-                                displayInning={displayInning}
-                                displayIcon20Used={displayIcon20Used}
-                                onHover={handlePlayerHover}
-                                onLeave={handlePlayerLeave}
-                            />
+                    <aside className="gb-m-side">
+                        {/* Top row: opp roll on the left, opp pitcher column
+                            (BENCH/PEN button + opp pitcher card) on the right. */}
+                        <div className="gb-m-side-top">
                             <MobileRollBox roll={oppRoll} onSpinComplete={handleDiceComplete}/>
+                            <div className="gb-m-side-pcol">
+                                <button className="gb-m-sb-btn" onClick={() => myRole === 'home' ? setShowAwayBullpen(!showAwayBullpen) : setShowHomeBullpen(!showHomeBullpen)}>
+                                    <span>BENCH</span>
+                                    <span>PEN</span>
+                                </button>
+                                <SidebarPitcher
+                                    team={myRole === 'home' ? displayAwayTeam : displayHomeTeam}
+                                    isFielding={myRole === 'home' ? displayHalfInning === 'bottom' : displayHalfInning === 'top'}
+                                    displayInning={displayInning}
+                                    displayIcon20Used={displayIcon20Used}
+                                    onHover={handlePlayerHover}
+                                    onLeave={handlePlayerLeave}
+                                />
+                            </div>
                         </div>
-                        {/* Middle: pitch/swing advantage indicator from the
-                            user's perspective — green when the result favors
-                            me, red when it doesn't. Replaces the old series
-                            indicator (now in the menu sheet header). */}
+                        {/* Middle row spans both columns — pitch/swing
+                            advantage indicator from my perspective. Green when
+                            it favors me, red when it doesn't. */}
                         {(() => {
                             const haveAdv = state.lastSwingRoll != null && state.usedPitcherChart != null;
                             if (!haveAdv) return <MobileResultBox text={null} goodForMe={false}/>;
@@ -764,22 +764,24 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                                 />
                             );
                         })()}
-                        {/* Bottom group anchors to the bottom — my most recent
-                            roll, my pitcher card, my BENCH/PEN button. */}
-                        <div className="gb-m-sb-bot">
+                        {/* Bottom row: my roll on the left, my pitcher column
+                            (my pitcher card + BENCH/PEN button) on the right. */}
+                        <div className="gb-m-side-bot">
                             <MobileRollBox roll={myRoll} onSpinComplete={handleDiceComplete}/>
-                            <SidebarPitcher
-                                team={myRole === 'home' ? displayHomeTeam : displayAwayTeam}
-                                isFielding={myRole === 'home' ? displayHalfInning === 'top' : displayHalfInning === 'bottom'}
-                                displayInning={displayInning}
-                                displayIcon20Used={displayIcon20Used}
-                                onHover={handlePlayerHover}
-                                onLeave={handlePlayerLeave}
-                            />
-                            <button className="gb-m-sb-btn" onClick={() => myRole === 'home' ? setShowHomeBullpen(!showHomeBullpen) : setShowAwayBullpen(!showAwayBullpen)}>
-                                <span>BENCH</span>
-                                <span>PEN</span>
-                            </button>
+                            <div className="gb-m-side-pcol">
+                                <SidebarPitcher
+                                    team={myRole === 'home' ? displayHomeTeam : displayAwayTeam}
+                                    isFielding={myRole === 'home' ? displayHalfInning === 'top' : displayHalfInning === 'bottom'}
+                                    displayInning={displayInning}
+                                    displayIcon20Used={displayIcon20Used}
+                                    onHover={handlePlayerHover}
+                                    onLeave={handlePlayerLeave}
+                                />
+                                <button className="gb-m-sb-btn" onClick={() => myRole === 'home' ? setShowHomeBullpen(!showHomeBullpen) : setShowAwayBullpen(!showAwayBullpen)}>
+                                    <span>BENCH</span>
+                                    <span>PEN</span>
+                                </button>
+                            </div>
                         </div>
                     </aside>
                 </div>

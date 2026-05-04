@@ -106,12 +106,14 @@
  *   tints green when the result favors me, red when it doesn't. */
 
 .gb-m-sb-roll {
+    flex: 1 1 0;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 1px;
-    padding: 2px 0;
+    gap: 2px;
+    padding: 4px 0;
     margin: 2px;
     border: 1px solid #1f4068;
     border-radius: 4px;
@@ -125,13 +127,13 @@
     background: transparent;
 }
 .gb-m-sb-roll .label {
-    font: 700 8px/1 Impact, sans-serif;
+    font: 700 10px/1 Impact, sans-serif;
     letter-spacing: 1px;
 }
 .gb-m-sb-roll .value {
-    font: 700 18px/1 Impact, sans-serif;
+    font: 700 28px/1 Impact, sans-serif;
     color: #fff;
-    margin-top: 1px;
+    margin-top: 2px;
 }
 .gb-m-sb-roll.red    { border-color: #e94560; }
 .gb-m-sb-roll.red    .label { color: #e94560; }
@@ -150,21 +152,21 @@
 }
 
 .gb-m-sb-result {
-    flex: 1 1 0;
+    flex: 0 0 auto;
     min-height: 0;
     min-width: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
-    margin: 2px;
-    padding: 4px 2px;
+    margin: 2px 4px;
+    padding: 6px 8px;
     border: 1px solid #1f4068;
     border-radius: 4px;
     background: #0a1628;
     box-sizing: border-box;
-    font: 700 8px/1.1 Impact, sans-serif;
-    letter-spacing: 1px;
+    font: 700 11px/1.1 Impact, sans-serif;
+    letter-spacing: 2px;
     color: #c8d8f8;
 }
 .gb-m-sb-result.empty {
@@ -814,24 +816,40 @@
    min-width: 0 alone wasn't enough — the <img> child has intrinsic
    251×350 dimensions that still leaked into the flex sizing path on
    iOS Safari, leaving the sidebar wider than its 46px basis. */
-.gb-m-sidebar {
-    flex: 0 0 calc((100vw - 12px) / 9);
+/* Right-side container: 2-column × 3-row grid.
+   - Top row: opp roll box (left) | opp pitcher column (right)
+   - Middle row: result box, spans both columns
+   - Bottom row: my roll box (left) | my pitcher column (right)
+   Width is two strip-cell widths so the right (pitcher) column matches
+   a hitter strip card and the left (roll) column matches it too. */
+.gb-m-side {
+    flex: 0 0 calc(2 * ((100vw - 12px) / 9));
     min-width: 0;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
     background: #07101e;
     border-left: 1px solid #1a3060;
     overflow: hidden;
 }
 
-/* Top + bottom groups anchor to their team's side of the sidebar
-   (matching the opp / my strips above and below the diamond).
-   min-width: 0 prevents nowrap text inside (e.g. pitcher .name)
-   from pushing the sidebar wider than its 46px basis. */
-.gb-m-sb-top, .gb-m-sb-bot {
-    flex: 0 0 auto;
+/* Top + bottom rows are flex rows split into roll (left) + pitcher
+   column (right). flex: 1 1 0 on both rows so they share the vertical
+   space evenly; the result row in between is content-sized. */
+.gb-m-side-top, .gb-m-side-bot {
+    flex: 1 1 0;
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+}
+
+/* Right half of top + bot rows: BENCH/PEN button + pitcher card stacked
+   vertically. Width matches a hitter strip cell so the pitcher card
+   image ends up the same size as a hitter card image. */
+.gb-m-side-pcol {
+    flex: 0 0 calc((100vw - 12px) / 9);
     min-width: 0;
     display: flex;
     flex-direction: column;
@@ -880,9 +898,9 @@
 }
 
 /* Top pitcher (opponent) puts its gold accent line on the BOTTOM edge
-   so the line points into the sidebar's middle (the series indicator).
-   Bottom pitcher (mine) keeps the default border-top above. */
-.gb-m-sb-top .gb-m-sb-pitcher {
+   so the line points into the result row below it. Bottom pitcher
+   (mine) keeps the default border-top above. */
+.gb-m-side-top .gb-m-sb-pitcher {
     border-top: none;
     border-bottom: 1px solid #d4a018;
 }
