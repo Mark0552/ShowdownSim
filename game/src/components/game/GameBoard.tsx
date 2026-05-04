@@ -161,6 +161,66 @@ function RunnerAnimOverlay({ anim, baseCoords, baseAnimMs }: {
     );
 }
 
+/** Roll info displayed in the mobile sidebar's per-side roll box. */
+interface SideRoll {
+    label: string;
+    value: number;
+    color: 'red' | 'green' | 'blue' | 'gold';
+    /** Bumped each time a new roll lands so the box can pulse. */
+    triggerKey: string;
+}
+
+/** Compact d20-roll readout in the mobile sidebar — label above big value.
+ *  When triggerKey changes, the value flickers briefly to mimic the dice
+ *  spin animation the bottom-row DiceSpinner used to provide. Calls
+ *  onSpinComplete after the flicker so the parent's diceAnimating state
+ *  clears (the desktop DiceSpinner's role; on mobile the per-side boxes
+ *  drive it instead). */
+function MobileRollBox({ roll, onSpinComplete }: {
+    roll: SideRoll | null;
+    onSpinComplete?: () => void;
+}) {
+    const [spinning, setSpinning] = useState(false);
+    const [display, setDisplay] = useState<number | null>(null);
+    const lastKeyRef = useRef<string | null>(null);
+    useEffect(() => {
+        if (!roll) { setDisplay(null); return; }
+        if (roll.triggerKey === lastKeyRef.current) {
+            setDisplay(roll.value);
+            return;
+        }
+        lastKeyRef.current = roll.triggerKey;
+        setSpinning(true);
+        const interval = setInterval(() => setDisplay(1 + Math.floor(Math.random() * 20)), 60);
+        const timeout = setTimeout(() => {
+            clearInterval(interval);
+            setSpinning(false);
+            setDisplay(roll.value);
+            onSpinComplete?.();
+        }, 600);
+        return () => { clearInterval(interval); clearTimeout(timeout); };
+    }, [roll, onSpinComplete]);
+    if (!roll) return <div className="gb-m-sb-roll empty"/>;
+    return (
+        <div className={`gb-m-sb-roll ${roll.color}${spinning ? ' spinning' : ''}`}>
+            <div className="label">{roll.label}</div>
+            <div className="value">{display ?? '–'}</div>
+        </div>
+    );
+}
+
+/** Pitch/Swing advantage indicator in the middle of the sidebar, between
+ *  the two pitcher cards. Background tint reads from the user's
+ *  perspective — green when the result favors me, red when it doesn't. */
+function MobileResultBox({ text, goodForMe }: { text: string | null; goodForMe: boolean }) {
+    if (!text) return <div className="gb-m-sb-result empty"/>;
+    return (
+        <div className={`gb-m-sb-result ${goodForMe ? 'good' : 'bad'}`}>
+            {text}
+        </div>
+    );
+}
+
 /** One pitcher card for the mobile right-sidebar — image, last name, IP,
  *  and icons line. Highlights gold when this team's pitcher is currently
  *  on the mound (their team is fielding). */
@@ -208,6 +268,13 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const [showFullLog, setShowFullLog] = useState(false);
     const [showDiceRolls, setShowDiceRolls] = useState(false);
     const [diceAnimating, setDiceAnimating] = useState(false);
+
+    // Mobile sidebar's per-side roll boxes — opponent's most recent roll
+    // pinned to the top half, mine pinned to the bottom half. Each persists
+    // until that side rolls again, so e.g. the opponent's pitch stays
+    // visible while I'm swinging. SVG (desktop) layout doesn't read these.
+    const [oppRoll, setOppRoll] = useState<SideRoll | null>(null);
+    const [myRoll, setMyRoll] = useState<SideRoll | null>(null);
     // Mobile breakpoint — narrow viewports get a stacked HTML/grid layout
     // instead of the desktop 1400×950 SVG. Updates live on rotate / resize.
     const [isMobile, setIsMobile] = useState(() =>
@@ -295,6 +362,29 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             // frozenRef keeps its current (old) values — this is the freeze point
         }
     }
+
+    // Route the latest roll into the per-side sidebar boxes (mobile only;
+    // SVG layout doesn't read these). Pitch/fielding/extra-base/steal go
+    // to the fielding team; swing/bunt go to the batting team.
+    useEffect(() => {
+        if (state.lastRoll == null || !state.lastRollType) return;
+        const t = state.lastRollType;
+        const fieldingSide: 'home' | 'away' = state.halfInning === 'top' ? 'home' : 'away';
+        const battingSide: 'home' | 'away' = state.halfInning === 'top' ? 'away' : 'home';
+        let side: 'home' | 'away' | null = null;
+        let label = '';
+        let color: SideRoll['color'] = 'gold';
+        if (t === 'pitch') { side = fieldingSide; label = 'PITCH'; color = 'red'; }
+        else if (t === 'swing') { side = battingSide; label = 'SWING'; color = 'green'; }
+        else if (t === 'fielding') { side = fieldingSide; label = 'FIELD'; color = 'blue'; }
+        else if (t === 'extra_base') { side = fieldingSide; label = 'THROW'; color = 'blue'; }
+        else if (t.startsWith('steal')) { side = fieldingSide; label = 'CATCH'; color = 'blue'; }
+        else if (t === 'bunt') { side = battingSide; label = 'BUNT'; color = 'green'; }
+        if (!side) return;
+        const next: SideRoll = { label, value: state.lastRoll, color, triggerKey: rollKey };
+        if (side === myRole) setMyRoll(next);
+        else setOppRoll(next);
+    }, [rollKey, state.lastRoll, state.lastRollType, state.halfInning, myRole]);
     // Icon-change soft freeze: when iconChangeSequence increments, freeze the
     // lineup/state for ~700ms so the user sees the icon-driven change before
     // the highlight jumps to the next batter. No dice re-spin.
@@ -555,6 +645,16 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     <div className="gb-m-menu-overlay" onClick={() => setMenuOpen(false)}>
                         <div className="gb-m-menu-sheet" onClick={(e) => e.stopPropagation()}>
                             <button className="gb-m-menu-close" onClick={() => setMenuOpen(false)} aria-label="Close">&#x2715;</button>
+                            {seriesInfo && (
+                                <div className="gb-m-menu-series">
+                                    <div className="gb-m-menu-series-game">Game {seriesInfo.gameNumber}/{seriesInfo.bestOf}</div>
+                                    <div className="gb-m-menu-series-score">
+                                        <span title={homeName}>{homeName}</span>
+                                        <span> {seriesInfo.homeWins}{'–'}{seriesInfo.awayWins} </span>
+                                        <span title={awayName}>{awayName}</span>
+                                    </div>
+                                </div>
+                            )}
                             <button className="gb-m-menu-btn" onClick={() => { setShowStats(true); setMenuOpen(false); }}>BOX SCORE</button>
                             <button className="gb-m-menu-btn" onClick={() => { setShowFullLog(true); setMenuOpen(false); }}>GAME LOG</button>
                             <button className="gb-m-menu-btn" onClick={() => { setShowDiceRolls(true); setMenuOpen(false); }}>DICE ROLLS</button>
@@ -631,8 +731,9 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                         </svg>
                     </div>
                     <aside className="gb-m-sidebar">
-                        {/* Top group anchors to the top of the sidebar (matches
-                            the opp strip above the diamond). */}
+                        {/* Top group anchors to the top of the sidebar — opp
+                            BENCH/PEN button, opp pitcher card, then the
+                            opponent's most recent roll. */}
                         <div className="gb-m-sb-top">
                             <button className="gb-m-sb-btn" onClick={() => myRole === 'home' ? setShowAwayBullpen(!showAwayBullpen) : setShowHomeBullpen(!showHomeBullpen)}>
                                 <span>BENCH</span>
@@ -646,23 +747,27 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                                 onHover={handlePlayerHover}
                                 onLeave={handlePlayerLeave}
                             />
+                            <MobileRollBox roll={oppRoll} onSpinComplete={handleDiceComplete}/>
                         </div>
-                        {/* Middle: series indicator (only when in a series).
-                            Fills whatever vertical gap remains between the
-                            two anchored groups. */}
-                        {seriesInfo && (
-                            <div className="gb-m-sb-series">
-                                <div className="gb-m-sb-series-game">Game {seriesInfo.gameNumber}/{seriesInfo.bestOf}</div>
-                                <div className="gb-m-sb-series-score">
-                                    <span title={homeName}>{homeName}</span>
-                                    <span> {seriesInfo.homeWins}{'–'}{seriesInfo.awayWins} </span>
-                                    <span title={awayName}>{awayName}</span>
-                                </div>
-                            </div>
-                        )}
-                        {/* Bottom group anchors to the bottom (matches my
-                            strip below the diamond). */}
+                        {/* Middle: pitch/swing advantage indicator from the
+                            user's perspective — green when the result favors
+                            me, red when it doesn't. Replaces the old series
+                            indicator (now in the menu sheet header). */}
+                        {(() => {
+                            const haveAdv = state.lastSwingRoll != null && state.usedPitcherChart != null;
+                            if (!haveAdv) return <MobileResultBox text={null} goodForMe={false}/>;
+                            const pitcherAdv = !!state.usedPitcherChart;
+                            return (
+                                <MobileResultBox
+                                    text={pitcherAdv ? 'PITCHER ADV' : 'BATTER ADV'}
+                                    goodForMe={pitcherAdv === !iAmBatting}
+                                />
+                            );
+                        })()}
+                        {/* Bottom group anchors to the bottom — my most recent
+                            roll, my pitcher card, my BENCH/PEN button. */}
                         <div className="gb-m-sb-bot">
+                            <MobileRollBox roll={myRoll} onSpinComplete={handleDiceComplete}/>
                             <SidebarPitcher
                                 team={myRole === 'home' ? displayHomeTeam : displayAwayTeam}
                                 isFielding={myRole === 'home' ? displayHalfInning === 'bottom' : displayHalfInning === 'top'}
@@ -695,34 +800,10 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     onToggleBullpen={() => myRole === 'home' ? setShowHomeBullpen(!showHomeBullpen) : setShowAwayBullpen(!showAwayBullpen)}
                 />
 
-                {/* Combined action bar — dice on the left, action buttons on
-                    the right. Replaces the previous two stacked cells (110px
-                    + 90px = 200px reserved). The bar sizes to its content
-                    with min-height 70px, so quiet phases ("Pitcher choosing
-                    action…") collapse to ~70px instead of always reserving
-                    the full 200. */}
+                {/* Bottom action bar — full-width, fixed height. Dice and
+                    advantage indicator moved into the sidebar; this bar is
+                    now action buttons only, big tap targets. */}
                 <div className="gb-m-action-bar">
-                    <div className="gb-m-action-bar-dice">
-                        {state.lastRoll && state.lastRollType && state.phase !== 'sp_roll' && (
-                            <DiceSpinner
-                                layout="html"
-                                cx={0} botY={0}
-                                roll={state.lastRoll} rollType={state.lastRollType}
-                                triggerKey={rollKey}
-                                onAnimationComplete={handleDiceComplete}
-                                pitchRoll={state.lastPitchRoll}
-                                pitchControl={pitcher.control || 0}
-                                fatiguePenalty={state.fatiguePenalty || 0}
-                                controlModifier={state.lastPitchControlMod || 0}
-                                pitchTotal={state.lastPitchTotal}
-                                batterOnBase={batter.onBase}
-                                usedPitcherChart={state.usedPitcherChart}
-                                swingRoll={state.lastSwingRoll}
-                                iAmBatting={iAmBatting}
-                                pitcherCardId={pitcher.cardId}
-                            />
-                        )}
-                    </div>
                     <div className="gb-m-action-bar-actions">
                         <ActionButtons
                             layout="html"
