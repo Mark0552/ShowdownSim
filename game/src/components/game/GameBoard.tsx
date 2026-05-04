@@ -703,7 +703,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     full row width for 9 batter cells. */}
                 <div className="gb-m-diamond-row">
                     <div className="gb-m-diamond-svg-wrap">
-                        <svg className="gb-m-diamond-svg" viewBox="360 145 680 620" preserveAspectRatio="xMidYMid meet">
+                        <svg className="gb-m-diamond-svg" viewBox="360 145 545 620" preserveAspectRatio="xMidYMid meet">
                             <Diamond
                                 runner1={runner1}
                                 runner2={runner2}

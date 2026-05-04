@@ -37,7 +37,7 @@
 .gb-m-diamond-svg-wrap {
     flex: 1 1 0;
     min-width: 0;
-    aspect-ratio: 680 / 620;
+    aspect-ratio: 545 / 620;
     align-self: flex-start;
     background: #050c1a;
     overflow: hidden;
@@ -823,7 +823,15 @@
    Width is two strip-cell widths so the right (pitcher) column matches
    a hitter strip card and the left (roll) column matches it too. */
 .gb-m-side {
-    flex: 0 0 calc(2 * ((100vw - 12px) / 9));
+    /* 3.5 strip-cells wide. The right half (.gb-m-side-pcol) stays at
+       1 strip-cell so the pitcher card image still equals a hitter
+       strip card image. All the extra width goes to the left half
+       (.gb-m-sb-roll), which is now ~2.5 strip-cells wide.
+       The diamond's viewBox is cropped to 545×620 (no empty grass
+       to the right of B1/B2) so the bases stay roughly the same
+       on-screen size — the freed visual space comes from the cropped
+       grass area, not from shrinking the bases. */
+    flex: 0 0 calc(3.5 * (100vw - 12px) / 9);
     min-width: 0;
     box-sizing: border-box;
     display: flex;
