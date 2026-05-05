@@ -152,7 +152,11 @@
 }
 
 .gb-m-sb-result {
-    flex: 0 0 auto;
+    /* Grows to absorb the gap between the top and bottom pcol stacks.
+       Top + bottom rows are content-sized, so this row is whatever
+       vertical space is left in the sidebar. The text stays centered
+       inside the box regardless of how tall it gets. */
+    flex: 1 1 0;
     min-height: 0;
     min-width: 0;
     display: flex;
@@ -842,10 +846,13 @@
 }
 
 /* Top + bottom rows are flex rows split into roll (left) + pitcher
-   column (right). flex: 1 1 0 on both rows so they share the vertical
-   space evenly; the result row in between is content-sized. */
+   column (right). flex: 0 0 auto so each row is exactly as tall as
+   the pitcher-column stack (BENCH/PEN button + pitcher card). The
+   result row in between gets flex: 1 1 0 and absorbs the leftover
+   vertical space between them. align-items: stretch is what makes
+   the dice box on the left match the pcol's natural height. */
 .gb-m-side-top, .gb-m-side-bot {
-    flex: 1 1 0;
+    flex: 0 0 auto;
     min-height: 0;
     min-width: 0;
     display: flex;
