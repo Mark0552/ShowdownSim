@@ -112,8 +112,13 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
-    padding: 4px 0;
+    /* Two big numbers (roll on top, total at bottom) with the equation
+       sandwiched between, plus a small label header and an optional
+       comparison footer. Tight gaps so the whole stack fits even on
+       short rows (~120px) — the parent .gb-m-side-* row is sized to the
+       pitcher-column stack height, not the box's natural height. */
+    gap: 1px;
+    padding: 3px 2px;
     margin: 2px;
     border: 1px solid #1f4068;
     border-radius: 4px;
@@ -127,13 +132,31 @@
     background: transparent;
 }
 .gb-m-sb-roll .label {
-    font: 700 10px/1 Impact, sans-serif;
+    font: 700 9px/1 Impact, sans-serif;
     letter-spacing: 1px;
 }
-.gb-m-sb-roll .value {
-    font: 700 28px/1 Impact, sans-serif;
+.gb-m-sb-roll .roll-big {
+    font: 700 24px/1 Impact, sans-serif;
     color: #fff;
-    margin-top: 2px;
+}
+/* Equation sandwiched between the two big numbers. Monospace + small
+   so a 4-term breakdown like "+ 6(C) − 1(F) + 3(20)" fits or wraps
+   cleanly inside the ~95px-wide left column. */
+.gb-m-sb-roll .eq {
+    font: 600 9px/1.15 Menlo, Consolas, monospace;
+    color: #aac0e0;
+    text-align: center;
+    max-width: 100%;
+    word-spacing: -1px;
+}
+.gb-m-sb-roll .total-big {
+    font: 700 22px/1 Impact, sans-serif;
+    color: #fff;
+}
+.gb-m-sb-roll .vs {
+    font: 700 8px/1 Impact, sans-serif;
+    letter-spacing: 1px;
+    color: #6b8fb8;
 }
 .gb-m-sb-roll.red    { border-color: #e94560; }
 .gb-m-sb-roll.red    .label { color: #e94560; }
@@ -173,11 +196,13 @@
     letter-spacing: 2px;
     color: #c8d8f8;
 }
-.gb-m-sb-result.empty {
+/* Pre-swing state: dashed neutral border, dim text — clearly a
+   placeholder so the user knows the result will replace it. */
+.gb-m-sb-result.awaiting {
     border-style: dashed;
     border-color: #1a3060;
     background: transparent;
-    color: transparent;
+    color: #5b7194;
 }
 .gb-m-sb-result.good {
     border-color: #4ade80;

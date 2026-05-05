@@ -161,21 +161,35 @@ function RunnerAnimOverlay({ anim, baseCoords, baseAnimMs }: {
     );
 }
 
-/** Roll info displayed in the mobile sidebar's per-side roll box. */
+/** Roll info displayed in the mobile sidebar's per-side roll box.
+ *  Render layout (top to bottom):
+ *    label (PITCH / SWING / FIELD / THROW / CATCH / BUNT)
+ *    big roll number (the d20 result)
+ *    breakdown.equation     (e.g. "+ 6(C) − 1(F) + 3(20)")  ← only when breakdown present
+ *    big total              (= breakdown.total)             ← only when breakdown present
+ *    breakdown.vs           (e.g. "vs OB 11")               ← optional sub-line
+ *  Swing rolls intentionally omit `breakdown` — there's no math, just the number.
+ *  Bunt is treated the same way (a single chart roll with no modifier). */
 interface SideRoll {
     label: string;
-    value: number;
+    roll: number;
     color: 'red' | 'green' | 'blue' | 'gold';
     /** Bumped each time a new roll lands so the box can pulse. */
     triggerKey: string;
+    breakdown?: {
+        equation: string;
+        total: number;
+        vs?: string;
+    };
 }
 
-/** Compact d20-roll readout in the mobile sidebar — label above big value.
- *  When triggerKey changes, the value flickers briefly to mimic the dice
- *  spin animation the bottom-row DiceSpinner used to provide. Calls
- *  onSpinComplete after the flicker so the parent's diceAnimating state
- *  clears (the desktop DiceSpinner's role; on mobile the per-side boxes
- *  drive it instead). */
+/** Compact d20-roll readout in the mobile sidebar.
+ *  Label → big roll → (equation → big total → vs) when a breakdown is present;
+ *  swing/bunt skip the breakdown rows. While spinning, only the big roll
+ *  number flickers — the equation/total/vs stay hidden so the user doesn't
+ *  see stale calc lines next to a still-rolling value.
+ *  Calls onSpinComplete after the flicker so the parent's diceAnimating
+ *  state clears (the role the desktop SVG DiceSpinner plays). */
 function MobileRollBox({ roll, onSpinComplete }: {
     roll: SideRoll | null;
     onSpinComplete?: () => void;
@@ -184,9 +198,9 @@ function MobileRollBox({ roll, onSpinComplete }: {
     const [display, setDisplay] = useState<number | null>(null);
     const lastKeyRef = useRef<string | null>(null);
     useEffect(() => {
-        if (!roll) { setDisplay(null); return; }
+        if (!roll) { setDisplay(null); lastKeyRef.current = null; return; }
         if (roll.triggerKey === lastKeyRef.current) {
-            setDisplay(roll.value);
+            setDisplay(roll.roll);
             return;
         }
         lastKeyRef.current = roll.triggerKey;
@@ -195,30 +209,38 @@ function MobileRollBox({ roll, onSpinComplete }: {
         const timeout = setTimeout(() => {
             clearInterval(interval);
             setSpinning(false);
-            setDisplay(roll.value);
+            setDisplay(roll.roll);
             onSpinComplete?.();
         }, 600);
         return () => { clearInterval(interval); clearTimeout(timeout); };
     }, [roll, onSpinComplete]);
     if (!roll) return <div className="gb-m-sb-roll empty"/>;
+    const showBreakdown = !spinning && !!roll.breakdown;
     return (
         <div className={`gb-m-sb-roll ${roll.color}${spinning ? ' spinning' : ''}`}>
             <div className="label">{roll.label}</div>
-            <div className="value">{display ?? '–'}</div>
+            <div className="roll-big">{display ?? '–'}</div>
+            {showBreakdown && (
+                <>
+                    <div className="eq">{roll.breakdown!.equation}</div>
+                    <div className="total-big">= {roll.breakdown!.total}</div>
+                    {roll.breakdown!.vs && <div className="vs">{roll.breakdown!.vs}</div>}
+                </>
+            )}
         </div>
     );
 }
 
 /** Pitch/Swing advantage indicator in the middle of the sidebar, between
- *  the two pitcher cards. Background tint reads from the user's
- *  perspective — green when the result favors me, red when it doesn't. */
-function MobileResultBox({ text, goodForMe }: { text: string | null; goodForMe: boolean }) {
-    if (!text) return <div className="gb-m-sb-result empty"/>;
-    return (
-        <div className={`gb-m-sb-result ${goodForMe ? 'good' : 'bad'}`}>
-            {text}
-        </div>
-    );
+ *  the two pitcher cards. Three states:
+ *    - awaiting (no swing yet for this at-bat) → neutral text "AWAITING PITCH"
+ *    - good (result favors me, current user) → green tint
+ *    - bad (result favors opponent) → red tint
+ *  Swap from awaiting → good/bad happens once the current at-bat's swing
+ *  has been rolled and the chart resolved. Resets to awaiting at every
+ *  new at-bat (handled by the parent via swingThisAtBat). */
+function MobileResultBox({ text, kind }: { text: string; kind: 'good' | 'bad' | 'awaiting' }) {
+    return <div className={`gb-m-sb-result ${kind}`}>{text}</div>;
 }
 
 /** One pitcher card for the mobile right-sidebar — image, last name, IP,
@@ -363,28 +385,132 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         }
     }
 
+    // Track whether a swing has resolved within the current at-bat. Drives
+    // the result-indicator state machine: AWAITING PITCH (default) → reveals
+    // PITCHER/BATTER ADV after the swing chart resolves. Reset on at-bat
+    // change below.
+    const [swingThisAtBat, setSwingThisAtBat] = useState(false);
+
+    // Clear roll boxes + reset the result indicator when a new at-bat
+    // starts — new batter, new half-inning, or new inning.
+    //
+    // Declared BEFORE the routing effect on purpose. React fires effects in
+    // declaration order; this lets a single state update that simultaneously
+    // changes the batter AND the swing roll (e.g. a strikeout that
+    // auto-advances) clear first, then route — so the new roll persists in
+    // the box. If this ran second, it would wipe the freshly-routed roll.
+    const atBatId = `${state.halfInning}-${state.inning}-${battingTeam.currentBatterIndex}-${batter?.cardId || ''}`;
+    const prevAtBatIdRef = useRef(atBatId);
+    useEffect(() => {
+        if (atBatId !== prevAtBatIdRef.current) {
+            prevAtBatIdRef.current = atBatId;
+            setOppRoll(null);
+            setMyRoll(null);
+            setSwingThisAtBat(false);
+        }
+    }, [atBatId]);
+
     // Route the latest roll into the per-side sidebar boxes (mobile only;
     // SVG layout doesn't read these). Pitch/fielding/extra-base/steal go
     // to the fielding team; swing/bunt go to the batting team.
+    //
+    // Each roll carries a `breakdown` (equation + total + vs) describing the
+    // server-side math behind it. For pitch we have full granularity (control,
+    // fatigue, icon mod). For fielding/throw/catch we recover the bonus stack
+    // from the pending result's defenseTotal − roll. Swing and bunt skip the
+    // breakdown — they're raw chart rolls with no modifiers, so just the
+    // number is shown.
     useEffect(() => {
         if (state.lastRoll == null || !state.lastRollType) return;
         const t = state.lastRollType;
         const fieldingSide: 'home' | 'away' = state.halfInning === 'top' ? 'home' : 'away';
         const battingSide: 'home' | 'away' = state.halfInning === 'top' ? 'away' : 'home';
+        const fieldingTeamObj = state.halfInning === 'top' ? state.homeTeam : state.awayTeam;
+        const battingTeamObj = state.halfInning === 'top' ? state.awayTeam : state.homeTeam;
+        const curBatter = battingTeamObj.lineup[battingTeamObj.currentBatterIndex];
         let side: 'home' | 'away' | null = null;
         let label = '';
         let color: SideRoll['color'] = 'gold';
-        if (t === 'pitch') { side = fieldingSide; label = 'PITCH'; color = 'red'; }
-        else if (t === 'swing') { side = battingSide; label = 'SWING'; color = 'green'; }
-        else if (t === 'fielding') { side = fieldingSide; label = 'FIELD'; color = 'blue'; }
-        else if (t === 'extra_base') { side = fieldingSide; label = 'THROW'; color = 'blue'; }
-        else if (t.startsWith('steal')) { side = fieldingSide; label = 'CATCH'; color = 'blue'; }
-        else if (t === 'bunt') { side = battingSide; label = 'BUNT'; color = 'green'; }
+        let breakdown: SideRoll['breakdown'] | undefined;
+
+        if (t === 'pitch') {
+            side = fieldingSide; label = 'PITCH'; color = 'red';
+            const ctrl = fieldingTeamObj.pitcher.control || 0;
+            const fat = state.fatiguePenalty || 0;
+            const iconMod = state.lastPitchControlMod || 0;
+            const total = state.lastPitchTotal || state.lastRoll;
+            // "+ 6(C) − 1(F) + 3(20)" — only include non-zero terms
+            const parts: string[] = [`+ ${ctrl}(C)`];
+            if (fat > 0) parts.push(`− ${fat}(F)`);
+            if (iconMod > 0) parts.push(`+ ${iconMod}(20)`);
+            breakdown = {
+                equation: parts.join(' '),
+                total,
+                vs: curBatter ? `vs OB ${curBatter.onBase}` : undefined,
+            };
+        } else if (t === 'swing') {
+            side = battingSide; label = 'SWING'; color = 'green';
+            // Swing has no math — just the number.
+        } else if (t === 'fielding') {
+            // GB DP roll: d20 + IF (+10 G if used) vs batter speed.
+            side = fieldingSide; label = 'FIELD'; color = 'blue';
+            const dp = state.pendingDpResult;
+            if (dp) {
+                const gBonus = dp.goldGloveUsed ? 10 : 0;
+                const ifField = dp.defenseTotal - dp.roll - gBonus;
+                const parts: string[] = [`+ ${ifField}(IF)`];
+                if (gBonus) parts.push(`+ ${gBonus}(G)`);
+                breakdown = {
+                    equation: parts.join(' '),
+                    total: dp.defenseTotal,
+                    vs: `vs SPD ${dp.offenseSpeed}`,
+                };
+            }
+        } else if (t === 'extra_base') {
+            // OF throw: d20 + OF (+10 G if used) vs runner target (speed + bonuses).
+            side = fieldingSide; label = 'THROW'; color = 'blue';
+            const eb = state.pendingExtraBaseResult;
+            if (eb) {
+                const gBonus = eb.goldGloveUsed ? 10 : 0;
+                const ofField = eb.defenseTotal - eb.roll - gBonus;
+                const parts: string[] = [`+ ${ofField}(OF)`];
+                if (gBonus) parts.push(`+ ${gBonus}(G)`);
+                breakdown = {
+                    equation: parts.join(' '),
+                    total: eb.defenseTotal,
+                    vs: `vs SPD ${eb.runnerSpeed}`,
+                };
+            }
+        } else if (t.startsWith('steal')) {
+            // Catcher throw: d20 + arm (+5 if to 3rd) (+10 G if used) vs runner speed.
+            side = fieldingSide; label = 'CATCH'; color = 'blue';
+            const sr = state.pendingStealResult;
+            if (sr) {
+                const gBonus = sr.goldGloveUsed ? 10 : 0;
+                const armWithBonus = sr.defenseTotal - sr.roll - gBonus;
+                const parts: string[] = [`+ ${armWithBonus}(A)`];
+                if (gBonus) parts.push(`+ ${gBonus}(G)`);
+                breakdown = {
+                    equation: parts.join(' '),
+                    total: sr.defenseTotal,
+                    vs: `vs SPD ${sr.runnerSpeed}`,
+                };
+            }
+        } else if (t === 'bunt') {
+            // Single chart roll on pitcher's chart — no modifier math.
+            side = battingSide; label = 'BUNT'; color = 'green';
+        }
         if (!side) return;
-        const next: SideRoll = { label, value: state.lastRoll, color, triggerKey: rollKey };
+        const next: SideRoll = { label, roll: state.lastRoll, color, triggerKey: rollKey, breakdown };
         if (side === myRole) setMyRoll(next);
         else setOppRoll(next);
-    }, [rollKey, state.lastRoll, state.lastRollType, state.halfInning, myRole]);
+        if (t === 'swing') setSwingThisAtBat(true);
+        // rollKey is the only dep that matters here — it bumps on every
+        // new roll. Other values referenced inside (state.lastPitchTotal,
+        // pending* results, team objects) come from the same state update
+        // so they're already current at this point. Including them would
+        // force re-runs on every render for no benefit.
+    }, [rollKey, myRole]); // eslint-disable-line react-hooks/exhaustive-deps
     // Icon-change soft freeze: when iconChangeSequence increments, freeze the
     // lineup/state for ~700ms so the user sees the icon-driven change before
     // the highlight jumps to the next batter. No dice re-spin.
@@ -751,16 +877,23 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             </div>
                         </div>
                         {/* Middle row spans both columns — pitch/swing
-                            advantage indicator from my perspective. Green when
-                            it favors me, red when it doesn't. */}
+                            advantage indicator from my perspective. Awaiting
+                            text shows until the current at-bat's swing chart
+                            resolves; once resolved it tints green when the
+                            result favors me, red when it doesn't. Resets to
+                            awaiting on every new at-bat (swingThisAtBat is
+                            cleared when atBatId changes). */}
                         {(() => {
-                            const haveAdv = state.lastSwingRoll != null && state.usedPitcherChart != null;
-                            if (!haveAdv) return <MobileResultBox text={null} goodForMe={false}/>;
+                            const haveResult = swingThisAtBat
+                                && state.lastSwingRoll != null
+                                && state.usedPitcherChart != null;
+                            if (!haveResult) return <MobileResultBox text="AWAITING PITCH" kind="awaiting"/>;
                             const pitcherAdv = !!state.usedPitcherChart;
+                            const goodForMe = pitcherAdv === !iAmBatting;
                             return (
                                 <MobileResultBox
                                     text={pitcherAdv ? 'PITCHER ADV' : 'BATTER ADV'}
-                                    goodForMe={pitcherAdv === !iAmBatting}
+                                    kind={goodForMe ? 'good' : 'bad'}
                                 />
                             );
                         })()}
