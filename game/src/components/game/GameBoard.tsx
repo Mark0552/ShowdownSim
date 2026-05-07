@@ -234,11 +234,13 @@ function MobileRollBox({ roll, onSpinComplete }: {
 /** Combined advantage indicator + persisted-result panel in the middle of
  *  the sidebar, between the two pitcher cards. Two stacked lines:
  *    - top (small): advantage indicator — "AWAITING PITCH" / "PITCHER ADV"
- *      / "BATTER ADV". Resets every at-bat (driven by swingThisAtBat).
+ *      / "BATTER ADV". Reveals as soon as the pitch lands (gated on
+ *      pitchThisAtBat), resets to AWAITING on every new at-bat.
  *    - bottom (larger, optional): persisted result text from the most
  *      recent swing/fielding/throw/catch/bunt — "STRIKEOUT", "DOUBLE
- *      PLAY", "HOME RUN!", etc. Survives at-bat boundaries; cleared on
- *      half-inning flip; replaced when a new result lands.
+ *      PLAY", "HOME RUN!", etc. Cleared by the next pitch roll (so the
+ *      advantage indicator is the only thing visible between pitch and
+ *      swing) AND on half-inning flip.
  *  Box border tint priority: result good/bad (when set) > advantage
  *  good/bad > awaiting neutral. The two lines can have different tints
  *  (e.g. PITCHER ADV in red while HOME RUN is in green for the batter
@@ -408,11 +410,12 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         }
     }
 
-    // Track whether a swing has resolved within the current at-bat. Drives
+    // Track whether the pitch has rolled within the current at-bat. Drives
     // the advantage-indicator state machine: AWAITING PITCH (default) →
-    // reveals PITCHER/BATTER ADV after the swing chart resolves. Reset on
-    // at-bat change below.
-    const [swingThisAtBat, setSwingThisAtBat] = useState(false);
+    // reveals PITCHER/BATTER ADV as soon as the pitch lands (the pitch
+    // roll is what selects the chart, so the advantage is decided then —
+    // we don't need to wait for the swing). Reset on at-bat change below.
+    const [pitchThisAtBat, setPitchThisAtBat] = useState(false);
 
     // Persisted last-play result text shown below the advantage indicator.
     // Survives at-bat boundaries so the previous batter's outcome stays
@@ -453,7 +456,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             prevAtBatIdRef.current = atBatId;
             setOppRoll(null);
             setMyRoll(null);
-            setSwingThisAtBat(false);
+            setPitchThisAtBat(false);
         }
     }, [atBatId]);
 
@@ -572,7 +575,14 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         const next: SideRoll = { label, roll: state.lastRoll, color, triggerKey: rollKey, breakdown };
         if (side === myRole) setMyRoll(next);
         else setOppRoll(next);
-        if (t === 'swing') setSwingThisAtBat(true);
+        if (t === 'pitch') {
+            // Pitch landed: flip the advantage indicator from AWAITING PITCH
+            // to PITCHER/BATTER ADV (gated on pitchThisAtBat below), and clear
+            // any stale persistedResult from the previous at-bat so the
+            // indicator is the only thing visible until the swing resolves.
+            setPitchThisAtBat(true);
+            setPersistedResult(null);
+        }
 
         // Capture this roll's outcome into persistedResult (the bottom line
         // of the advantage box). Persists across at-bats, replaced by the
@@ -1007,15 +1017,14 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             </div>
                         </div>
                         {/* Middle row spans both columns — two stacked
-                            lines. Top: pitch advantage indicator (resets
-                            per at-bat via swingThisAtBat). Bottom:
+                            lines. Top: pitch advantage indicator (gated on
+                            pitchThisAtBat, set true the moment a pitch
+                            roll lands; reset on at-bat change). Bottom:
                             persistedResult — outcome of the most recent
-                            swing/fielding/throw/catch/bunt, persists across
-                            at-bats within the same half-inning, cleared on
-                            half flip. */}
+                            swing/fielding/throw/catch/bunt; cleared by
+                            the next pitch roll AND on half flip. */}
                         {(() => {
-                            const haveAdv = swingThisAtBat
-                                && state.lastSwingRoll != null
+                            const haveAdv = pitchThisAtBat
                                 && state.usedPitcherChart != null;
                             let advLabel: string;
                             let advKind: 'awaiting' | 'good' | 'bad';
