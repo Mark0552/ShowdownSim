@@ -303,7 +303,12 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     const [hoveredPlayer, setHoveredPlayer] = useState<PlayerSlot | null>(null);
     const [showAwayBullpen, setShowAwayBullpen] = useState(false);
     const [showHomeBullpen, setShowHomeBullpen] = useState(false);
-    const [showSubPanel, setShowSubPanel] = useState(false);
+    // Was a boolean — now stores which tab the modal should open to. null
+    // means the modal is closed. Set by ActionButtons via onShowSubPanel(tab),
+    // which lets each separate button (PINCH HIT / PINCH RUN / CHANGE PITCHER
+    // / DEFENSIVE SUB) land directly on its tab instead of a generic
+    // SUBSTITUTIONS picker.
+    const [subPanelTab, setSubPanelTab] = useState<import('./SubstitutionModal').SubTab | null>(null);
     const [showStats, setShowStats] = useState(false);
     const [showFullLog, setShowFullLog] = useState(false);
     const [showDiceRolls, setShowDiceRolls] = useState(false);
@@ -866,8 +871,8 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                 {hoveredPlayer && <CardTooltip card={playerSlotToCard(hoveredPlayer)} onClose={handlePlayerLeave} />}
                 {showAwayBullpen && <BullpenPanel team={state.awayTeam} side="away" onClose={() => setShowAwayBullpen(false)} onHover={handlePlayerHover} onLeave={handlePlayerLeave} />}
                 {showHomeBullpen && <BullpenPanel team={state.homeTeam} side="home" onClose={() => setShowHomeBullpen(false)} onHover={handlePlayerHover} onLeave={handlePlayerLeave} />}
-                {showSubPanel && isMyTurn && (
-                    <SubstitutionModal state={state} myRole={myRole} onAction={onAction} onClose={() => setShowSubPanel(false)} />
+                {subPanelTab !== null && isMyTurn && (
+                    <SubstitutionModal state={state} myRole={myRole} onAction={onAction} initialTab={subPanelTab} onClose={() => setSubPanelTab(null)} />
                 )}
                 {displayPhase === 'defense_setup' && state.phase === 'defense_setup' && (
                     <DefenseSetupModal state={state} myRole={myRole} isMyTurn={isMyTurn} onAction={onAction}
@@ -1084,7 +1089,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                             fieldingTeam={fieldingTeam}
                             hasRunners={hasRunners}
                             outcomeNames={outcomeNames}
-                            onShowSubPanel={() => setShowSubPanel(true)}
+                            onShowSubPanel={(tab) => setSubPanelTab(tab)}
                             onNextSeriesGame={onNextSeriesGame}
                             seriesStatus={seriesInfo
                                 ? (Math.max(seriesInfo.homeWins, seriesInfo.awayWins) > seriesInfo.bestOf / 2
@@ -1109,12 +1114,13 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             {/* Bullpen/Sub panels (HTML overlays) */}
             {showAwayBullpen && <BullpenPanel team={state.awayTeam} side="away" onClose={() => setShowAwayBullpen(false)} onHover={handlePlayerHover} onLeave={handlePlayerLeave} />}
             {showHomeBullpen && <BullpenPanel team={state.homeTeam} side="home" onClose={() => setShowHomeBullpen(false)} onHover={handlePlayerHover} onLeave={handlePlayerLeave} />}
-            {showSubPanel && isMyTurn && (
+            {subPanelTab !== null && isMyTurn && (
                 <SubstitutionModal
                     state={state}
                     myRole={myRole}
                     onAction={onAction}
-                    onClose={() => setShowSubPanel(false)}
+                    initialTab={subPanelTab}
+                    onClose={() => setSubPanelTab(null)}
                 />
             )}
             {/* Wait for the play animation to finish before opening the half-
@@ -1260,7 +1266,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                     fieldingTeam={fieldingTeam}
                     hasRunners={hasRunners}
                     outcomeNames={outcomeNames}
-                    onShowSubPanel={() => setShowSubPanel(true)}
+                    onShowSubPanel={(tab) => setSubPanelTab(tab)}
                     onNextSeriesGame={onNextSeriesGame}
                     seriesStatus={seriesInfo
                         ? (Math.max(seriesInfo.homeWins, seriesInfo.awayWins) > seriesInfo.bestOf / 2

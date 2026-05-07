@@ -69,9 +69,18 @@
       "Bash(bash -c 'cmd=$\\(jq -r \".tool_input.command\"\\); if echo \"$cmd\" | grep -qE \"git push\"; then jq -nc --arg ctx \"Pre-push reminder: keep CLAUDE.md current. Run \\\\`git log origin/main..HEAD --oneline\\\\` and \\\\`git diff origin/main..HEAD -- CLAUDE.md\\\\` to check whether the changes being pushed include new features, architectural changes, new tables/columns, rule clarifications, or workflow rules not yet reflected in CLAUDE.md. If yes, update CLAUDE.md and stage the change before pushing. For pure bug fixes / refactors / dep bumps that do not change architecture or rules, push as-is. This nudge does not block the push.\" \"{hookSpecificOutput: {hookEventName: \\\\\"PreToolUse\\\\\", additionalContext: \\\\$ctx}}\"; fi')",
       "Bash(bash -c 'cmd=$\\(jq -r \".tool_input.command\"\\); if echo \"$cmd\" | grep -qE \"git push\"; then jq -nc --arg ctx \"REMINDER\" \"{hookSpecificOutput: {hookEventName: \\\\\"PreToolUse\\\\\", additionalContext: \\\\$ctx}}\"; fi')",
       "Bash(chmod +x /c/Repositories/ShowdownSim/.claude/hooks/pre-push-reminder.sh)",
-      "Bash(bash /c/Repositories/ShowdownSim/.claude/hooks/pre-push-reminder.sh)"
+      "Bash(bash /c/Repositories/ShowdownSim/.claude/hooks/pre-push-reminder.sh)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(npx vitest *)",
+      "mcp__chrome-devtools__new_page",
+      "mcp__chrome-devtools__close_page"
     ]
   },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "playwright"
+  ],
   "hooks": {
     "PreToolUse": [
       {
@@ -79,8 +88,8 @@
         "hooks": [
           {
             "type": "command",
-            "shell": "bash",
-            "command": "bash .claude/hooks/pre-push-reminder.sh"
+            "command": "bash .claude/hooks/pre-push-reminder.sh",
+            "shell": "bash"
           }
         ]
       }

@@ -1,6 +1,7 @@
 import { Children } from 'react';
 import type { GameState, GameAction, TeamState } from '../../engine/gameEngine';
 import { getCurrentBatter, getCurrentPitcher } from '../../engine/gameEngine';
+import type { SubTab } from './SubstitutionModal';
 
 interface ActionButtonsProps {
     state: GameState;
@@ -12,7 +13,13 @@ interface ActionButtonsProps {
     fieldingTeam: TeamState;
     hasRunners: boolean;
     outcomeNames: Record<string, string>;
-    onShowSubPanel: () => void;
+    /** Open the substitution modal directly to the given tab. The action
+     *  bar surfaces PINCH HIT / PINCH RUN (offense, pre_atbat) and CHANGE
+     *  PITCHER / DEFENSIVE SUB (defense, defense_sub) as separate buttons
+     *  rather than one combined SUBSTITUTIONS entry, so each call passes
+     *  the matching tab. None of these buttons commit an action — they
+     *  just open the picker. */
+    onShowSubPanel: (tab: SubTab) => void;
     /** Series-end callback: when set, the game-over screen shows a NEXT GAME
      *  button (or SERIES COMPLETE if the series is decided). */
     onNextSeriesGame?: () => void;
@@ -203,7 +210,8 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 return (
                     <div className="gb-m-actions">
                         <MainGrid>
-                            {eligibleBench.length > 0 && <MobileBtn label="SUBSTITUTIONS" sub="Pinch hit / pinch run / defensive" color="gold" onClick={onShowSubPanel}/>}
+                            {eligibleBench.length > 0 && <MobileBtn label="PINCH HIT" sub="Sub a batter" color="gold" onClick={() => onShowSubPanel('PH')}/>}
+                            {eligibleBench.length > 0 && hasRunners && <MobileBtn label="PINCH RUN" sub="Sub a baserunner" color="gold" onClick={() => onShowSubPanel('PR')}/>}
                             {sbRunners.map(sb => (
                                 <MobileBtn key={`sb-${sb.cardId}`} label={`SB: ${sb.name}`} sub={`${sb.fromBase}→${sb.toBase} (auto safe)`} color="blue"
                                     onClick={() => onAction({ type: 'USE_ICON', cardId: sb.cardId, icon: 'SB' })}/>
@@ -236,7 +244,8 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 return (
                     <div className="gb-m-actions">
                         <MainGrid>
-                            {canChangePitcher && <MobileBtn label="SUBSTITUTIONS" sub="Pitching change / defensive sub" color="gold" onClick={onShowSubPanel}/>}
+                            {canChangePitcher && <MobileBtn label="CHANGE PITCHER" sub="Bring in a reliever" color="gold" onClick={() => onShowSubPanel('PC')}/>}
+                            {state.phase === 'defense_sub' && <MobileBtn label="DEFENSIVE SUB" sub="Rearrange field / sub bench" color="gold" onClick={() => onShowSubPanel('DS')}/>}
                             {hasRP && <MobileBtn label="RP ICON (+3 CTRL)" sub="Rest of inning" color="blue"
                                 onClick={() => onAction({ type: 'USE_ICON', cardId: fieldingTeam.pitcher.cardId, icon: 'RP' })}/>}
                             <MobileBtn label="INTENTIONAL WALK" sub="Walk batter to 1st" color="purple"
@@ -579,7 +588,8 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 }
                 // Collect all buttons, then center them
                 const items: { type: string; width: number; data?: any }[] = [];
-                if (eligibleBench.length > 0) items.push({ type: 'pinch', width: 220 });
+                if (eligibleBench.length > 0) items.push({ type: 'ph', width: 180 });
+                if (eligibleBench.length > 0 && hasRunners) items.push({ type: 'pr', width: 180 });
                 sbRunners.forEach(sb => items.push({ type: 'sb', width: 190, data: sb }));
                 if (canStealFromFirst) items.push({ type: 'steal2', width: 200 });
                 if (canStealFromSecond) items.push({ type: 'steal3', width: 200 });
@@ -592,11 +602,18 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                     {items.map((item, idx) => {
                         const x = bx;
                         bx += item.width + gap;
-                        if (item.type === 'pinch') return (
-                            <g key="pinch" className="roll-button" onClick={() => onShowSubPanel()} cursor="pointer">
+                        if (item.type === 'ph') return (
+                            <g key="ph" className="roll-button" onClick={() => onShowSubPanel('PH')} cursor="pointer">
                                 <rect x={x} y={ROW1} width={item.width} height={ROW1_H} rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
-                                <text x={x + item.width / 2} y={ROW1 + 32} textAnchor="middle" fontSize="22" fill="#002" fontWeight="normal" fontFamily="Impact">SUBSTITUTIONS</text>
-                                <text x={x + item.width / 2} y={ROW1 + 58} textAnchor="middle" fontSize="13" fill="rgba(0,0,0,0.7)" fontFamily="Arial">Pinch hit / pinch run / defensive</text>
+                                <text x={x + item.width / 2} y={ROW1 + 32} textAnchor="middle" fontSize="22" fill="#002" fontWeight="normal" fontFamily="Impact">PINCH HIT</text>
+                                <text x={x + item.width / 2} y={ROW1 + 58} textAnchor="middle" fontSize="13" fill="rgba(0,0,0,0.7)" fontFamily="Arial">Sub a batter</text>
+                            </g>
+                        );
+                        if (item.type === 'pr') return (
+                            <g key="pr" className="roll-button" onClick={() => onShowSubPanel('PR')} cursor="pointer">
+                                <rect x={x} y={ROW1} width={item.width} height={ROW1_H} rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
+                                <text x={x + item.width / 2} y={ROW1 + 32} textAnchor="middle" fontSize="22" fill="#002" fontWeight="normal" fontFamily="Impact">PINCH RUN</text>
+                                <text x={x + item.width / 2} y={ROW1 + 58} textAnchor="middle" fontSize="13" fill="rgba(0,0,0,0.7)" fontFamily="Arial">Sub a baserunner</text>
                             </g>
                         );
                         if (item.type === 'sb') {
@@ -660,7 +677,8 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 // Row 1: pitcher change options (if any)
                 // Row 2: IBB | ROLL PITCH (+ 20 option) — always shown
                 const row1Items: { type: string; width: number }[] = [];
-                if (canChangePitcher) row1Items.push({ type: 'change', width: 220 });
+                if (canChangePitcher) row1Items.push({ type: 'pc', width: 200 });
+                row1Items.push({ type: 'ds', width: 200 });
                 if (hasRP) row1Items.push({ type: 'rp', width: 190 });
 
                 const row2Items: { type: string; width: number }[] = [];
@@ -680,11 +698,18 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                         const x = bx;
                         bx += item.width + gap;
                         switch (item.type) {
-                            case 'change': return (
-                                <g key="change" className="roll-button" onClick={() => onShowSubPanel()} cursor="pointer">
+                            case 'pc': return (
+                                <g key="pc" className="roll-button" onClick={() => onShowSubPanel('PC')} cursor="pointer">
                                     <rect x={x} y={y} width={item.width} height={ROW1_H} rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
-                                    <text x={x + item.width / 2} y={y + 32} textAnchor="middle" fontSize="22" fill="#002" fontWeight="normal" fontFamily="Impact">SUBSTITUTIONS</text>
-                                    <text x={x + item.width / 2} y={y + 58} textAnchor="middle" fontSize="13" fill="rgba(0,0,0,0.7)" fontFamily="Arial">Pitching change / defensive sub</text>
+                                    <text x={x + item.width / 2} y={y + 32} textAnchor="middle" fontSize="22" fill="#002" fontWeight="normal" fontFamily="Impact">CHANGE PITCHER</text>
+                                    <text x={x + item.width / 2} y={y + 58} textAnchor="middle" fontSize="13" fill="rgba(0,0,0,0.7)" fontFamily="Arial">Bring in a reliever</text>
+                                </g>
+                            );
+                            case 'ds': return (
+                                <g key="ds" className="roll-button" onClick={() => onShowSubPanel('DS')} cursor="pointer">
+                                    <rect x={x} y={y} width={item.width} height={ROW1_H} rx="6" fill="#d4a018" stroke="#f0c840" strokeWidth="1.5"/>
+                                    <text x={x + item.width / 2} y={y + 32} textAnchor="middle" fontSize="22" fill="#002" fontWeight="normal" fontFamily="Impact">DEFENSIVE SUB</text>
+                                    <text x={x + item.width / 2} y={y + 58} textAnchor="middle" fontSize="13" fill="rgba(0,0,0,0.7)" fontFamily="Arial">Rearrange field / sub bench</text>
                                 </g>
                             );
                             case 'rp': return (

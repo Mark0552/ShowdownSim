@@ -1,10 +1,14 @@
 /**
- * Standalone tests for the draft constraint engine. Run via:
- *   cd game && npx tsx src/logic/draftConstraints.test.ts
+ * Tests for the draft constraint engine. Run via Vitest:
+ *   npm test                  # watch
+ *   npm run test:run          # one-shot
+ *   npm run test:coverage     # with coverage
  *
- * Uses Node's built-in assert. No test runner dependency.
+ * Uses Node's built-in assert (throws on failure). Vitest's globals
+ * (`describe` / `test`) are enabled via globals: true in vitest.config.ts.
  */
 
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import type { HitterCard, PitcherCard, Card, ParsedPosition } from '../types/cards';
 import {
@@ -18,20 +22,6 @@ import {
     simulatePick,
 } from './draftConstraints';
 import { emptyDraftTeam, buildSnakeOrder } from '../types/draft';
-
-let passed = 0;
-let failed = 0;
-function test(name: string, fn: () => void) {
-    try {
-        fn();
-        passed++;
-        console.log(`  PASS: ${name}`);
-    } catch (e: any) {
-        failed++;
-        console.log(`  FAIL: ${name}`);
-        console.log(`        ${e.message}`);
-    }
-}
 
 // ---------------------------------------------------------------------------
 // Card factory helpers
@@ -68,8 +58,6 @@ const CF_ONLY = (pts = 100) => hitter([{ position: 'CF', fielding: 0 }], pts);
 // Snake order
 // ---------------------------------------------------------------------------
 
-console.log('\nbuildSnakeOrder:');
-
 test('home picks 1st, away picks 2-3, home picks 4-5', () => {
     const order = buildSnakeOrder(6);
     assert.deepEqual(order, ['home', 'away', 'away', 'home', 'home', 'away']);
@@ -90,8 +78,6 @@ test('40-pick snake starts and ends with home', () => {
 // ---------------------------------------------------------------------------
 // Position eligibility
 // ---------------------------------------------------------------------------
-
-console.log('\nhitterFitsSlot:');
 
 test('any hitter fits 1B', () => {
     assert.equal(hitterFitsSlot(C_ONLY(), '1B'), true);
@@ -115,8 +101,6 @@ test('CF-only card does not fit LF-RF', () => {
 // ---------------------------------------------------------------------------
 // Bipartite matching
 // ---------------------------------------------------------------------------
-
-console.log('\nhitterMatchingSize:');
 
 test('3 catchers all assignable (C, 1B, DH)', () => {
     const set = [C_ONLY(), C_ONLY(), C_ONLY()];
@@ -159,8 +143,6 @@ test('1 of each natural position assigns all 9', () => {
 // Effective cost
 // ---------------------------------------------------------------------------
 
-console.log('\neffectiveCost:');
-
 test('starter hitter pays full cost', () => {
     assert.equal(effectiveCost(C_ONLY(500), 'starterHitter'), 500);
 });
@@ -176,7 +158,6 @@ test('SP and RP pay full cost (never benched)', () => {
 // Eligibility — full path
 // ---------------------------------------------------------------------------
 
-console.log('\ncheckEligibility:');
 
 function makePool(): Card[] {
     nextId = 1000; // separate id space so reused tests don't collide
@@ -285,8 +266,6 @@ test('bench pick uses 1/5 cost', () => {
 // Budget lower bound
 // ---------------------------------------------------------------------------
 
-console.log('\nbudgetLowerBound:');
-
 test('empty team has positive lower bound', () => {
     const pool = makePool();
     const team = emptyDraftTeam(5000);
@@ -306,5 +285,3 @@ test('full team has zero lower bound', () => {
     assert.equal(budgetLowerBound(team, []), 0);
 });
 
-console.log(`\n${passed} passed, ${failed} failed`);
-if (failed > 0) process.exit(1);

@@ -18,14 +18,21 @@ import CardTooltip from '../cards/CardTooltip';
 import AlignmentEditor from './AlignmentEditor';
 import './SubstitutionModal.css';
 
+export type SubTab = 'PH' | 'PR' | 'PC' | 'DS';
+
 interface Props {
     state: GameState;
     myRole: 'home' | 'away';
     onAction: (action: GameAction) => void;
     onClose: () => void;
+    /** Which tab to show first when the modal opens. Lets the action bar
+     *  surface PINCH HIT / PINCH RUN / CHANGE PITCHER / DEFENSIVE SUB as
+     *  separate buttons instead of one combined SUBSTITUTIONS entry; each
+     *  button passes its own initialTab so the modal lands directly on
+     *  the picked action. Falls back to the first available tab for the
+     *  current phase if undefined or invalid. */
+    initialTab?: SubTab;
 }
-
-type SubTab = 'PH' | 'PR' | 'PC' | 'DS';
 
 interface TabDef {
     key: SubTab;
@@ -57,12 +64,21 @@ function asCard(p: PlayerSlot) {
     return p as unknown as Parameters<typeof fieldingPenalty>[0];
 }
 
-export default function SubstitutionModal({ state, myRole, onAction, onClose }: Props) {
+export default function SubstitutionModal({ state, myRole, onAction, onClose, initialTab }: Props) {
     const myTeam: TeamState = myRole === 'home' ? state.homeTeam : state.awayTeam;
     const phase = state.phase;
     const isTabAvailable = (t: TabDef) => t.phases.includes(phase);
     const firstAvailable = ALL_TABS.find(isTabAvailable);
-    const [tab, setTab] = useState<SubTab>(() => firstAvailable?.key || 'PH');
+    // Honor initialTab when it's available for this phase, otherwise fall
+    // back to the first phase-available tab. Prevents opening to (e.g.) PC
+    // during pre_atbat if the caller passed a stale tab.
+    const initial: SubTab = (() => {
+        if (initialTab && ALL_TABS.find(t => t.key === initialTab && isTabAvailable(t))) {
+            return initialTab;
+        }
+        return firstAvailable?.key || 'PH';
+    })();
+    const [tab, setTab] = useState<SubTab>(initial);
 
     // Card lookup for hover tooltip — cached load
     const [cardsList, setCardsList] = useState<Card[]>([]);
@@ -147,14 +163,16 @@ function PinchHitTab({ team, onAction, onClose, showCard, hideCard }: { team: Te
     };
 
     return (
-        <div className="sm-grid">
-            <Section title="1. Pick a bench player">
-                <PlayerList players={team.bench} selected={benchCardId} onSelect={setBenchCardId} role="hitter" showCard={showCard} hideCard={hideCard} />
-            </Section>
-            <Section title="2. Pick a lineup slot">
-                <LineupList lineup={team.lineup} selected={lineupIndex} onSelect={setLineupIndex} showCard={showCard} hideCard={hideCard} />
-            </Section>
-            <Section title="3. Confirm">
+        <>
+            <div className="sm-grid">
+                <Section title="1. Pick a bench player">
+                    <PlayerList players={team.bench} selected={benchCardId} onSelect={setBenchCardId} role="hitter" showCard={showCard} hideCard={hideCard} />
+                </Section>
+                <Section title="2. Pick a lineup slot">
+                    <LineupList lineup={team.lineup} selected={lineupIndex} onSelect={setLineupIndex} showCard={showCard} hideCard={hideCard} />
+                </Section>
+            </div>
+            <div className="sm-footer-sticky">
                 <PreviewSwap
                     incoming={team.bench.find(p => p.cardId === benchCardId)}
                     outgoing={team.lineup[lineupIndex]}
@@ -162,8 +180,8 @@ function PinchHitTab({ team, onAction, onClose, showCard, hideCard }: { team: Te
                 <button className="sm-btn-primary" onClick={submit} disabled={!benchCardId}>
                     Confirm Pinch Hit
                 </button>
-            </Section>
-        </div>
+            </div>
+        </>
     );
 }
 
@@ -184,24 +202,26 @@ function PinchRunTab({ state, team, onAction, onClose, showCard, hideCard }: { s
     };
 
     return (
-        <div className="sm-grid">
-            <Section title="1. Pick a base">
-                {occupiedBases.length === 0 && <div className="sm-empty">No runners on base.</div>}
-                <div className="sm-base-buttons">
-                    {occupiedBases.map(b => (
-                        <button key={b} className={`sm-base-btn ${base === b ? 'active' : ''}`} onClick={() => setBase(b)}>
-                            {b.charAt(0).toUpperCase() + b.slice(1)}
-                            {state.bases[b] && (
-                                <div className="sm-base-runner">{team.lineup.find(p => p.cardId === state.bases[b])?.name || state.bases[b]}</div>
-                            )}
-                        </button>
-                    ))}
-                </div>
-            </Section>
-            <Section title="2. Pick a bench player">
-                <PlayerList players={team.bench} selected={benchCardId} onSelect={setBenchCardId} role="hitter" showCard={showCard} hideCard={hideCard} />
-            </Section>
-            <Section title="3. Confirm">
+        <>
+            <div className="sm-grid">
+                <Section title="1. Pick a base">
+                    {occupiedBases.length === 0 && <div className="sm-empty">No runners on base.</div>}
+                    <div className="sm-base-buttons">
+                        {occupiedBases.map(b => (
+                            <button key={b} className={`sm-base-btn ${base === b ? 'active' : ''}`} onClick={() => setBase(b)}>
+                                {b.charAt(0).toUpperCase() + b.slice(1)}
+                                {state.bases[b] && (
+                                    <div className="sm-base-runner">{team.lineup.find(p => p.cardId === state.bases[b])?.name || state.bases[b]}</div>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                </Section>
+                <Section title="2. Pick a bench player">
+                    <PlayerList players={team.bench} selected={benchCardId} onSelect={setBenchCardId} role="hitter" showCard={showCard} hideCard={hideCard} />
+                </Section>
+            </div>
+            <div className="sm-footer-sticky">
                 <PreviewSwap
                     incoming={team.bench.find(p => p.cardId === benchCardId)}
                     outgoing={runner}
@@ -209,8 +229,8 @@ function PinchRunTab({ state, team, onAction, onClose, showCard, hideCard }: { s
                 <button className="sm-btn-primary" onClick={submit} disabled={!benchCardId || occupiedBases.length === 0}>
                     Confirm Pinch Run
                 </button>
-            </Section>
-        </div>
+            </div>
+        </>
     );
 }
 
@@ -228,12 +248,14 @@ function PitchingChangeTab({ team, onAction, onClose, showCard, hideCard }: { te
     };
 
     return (
-        <div className="sm-grid">
-            <Section title="1. Pick a reliever">
-                {reliefAvailable.length === 0 && <div className="sm-empty">No relievers available.</div>}
-                <PlayerList players={reliefAvailable} selected={bullpenCardId} onSelect={setBullpenCardId} role="pitcher" showCard={showCard} hideCard={hideCard} />
-            </Section>
-            <Section title="2. Confirm">
+        <>
+            <div className="sm-grid">
+                <Section title="1. Pick a reliever">
+                    {reliefAvailable.length === 0 && <div className="sm-empty">No relievers available.</div>}
+                    <PlayerList players={reliefAvailable} selected={bullpenCardId} onSelect={setBullpenCardId} role="pitcher" showCard={showCard} hideCard={hideCard} />
+                </Section>
+            </div>
+            <div className="sm-footer-sticky">
                 <PreviewSwap
                     incoming={team.bullpen.find(p => p.cardId === bullpenCardId)}
                     outgoing={team.pitcher}
@@ -241,8 +263,8 @@ function PitchingChangeTab({ team, onAction, onClose, showCard, hideCard }: { te
                 <button className="sm-btn-primary" onClick={submit} disabled={!bullpenCardId}>
                     Confirm Change
                 </button>
-            </Section>
-        </div>
+            </div>
+        </>
     );
 }
 
