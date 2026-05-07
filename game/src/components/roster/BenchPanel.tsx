@@ -94,6 +94,18 @@ export default function BenchPanel({ teamStore, dragStore, activeSlot, onSlotCli
                         <img src={slot.card.imagePath} alt="" className="bench-img" draggable={false} />
                         <span className="bench-name">{slot.card.name}</span>
                         <span className="bench-pts">{getEffectivePoints(slot)}pt (1/5)</span>
+                        {/* Mobile-only ✕ remove. Bench has no slot identity so no
+                            reorder/replace controls. */}
+                        <div className="bench-mobile-ctl">
+                            <button
+                                className="mobile-ctl-x"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeCard(slot.card.id);
+                                }}
+                                aria-label="Remove from bench"
+                            >✕</button>
+                        </div>
                     </div>
                 ))}
                 {remaining > 0 && (

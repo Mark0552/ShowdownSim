@@ -345,3 +345,98 @@
 .create-modal-cancel:hover {
     color: var(--text);
 }
+
+/* Mobile (iOS Home Screen, portrait). */
+@media (max-width: 899px) {
+    .lobby-page { padding: 12px; }
+
+    /* Header reflow: Back button left, title middle, Create full-width below. */
+    .lobby-header {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        grid-template-areas: "back title" "create create";
+        gap: 8px 12px;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+    .lobby-back { grid-area: back; padding: 8px 12px; min-height: 40px; font-size: 13px; }
+    .lobby-header h1 { grid-area: title; font-size: 20px; }
+    .lobby-create {
+        grid-area: create;
+        width: 100%;
+        padding: 12px;
+        font-size: 15px;
+        min-height: 44px;
+    }
+
+    .lobby-section { margin-bottom: 24px; }
+    .lobby-section h2 { font-size: 14px; }
+
+    /* Each waiting/in-progress game row stacks: info top, action buttons
+       full-width below for thumb tapping. */
+    .game-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        padding: 12px 14px;
+    }
+    .game-actions { gap: 8px; }
+    .game-join, .game-resume, .game-delete {
+        flex: 1;
+        padding: 12px;
+        font-size: 14px;
+        min-height: 44px;
+    }
+
+    /* Matchup display (lineup-select phase): stack the two player cards
+       vertically with the VS marker between them. */
+    .lobby-matchup {
+        flex-direction: column;
+        gap: 12px;
+        padding: 12px 0;
+        margin-bottom: 20px;
+    }
+    .matchup-player {
+        width: 100%;
+        min-width: 0;
+        padding: 14px 16px;
+    }
+    .matchup-vs { font-size: 18px; }
+
+    /* Lineup picker grid stays vertical but rows become tappable. */
+    .lineup-picker h2 { font-size: 16px; margin-bottom: 12px; }
+    .lineup-pick-btn {
+        padding: 14px 16px;
+        min-height: 56px;
+    }
+    .pick-name { font-size: 14px; }
+    .pick-meta { font-size: 11px; }
+
+    /* Create-game modal becomes a near-full-screen sheet on mobile. */
+    .create-modal {
+        width: calc(100vw - 16px);
+        max-width: none;
+        max-height: calc(100vh - 16px);
+        overflow-y: auto;
+        padding: 20px 18px;
+    }
+    .create-modal-title { font-size: 18px; margin-bottom: 18px; }
+    .create-modal-section { margin-bottom: 16px; }
+    .create-modal-input {
+        font-size: 16px; /* keeps iOS from auto-zooming on focus */
+        padding: 12px 14px;
+        min-height: 44px;
+    }
+    .create-modal-series-row { gap: 4px; }
+    .create-modal-series-btn {
+        padding: 10px 4px;
+        font-size: 11px;
+        min-height: 40px;
+    }
+    .create-modal-create-btn {
+        padding: 14px;
+        font-size: 15px;
+        min-height: 48px;
+    }
+    .create-modal-cancel { padding: 10px 0; min-height: 40px; }
+}

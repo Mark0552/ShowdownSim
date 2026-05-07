@@ -387,6 +387,22 @@
 .setlineup-slot.invalid {
     border-color: #e94560;
 }
+/* Tap-to-select picked card — gold ring + slight scale-up. Mirrors the
+   AlignmentEditor `.ae-cell-picked` pattern. */
+.setlineup-slot.picked {
+    border-color: #fbbf24;
+    border-style: solid;
+    box-shadow: 0 0 0 2px #fbbf24, 0 0 16px rgba(251, 191, 36, 0.5);
+    transform: scale(1.04);
+    z-index: 1;
+}
+/* Other cards in the same row while one is picked — show as available
+   tap targets. */
+.setlineup-slot.tap-target {
+    border-color: var(--accent);
+    border-style: solid;
+    background: rgba(138, 173, 224, 0.08);
+}
 .setlineup-slot-label {
     font-size: 12px;
     font-weight: 600;
@@ -395,13 +411,19 @@
     letter-spacing: 0.5px;
 }
 .setlineup-slot-card {
-    cursor: grab;
+    cursor: pointer;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 2px;
+    transition: transform 0.1s;
 }
-.setlineup-slot-card:active { cursor: grabbing; }
+/* Desktop drag cue: still grabbable (HTML5 DnD remains supported), but
+   the click affordance also matters for tap-to-select. */
+@media (hover: hover) {
+    .setlineup-slot-card { cursor: grab; }
+    .setlineup-slot-card:active { cursor: grabbing; }
+}
 .setlineup-slot-card img {
     width: 90px;
     aspect-ratio: 251 / 350;
@@ -536,4 +558,176 @@
 @keyframes spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+}
+
+/* ---------- Mobile (iOS Home Screen, portrait) ----------
+ * Desktop is a 3-col grid (header) + 2-col body (pool 1fr / sidebar 320px).
+ * On mobile we stack everything vertically: header pieces wrap; the body
+ * becomes a single column with the roster mini at the top (compact, key
+ * info), the pool below (filter sticky, card grid scrolling), and the
+ * draft history at the bottom. */
+@media (max-width: 899px) {
+    .draft-page { padding: 10px 10px 24px; }
+
+    /* Header: drop the 3-col grid; let pieces wrap. Title row first,
+       points row stacks below. */
+    .draft-header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+    .draft-back { padding: 8px 12px; min-height: 40px; flex-shrink: 0; }
+    .draft-pick-indicator {
+        flex: 1 1 auto;
+        text-align: right;
+    }
+    .draft-pick-num { font-size: 12px; margin-right: 8px; }
+    .draft-turn { font-size: 14px; padding: 4px 10px; }
+
+    /* Points row: stack the badges full-width side-by-side. */
+    .draft-points-row {
+        flex-basis: 100%;
+        gap: 8px;
+    }
+    .draft-points-badge {
+        flex: 1;
+        min-width: 0;
+        padding: 6px 10px;
+    }
+    .draft-points-label { font-size: 10px; }
+    .draft-points-value { font-size: 16px; }
+    .draft-points-meta { font-size: 10px; }
+
+    .draft-paused-banner { font-size: 12px; padding: 8px 12px; }
+
+    /* Body: single column. Reorder so roster mini sits at the top
+       (key reference while picking), then pool, then history. */
+    .draft-body {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    .draft-sidebar {
+        order: 1;
+        flex-direction: column;
+        overflow: visible;
+    }
+    .draft-pool { order: 2; }
+    .draft-history { order: 3; max-height: 220px; }
+
+    /* Roster mini: tighter padding, smaller fonts. */
+    .draft-roster-mini { padding: 8px 10px; }
+    .draft-roster-mini-title { font-size: 12px; }
+    .draft-roster-row { margin-bottom: 6px; }
+    .draft-roster-row-label { font-size: 10px; }
+    .draft-roster-name { font-size: 11px; padding: 3px 6px; min-height: 24px; }
+
+    /* Pool controls: search full-width, filter buttons wrap. */
+    .draft-pool-controls {
+        flex-direction: column;
+        gap: 8px;
+        align-items: stretch;
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        background: var(--bg-primary);
+        padding: 8px 0;
+    }
+    .draft-search {
+        font-size: 16px; /* prevent iOS zoom-on-focus */
+        padding: 10px 12px;
+        min-height: 44px;
+    }
+    .draft-filter-row {
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    .draft-filter-btn {
+        flex: 1 1 auto;
+        padding: 8px 10px;
+        font-size: 12px;
+        min-height: 36px;
+    }
+
+    /* Pool grid: 3 cards across at ~393px (auto-fill 120px). Make cards
+       a touch larger for tappability. */
+    .draft-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+    }
+    .draft-card {
+        padding: 4px;
+        gap: 3px;
+    }
+    .draft-card-meta { font-size: 10px; }
+
+    /* History: condensed item rows. */
+    .draft-history { padding: 8px 10px; }
+    .draft-history-title { font-size: 12px; }
+    .draft-history-item {
+        grid-template-columns: 24px 16px 1fr auto;
+        font-size: 10px;
+    }
+
+    /* Modal: full-width on phones. */
+    .draft-modal {
+        width: calc(100vw - 16px);
+        max-width: none;
+        padding: 20px 16px;
+    }
+    .draft-modal h3 { font-size: 16px; }
+    .draft-modal p { font-size: 13px; }
+    .draft-modal-actions button {
+        padding: 12px 16px;
+        font-size: 14px;
+        min-height: 48px;
+    }
+
+    /* ---------- Set Lineup Screen ----------
+     * The 3 drag-drop rows already use overflow-x: auto so cards scroll
+     * horizontally on narrow viewports — works fine. Slot cards just
+     * need a touch more padding and the section sizing tightens. */
+    .setlineup-body { padding: 6px 2px 96px; gap: 14px; }
+    .setlineup-section { padding: 12px 14px; }
+    .setlineup-section h3 { font-size: 12px; margin-bottom: 10px; }
+
+    .setlineup-drag-row { gap: 8px; padding-bottom: 6px; }
+    .setlineup-slot {
+        flex: 0 0 96px;
+        padding: 5px;
+    }
+    .setlineup-slot-label { font-size: 11px; }
+    .setlineup-slot-card img { width: 80px; }
+    .setlineup-slot-name { max-width: 80px; font-size: 10px; }
+    .setlineup-slot-empty { padding: 32px 0; font-size: 10px; }
+
+    /* Position-assignment table: shrink padding + move pitcher select
+       below name on a single column for narrow viewports. */
+    .setlineup-table th,
+    .setlineup-table td { padding: 4px 6px; font-size: 12px; }
+    .setlineup-table select {
+        padding: 6px 8px;
+        font-size: 13px;
+        min-height: 36px;
+    }
+    .setlineup-thumb { width: 30px; height: 42px; }
+
+    /* Bench / bullpen readonly grid: 1 col on phone. */
+    .setlineup-readonly-list {
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
+    .setlineup-readonly-row { font-size: 12px; padding: 6px 10px; }
+
+    .setlineup-errors { font-size: 11px; padding: 8px 12px; }
+
+    .setlineup-submit-row { bottom: 8px; }
+    .setlineup-submit-btn {
+        padding: 14px 28px;
+        font-size: 15px;
+        min-height: 52px;
+        width: 100%;
+        max-width: 360px;
+    }
 }

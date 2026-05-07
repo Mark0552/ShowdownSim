@@ -83,3 +83,23 @@
 }
 
 .menu-logout:hover { color: var(--error); }
+
+/* Mobile (iOS Home Screen, portrait). */
+@media (max-width: 899px) {
+    .main-menu { padding: 16px; }
+    .menu-card { width: 100%; max-width: 460px; }
+    .menu-card h1 { font-size: 40px; }
+    .menu-user { font-size: 13px; margin-bottom: 24px; }
+    .menu-buttons { gap: 10px; margin-bottom: 20px; }
+    .menu-btn {
+        padding: 16px 18px;
+        gap: 14px;
+        border-width: 1px;
+        border-radius: 8px;
+        min-height: 60px;
+    }
+    .menu-btn-icon { font-size: 24px; width: 32px; }
+    .menu-btn-title { font-size: 16px; }
+    .menu-btn-desc { font-size: 12px; }
+    .menu-logout { padding: 12px 0; min-height: 40px; }
+}

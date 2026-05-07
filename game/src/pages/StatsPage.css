@@ -382,3 +382,135 @@
     color: var(--accent);
 }
 
+/* Mobile (iOS Home Screen, portrait). */
+@media (max-width: 899px) {
+    .stats-page { padding: 12px; }
+
+    /* Header reflow: Back button + title share row 1, no extra controls. */
+    .stats-header {
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+    .stats-header h1 { font-size: 20px; }
+    .stats-back { padding: 8px 12px; min-height: 40px; font-size: 13px; }
+
+    /* Top-level tabs: horizontal scroll if they overflow. */
+    .stats-tabs {
+        gap: 0;
+        margin-bottom: 16px;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        scrollbar-width: none;
+    }
+    .stats-tabs::-webkit-scrollbar { display: none; }
+    .stats-tab {
+        padding: 10px 14px;
+        font-size: 13px;
+        flex-shrink: 0;
+        min-height: 44px;
+    }
+
+    /* Career sub-tabs: wrap onto multiple rows. */
+    .stats-career-tabs {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    .stats-career-tab {
+        padding: 8px 12px;
+        font-size: 12px;
+        min-height: 36px;
+        flex: 0 0 auto;
+    }
+
+    /* Record strip: stack overall / L10 vertically. */
+    .stats-record-strip {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+        font-size: 12px;
+        padding: 10px 12px;
+    }
+    .stats-record-sep { display: none; }
+
+    /* Standalone game rows stack: date + opp on top, View on its own row. */
+    .stats-standalone-row {
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px 12px;
+        font-size: 12px;
+    }
+    .stats-standalone-date {
+        min-width: 0;
+        font-size: 11px;
+    }
+    .stats-standalone-opp {
+        flex: 1 1 auto;
+        font-size: 12px;
+    }
+    .stats-result { font-size: 12px; }
+    .stats-view-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+        min-height: 32px;
+    }
+
+    /* Tables stay native — overflow-x on the wrapper handles narrow
+       viewports. Tighten cell padding so more columns fit before
+       scrolling kicks in. */
+    .stats-table { font-size: 12px; }
+    .stats-table th { padding: 8px 8px; font-size: 10px; }
+    .stats-table td { padding: 8px 8px; }
+
+    /* Game-detail modal: full-viewport on phone (matches the rest of
+       the in-game modal pattern). */
+    .stats-game-modal { padding: 0; }
+    .stats-game-modal-content {
+        width: 100vw;
+        height: 100vh;
+        max-width: none;
+        max-height: none;
+        border-radius: 0;
+        border-width: 0;
+    }
+    .stats-game-modal-header {
+        padding: 10px 12px;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .stats-game-modal-title {
+        font-size: 14px;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    .stats-game-modal-date { font-size: 11px; }
+    /* Collapse CLOSE label to × icon, matching ModalFrame and overlay-panel. */
+    .stats-game-modal-close {
+        font-size: 0;
+        padding: 4px 10px;
+        min-width: 32px;
+        min-height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .stats-game-modal-close::before {
+        content: '✕';
+        font-size: 16px;
+        font-weight: 700;
+    }
+    .stats-game-modal-tabs {
+        padding: 8px 12px 0;
+        gap: 0;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+    .stats-game-modal-tabs::-webkit-scrollbar { display: none; }
+    .stats-game-modal-tab {
+        padding: 8px 14px;
+        font-size: 12px;
+        flex-shrink: 0;
+        min-height: 40px;
+    }
+    .stats-game-modal-body { padding: 10px 12px; }
+}
+

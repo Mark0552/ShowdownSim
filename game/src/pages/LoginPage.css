@@ -142,3 +142,19 @@
     background: rgba(74, 222, 128, 0.1);
     border-radius: 6px;
 }
+
+/* Mobile (iOS Home Screen, portrait). */
+@media (max-width: 899px) {
+    .login-page { padding: 16px; }
+    .login-card {
+        width: 100%;
+        max-width: 420px;
+        padding: 24px 20px;
+    }
+    .login-card h1 { font-size: 24px; }
+    /* iOS auto-zooms <16px inputs on focus. Bumping to 16px keeps the
+       page from jumping when the user taps Username / Password. */
+    .login-card input { padding: 14px 14px; font-size: 16px; }
+    .login-btn { padding: 14px; font-size: 16px; min-height: 48px; }
+    .login-toggle { padding: 12px 0; font-size: 14px; }
+}

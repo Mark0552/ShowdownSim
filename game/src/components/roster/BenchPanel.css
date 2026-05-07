@@ -69,3 +69,30 @@
     font-style: italic;
 }
 
+/* Mobile-only controls — hidden on desktop where drag-and-drop covers
+   the same ops. */
+.bench-mobile-ctl { display: none; }
+
+/* Mobile (iOS Home Screen, portrait). */
+@media (max-width: 899px) {
+    .bench-panel { padding: 8px; }
+    .bench-panel h3 { font-size: 14px; margin-bottom: 6px; }
+    .bench-grid { gap: 6px; }
+    .bench-name { font-size: 11px; }
+    .bench-pts { font-size: 10px; }
+    .bench-card.empty { min-height: calc(var(--card-h) + 50px); }
+    .bench-empty { font-size: 11px; }
+
+    /* Filled bench cards reserve space at the bottom for the ✕ button. */
+    .bench-card.filled { padding-bottom: 36px; }
+    .bench-card.filled .bench-mobile-ctl {
+        display: flex;
+        position: absolute;
+        left: 4px;
+        right: 4px;
+        bottom: 4px;
+        z-index: 2;
+    }
+    .bench-card.filled .mobile-ctl-x { flex: 1; }
+}
+

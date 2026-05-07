@@ -128,3 +128,81 @@
     z-index: 1;
 }
 
+/* Mobile-only controls (←/→ reorder arrows + ✕ remove). Hidden on
+   desktop where drag-and-drop covers the same operations. The TSX
+   always renders these buttons; CSS controls visibility. */
+.lineup-mobile-ctl { display: none; }
+
+/* Mobile (iOS Home Screen, portrait). */
+@media (max-width: 899px) {
+    .lineup-bar { padding: 8px; }
+    .lineup-header { margin-bottom: 8px; }
+    .lineup-header h3 { font-size: 14px; }
+
+    /* Wrap 9 batter slots into rows of 3 (matches the 3-across --card-w
+       defined globally in TeamBuilder.css for mobile). */
+    .lineup-slots {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .lineup-card { padding: 4px; padding-bottom: 36px; }
+    .lineup-pos { font-size: 11px; }
+    .lineup-name { font-size: 11px; line-height: 1.25; }
+    .lineup-pts { font-size: 10px; }
+    /* Tap target: empty slots need a minimum height so the user can tap
+       reliably; --card-h on mobile is ~125px which is fine, but keep the
+       +40px chrome for label/text. */
+    .lineup-card.empty { min-height: calc(var(--card-h) + 50px); padding-bottom: 4px; }
+    .lineup-empty { font-size: 11px; }
+    .lineup-order {
+        width: 22px;
+        height: 22px;
+        font-size: 11px;
+    }
+
+    /* Mobile controls bar at the bottom of each filled card: ←/→ reorder
+       buttons on the left, ✕ remove on the right. Inline-flex so they
+       sit in a row; absolute-positioned to the bottom so the card image
+       above isn't squeezed. */
+    .lineup-card.filled .lineup-mobile-ctl {
+        display: flex;
+        position: absolute;
+        left: 4px;
+        right: 4px;
+        bottom: 4px;
+        gap: 4px;
+        z-index: 2;
+    }
+    .mobile-ctl-arrow,
+    .mobile-ctl-x {
+        flex: 1;
+        background: rgba(0, 0, 0, 0.55);
+        border: 1px solid var(--border);
+        color: var(--text);
+        font-size: 14px;
+        font-weight: 700;
+        padding: 0;
+        border-radius: 3px;
+        cursor: pointer;
+        height: 28px;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 0;
+    }
+    .mobile-ctl-arrow:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+    }
+    .mobile-ctl-x {
+        flex: 0 0 32px;
+        color: var(--error);
+        border-color: rgba(248, 113, 113, 0.5);
+    }
+    .mobile-ctl-x:active {
+        background: rgba(248, 113, 113, 0.25);
+    }
+}
+

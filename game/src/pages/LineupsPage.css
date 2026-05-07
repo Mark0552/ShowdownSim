@@ -152,3 +152,51 @@
 }
 
 .lineup-delete-btn:hover { background: var(--error); color: white; border-color: var(--error); }
+
+/* Mobile (iOS Home Screen, portrait). */
+@media (max-width: 899px) {
+    .lineups-page { padding: 12px; }
+    /* Header reflow: title row on top with Back tucked in, +New Lineup
+       full-width below so the user can hit it without thumb-stretching. */
+    .lineups-header {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        grid-template-areas: "back title" "new new";
+        gap: 8px 12px;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+    .lineups-back { grid-area: back; padding: 8px 12px; font-size: 13px; }
+    .lineups-header h1 { grid-area: title; font-size: 20px; }
+    .lineups-new {
+        grid-area: new;
+        width: 100%;
+        padding: 12px;
+        font-size: 15px;
+        min-height: 44px;
+    }
+
+    /* Each lineup row stacks: info block on top, action buttons below
+       full-width so Edit / Delete are easy thumb targets. */
+    .lineup-item {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 14px;
+        gap: 12px;
+    }
+    .lineup-item-info h3 { font-size: 16px; }
+    .lineup-item-meta {
+        flex-direction: column;
+        gap: 2px;
+        font-size: 12px;
+        margin-bottom: 6px;
+    }
+    .lineup-item-actions { gap: 10px; }
+    .lineup-edit-btn,
+    .lineup-delete-btn {
+        flex: 1;
+        padding: 12px;
+        font-size: 14px;
+        min-height: 44px;
+    }
+}

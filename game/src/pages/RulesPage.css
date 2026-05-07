@@ -263,15 +263,70 @@
     margin-bottom: 12px;
 }
 
-@media (max-width: 800px) {
+/* Mobile (iOS Home Screen, portrait). Existing rule already collapsed
+ * the TOC + content into a single column at 800px; this extends that
+ * coverage to the project's 899px breakpoint and tightens header/font
+ * sizing so the page reads well in a portrait phone window. */
+@media (max-width: 899px) {
+    .rules-page { padding: 12px; }
+
+    .rules-header {
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+    .rules-header h1 { font-size: 20px; }
+    .rules-header-spacer { display: none; }
+    .rules-back { padding: 8px 12px; min-height: 40px; font-size: 13px; }
+
+    /* Top-level rules tabs scroll horizontally instead of wrapping. */
+    .rules-tabs {
+        margin-bottom: 16px;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        scrollbar-width: none;
+    }
+    .rules-tabs::-webkit-scrollbar { display: none; }
+    .rules-tab {
+        padding: 10px 14px;
+        font-size: 13px;
+        flex-shrink: 0;
+        min-height: 44px;
+    }
+
+    /* Layout collapses to single column. */
     .rules-layout {
         grid-template-columns: 1fr;
+        gap: 16px;
     }
     .rules-toc {
         position: static;
         flex-direction: row;
         flex-wrap: wrap;
+        gap: 4px;
         border-bottom: 1px solid var(--border);
         padding: 0 0 12px 0;
+        max-height: none;
+        overflow-y: visible;
     }
+    .rules-toc-link {
+        padding: 6px 10px;
+        font-size: 12px;
+        border-left: none;
+        border-bottom: 2px solid transparent;
+        flex: 0 0 auto;
+        min-height: 36px;
+    }
+
+    .rules-content {
+        font-size: 14px;
+        line-height: 1.6;
+    }
+    .rules-content section { padding: 16px 0; }
+    .rules-content h2 { font-size: 18px; margin-bottom: 12px; }
+    .rules-content h3 { font-size: 15px; margin: 18px 0 8px; }
+    .rules-formula { font-size: 12px; padding: 10px 12px; }
+    .rules-table { font-size: 12px; }
+    .rules-table th,
+    .rules-table td { padding: 8px 8px; }
+    .rules-construction { padding: 14px 16px; }
 }

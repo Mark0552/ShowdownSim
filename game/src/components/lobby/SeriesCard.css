@@ -252,3 +252,60 @@
     color: var(--error);
     border-color: var(--error);
 }
+
+/* Mobile (iOS Home Screen, portrait). */
+@media (max-width: 899px) {
+    .series-card { margin-bottom: 10px; }
+
+    /* Header: stack title (matchup) above record/best-of meta. */
+    .series-card-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        padding: 12px 14px;
+    }
+    .series-card-title { font-size: 14px; flex-wrap: wrap; gap: 6px; }
+    .series-card-meta { gap: 10px; flex-wrap: wrap; }
+    .series-card-record { font-size: 13px; padding: 2px 8px; }
+    .series-card-bestof { font-size: 11px; }
+
+    .series-card-games { padding: 6px 14px; }
+    .series-game { padding: 8px 0; }
+    .series-game.clickable {
+        margin: 0 -6px;
+        padding-left: 6px;
+        padding-right: 6px;
+    }
+
+    .series-game-top { gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+    .series-game-num { font-size: 11px; }
+    .series-game-status { font-size: 9px; padding: 2px 6px; }
+    .series-game-host { font-size: 10px; }
+
+    /* Per-game row reflows: drop the desktop 4-col grid (160 / 1fr / 40 /
+       40) and use a 3-col grid (player / score / mark) so the row fits on
+       a 393px viewport. Pitcher line moves to its own line below the
+       player name via flex-direction: column on the player cell. */
+    .series-game-row {
+        grid-template-columns: 1fr 50px 28px;
+        gap: 6px;
+        font-size: 12px;
+    }
+    .series-player { font-size: 12px; }
+    .series-pitcher { font-size: 11px; }
+    .series-score { font-size: 13px; }
+    .series-winner-mark { font-size: 10px; }
+
+    /* Action buttons: full-width tappable. */
+    .series-card-actions {
+        padding: 10px 14px;
+        gap: 8px;
+    }
+    .series-resume,
+    .series-delete {
+        flex: 1;
+        padding: 12px;
+        font-size: 13px;
+        min-height: 44px;
+    }
+}

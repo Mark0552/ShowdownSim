@@ -57,6 +57,15 @@ export default function CardCatalog({ cards, rosterCardIds, onAddCard, addLabel 
                             key={card.id}
                             className={`catalog-card ${onRoster ? 'on-roster' : ''}`}
                             draggable={!onRoster}
+                            // Tap-to-add: when an empty slot is active in
+                            // RosterPanel/LineupBar/BenchPanel, tapping a
+                            // catalog card fires onAddCard which routes the
+                            // card to that slot. Touch users rely on this
+                            // entirely (HTML5 DnD is unreliable on iOS
+                            // Safari); desktop users get tap-to-add as a
+                            // bonus alongside drag-to-add. Clicking an
+                            // already-on-roster card is a no-op.
+                            onClick={() => { if (!onRoster) onAddCard(card); }}
                             onDragStart={(e) => handleDragStart(e, card)}
                             onDragEnd={handleDragEnd}
                             onMouseEnter={() => handleMouseEnter(card)}

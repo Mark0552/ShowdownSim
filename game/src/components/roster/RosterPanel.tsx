@@ -155,7 +155,7 @@ export default function RosterPanel({ teamStore, dragStore, activeSlot, onSlotCl
                             <div
                                 key={def.key}
                                 className={`rp-card ${slot ? 'filled' : 'empty'} ${isActive({ type: 'starter', slotKey: def.key }) ? 'active' : ''} ${dragIdx === idx ? 'dragging' : ''} ${isDropTarget ? 'drop-target' : ''}`}
-                                onClick={() => !slot && onSlotClick({ type: 'starter', slotKey: def.key })}
+                                onClick={() => onSlotClick({ type: 'starter', slotKey: def.key })}
                                 draggable={!!slot}
                                 onDragStart={(e) => slot && handleStarterDragStart(e, idx, slot)}
                                 onDragOver={(e) => handleStarterDragOver(e, idx, def.key)}
@@ -170,9 +170,44 @@ export default function RosterPanel({ teamStore, dragStore, activeSlot, onSlotCl
                                         <img src={slot.card.imagePath} alt="" className="rp-card-img" draggable={false} />
                                         <span className="rp-card-name">{slot.card.name}</span>
                                         <span className="rp-card-sub">{slot.card.points}pt</span>
+                                        {/* Mobile-only controls: ←/→ reorder rotation, ✕ remove. */}
+                                        <div className="rp-mobile-ctl">
+                                            <button
+                                                className="mobile-ctl-arrow"
+                                                disabled={idx === 0}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (idx === 0) return;
+                                                    const ids = starterSlots.map(s => s.card.id);
+                                                    [ids[idx - 1], ids[idx]] = [ids[idx], ids[idx - 1]];
+                                                    setStarterOrder(ids);
+                                                }}
+                                                aria-label="Move up in rotation"
+                                            >&lt;</button>
+                                            <button
+                                                className="mobile-ctl-arrow"
+                                                disabled={idx === starterSlots.length - 1}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (idx === starterSlots.length - 1) return;
+                                                    const ids = starterSlots.map(s => s.card.id);
+                                                    [ids[idx + 1], ids[idx]] = [ids[idx], ids[idx + 1]];
+                                                    setStarterOrder(ids);
+                                                }}
+                                                aria-label="Move down in rotation"
+                                            >&gt;</button>
+                                            <button
+                                                className="mobile-ctl-x"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    removeCard(slot.card.id);
+                                                }}
+                                                aria-label="Remove from rotation"
+                                            >✕</button>
+                                        </div>
                                     </>
                                 ) : (
-                                    <div className="rp-card-empty">{isDropTarget ? 'Drop here' : 'Click\nto fill'}</div>
+                                    <div className="rp-card-empty">{isDropTarget ? 'Drop here' : 'Tap\nto fill'}</div>
                                 )}
                             </div>
                         );
@@ -198,6 +233,18 @@ export default function RosterPanel({ teamStore, dragStore, activeSlot, onSlotCl
                             <img src={slot.card.imagePath} alt="" className="rp-card-img" draggable={false} />
                             <span className="rp-card-name">{slot.card.name}</span>
                             <span className="rp-card-sub">{slot.card.points}pt</span>
+                            {/* Mobile-only ✕ remove. Bullpen has no fixed slot positions
+                                so reorder arrows don't apply here. */}
+                            <div className="rp-mobile-ctl rp-mobile-ctl-xonly">
+                                <button
+                                    className="mobile-ctl-x"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        removeCard(slot.card.id);
+                                    }}
+                                    aria-label="Remove from bullpen"
+                                >✕</button>
+                            </div>
                         </div>
                     ))}
                     {bullpenSlots.length + benchSlots.length < 7 && (

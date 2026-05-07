@@ -68,3 +68,54 @@
     font-size: 12px;
     margin-left: auto;
 }
+
+/* Mobile (iOS Home Screen, portrait). */
+@media (max-width: 899px) {
+    .filter-bar {
+        padding: 10px;
+        gap: 6px;
+        position: sticky;
+        top: 0;
+        z-index: 9;
+    }
+    /* First row = search alone, full width (taps work without zooming
+       since font-size >= 16px). */
+    .filter-row:first-child .filter-search {
+        flex: 1 1 100%;
+        font-size: 16px;
+        padding: 10px 12px;
+        min-height: 40px;
+    }
+    /* Position + team selects share the second half of row 1. */
+    .filter-row:first-child select {
+        flex: 1 1 calc(50% - 3px);
+        min-width: 0;
+        padding: 10px 8px;
+        font-size: 14px;
+        min-height: 40px;
+    }
+    /* Row 2 (year / set / edition / sort / dir / clear / count) wraps
+       cleanly with smaller selects. */
+    .filter-row:last-child {
+        gap: 4px;
+    }
+    .filter-row:last-child select {
+        flex: 1 1 calc(50% - 2px);
+        min-width: 0;
+        padding: 8px 6px;
+        font-size: 13px;
+        min-height: 36px;
+    }
+    .sort-dir-btn,
+    .clear-btn {
+        padding: 8px 10px;
+        font-size: 13px;
+        min-height: 36px;
+    }
+    .result-count {
+        flex-basis: 100%;
+        text-align: right;
+        margin-left: 0;
+        font-size: 11px;
+    }
+}

@@ -149,3 +149,130 @@
 }
 
 .tb-slot-banner button:hover { background: rgba(255,255,255,0.3); }
+
+/* Mobile-only tab toggle — hidden on desktop where the 3-column grid
+   shows everything at once. The TSX always renders these buttons; the
+   `display: none` here keeps them off the desktop layout. */
+.tb-mobile-tabs { display: none; }
+
+/* ---------- Mobile (iOS Home Screen, portrait) ----------
+ * The desktop layout — 3-column grid of catalog (1fr) + sidebar (~2-card
+ * wide column) with lineup bar tucked under catalog — doesn't fit a
+ * portrait phone. On mobile we collapse to a TEAM / CATALOG tab toggle:
+ *   - TEAM tab: lineup + roster + bench (the team-build view)
+ *   - CATALOG tab: filter + card grid (the picker view)
+ * Picking a slot in TEAM auto-switches to CATALOG (with the slot banner
+ * showing what we're filtering for); adding a card auto-switches back.
+ *
+ * --card-w is also overridden so cards are 3-across on mobile instead of
+ * the desktop 11-across (which would yield ~24px cards).
+ */
+@media (max-width: 899px) {
+    :root {
+        /* 3 cards per row at 8px gap + 12px page padding = enough for
+           legible name + chart on each card. */
+        --card-w: calc((100vw - 12px - 16px) / 3);
+        --card-h: calc(var(--card-w) * 1.4);
+        --card-gap: 6px;
+    }
+
+    /* Whole page scrolls naturally on mobile rather than dividing the
+       viewport into desktop-style scroll regions. */
+    .team-builder {
+        height: auto;
+        min-height: 100vh;
+        overflow: visible;
+    }
+
+    /* Header: stack lineup-name input row above the stats row so
+       both fit at narrow widths without overflowing. */
+    .tb-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        padding: 10px 12px;
+    }
+    .tb-header-left { gap: 8px; }
+    .lineup-name-input {
+        flex: 1;
+        width: auto;
+        min-width: 0;
+        padding: 10px 12px;
+        font-size: 16px; /* >=16px keeps iOS from auto-zooming on focus */
+    }
+    .back-btn { padding: 8px 12px; min-height: 40px; flex-shrink: 0; }
+    .tb-header-stats {
+        flex-wrap: wrap;
+        gap: 8px;
+        font-size: 12px;
+    }
+    .header-stat { font-size: 14px; }
+    .tb-header-stats .divider { display: none; }
+    .header-btn { padding: 8px 12px; font-size: 13px; min-height: 40px; }
+
+    /* Tab toggle visible only on mobile. */
+    .tb-mobile-tabs {
+        display: flex;
+        gap: 0;
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+    }
+    .tb-mobile-tab {
+        flex: 1;
+        padding: 12px;
+        background: none;
+        border: none;
+        border-bottom: 3px solid transparent;
+        color: var(--text-dim);
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        cursor: pointer;
+        min-height: 44px;
+    }
+    .tb-mobile-tab.active {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+        background: var(--bg-card);
+    }
+
+    /* Body: drop the grid; show only the active mobile tab. The catalog
+       and the sidebar/lineup are conditionally hidden via the parent's
+       `tb-mobile-{tab}` class. */
+    .tb-body {
+        display: block;
+        overflow: visible;
+    }
+    .tb-catalog,
+    .tb-sidebar,
+    .tb-lineup-bar {
+        display: block;
+        grid-column: auto;
+        grid-row: auto;
+        border: none;
+        background: transparent;
+    }
+
+    /* Hide the inactive tab's content. Both .tb-sidebar and
+       .tb-lineup-bar belong to the TEAM tab; .tb-catalog is its own. */
+    .tb-mobile-team .tb-catalog { display: none; }
+    .tb-mobile-catalog .tb-sidebar,
+    .tb-mobile-catalog .tb-lineup-bar { display: none; }
+
+    /* TEAM tab content order: lineup bar, then roster + bench. */
+    .tb-mobile-team .tb-lineup-bar { order: 1; }
+    .tb-mobile-team .tb-sidebar { order: 2; }
+
+    /* Slot banner sticks to the top of the catalog view so the user
+       always sees what they're picking for as they scroll the card list. */
+    .tb-slot-banner {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        font-size: 13px;
+        padding: 10px 14px;
+        min-height: 44px;
+    }
+    .tb-slot-banner button { padding: 6px 14px; min-height: 32px; font-size: 12px; }
+}

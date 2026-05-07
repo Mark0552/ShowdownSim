@@ -255,3 +255,66 @@
 
 .resid-good { color: #4ade80; }
 .resid-bad { color: #f87171; }
+
+/* Mobile (iOS Home Screen, portrait). The 1100px breakpoint above
+ * already collapses the layout into a single column; this block
+ * tightens header / control spacing and restricts the wide tables to a
+ * scrollable container that fits a portrait phone. */
+@media (max-width: 899px) {
+    .pricing-page { padding: 12px; }
+
+    .pricing-header { gap: 12px; margin-bottom: 14px; }
+    .pricing-header h1 { font-size: 20px; }
+    .pricing-back { padding: 8px 12px; min-height: 40px; font-size: 13px; }
+
+    .pricing-explainer { font-size: 12px; padding: 10px 12px; }
+
+    /* Tabs scroll horizontally. */
+    .pricing-tabs {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        scrollbar-width: none;
+    }
+    .pricing-tabs::-webkit-scrollbar { display: none; }
+    .pricing-tab {
+        padding: 8px 14px;
+        font-size: 12px;
+        flex-shrink: 0;
+        min-height: 40px;
+    }
+
+    .pricing-fit-summary {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+        font-size: 12px;
+        padding: 8px 10px;
+    }
+
+    /* Coefs panel + table panel stack via existing 1100px rule; just
+       ensure the sticky position doesn't strand the panel off-screen. */
+    .pricing-coefs {
+        position: static;
+        padding: 10px 12px;
+    }
+    .pricing-coef-table { font-size: 11px; }
+
+    /* Card-level table: search full-width, count below. */
+    .pricing-rows-head {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+    }
+    .pricing-filter {
+        max-width: none;
+        font-size: 16px; /* iOS no-zoom on focus */
+        padding: 10px 12px;
+        min-height: 44px;
+    }
+    .pricing-row-count { font-size: 11px; }
+
+    .pricing-table-wrap { max-height: 60vh; }
+    .pricing-table { font-size: 10px; }
+    .pricing-table th { padding: 5px 6px; font-size: 9px; }
+    .pricing-table td { padding: 3px 6px; }
+}

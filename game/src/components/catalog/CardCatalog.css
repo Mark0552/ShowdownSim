@@ -119,3 +119,30 @@
     color: var(--success);
     font-weight: 600;
 }
+
+/* Mobile (iOS Home Screen, portrait). */
+@media (max-width: 899px) {
+    .card-catalog { padding: 8px; }
+    /* Single column on phones. The auto-fill 330px minimum already
+       collapses to 1 col below 360px or so, but lock it explicitly for
+       narrow viewports to avoid edge cases on iOS Safari. */
+    .catalog-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    .catalog-card {
+        padding: 8px;
+        column-gap: 10px;
+    }
+    /* Slightly larger image on mobile for tap-to-tooltip. */
+    .catalog-card-img {
+        width: 88px;
+        height: 123px;
+    }
+    .catalog-card-name { font-size: 14px; }
+    .catalog-card-meta { font-size: 11px; gap: 5px; }
+    /* Chart table: keep monospace for alignment, but bump font size a
+       touch since the row is shorter on mobile and digits get tiny. */
+    .catalog-card-chart table { font-size: 10px; }
+    .catalog-card-chart th { font-size: 10px; }
+}

@@ -618,9 +618,17 @@ function SetLineupScreen({ lineup, allCards, mySubmitted, oppSubmitted, onSubmit
         return an - bn;
     });
 
-    // ----- Drag-drop helpers -----
+    // ----- Tap-to-select state -----
+    // The original drag-and-drop is preserved on desktop (HTML5 DnD on each
+    // card), but iOS Safari's long-press-to-drag is unreliable, so we layer
+    // a tap-to-select interaction on top: tap a card in a row to "pick" it
+    // (gold ring), tap another card in the same row to place (which swaps).
+    // pickedCard.kind tracks which row the pick came from so cross-row taps
+    // are no-ops (positions and batting-order are different views of the
+    // same hitters — swapping cross-row doesn't make sense).
+    const [pickedCard, setPickedCard] = useState<{ kind: 'pos' | 'bat' | 'rot'; cardId: string } | null>(null);
     const dragRef = useRef<{ kind: 'pos' | 'bat' | 'rot'; cardId: string } | null>(null);
-    const [dragging, setDragging] = useState(false); // suppresses tooltip during drag
+    const [dragging, setDragging] = useState(false); // suppresses tooltip during drag/pick
 
     const swapPositions = (cardA: string, cardB: string) => {
         setSlots(prev => {
@@ -660,6 +668,19 @@ function SetLineupScreen({ lineup, allCards, mySubmitted, oppSubmitted, onSubmit
                 return s;
             });
         });
+    };
+
+    /** Tap-to-select place handler. Called when a slot in row `kind`
+     *  is tapped while a card is picked. Routes to the matching swap
+     *  function. Cross-row taps are silently dropped (no-op). */
+    const placePicked = (kind: 'pos' | 'bat' | 'rot', targetCardId: string) => {
+        if (!pickedCard) return;
+        if (pickedCard.kind !== kind) return; // cross-row drop = no-op
+        if (pickedCard.cardId === targetCardId) { setPickedCard(null); return; } // same card = deselect
+        if (kind === 'pos') swapPositions(pickedCard.cardId, targetCardId);
+        else if (kind === 'bat') reorderBatting(pickedCard.cardId, targetCardId);
+        else reorderRotation(pickedCard.cardId, targetCardId);
+        setPickedCard(null);
     };
 
     // ----- Validation -----
@@ -714,10 +735,10 @@ function SetLineupScreen({ lineup, allCards, mySubmitted, oppSubmitted, onSubmit
                 <div />
             </div>
 
-            <div className="setlineup-body">
+            <div className="setlineup-body" onClick={() => setPickedCard(null)}>
                 <DragRow
                     title="Position Assignment"
-                    subtitle="Drag a hitter onto a position to swap. Each hitter must end up at an eligible position."
+                    subtitle="Tap a hitter to pick, then tap another to swap their positions. Drag also works on desktop."
                 >
                     {HITTER_SLOTS_LABELS.map(({ key, label }) => {
                         const occupant = hittersBySlot.get(key);
@@ -726,6 +747,10 @@ function SetLineupScreen({ lineup, allCards, mySubmitted, oppSubmitted, onSubmit
                                 key={key}
                                 label={label}
                                 slot={occupant || null}
+                                kind="pos"
+                                pickedCard={pickedCard}
+                                onPick={(cardId) => setPickedCard({ kind: 'pos', cardId })}
+                                onTapPlace={(targetCardId) => placePicked('pos', targetCardId)}
                                 eligible={!occupant ? true
                                     : occupant.card.type === 'hitter'
                                         ? (key === '1B' || key === 'DH'
@@ -746,13 +771,17 @@ function SetLineupScreen({ lineup, allCards, mySubmitted, oppSubmitted, onSubmit
 
                 <DragRow
                     title="Batting Order"
-                    subtitle="Drag a hitter onto a slot to swap their batting order."
+                    subtitle="Tap a hitter to pick, then tap another slot to swap. Drag also works on desktop."
                 >
                     {battingOrdered.map(s => (
                         <DragSlot
                             key={s.card.id}
                             label={`#${s.battingOrder}`}
                             slot={s}
+                            kind="bat"
+                            pickedCard={pickedCard}
+                            onPick={(cardId) => setPickedCard({ kind: 'bat', cardId })}
+                            onTapPlace={(targetCardId) => placePicked('bat', targetCardId)}
                             eligible={true}
                             onDragStart={(cardId) => { dragRef.current = { kind: 'bat', cardId }; setDragging(true); }}
                             onDragEnd={() => { dragRef.current = null; setDragging(false); }}
@@ -767,13 +796,17 @@ function SetLineupScreen({ lineup, allCards, mySubmitted, oppSubmitted, onSubmit
 
                 <DragRow
                     title="Starting Rotation"
-                    subtitle="Drag a starter onto a slot to swap their rotation order."
+                    subtitle="Tap a starter to pick, then tap another slot to swap. Drag also works on desktop."
                 >
                     {rotationOrdered.map(s => (
                         <DragSlot
                             key={s.card.id}
                             label={s.assignedPosition.replace('Starter-', 'SP')}
                             slot={s}
+                            kind="rot"
+                            pickedCard={pickedCard}
+                            onPick={(cardId) => setPickedCard({ kind: 'rot', cardId })}
+                            onTapPlace={(targetCardId) => placePicked('rot', targetCardId)}
                             eligible={true}
                             onDragStart={(cardId) => { dragRef.current = { kind: 'rot', cardId }; setDragging(true); }}
                             onDragEnd={() => { dragRef.current = null; setDragging(false); }}
@@ -836,19 +869,33 @@ interface DragSlotProps {
     label: string;
     slot: RosterSlot | null;
     eligible: boolean;
+    /** Which row this slot belongs to. Tap-to-select uses this to gate
+     *  cross-row taps as no-ops. */
+    kind: 'pos' | 'bat' | 'rot';
+    /** Currently-picked card (set when a card was tapped to pick). */
+    pickedCard: { kind: 'pos' | 'bat' | 'rot'; cardId: string } | null;
+    onPick: (cardId: string) => void;
+    onTapPlace: (targetCardId: string) => void;
     onDragStart: (cardId: string) => void;
     onDragEnd: () => void;
     onDrop: (droppedCardId: string) => void;
     draggingNow: boolean;
 }
 
-function DragSlot({ label, slot, eligible, onDragStart, onDragEnd, onDrop, draggingNow }: DragSlotProps) {
+function DragSlot({
+    label, slot, eligible, kind, pickedCard, onPick, onTapPlace,
+    onDragStart, onDragEnd, onDrop, draggingNow,
+}: DragSlotProps) {
     const [hover, setHover] = useState(false);
     const [over, setOver] = useState(false);
     const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+    const isPicked = !!slot && pickedCard?.cardId === slot.card.id;
+    const sameRowPicked = !!pickedCard && pickedCard.kind === kind;
+    const isTapDropTarget = sameRowPicked && !isPicked && !!slot;
+
     const onMouseEnter = () => {
-        if (draggingNow || !slot) return;
+        if (draggingNow || pickedCard || !slot) return;
         if (timer.current) clearTimeout(timer.current);
         timer.current = setTimeout(() => setHover(true), HOVER_DELAY_MS);
     };
@@ -856,12 +903,25 @@ function DragSlot({ label, slot, eligible, onDragStart, onDragEnd, onDrop, dragg
         if (timer.current) { clearTimeout(timer.current); timer.current = null; }
         setHover(false);
     };
-    useEffect(() => { if (draggingNow) setHover(false); }, [draggingNow]);
+    useEffect(() => { if (draggingNow || pickedCard) setHover(false); }, [draggingNow, pickedCard]);
     useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+    /** Click handler for tap-to-select. Routes to pick or place based on
+     *  whether something is already picked. Stop propagation so the
+     *  parent body's deselect-on-outside-tap doesn't undo the pick.
+     *  When a card is already picked, always route to onTapPlace —
+     *  placePicked() handles same-card-deselect, cross-row no-op, and
+     *  valid swap as branches inside one function. */
+    const handleCardClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!slot) return;
+        if (pickedCard) onTapPlace(slot.card.id);
+        else onPick(slot.card.id);
+    };
 
     return (
         <div
-            className={`setlineup-slot ${over ? 'over' : ''} ${!eligible ? 'invalid' : ''}`}
+            className={`setlineup-slot ${over ? 'over' : ''} ${!eligible ? 'invalid' : ''} ${isPicked ? 'picked' : ''} ${isTapDropTarget ? 'tap-target' : ''}`}
             onDragOver={(e) => { e.preventDefault(); setOver(true); }}
             onDragLeave={() => setOver(false)}
             onDrop={(e) => {
@@ -876,6 +936,7 @@ function DragSlot({ label, slot, eligible, onDragStart, onDragEnd, onDrop, dragg
                 <div
                     className="setlineup-slot-card"
                     draggable
+                    onClick={handleCardClick}
                     onDragStart={(e) => {
                         e.dataTransfer.setData('text/plain', slot.card.id);
                         e.dataTransfer.effectAllowed = 'move';
@@ -891,7 +952,7 @@ function DragSlot({ label, slot, eligible, onDragStart, onDragEnd, onDrop, dragg
             ) : (
                 <div className="setlineup-slot-empty">empty</div>
             )}
-            {hover && slot && <CardTooltip card={slot.card} />}
+            {hover && slot && !pickedCard && <CardTooltip card={slot.card} />}
         </div>
     );
 }

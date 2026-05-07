@@ -182,7 +182,7 @@ export default function LineupBar({ teamStore, dragStore, activeSlot, onSlotClic
                         <div
                             key={key}
                             className={`lineup-card ${slot ? 'filled' : 'empty'} ${isActive(key) ? 'active' : ''} ${isDropTarget ? 'drop-target' : ''}`}
-                            onClick={() => !slot && onSlotClick({ type: 'field', slotKey: key, filterPos })}
+                            onClick={() => onSlotClick({ type: 'field', slotKey: key, filterPos })}
                             draggable={!!slot}
                             onDragStart={(e) => slot && handleInternalDragStart(e, idx, slot)}
                             onDragEnd={handleInternalDragEnd}
@@ -203,9 +203,45 @@ export default function LineupBar({ teamStore, dragStore, activeSlot, onSlotClic
                                             OOP {penalty}
                                         </span>
                                     )}
+                                    {/* Mobile-only controls (visible via CSS at <=899px). On
+                                        desktop these are hidden and the user drags instead. */}
+                                    <div className="lineup-mobile-ctl">
+                                        <button
+                                            className="mobile-ctl-arrow"
+                                            disabled={idx === 0}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (idx === 0) return;
+                                                const next = [...cardOrder];
+                                                [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+                                                setCardOrder(next);
+                                            }}
+                                            aria-label="Move left in batting order"
+                                        >&lt;</button>
+                                        <button
+                                            className="mobile-ctl-arrow"
+                                            disabled={idx === display.length - 1}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (idx === display.length - 1) return;
+                                                const next = [...cardOrder];
+                                                [next[idx + 1], next[idx]] = [next[idx], next[idx + 1]];
+                                                setCardOrder(next);
+                                            }}
+                                            aria-label="Move right in batting order"
+                                        >&gt;</button>
+                                        <button
+                                            className="mobile-ctl-x"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                removeCard(slot.card.id);
+                                            }}
+                                            aria-label="Remove from lineup"
+                                        >✕</button>
+                                    </div>
                                 </>
                             ) : (
-                                <div className="lineup-empty">{isDropTarget ? 'Drop here' : 'Click\nto fill'}</div>
+                                <div className="lineup-empty">{isDropTarget ? 'Drop here' : 'Tap\nto fill'}</div>
                             )}
                         </div>
                     );

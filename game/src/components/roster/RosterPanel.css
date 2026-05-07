@@ -81,3 +81,33 @@
     font-style: italic;
 }
 
+/* Mobile-only controls — hidden on desktop where drag-and-drop covers
+   the same ops. */
+.rp-mobile-ctl { display: none; }
+
+/* Mobile (iOS Home Screen, portrait). */
+@media (max-width: 899px) {
+    .roster-panel { padding: 8px; gap: 14px; }
+    .rp-section h3 { font-size: 14px; margin-bottom: 6px; }
+    .rp-card-grid { gap: 6px; }
+    .rp-card-label { font-size: 11px; }
+    .rp-card-name { font-size: 11px; }
+    .rp-card-sub { font-size: 10px; }
+    .rp-card.empty { min-height: calc(var(--card-h) + 50px); }
+    .rp-card-empty { font-size: 11px; }
+
+    /* Filled cards reserve space at the bottom for the mobile control bar. */
+    .rp-card.filled { padding-bottom: 36px; }
+    .rp-card.filled .rp-mobile-ctl {
+        display: flex;
+        position: absolute;
+        left: 4px;
+        right: 4px;
+        bottom: 4px;
+        gap: 4px;
+        z-index: 2;
+    }
+    /* Bullpen variant has only the ✕, so let it span full width. */
+    .rp-mobile-ctl-xonly .mobile-ctl-x { flex: 1; }
+}
+
