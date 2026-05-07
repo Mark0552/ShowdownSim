@@ -16,6 +16,7 @@ import { fieldingPenalty } from '../../lib/fielding';
 import { loadCards } from '../../data/cardData';
 import CardTooltip from '../cards/CardTooltip';
 import AlignmentEditor from './AlignmentEditor';
+import ModalFrame from './ModalFrame';
 import './SubstitutionModal.css';
 
 export type SubTab = 'PH' | 'PR' | 'PC' | 'DS';
@@ -71,14 +72,12 @@ export default function SubstitutionModal({ state, myRole, onAction, onClose, in
     const firstAvailable = ALL_TABS.find(isTabAvailable);
     // Honor initialTab when it's available for this phase, otherwise fall
     // back to the first phase-available tab. Prevents opening to (e.g.) PC
-    // during pre_atbat if the caller passed a stale tab.
-    const initial: SubTab = (() => {
-        if (initialTab && ALL_TABS.find(t => t.key === initialTab && isTabAvailable(t))) {
-            return initialTab;
-        }
-        return firstAvailable?.key || 'PH';
-    })();
-    const [tab, setTab] = useState<SubTab>(initial);
+    // during pre_atbat if the caller passed a stale tab. The tab is fixed
+    // for the modal's lifetime — there's no in-modal switcher anymore;
+    // each action opens via its own button in the action bar.
+    const tab: SubTab = (initialTab && ALL_TABS.find(t => t.key === initialTab && isTabAvailable(t)))
+        ? initialTab
+        : (firstAvailable?.key || 'PH');
 
     // Card lookup for hover tooltip — cached load
     const [cardsList, setCardsList] = useState<Card[]>([]);
@@ -97,57 +96,32 @@ export default function SubstitutionModal({ state, myRole, onAction, onClose, in
 
     if (phase !== 'pre_atbat' && phase !== 'defense_sub') {
         return (
-            <Overlay onClose={onClose}>
+            <ModalFrame title="SUBSTITUTIONS" onClose={onClose}>
                 <div className="sm-empty">Substitutions are only allowed before the pitch roll.</div>
-            </Overlay>
+            </ModalFrame>
         );
     }
 
     const tabProps = { showCard, hideCard };
+    // Header title reflects the specific action — the action bar now opens
+    // each sub type (PH / PR / PC / DS) directly via its own button, so the
+    // tabs row from the old combined-SUBSTITUTIONS UI is gone. Falls back
+    // to a generic title only if the tab somehow didn't resolve.
+    const activeTabDef = ALL_TABS.find(t => t.key === tab);
+    const headerTitle = activeTabDef ? activeTabDef.label.toUpperCase() : 'SUBSTITUTIONS';
+
     return (
-        <Overlay onClose={onClose}>
-            <div className="sm-header">
-                <span className="sm-title">SUBSTITUTIONS</span>
-                <button className="sm-close" onClick={onClose}>CLOSE</button>
-            </div>
-            <div className="sm-tabs">
-                {ALL_TABS.map(t => {
-                    const available = isTabAvailable(t);
-                    return (
-                        <button
-                            key={t.key}
-                            className={`sm-tab ${tab === t.key ? 'active' : ''}`}
-                            onClick={() => available && setTab(t.key)}
-                            disabled={!available}
-                            title={available ? undefined : t.unavailableReason}
-                        >
-                            {t.label}
-                        </button>
-                    );
-                })}
-            </div>
-            <div className="sm-body">
-                {tab === 'PH' && <PinchHitTab team={myTeam} onAction={onAction} onClose={onClose} {...tabProps} />}
-                {tab === 'PR' && <PinchRunTab state={state} team={myTeam} onAction={onAction} onClose={onClose} {...tabProps} />}
-                {tab === 'PC' && <PitchingChangeTab team={myTeam} onAction={onAction} onClose={onClose} {...tabProps} />}
-                {tab === 'DS' && <DefensiveSubTab state={state} myRole={myRole} team={myTeam} onAction={onAction} onClose={onClose} />}
-            </div>
+        <ModalFrame title={headerTitle} onClose={onClose} bodyClassName="mf-body-default sm-body">
+            {tab === 'PH' && <PinchHitTab team={myTeam} onAction={onAction} onClose={onClose} {...tabProps} />}
+            {tab === 'PR' && <PinchRunTab state={state} team={myTeam} onAction={onAction} onClose={onClose} {...tabProps} />}
+            {tab === 'PC' && <PitchingChangeTab team={myTeam} onAction={onAction} onClose={onClose} {...tabProps} />}
+            {tab === 'DS' && <DefensiveSubTab state={state} myRole={myRole} team={myTeam} onAction={onAction} onClose={onClose} />}
             {hoveredCard && <CardTooltip card={hoveredCard} onClose={hideCard} />}
-        </Overlay>
+        </ModalFrame>
     );
 }
 
 interface HoverProps { showCard: (cardId: string) => void; hideCard: () => void }
-
-function Overlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
-    return (
-        <div className="sm-overlay" onClick={onClose}>
-            <div className="sm-panel" onClick={e => e.stopPropagation()}>
-                {children}
-            </div>
-        </div>
-    );
-}
 
 // ============================================================================
 // PINCH HIT

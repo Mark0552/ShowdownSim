@@ -1,89 +1,15 @@
-.sm-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.85);
-    z-index: 2000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-}
+/* SubstitutionModal — body content only.
+ *
+ * Modal chrome (overlay, panel, header, title, close button, body padding,
+ * sticky header) lives in ModalFrame.css. This file only styles the
+ * tab-specific body content: sections, player/lineup lists, base buttons,
+ * preview swap, sticky-bottom Confirm. */
 
-.sm-panel {
-    background: #0a1628;
-    border: 1px solid #d4a018;
-    border-radius: 10px;
-    width: 100%;
-    max-width: 1100px;
-    max-height: 90vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    color: #eee;
-}
-
-.sm-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 18px;
-    border-bottom: 1px solid #1f4068;
-    background: #16213e;
-}
-
-.sm-title {
-    color: #d4a018;
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    font-family: Impact, sans-serif;
-}
-
-.sm-close {
-    background: none;
-    border: 1px solid #4a6a90;
-    color: #8aade0;
-    padding: 5px 14px;
-    border-radius: 5px;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 1px;
-    cursor: pointer;
-}
-.sm-close:hover { border-color: #e94560; color: #e94560; }
-
-.sm-tabs {
-    display: flex;
-    gap: 4px;
-    padding: 8px 16px 0;
-    border-bottom: 1px solid #1f4068;
-}
-
-.sm-tab {
-    background: none;
-    border: none;
+.sm-empty {
     color: #6a8aba;
     font-size: 13px;
-    font-weight: 600;
-    padding: 8px 16px;
-    border-bottom: 2px solid transparent;
-    cursor: pointer;
-}
-.sm-tab:hover:not(:disabled) { color: #eee; }
-.sm-tab:disabled {
-    color: #3a4860;
-    cursor: not-allowed;
-    opacity: 0.5;
-}
-.sm-tab.active {
-    color: #d4a018;
-    border-bottom-color: #d4a018;
-}
-
-.sm-body {
-    flex: 1;
-    overflow: auto;
-    padding: 16px 18px;
+    font-style: italic;
+    padding: 8px 0;
 }
 
 .sm-grid {
@@ -110,13 +36,6 @@
 
 .sm-section-body {
     color: #c8d8f8;
-}
-
-.sm-empty {
-    color: #6a8aba;
-    font-size: 13px;
-    font-style: italic;
-    padding: 8px 0;
 }
 
 /* Player list */
@@ -191,28 +110,6 @@
 .sm-lineup-name { font-weight: 600; }
 .sm-lineup-pos { color: #d4a018; font-size: 11px; text-align: right; }
 
-/* Position grid (defensive sub) */
-.sm-pos-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 6px;
-}
-
-.sm-pos-btn {
-    background: #0a1628;
-    border: 1px solid #1f4068;
-    border-radius: 4px;
-    color: #c8d8f8;
-    padding: 6px 8px;
-    cursor: pointer;
-    text-align: left;
-}
-.sm-pos-btn:hover { border-color: #d4a018; background: rgba(212, 160, 24, 0.08); }
-.sm-pos-btn.active { border-color: #d4a018; background: rgba(212, 160, 24, 0.18); color: #fff; }
-
-.sm-pos-slot { color: #d4a018; font-weight: 700; font-size: 12px; letter-spacing: 1px; }
-.sm-pos-name { font-size: 12px; margin-top: 2px; }
-
 /* Base buttons (pinch run) */
 .sm-base-buttons {
     display: flex;
@@ -265,175 +162,18 @@
     font-weight: 700;
 }
 
-/* Penalty display */
-.sm-penalty-box {
-    padding: 8px 12px;
-    border-radius: 6px;
-    margin-bottom: 10px;
-    font-size: 13px;
-    border: 1px solid;
-}
-.sm-pen-good { color: #4ade80; border-color: rgba(74, 222, 128, 0.4); background: rgba(74, 222, 128, 0.08); }
-.sm-pen-warn { color: #f59e0b; border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.08); }
-.sm-pen-bad { color: #e94560; border-color: rgba(233, 69, 96, 0.4); background: rgba(233, 69, 96, 0.08); }
-.sm-pen-invalid { color: #e94560; border-color: rgba(233, 69, 96, 0.6); background: rgba(233, 69, 96, 0.15); font-weight: 700; }
+/* Penalty text colors (used inline by sm-player-pen) */
+.sm-pen-good { color: #4ade80; }
+.sm-pen-warn { color: #f59e0b; }
+.sm-pen-bad { color: #e94560; }
+.sm-pen-invalid { color: #e94560; font-weight: 700; }
 
-/* Defensive sub field view (drag-drop) */
+/* Defensive sub wrapper — fills the modal body and lets the AlignmentEditor
+   inside scroll naturally. */
 .sm-ds-wrap {
     display: flex;
     flex-direction: column;
     gap: 10px;
-}
-
-.sm-ds-hint {
-    color: #8aade0;
-    font-size: 12px;
-    padding: 6px 10px;
-    background: rgba(30, 50, 90, 0.3);
-    border: 1px solid #1f4068;
-    border-radius: 4px;
-}
-.sm-ds-hint strong { color: #d4a018; }
-
-.sm-ds-field {
-    display: grid;
-    grid-template-columns: repeat(8, 1fr);
-    gap: 6px;
-    padding: 8px;
-    background: rgba(20, 40, 20, 0.2);
-    border: 1px solid #1f4068;
-    border-radius: 6px;
-}
-
-.sm-ds-dh {
-    display: grid;
-    grid-template-columns: repeat(8, 1fr);
-    gap: 6px;
-    padding: 0 8px;
-}
-.sm-ds-dh .sm-field-slot { grid-column: 4 / span 2; }
-
-.sm-ds-bench-title {
-    color: #d4a018;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    margin-top: 6px;
-}
-
-.sm-ds-bench {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 6px;
-    padding: 8px;
-    min-height: 130px;
-    background: rgba(30, 30, 50, 0.2);
-    border: 1px dashed #2a3a5e;
-    border-radius: 6px;
-}
-
-.sm-field-slot {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 4px;
-    background: #0c1a2e;
-    border: 2px solid #1f4068;
-    border-radius: 5px;
-    min-height: 130px;
-    transition: border-color 0.15s, background 0.15s;
-}
-.sm-field-slot.drop-target {
-    border-color: #4ade80;
-    background: rgba(74, 222, 128, 0.12);
-}
-.sm-field-slot.dragging { opacity: 0.35; }
-
-.sm-field-slot-label {
-    color: #d4a018;
-    font-weight: 700;
-    font-size: 10px;
-    letter-spacing: 1px;
-    margin-bottom: 2px;
-}
-
-.sm-field-card {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    cursor: grab;
-    user-select: none;
-}
-.sm-field-card:active { cursor: grabbing; }
-.sm-field-card img {
-    width: 100%;
-    height: 72px;
-    object-fit: cover;
-    object-position: center top;
-    border-radius: 3px;
-    pointer-events: none;
-}
-
-.sm-field-name {
-    color: #e6e6e6;
-    font-size: 10px;
-    font-weight: 600;
-    margin-top: 3px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-    text-align: center;
-}
-
-.sm-field-meta {
-    color: #6a8aba;
-    font-size: 9px;
-    font-family: Consolas, monospace;
-}
-
-.sm-field-empty {
-    color: #4a5e80;
-    font-size: 10px;
-    font-style: italic;
-    flex: 1;
-    display: flex;
-    align-items: center;
-}
-
-.sm-field-pen {
-    position: absolute;
-    top: 2px;
-    right: 2px;
-    padding: 1px 5px;
-    border-radius: 3px;
-    font-size: 9px;
-    font-weight: 700;
-    background: rgba(233, 69, 96, 0.85);
-    color: white;
-}
-
-.sm-bench-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 3px;
-    background: #0c1a2e;
-    border: 1px solid #1f4068;
-    border-radius: 4px;
-    cursor: grab;
-    user-select: none;
-}
-.sm-bench-card:active { cursor: grabbing; }
-.sm-bench-card img {
-    width: 100%;
-    height: 68px;
-    object-fit: cover;
-    object-position: center top;
-    border-radius: 3px;
-    pointer-events: none;
 }
 
 /* Submit button */
@@ -458,49 +198,26 @@
     filter: brightness(1.1);
 }
 
-/* Sticky footer that holds the preview-swap + Confirm button. On desktop
-   it just sits at the bottom of the modal body in normal flow. On mobile
-   it sticks to the bottom of the body's scroll container so the Confirm
-   button is always reachable without scrolling past long player lists. */
+/* Sticky footer that holds the preview-swap + Confirm button. Sits inside
+   the ModalFrame .mf-body, which is the scroll container — position: sticky
+   pins it to the body's visible bottom even as the user scrolls through
+   long lists. */
 .sm-footer-sticky {
-    background: #0a1628;
-    padding: 8px 0 0;
-    margin-top: 8px;
+    position: sticky;
+    bottom: -16px; /* offsets ModalFrame's mf-body-default 16px bottom padding */
+    margin: 12px -18px -16px;
+    padding: 10px 18px 14px;
+    background: linear-gradient(to bottom, rgba(10, 22, 40, 0), rgba(10, 22, 40, 0.97) 30%, rgba(10, 22, 40, 1) 100%);
     border-top: 1px solid #1f4068;
+    z-index: 1;
 }
 
 
 /* ---------- Mobile (iOS Home Screen, portrait) ----------
- * Tighten the substitution modal for portrait phones — full viewport,
- * shorter player/lineup lists, sticky-bottom Confirm so the user never
- * has to scroll past the lists to commit. */
+ * Tighten the substitution modal body for portrait phones — shorter
+ * player/lineup lists and bigger tap targets. Modal chrome (overlay,
+ * panel, header, close) is handled by ModalFrame's mobile rules. */
 @media (max-width: 899px) {
-    .sm-overlay { padding: 8px; }
-    .sm-panel { max-width: none; max-height: calc(100vh - 16px); border-radius: 8px; }
-    .sm-header { padding: 8px 12px; }
-    .sm-title { font-size: 13px; letter-spacing: 1px; }
-    /* CLOSE text → × icon on mobile (saves header width for the title).
-       The button text is hidden via font-size: 0 and the × is drawn with
-       a ::before pseudo-element so the JSX stays the same on desktop. */
-    .sm-close {
-        font-size: 0;
-        padding: 0;
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-    }
-    .sm-close::before {
-        content: '\2715';
-        font-size: 14px;
-        font-weight: 700;
-    }
-    .sm-tabs { overflow-x: auto; flex-wrap: nowrap; }
-    .sm-tab { font-size: 12px; padding: 7px 12px; flex-shrink: 0; }
-    .sm-body { padding: 8px 10px; }
     .sm-grid { gap: 8px; }
     .sm-section { padding: 10px; border-radius: 6px; }
     .sm-section-title { font-size: 11px; margin-bottom: 6px; }
@@ -534,18 +251,12 @@
         transform: rotate(90deg);
     }
 
-    /* Sticky-bottom Confirm. The footer sits inside .sm-body (which is
-       the scroll container), so position: sticky pins it to the body's
-       visible bottom even as the user scrolls through long lists.
-       Negative bottom margin pulls it flush against the panel edge. */
+    /* Sticky-bottom Confirm — adjusted offsets to match ModalFrame's mobile
+       body padding (12px). */
     .sm-footer-sticky {
-        position: sticky;
-        bottom: -8px;
-        margin: 8px -10px -8px;
-        padding: 8px 10px 12px;
-        background: linear-gradient(to bottom, rgba(10, 22, 40, 0), rgba(10, 22, 40, 0.97) 30%, rgba(10, 22, 40, 1) 100%);
-        border-top: 1px solid #1f4068;
-        z-index: 1;
+        bottom: -12px;
+        margin: 10px -12px -12px;
+        padding: 8px 12px 12px;
     }
     .sm-btn-primary {
         padding: 12px 16px;

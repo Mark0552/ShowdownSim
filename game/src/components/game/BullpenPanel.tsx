@@ -1,4 +1,5 @@
 import type { PlayerSlot, TeamState } from '../../engine/gameEngine';
+import ModalFrame from './ModalFrame';
 import './GameBoard.css';
 
 interface BullpenPanelProps {
@@ -9,9 +10,15 @@ interface BullpenPanelProps {
     onLeave: () => void;
 }
 
-/** Bullpen/Bench panel — shows full pitcher and bench details */
+/** Bullpen / bench / starting-rotation panel. Wrapped in <ModalFrame> for
+ *  visual consistency with SubstitutionModal and DefenseSetupModal — same
+ *  gold-bordered panel, sticky header, scrollable body, × close on mobile.
+ *
+ *  Note: this used to be a `position: absolute` side-panel anchored to the
+ *  team's strip on desktop. Converting to a centered modal removes the
+ *  "anchored near the BENCH/PEN button" subtlety, but the modal-with-
+ *  backdrop pattern is clearer and matches the rest of the in-game popups. */
 export default function BullpenPanel({ team, side, onClose, onHover, onLeave }: BullpenPanelProps) {
-    const panelClass = `bullpen-panel ${side === 'away' ? 'away-panel' : 'home-panel'}`;
     const label = side === 'away' ? 'AWAY' : 'HOME';
     const activePitcherId = team.pitcher.cardId;
 
@@ -62,111 +69,110 @@ export default function BullpenPanel({ team, side, onClose, onHover, onLeave }: 
     const usedUnknown = usedWithInfo.filter(u => !usedBullpen.includes(u) && !usedBench.includes(u));
 
     return (
-        <div className={panelClass}>
-            <div className="bp-header">
-                <span className="bp-title">{label} BULLPEN &amp; BENCH</span>
-                <button className="bp-close" onClick={onClose} aria-label="Close">&#x2715;</button>
-            </div>
-            <div className="bp-body">
-                <div className="bp-cards">
-                {/* Available Bullpen */}
-                {availableBullpen.length > 0 && (
-                    <>
-                        <div className="bp-section-label">AVAILABLE BULLPEN ({availableBullpen.length})</div>
-                        {availableBullpen.map((p, i) => (
-                            <div key={`bp-${i}`} className="bp-card" onMouseEnter={(e) => onHover(p, e)} onMouseLeave={onLeave}>
+        <ModalFrame
+            title={`${label} BULLPEN & BENCH`}
+            onClose={onClose}
+            panelClassName="bp-panel"
+            bodyClassName="mf-body-default bp-body"
+        >
+            <div className="bp-cards">
+            {/* Available Bullpen */}
+            {availableBullpen.length > 0 && (
+                <>
+                    <div className="bp-section-label">AVAILABLE BULLPEN ({availableBullpen.length})</div>
+                    {availableBullpen.map((p, i) => (
+                        <div key={`bp-${i}`} className="bp-card" onMouseEnter={(e) => onHover(p, e)} onMouseLeave={onLeave}>
+                            <img src={p.imagePath} alt="" />
+                            <div className="bp-card-info">
+                                <span className="bp-card-name">{p.name}</span>
+                                {p.icons && p.icons.length > 0 && (
+                                    <span className="bp-card-icons">{p.icons.join(' ')}</span>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </>
+            )}
+
+            {/* Available Bench */}
+            {availableBench.length > 0 && (
+                <>
+                    <div className="bp-section-label">AVAILABLE BENCH ({availableBench.length})</div>
+                    {availableBench.map((p, i) => (
+                        <div key={`bn-${i}`} className="bp-card" onMouseEnter={(e) => onHover(p, e)} onMouseLeave={onLeave}>
+                            <img src={p.imagePath} alt="" />
+                            <div className="bp-card-info">
+                                <span className="bp-card-name">{p.name}</span>
+                                {p.icons && p.icons.length > 0 && (
+                                    <span className="bp-card-icons">{p.icons.join(' ')}</span>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </>
+            )}
+
+            {/* Starting Rotation */}
+            {startingRotation.length > 0 && (
+                <>
+                    <div className="bp-section-label" style={{ color: '#4a7a9a' }}>STARTING ROTATION ({startingRotation.length})</div>
+                    {startingRotation.map((p, i) => {
+                        const isActive = p.cardId === activePitcherId;
+                        const isUsed = usedStarterIds.has(p.cardId);
+                        const spNum = getSpNum(p);
+                        return (
+                            <div key={`sp-${i}`} className="bp-card" style={{
+                                opacity: isActive ? 1 : isUsed ? 0.45 : 0.6,
+                                border: isActive ? '1px solid #4ade80' : isUsed ? '1px solid #e94560' : 'none',
+                                borderRadius: (isActive || isUsed) ? '4px' : undefined,
+                                background: isActive ? 'rgba(74, 222, 128, 0.08)' : isUsed ? 'rgba(233, 69, 96, 0.08)' : undefined,
+                            }} onMouseEnter={(e) => onHover(p, e)} onMouseLeave={onLeave}>
                                 <img src={p.imagePath} alt="" />
                                 <div className="bp-card-info">
-                                    <span className="bp-card-name">{p.name}</span>
-                                    {p.icons && p.icons.length > 0 && (
-                                        <span className="bp-card-icons">{p.icons.join(' ')}</span>
-                                    )}
+                                    <span className="bp-card-name" style={{ color: isActive ? '#4ade80' : isUsed ? '#e94560' : '#4a7a9a' }}>
+                                        SP{spNum} — {p.name}{isActive ? ' ★' : isUsed ? ' (used)' : ''}
+                                    </span>
                                 </div>
                             </div>
-                        ))}
-                    </>
-                )}
+                        );
+                    })}
+                </>
+            )}
 
-                {/* Available Bench */}
-                {availableBench.length > 0 && (
-                    <>
-                        <div className="bp-section-label">AVAILABLE BENCH ({availableBench.length})</div>
-                        {availableBench.map((p, i) => (
-                            <div key={`bn-${i}`} className="bp-card" onMouseEnter={(e) => onHover(p, e)} onMouseLeave={onLeave}>
-                                <img src={p.imagePath} alt="" />
-                                <div className="bp-card-info">
-                                    <span className="bp-card-name">{p.name}</span>
-                                    {p.icons && p.icons.length > 0 && (
-                                        <span className="bp-card-icons">{p.icons.join(' ')}</span>
-                                    )}
-                                </div>
+            {/* Not Available Bullpen */}
+            {(usedBullpen.length > 0 || usedUnknown.length > 0) && (
+                <>
+                    <div className="bp-section-label" style={{ color: '#4a3030' }}>NOT AVAILABLE BULLPEN ({usedBullpen.length + usedUnknown.length})</div>
+                    {[...usedBullpen, ...usedUnknown].map((u, i) => (
+                        <div key={`ubp-${i}`} className="bp-card" style={{ opacity: 0.4 }}>
+                            {u.player?.imagePath && <img src={u.player.imagePath} alt="" />}
+                            <div className="bp-card-info">
+                                <span className="bp-card-name" style={{ color: '#666' }}>{u.player?.name || u.id}</span>
                             </div>
-                        ))}
-                    </>
-                )}
+                        </div>
+                    ))}
+                </>
+            )}
 
-                {/* Starting Rotation */}
-                {startingRotation.length > 0 && (
-                    <>
-                        <div className="bp-section-label" style={{ color: '#4a7a9a' }}>STARTING ROTATION ({startingRotation.length})</div>
-                        {startingRotation.map((p, i) => {
-                            const isActive = p.cardId === activePitcherId;
-                            const isUsed = usedStarterIds.has(p.cardId);
-                            const spNum = getSpNum(p);
-                            return (
-                                <div key={`sp-${i}`} className="bp-card" style={{
-                                    opacity: isActive ? 1 : isUsed ? 0.45 : 0.6,
-                                    border: isActive ? '1px solid #4ade80' : isUsed ? '1px solid #e94560' : 'none',
-                                    borderRadius: (isActive || isUsed) ? '4px' : undefined,
-                                    background: isActive ? 'rgba(74, 222, 128, 0.08)' : isUsed ? 'rgba(233, 69, 96, 0.08)' : undefined,
-                                }} onMouseEnter={(e) => onHover(p, e)} onMouseLeave={onLeave}>
-                                    <img src={p.imagePath} alt="" />
-                                    <div className="bp-card-info">
-                                        <span className="bp-card-name" style={{ color: isActive ? '#4ade80' : isUsed ? '#e94560' : '#4a7a9a' }}>
-                                            SP{spNum} — {p.name}{isActive ? ' ★' : isUsed ? ' (used)' : ''}
-                                        </span>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </>
-                )}
-
-                {/* Not Available Bullpen */}
-                {(usedBullpen.length > 0 || usedUnknown.length > 0) && (
-                    <>
-                        <div className="bp-section-label" style={{ color: '#4a3030' }}>NOT AVAILABLE BULLPEN ({usedBullpen.length + usedUnknown.length})</div>
-                        {[...usedBullpen, ...usedUnknown].map((u, i) => (
-                            <div key={`ubp-${i}`} className="bp-card" style={{ opacity: 0.4 }}>
-                                {u.player?.imagePath && <img src={u.player.imagePath} alt="" />}
-                                <div className="bp-card-info">
-                                    <span className="bp-card-name" style={{ color: '#666' }}>{u.player?.name || u.id}</span>
-                                </div>
+            {/* Not Available Bench */}
+            {usedBench.length > 0 && (
+                <>
+                    <div className="bp-section-label" style={{ color: '#4a3030' }}>NOT AVAILABLE BENCH ({usedBench.length})</div>
+                    {usedBench.map((u, i) => (
+                        <div key={`ubn-${i}`} className="bp-card" style={{ opacity: 0.4 }}>
+                            {u.player?.imagePath && <img src={u.player.imagePath} alt="" />}
+                            <div className="bp-card-info">
+                                <span className="bp-card-name" style={{ color: '#666' }}>{u.player?.name || u.id}</span>
                             </div>
-                        ))}
-                    </>
-                )}
+                        </div>
+                    ))}
+                </>
+            )}
 
-                {/* Not Available Bench */}
-                {usedBench.length > 0 && (
-                    <>
-                        <div className="bp-section-label" style={{ color: '#4a3030' }}>NOT AVAILABLE BENCH ({usedBench.length})</div>
-                        {usedBench.map((u, i) => (
-                            <div key={`ubn-${i}`} className="bp-card" style={{ opacity: 0.4 }}>
-                                {u.player?.imagePath && <img src={u.player.imagePath} alt="" />}
-                                <div className="bp-card-info">
-                                    <span className="bp-card-name" style={{ color: '#666' }}>{u.player?.name || u.id}</span>
-                                </div>
-                            </div>
-                        ))}
-                    </>
-                )}
-
-                {availableBullpen.length === 0 && availableBench.length === 0 && startingRotation.length === 0 && usedPlayerIds.length === 0 && (
-                    <div className="bp-empty">No bullpen or bench players available</div>
-                )}
-                </div>
+            {availableBullpen.length === 0 && availableBench.length === 0 && startingRotation.length === 0 && usedPlayerIds.length === 0 && (
+                <div className="bp-empty">No bullpen or bench players available</div>
+            )}
             </div>
-        </div>
+        </ModalFrame>
     );
 }

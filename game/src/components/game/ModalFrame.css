@@ -1,0 +1,162 @@
+/* ModalFrame — shared chrome for in-game modals.
+ *
+ * Visual baseline: dark navy panel, gold double-line border, gold Impact
+ * title, sticky header with CLOSE on the right. Body scrolls; optional
+ * sticky footer pinned to the bottom.
+ *
+ * Mobile (max-width 899px): full-viewport with 8px inset, sticky header
+ * uses smaller font, CLOSE collapses to an × icon via font-size: 0 +
+ * ::before glyph.
+ */
+
+.mf-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2400;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.mf-overlay-low {
+    z-index: 2200;
+}
+
+.mf-panel {
+    background: #0a1628;
+    border: 2px solid #d4a018;
+    border-radius: 12px;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    width: 100%;
+    max-width: 900px;
+    max-height: 90vh;
+    min-width: 0;
+}
+
+.mf-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 18px;
+    background: #061018;
+    border-bottom: 2px solid #d4a018;
+    flex: 0 0 auto;
+}
+
+.mf-title {
+    font-family: 'Impact', 'Oswald', 'Arial Narrow', sans-serif;
+    font-size: 22px;
+    color: #d4a018;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    flex: 0 0 auto;
+}
+
+.mf-header-extra {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+
+.mf-close {
+    margin-left: auto;
+    background: transparent;
+    border: 1px solid #d4a018;
+    color: #d4a018;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    font-weight: 700;
+    flex: 0 0 auto;
+}
+
+.mf-close:hover {
+    background: #d4a018;
+    color: #0a1628;
+}
+
+.mf-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    color: var(--text);
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Default body padding when bodyClassName is not overridden. */
+.mf-body-default {
+    padding: 16px 18px;
+}
+
+/* Optional footer slot. When children include a footer prop, it lands
+ * here as the last child of .mf-body. position: sticky pins it to the
+ * panel bottom while body content scrolls. */
+.mf-footer {
+    position: sticky;
+    bottom: -16px; /* offsets the body padding so footer sits flush */
+    margin: 12px -18px -16px;
+    padding: 12px 18px 14px;
+    background: linear-gradient(to bottom, rgba(10, 22, 40, 0), rgba(10, 22, 40, 0.97) 35%, rgba(10, 22, 40, 1) 100%);
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    z-index: 2;
+}
+
+@media (max-width: 899px) {
+    .mf-overlay {
+        padding: 0;
+    }
+    .mf-panel {
+        width: 100vw;
+        height: 100vh;
+        max-width: none;
+        max-height: none;
+        border-radius: 0;
+        border-width: 0;
+    }
+    .mf-header {
+        padding: 10px 12px;
+        position: sticky;
+        top: 0;
+        z-index: 3;
+    }
+    .mf-title {
+        font-size: 18px;
+    }
+    /* Collapse CLOSE label to an × icon — same trick used by .sm-close
+       and .overlay-close pre-migration. */
+    .mf-close {
+        font-size: 0;
+        padding: 4px 10px;
+        line-height: 1;
+        border-width: 1px;
+        min-height: 28px;
+        min-width: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .mf-close::before {
+        content: '✕';
+        font-size: 16px;
+        font-weight: 700;
+        line-height: 1;
+    }
+    .mf-body-default {
+        padding: 12px;
+    }
+    .mf-footer {
+        margin: 10px -12px -12px;
+        padding: 10px 12px 12px;
+        bottom: -12px;
+    }
+}

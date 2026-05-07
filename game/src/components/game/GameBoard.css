@@ -23,72 +23,15 @@
 .roll-button:hover { opacity: 0.85; }
 .roll-button:active rect { filter: brightness(1.2); }
 
-/* Bullpen/Bench expand panels */
-.bullpen-panel {
-    position: absolute;
-    z-index: 500;
-    background: #0c1e3a;
-    border: 1px solid #d4a018;
-    border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
-    min-width: 200px;
-    max-height: 70vh;
-    /* Flex column + overflow hidden so .bp-header pins at the top and
-       only .bp-body scrolls — the close × stays reachable on long
-       bench/pen lists. */
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+/* Bullpen / bench panel — body content only. Modal chrome (overlay,
+   panel, header with title + close, body scroll) lives in ModalFrame.css
+   via the shared <ModalFrame> component. The `.bp-panel` panelClassName
+   tunes the panel width for the bullpen content; `.bp-body` overrides
+   ModalFrame's default body padding. */
+.mf-panel.bp-panel {
+    max-width: 720px;
 }
-
-.away-panel {
-    left: 20px;
-    bottom: 60px;
-}
-
-.home-panel {
-    right: 20px;
-    bottom: 60px;
-}
-
-.bp-header {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 10px 12px 8px;
-    border-bottom: 1px solid #1f4068;
-}
-
-.bp-title {
-    font-size: 11px;
-    color: #d4a018;
-    font-weight: normal;
-    letter-spacing: 1px;
-}
-
-.bp-close {
-    background: none;
-    border: 1px solid #4a6a90;
-    color: #8aade0;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    padding: 0;
-    flex-shrink: 0;
-}
-.bp-close:hover { border-color: #d4a018; color: #d4a018; }
-
-.bp-body {
-    flex: 1;
-    overflow-y: auto;
+.mf-body.bp-body {
     padding: 8px 12px 12px;
 }
 
@@ -355,17 +298,10 @@
     .game-log-entries { font-size: 10px; }
     .log-entry, .log-entry-inning { padding: 1px 0; }
 
-    /* Bullpen / bench panel — pinned full-width to bottom edge instead of
-       cramped 20px corners. Becomes a bottom sheet on phones. */
-    .bullpen-panel {
-        left: 8px !important;
-        right: 8px !important;
-        bottom: 8px !important;
-        max-height: 60vh;
-        min-width: 0;
-    }
-    .bp-header { padding: 8px 10px 6px; }
-    .bp-body { padding: 6px 10px 10px; }
+    /* Bullpen / bench panel — modal chrome (full-viewport on mobile) is
+       handled by ModalFrame's mobile rules. Here we only tighten the
+       inner card content. */
+    .mf-body.bp-body { padding: 6px 10px 10px; }
     .bp-cards { gap: 4px; }
     .bp-card { padding: 3px; }
     .bp-card img { width: 28px; height: 39px; }

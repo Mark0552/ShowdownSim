@@ -3,13 +3,22 @@
  * when the defending team has ≥1 player at a non-native, non-1B position.
  *
  * Thin wrapper around <AlignmentEditor>. The editor handles all of the
- * drag-drop, validity, and commit logic. This component just owns the
+ * tap-to-select, validity, and commit logic. This component just owns the
  * overlay chrome and the "opponent arranging defense" banner for the
  * non-active side.
+ *
+ * The active-side variant uses the shared <ModalFrame> for visual
+ * consistency with SubstitutionModal and BullpenPanel. closeOnBackdrop is
+ * false because Accept is forced — the user must commit a valid alignment.
+ *
+ * The opponent-waiting variant keeps its own simpler card chrome since
+ * it's a status overlay (no scrollable body, no actions) rather than a
+ * modal proper.
  */
 
 import type { GameState, GameAction } from '../../engine/gameEngine';
 import AlignmentEditor from './AlignmentEditor';
+import ModalFrame from './ModalFrame';
 import './DefenseSetupModal.css';
 
 interface Props {
@@ -59,6 +68,8 @@ export default function DefenseSetupModal({
     if (!isMine) {
         // Opponent overlay blocks game ACTIONS but not info. They can open
         // Box Score / Log / Dice, or exit the game entirely while waiting.
+        // Keeps its own simpler chrome — it's not really a modal, just a
+        // centered status card.
         return (
             <div className="dsm-overlay dsm-opp">
                 <div className="dsm-opp-card">
@@ -75,29 +86,30 @@ export default function DefenseSetupModal({
         );
     }
 
+    const headerExtra = (
+        <InfoToolbar
+            onToggleBoxScore={onToggleBoxScore}
+            onToggleLog={onToggleLog}
+            onToggleDiceRolls={onToggleDiceRolls}
+            onExit={onExit}
+        />
+    );
+
     return (
-        <div className="dsm-overlay">
-            <div className="dsm-panel">
-                <div className="dsm-header">
-                    <span className="dsm-title">ARRANGE DEFENSE</span>
-                    <InfoToolbar
-                        onToggleBoxScore={onToggleBoxScore}
-                        onToggleLog={onToggleLog}
-                        onToggleDiceRolls={onToggleDiceRolls}
-                        onExit={onExit}
-                    />
-                </div>
-                <div className="dsm-body">
-                    <AlignmentEditor
-                        state={state}
-                        team={state[defSide]}
-                        isHomeDefense={isHomeDefense}
-                        isMyTurn={isMyTurn}
-                        allowCancel={false}
-                        onCommit={onAction}
-                    />
-                </div>
-            </div>
-        </div>
+        <ModalFrame
+            title="ARRANGE DEFENSE"
+            headerExtra={headerExtra}
+            closeOnBackdrop={false}
+            panelClassName="dsm-panel-wide"
+        >
+            <AlignmentEditor
+                state={state}
+                team={state[defSide]}
+                isHomeDefense={isHomeDefense}
+                isMyTurn={isMyTurn}
+                allowCancel={false}
+                onCommit={onAction}
+            />
+        </ModalFrame>
     );
 }

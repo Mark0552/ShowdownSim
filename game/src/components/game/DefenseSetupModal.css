@@ -1,269 +1,28 @@
-.dsm-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.85);
-    z-index: 2100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-}
+/* DefenseSetupModal — toolbar + opponent-waiting overlay only.
+ *
+ * The active-side modal chrome (overlay, panel, header, title, body
+ * scroll) lives in ModalFrame.css. The full-bleed AlignmentEditor inside
+ * carries its own `.ae-*` styles. Dead `.dsm-field-grid`, `.dsm-bench-grid`,
+ * `.dsm-slot`, `.dsm-card-*` rules were removed — those classes are no
+ * longer rendered (AlignmentEditor uses `.ae-*`).
+ */
 
-.dsm-overlay.dsm-opp { background: rgba(0, 0, 0, 0.55); }
-
-.dsm-panel {
-    background: #0a1628;
-    border: 1px solid #d4a018;
-    border-radius: 10px;
-    width: 100%;
+/* Wider panel for the active-side defense modal — needs room for the 9-col
+ * field grid on tablet/desktop. The compound selector beats the bare
+ * `.mf-panel` rule on specificity, so no !important needed. */
+.mf-panel.dsm-panel-wide {
     max-width: 1200px;
-    max-height: 92vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    color: #eee;
 }
 
-.dsm-header {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    padding: 12px 18px;
-    border-bottom: 1px solid #1f4068;
-    background: #16213e;
-}
-
-.dsm-title {
-    color: #d4a018;
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    font-family: Impact, sans-serif;
-    flex-shrink: 0;
-}
-
-.dsm-totals {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex: 1;
-    justify-content: center;
-    font-family: Consolas, monospace;
-    color: #8aade0;
-    font-size: 13px;
-}
-
-.dsm-tot-label { color: #6a8aba; font-weight: 600; letter-spacing: 1px; }
-.dsm-stat { color: #4ade80; font-weight: 700; font-size: 14px; margin-right: 8px; }
-
-.dsm-reset {
-    background: none;
-    border: 1px solid #4a6a90;
-    color: #8aade0;
-    padding: 5px 14px;
-    border-radius: 5px;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 1px;
-    cursor: pointer;
-}
-.dsm-reset:hover { border-color: #d4a018; color: #d4a018; }
-
-.dsm-body {
-    flex: 1;
-    overflow: auto;
-    padding: 16px 18px;
-}
-
-.dsm-section-title {
-    color: #d4a018;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    margin-bottom: 8px;
-    margin-top: 12px;
-    text-transform: uppercase;
-}
-.dsm-section-title:first-child { margin-top: 0; }
-
-.dsm-field-grid {
-    display: grid;
-    grid-template-columns: repeat(9, 1fr);
-    gap: 8px;
-    padding: 8px;
-    background: rgba(20, 40, 20, 0.2);
-    border: 1px solid #1f4068;
-    border-radius: 6px;
-}
-
-.dsm-bench-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-    gap: 8px;
-    padding: 8px;
-    min-height: 170px;
-    background: rgba(30, 30, 50, 0.2);
-    border: 1px dashed #2a3a5e;
-    border-radius: 6px;
-}
-
-.dsm-slot {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 4px;
-    background: #0c1a2e;
-    border: 2px solid #1f4068;
-    border-radius: 6px;
-    min-height: 150px;
-    transition: border-color 0.15s;
-}
-
-.dsm-slot.dsm-slot-bad { border-color: #e94560; }
-.dsm-slot.dsm-slot-displaced { border-style: dashed; opacity: 0.75; }
-
-.dsm-slot-label {
-    color: #d4a018;
-    font-weight: 700;
-    font-size: 11px;
-    letter-spacing: 1px;
-    margin-bottom: 2px;
-}
-
-.dsm-empty-slot {
-    color: #4a5e80;
-    font-size: 11px;
-    font-style: italic;
-    flex: 1;
-    display: flex;
-    align-items: center;
-}
-
-.dsm-card {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    cursor: grab;
-    user-select: none;
-}
-.dsm-card:active { cursor: grabbing; }
-
-.dsm-card-img {
-    width: 100%;
-    height: 82px;
-    object-fit: cover;
-    object-position: center top;
-    border-radius: 3px;
-    pointer-events: none;
-}
-
-.dsm-card-name {
-    color: #e6e6e6;
-    font-size: 10px;
-    font-weight: 600;
-    margin-top: 3px;
-    text-align: center;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-}
-
-.dsm-card-nat {
-    color: #6a8aba;
-    font-size: 9px;
-    font-family: Consolas, monospace;
-}
-
-.dsm-card-pen {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    background: #dc2626;
-    color: white;
-    font-size: 9px;
-    font-weight: 700;
-    padding: 1px 5px;
-    border-radius: 3px;
-    letter-spacing: 0.5px;
-}
-
-.dsm-card-sub {
-    color: #e94560;
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    margin-top: 2px;
-}
-
-.dsm-status {
-    margin: 12px 0 8px;
-}
-
-.dsm-warn {
-    background: rgba(233, 69, 96, 0.1);
-    border: 1px solid rgba(233, 69, 96, 0.4);
-    color: #e94560;
-    padding: 6px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    margin-bottom: 6px;
-}
-
-.dsm-empty {
-    color: #6a8aba;
-    font-style: italic;
-    padding: 16px;
-    text-align: center;
-    grid-column: 1 / -1;
-}
-
-.dsm-accept {
-    width: 100%;
-    background: #d4a018;
-    color: #002;
-    border: none;
-    padding: 12px 16px;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    cursor: pointer;
-    text-transform: uppercase;
-    margin-top: 8px;
-}
-.dsm-accept:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
-.dsm-accept:hover:not(:disabled) { filter: brightness(1.1); }
-
-/* Opponent overlay — blocks game ACTIONS but lets the waiting player
-   still open Box Score / Log / Dice Rolls, or exit the game. */
-.dsm-opp-card {
-    background: rgba(10, 22, 40, 0.98);
-    border: 1px solid #d4a018;
-    border-radius: 8px;
-    padding: 28px 48px;
-    text-align: center;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.6);
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    align-items: center;
-}
-
+/* Header toolbar (BOX SCORE / GAME LOG / DICE ROLLS / EXIT) lives in
+ * ModalFrame's headerExtra slot. The .dsm-tool-btn styling is shared
+ * between the active-side header and the opponent-waiting card. */
 .dsm-toolbar {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
-    justify-content: center;
-    margin-top: 4px;
-    /* In the active-side header, push the toolbar to the right. In the
-       opponent card it centers naturally (margin-top adds spacing). */
-    margin-left: auto;
+    justify-content: flex-end;
+    flex: 1;
 }
 
 .dsm-tool-btn {
@@ -293,40 +52,69 @@
     background: rgba(233, 69, 96, 0.15);
     color: #ff7a92;
 }
+
+/* ---------- Opponent-waiting overlay ----------
+ * Status card shown when the opposing manager is arranging defense. Kept
+ * as its own overlay (not ModalFrame) because it has no scrollable body
+ * or close button — just a title + subtitle + InfoToolbar. */
+.dsm-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2400;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.dsm-overlay.dsm-opp { background: rgba(0, 0, 0, 0.55); }
+
+.dsm-opp-card {
+    background: rgba(10, 22, 40, 0.98);
+    border: 2px solid #d4a018;
+    border-radius: 12px;
+    padding: 28px 48px;
+    text-align: center;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: center;
+    max-width: 520px;
+}
+
 .dsm-wait-title {
     color: #d4a018;
     font-family: Impact, sans-serif;
-    font-size: 18px;
+    font-size: 20px;
     letter-spacing: 3px;
-    margin-bottom: 6px;
 }
 .dsm-wait-sub { color: #c8d8f8; font-size: 13px; }
 
+/* In the opponent-waiting card the toolbar centers — override the
+ * justify-content from the header variant. */
+.dsm-opp-card .dsm-toolbar {
+    justify-content: center;
+    margin-top: 4px;
+}
+
 /* ---------- Mobile (iOS Home Screen, portrait) ----------
- * The desktop layout uses a 9-column field grid that's unworkable below
- * ~700px. On mobile, collapse the field + bench grids to two columns so
- * cards stay tappable. Header + buttons also tighten. */
+ * The active-side modal chrome is handled by ModalFrame's mobile rules.
+ * Here we only tighten the toolbar and the opponent-waiting card.
+ * The AlignmentEditor inside reflows its grid via its own mobile rules. */
 @media (max-width: 899px) {
-    .dsm-overlay { padding: 8px; }
-    .dsm-panel { max-width: none; max-height: calc(100vh - 16px); border-radius: 8px; }
-    .dsm-header { padding: 8px 12px; gap: 8px; flex-wrap: wrap; }
-    .dsm-title { font-size: 13px; letter-spacing: 1px; }
-    .dsm-totals { gap: 6px; font-size: 10px; }
-    .dsm-tot-label { font-size: 10px; letter-spacing: 0; }
-    .dsm-stat { font-size: 12px; }
-    .dsm-reset { font-size: 11px; padding: 4px 8px; }
-    .dsm-body { padding: 8px 10px; }
-    .dsm-section-title { font-size: 11px; margin-top: 10px; }
-    .dsm-field-grid {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 4px;
+    .dsm-overlay { padding: 12px; }
+    .dsm-opp-card { padding: 20px; gap: 10px; max-width: none; width: 100%; }
+    .dsm-wait-title { font-size: 16px; letter-spacing: 2px; }
+    .dsm-wait-sub { font-size: 12px; }
+
+    .dsm-toolbar {
+        gap: 6px;
+        justify-content: center;
     }
-    .dsm-bench-grid {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 4px;
+    .dsm-tool-btn {
+        font-size: 10px;
+        padding: 5px 10px;
+        letter-spacing: 0.04em;
     }
-    .dsm-slot { padding: 4px; }
-    .dsm-slot-label { font-size: 9px; }
-    .dsm-card-img { width: 100%; height: auto; aspect-ratio: 251 / 350; }
-    .dsm-card-name { font-size: 10px; }
 }

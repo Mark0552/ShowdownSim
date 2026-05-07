@@ -111,11 +111,16 @@
     overflow: hidden;
     user-select: none;
     min-height: 180px;
-    transition: border-color 0.1s, box-shadow 0.1s;
+    transition: border-color 0.1s, box-shadow 0.1s, transform 0.1s;
+    cursor: pointer;
+}
+
+.ae-cell:hover {
+    border-color: var(--accent);
 }
 
 .ae-cell-slot {
-    cursor: default;
+    cursor: pointer;
 }
 
 .ae-cell-bench {
@@ -147,6 +152,16 @@
     box-shadow: 0 0 0 2px var(--error) inset;
 }
 
+/* Currently-picked card — gold ring + subtle scale to signal "you've
+   grabbed this card; tap any other cell to drop it here". */
+.ae-cell-picked {
+    border-color: #fbbf24;
+    box-shadow: 0 0 0 3px #fbbf24, 0 0 18px rgba(251, 191, 36, 0.55);
+    transform: scale(1.03);
+    z-index: 1;
+    position: relative;
+}
+
 .ae-cell-top {
     display: flex;
     justify-content: space-between;
@@ -174,7 +189,6 @@
 }
 
 .ae-cell-card {
-    cursor: grab;
     position: relative;
     background: #000;
     flex: 1;
@@ -182,10 +196,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-}
-
-.ae-cell-card:active {
-    cursor: grabbing;
+    /* Inherits cursor: pointer from .ae-cell — no separate drag cursor
+       since we no longer use HTML5 drag-and-drop. */
 }
 
 .ae-cell-img {
@@ -299,6 +311,53 @@
     .ae-cancel {
         padding: 12px 16px;
         font-size: 13px;
+    }
+
+    /* Field grid: 9 cells (C, 1B, 2B, 3B, SS, LF-RF-1, CF, LF-RF-2, DH)
+       wrap to 5 + 4 on mobile via 5-column grid. The natural ordering of
+       FIELD_SLOTS in AlignmentEditor.tsx puts the infield on row 1 (C, 1B,
+       2B, 3B, SS) and the outfield + DH on row 2 (LF-RF-1, CF, LF-RF-2,
+       DH) — which reads correctly even though it's just a wrap effect.
+       At 360-393px viewports each cell gets ~62-68px wide, big enough
+       for the card image + position label + a real name. */
+    .ae-field-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 4px;
+    }
+    /* Bench: 3 columns instead of 9 — leaves ~110px per cell so names
+       are readable instead of the desktop's 9-col cram. Wraps as needed. */
+    .ae-bench-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 4px;
+        padding: 4px;
+        min-height: 80px;
+    }
+    /* Tighten cell content — smaller min-height, hide the verbose
+       "eligible: ..." line which doesn't fit at this width anyway. */
+    .ae-cell {
+        min-height: 130px;
+    }
+    .ae-cell-top {
+        font-size: 9px;
+        padding: 2px 4px;
+        min-height: 18px;
+    }
+    .ae-cell-bottom {
+        padding: 3px 4px;
+    }
+    .ae-cell-name {
+        font-size: 10px;
+    }
+    /* Drop the eligible-positions hint on mobile — it always wraps
+       awkwardly and the user can hover/tap the card to see full info. */
+    .ae-cell-nat {
+        display: none;
+    }
+    .ae-cell-pen,
+    .ae-cell-sub,
+    .ae-cell-block {
+        font-size: 9px;
+        margin-top: 1px;
     }
 }
 

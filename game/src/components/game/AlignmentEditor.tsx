@@ -3,9 +3,20 @@
  *   - DefenseSetupModal at half-inning boundaries (forced)
  *   - SubstitutionModal's DefensiveSub tab during pre_atbat / defense_sub (optional)
  *
- * Stage-then-confirm model: drag-drop mutates LOCAL alignment state only.
+ * Stage-then-confirm model: tap-to-select mutates LOCAL alignment state only.
  * Accept emits DEFENSE_SETUP_COMMIT atomically. Cancel / Reset don't touch
  * the server.
+ *
+ * Interaction (tap-to-select, replaces the older HTML5 drag-and-drop):
+ *   1. Tap any card to pick it. Picked card gets a gold ring.
+ *   2. Tap a different card → swap. Tap a slot's card → swap. Tap a bench
+ *      card → swap (slot card and bench card trade places).
+ *   3. Tap the same card again to deselect.
+ *   4. Tap outside any cell (totals bar, empty space) to deselect.
+ *
+ * HTML5 DnD was abandoned because it's flaky on iOS Safari (the long-press-
+ * to-drag activation often fails or fires the OS text-selection menu
+ * instead of the drag preview).
  *
  * Validity rule: if a fully-native arrangement is possible given the full
  * roster (lineup + bench eligible this inning), every non-1B, non-DH slot
@@ -55,10 +66,16 @@ export default function AlignmentEditor({
     }, [team.lineup]);
 
     const [alignment, setAlignment] = useState<{ [k: string]: string }>(initialAlignment);
-    const [dragCardId, setDragCardId] = useState<string | null>(null);
+    /** Currently picked card. Tap a card to pick it (gold ring); tap a
+     *  cell to place it; tap the same card again to deselect. */
+    const [pickedCardId, setPickedCardId] = useState<string | null>(null);
 
-    // Hover tooltip — delayed show, hidden while dragging. Same pattern the
-    // team builder's catalog / lineup / roster / bench panels use.
+    // Hover tooltip — delayed show, hidden while a card is picked. Same
+    // pattern the team builder's catalog / lineup / roster / bench panels
+    // use. Hover doesn't fire on touch devices (iOS Safari skips it for
+    // taps), so this is desktop-only inspection — touch users see card
+    // detail by tapping (which picks the card; the picked-card visual
+    // serves as confirmation of which card they grabbed).
     const [hoverCardId, setHoverCardId] = useState<string | null>(null);
     const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const cancelHover = () => {
@@ -91,48 +108,70 @@ export default function AlignmentEditor({
 
     const nativePossible = useMemo(() => matchValidPossible(nativePool), [nativePool]);
 
-    // Dragged card info for visual cues on the drop target.
-    const draggedCard = dragCardId ? byId.get(dragCardId) : null;
+    const pickedCard = pickedCardId ? byId.get(pickedCardId) : null;
 
-    const handleDragStart = (e: React.DragEvent, cardId: string) => {
-        setDragCardId(cardId);
-        // Hide any pending or visible hover tooltip — it would obstruct the
-        // drag preview otherwise.
+    // Click a cell. If nothing is picked, pick this cell's card. If
+    // something IS picked, treat the click as a placement: swap the picked
+    // card with the cell's card (or fill the empty slot, if any).
+    const handleCellClick = (slot: SlotKey | null, cellCardId: string | undefined) => {
+        // Tooltip suppression — any cell click cancels a pending hover.
         cancelHover();
         setHoverCardId(null);
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', cardId);
-    };
 
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-    };
+        if (pickedCardId === null) {
+            // Nothing picked yet. Pick the card in this cell, if any.
+            if (cellCardId) setPickedCardId(cellCardId);
+            return;
+        }
 
-    const handleDropOnSlot = (e: React.DragEvent, targetSlot: SlotKey) => {
-        e.preventDefault();
-        const cardId = dragCardId || e.dataTransfer.getData('text/plain');
-        if (!cardId) return;
-        const srcEntry = Object.entries(alignment).find(([, id]) => id === cardId);
+        // Tap the same card to deselect.
+        if (cellCardId === pickedCardId) {
+            setPickedCardId(null);
+            return;
+        }
+
+        // Place picked card in this cell.
         const next = { ...alignment };
-        if (srcEntry) {
-            const [srcSlot] = srcEntry;
-            if (srcSlot === targetSlot) { setDragCardId(null); return; }
-            next[targetSlot] = cardId;
-            next[srcSlot] = alignment[targetSlot];
+        const srcEntry = Object.entries(alignment).find(([, id]) => id === pickedCardId);
+        const srcSlot = srcEntry?.[0];
+        const targetCardId = slot ? alignment[slot] : cellCardId;
+
+        if (slot) {
+            // Target is a lineup slot. Picked card lands here; whoever was
+            // in this slot trades places with picked (going to picked's
+            // src slot, or to the bench if picked came from the bench).
+            next[slot] = pickedCardId;
+            if (srcSlot) {
+                if (targetCardId !== undefined) next[srcSlot] = targetCardId;
+                else delete next[srcSlot]; // edge case: empty src would normally never happen
+            }
+            // (If srcSlot is undefined — picked came from bench — the
+            // displaced card just falls off alignment and ends up on
+            // bench via the `benchCards` derivation.)
         } else {
-            // Bench → lineup: the card takes the slot, displacing whoever was there to the bench.
-            next[targetSlot] = cardId;
+            // Target is a bench card. Only meaningful if picked is in a
+            // slot — picked moves to bench (by losing its slot entry) and
+            // the bench card moves into picked's old slot.
+            if (!cellCardId) { setPickedCardId(null); return; }
+            if (!srcSlot) {
+                // Both picked and target are on bench — no swap to make.
+                // Treat as "switch which card is picked" so a sequence of
+                // bench taps still picks something useful.
+                setPickedCardId(cellCardId);
+                return;
+            }
+            next[srcSlot] = cellCardId;
+            // pickedCardId is no longer in any slot, ends up on bench.
         }
         setAlignment(next);
-        setDragCardId(null);
+        setPickedCardId(null);
     };
 
-    const handleDropOnBench = (e: React.DragEvent) => {
-        e.preventDefault();
-        // Dragging to the bench is a no-op — cards come to the bench by
-        // being displaced from a slot, not by direct drag-and-drop here.
-        setDragCardId(null);
+    /** Click outside any cell (root container, headline, totals bar) to
+     *  cancel an active pick. Cells stop propagation so their clicks
+     *  don't bubble up here. */
+    const handleRootClick = () => {
+        if (pickedCardId !== null) setPickedCardId(null);
     };
 
     // Per-slot OOP penalty based on current staged alignment.
@@ -197,7 +236,10 @@ export default function AlignmentEditor({
         return false;
     }, [alignment, initialAlignment]);
 
-    const reset = () => setAlignment(initialAlignment);
+    const reset = () => {
+        setAlignment(initialAlignment);
+        setPickedCardId(null);
+    };
 
     // When a native arrangement IS possible we gate on hasChanges so the
     // user can't Accept a no-op that leaves an OOP in place. When no native
@@ -222,7 +264,7 @@ export default function AlignmentEditor({
             : null;
 
     return (
-        <div className="ae-root">
+        <div className="ae-root" onClick={handleRootClick}>
             {headlineStatus && (
                 <div className={`ae-headline ae-headline-${headlineStatus.kind}`}>
                     {headlineStatus.text}
@@ -236,10 +278,16 @@ export default function AlignmentEditor({
                 <span className="ae-tot-val">{fmt(totals.outf)}</span>
                 <span className="ae-tot-label">Arm</span>
                 <span className="ae-tot-val">{fmt(totals.arm)}</span>
-                <button className="ae-reset" onClick={reset} disabled={!hasChanges}>Reset</button>
+                <button
+                    className="ae-reset"
+                    onClick={(e) => { e.stopPropagation(); reset(); }}
+                    disabled={!hasChanges}
+                >Reset</button>
             </div>
 
-            <div className="ae-section-label">LINEUP — drag to swap or replace</div>
+            <div className="ae-section-label">
+                LINEUP — {pickedCardId ? 'tap a slot to place' : 'tap a card to pick'}
+            </div>
             <div className="ae-field-grid">
                 {FIELD_SLOTS.map(slot => {
                     const cardId = alignment[slot];
@@ -249,14 +297,13 @@ export default function AlignmentEditor({
                             key={slot}
                             slot={slot}
                             card={card}
-                            onDragStart={handleDragStart}
-                            onDrop={(e) => handleDropOnSlot(e, slot)}
-                            onDragOver={handleDragOver}
-                            onMouseEnter={(id) => !dragCardId && queueHover(id)}
+                            isPicked={!!card && card.cardId === pickedCardId}
+                            onClick={() => handleCellClick(slot, cardId)}
+                            onMouseEnter={(id) => !pickedCardId && queueHover(id)}
                             onMouseLeave={() => queueHover(null)}
-                            dropHighlight={dragCardId !== null && (!card || dragCardId !== card.cardId)}
-                            dragPenalty={draggedCard && dragCardId !== cardId
-                                ? penaltyForAssignment(draggedCard.positions, slot)
+                            dropHighlight={pickedCardId !== null && pickedCardId !== cardId}
+                            dragPenalty={pickedCard && pickedCardId !== cardId
+                                ? penaltyForAssignment(pickedCard.positions, slot)
                                 : 0}
                         />
                     );
@@ -264,7 +311,7 @@ export default function AlignmentEditor({
             </div>
 
             <div className="ae-section-label">BENCH</div>
-            <div className="ae-bench-grid" onDragOver={handleDragOver} onDrop={handleDropOnBench}>
+            <div className="ae-bench-grid">
                 {benchCards.length === 0 ? (
                     <div className="ae-empty">No bench players available.</div>
                 ) : (
@@ -278,18 +325,18 @@ export default function AlignmentEditor({
                                 card={card}
                                 displaced={displaced}
                                 blocked={blocked}
-                                onDragStart={handleDragStart}
-                                onDrop={() => { }}
-                                onDragOver={handleDragOver}
-                                onMouseEnter={(id) => !dragCardId && queueHover(id)}
+                                isPicked={card.cardId === pickedCardId}
+                                onClick={() => handleCellClick(null, card.cardId)}
+                                onMouseEnter={(id) => !pickedCardId && queueHover(id)}
                                 onMouseLeave={() => queueHover(null)}
+                                dropHighlight={pickedCardId !== null && pickedCardId !== card.cardId}
                             />
                         );
                     })
                 )}
             </div>
 
-            {hoveredCard && !dragCardId && <CardTooltip card={hoveredCard} />}
+            {hoveredCard && !pickedCardId && <CardTooltip card={hoveredCard} />}
 
             <div className="ae-status">
                 {backupIssues.map((msg, i) => (
@@ -302,7 +349,7 @@ export default function AlignmentEditor({
                 )}
             </div>
 
-            <div className="ae-actions">
+            <div className="ae-actions" onClick={(e) => e.stopPropagation()}>
                 {allowCancel && onCancel && (
                     <button className="ae-cancel" onClick={onCancel}>Cancel</button>
                 )}
@@ -320,20 +367,18 @@ export default function AlignmentEditor({
 }
 
 function SlotCell({
-    slot, card, displaced, blocked,
+    slot, card, displaced, blocked, isPicked,
     dropHighlight, dragPenalty = 0,
-    onDragStart, onDrop, onDragOver,
-    onMouseEnter, onMouseLeave,
+    onClick, onMouseEnter, onMouseLeave,
 }: {
     slot: SlotKey | null;
     card?: PlayerSlot;
     displaced?: boolean;
     blocked?: boolean;
+    isPicked?: boolean;
     dropHighlight?: boolean;
     dragPenalty?: number;
-    onDragStart: (e: React.DragEvent, cardId: string) => void;
-    onDrop: (e: React.DragEvent) => void;
-    onDragOver: (e: React.DragEvent) => void;
+    onClick: () => void;
     onMouseEnter?: (cardId: string) => void;
     onMouseLeave?: () => void;
 }) {
@@ -353,24 +398,24 @@ function SlotCell({
         penalty < 0 ? 'ae-cell-oop' : '',
         displaced ? 'ae-cell-displaced' : '',
         blocked ? 'ae-cell-blocked' : '',
-        dropHighlight ? 'ae-cell-droptarget' : '',
-        dragPenalty < 0 ? 'ae-cell-dropbad' : '',
+        isPicked ? 'ae-cell-picked' : '',
+        dropHighlight && !isPicked ? 'ae-cell-droptarget' : '',
+        dragPenalty < 0 && !isPicked ? 'ae-cell-dropbad' : '',
     ].filter(Boolean).join(' ');
 
     return (
-        <div className={cls} onDrop={onDrop} onDragOver={onDragOver}>
+        <div
+            className={cls}
+            onClick={(e) => { e.stopPropagation(); onClick(); }}
+            onMouseEnter={() => card && onMouseEnter?.(card.cardId)}
+            onMouseLeave={() => onMouseLeave?.()}
+        >
             <div className="ae-cell-top">
                 <span className="ae-cell-slot-label">{posLabel}</span>
                 {effFldLabel && <span className="ae-cell-fld">{effFldLabel}</span>}
             </div>
             {card ? (
-                <div
-                    className="ae-cell-card"
-                    draggable
-                    onDragStart={(e) => onDragStart(e, card.cardId)}
-                    onMouseEnter={() => onMouseEnter?.(card.cardId)}
-                    onMouseLeave={() => onMouseLeave?.()}
-                >
+                <div className="ae-cell-card">
                     {card.imagePath && <img src={card.imagePath} alt="" className="ae-cell-img" draggable={false} />}
                 </div>
             ) : (
