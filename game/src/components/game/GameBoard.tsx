@@ -231,16 +231,34 @@ function MobileRollBox({ roll, onSpinComplete }: {
     );
 }
 
-/** Pitch/Swing advantage indicator in the middle of the sidebar, between
- *  the two pitcher cards. Three states:
- *    - awaiting (no swing yet for this at-bat) → neutral text "AWAITING PITCH"
- *    - good (result favors me, current user) → green tint
- *    - bad (result favors opponent) → red tint
- *  Swap from awaiting → good/bad happens once the current at-bat's swing
- *  has been rolled and the chart resolved. Resets to awaiting at every
- *  new at-bat (handled by the parent via swingThisAtBat). */
-function MobileResultBox({ text, kind }: { text: string; kind: 'good' | 'bad' | 'awaiting' }) {
-    return <div className={`gb-m-sb-result ${kind}`}>{text}</div>;
+/** Combined advantage indicator + persisted-result panel in the middle of
+ *  the sidebar, between the two pitcher cards. Two stacked lines:
+ *    - top (small): advantage indicator — "AWAITING PITCH" / "PITCHER ADV"
+ *      / "BATTER ADV". Resets every at-bat (driven by swingThisAtBat).
+ *    - bottom (larger, optional): persisted result text from the most
+ *      recent swing/fielding/throw/catch/bunt — "STRIKEOUT", "DOUBLE
+ *      PLAY", "HOME RUN!", etc. Survives at-bat boundaries; cleared on
+ *      half-inning flip; replaced when a new result lands.
+ *  Box border tint priority: result good/bad (when set) > advantage
+ *  good/bad > awaiting neutral. The two lines can have different tints
+ *  (e.g. PITCHER ADV in red while HOME RUN is in green for the batter
+ *  who hit it). */
+function MobileResultBox({ advLabel, advKind, result }: {
+    advLabel: string;
+    advKind: 'awaiting' | 'good' | 'bad';
+    result: { text: string; goodForMe: boolean } | null;
+}) {
+    const borderKind = result ? (result.goodForMe ? 'good' : 'bad') : advKind;
+    return (
+        <div className={`gb-m-sb-result ${borderKind}`}>
+            <div className={`adv ${advKind}`}>{advLabel}</div>
+            {result && (
+                <div className={`outcome ${result.goodForMe ? 'good' : 'bad'}`}>
+                    {result.text}
+                </div>
+            )}
+        </div>
+    );
 }
 
 /** One pitcher card for the mobile right-sidebar — image, last name, IP,
@@ -386,10 +404,34 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     }
 
     // Track whether a swing has resolved within the current at-bat. Drives
-    // the result-indicator state machine: AWAITING PITCH (default) → reveals
-    // PITCHER/BATTER ADV after the swing chart resolves. Reset on at-bat
-    // change below.
+    // the advantage-indicator state machine: AWAITING PITCH (default) →
+    // reveals PITCHER/BATTER ADV after the swing chart resolves. Reset on
+    // at-bat change below.
     const [swingThisAtBat, setSwingThisAtBat] = useState(false);
+
+    // Persisted last-play result text shown below the advantage indicator.
+    // Survives at-bat boundaries so the previous batter's outcome stays
+    // visible while the next batter steps up; cleared when the half-inning
+    // flips. Updated by the routing useEffect below on swing/fielding/
+    // extra-base/steal/bunt rolls.
+    const [persistedResult, setPersistedResult] = useState<{
+        text: string;
+        goodForMe: boolean;
+    } | null>(null);
+
+    // Clear the persisted result when the half-inning changes. Declared
+    // BEFORE the routing useEffect so a 3rd-out roll (which flips the half
+    // AND produces a result in the same state update) runs clear → set in
+    // that order — React queues the setStates and applies them in order, so
+    // the new result wins and persists into the new half until that half's
+    // first swing replaces it.
+    const prevHalfForResultRef = useRef(state.halfInning);
+    useEffect(() => {
+        if (state.halfInning !== prevHalfForResultRef.current) {
+            prevHalfForResultRef.current = state.halfInning;
+            setPersistedResult(null);
+        }
+    }, [state.halfInning]);
 
     // Clear roll boxes + reset the result indicator when a new at-bat
     // starts — new batter, new half-inning, or new inning.
@@ -410,6 +452,16 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         }
     }, [atBatId]);
 
+    // Track the halfInning we observed at the LAST roll routing. The server
+    // can flip halfInning in the same state update as the roll that caused
+    // the 3rd out (a swing strikeout, a DP that's the 3rd out, a throw-out
+    // at home, a caught-stealing, etc.) — by the time this effect runs,
+    // state.halfInning is the NEXT half. Without this ref, those rolls
+    // route to the team that's batting NEXT inning instead of the team
+    // that actually rolled, which surfaces as the user seeing their own
+    // swing in the opponent's sidebar box on every 3rd-out strikeout.
+    const prevHalfInningRef = useRef(state.halfInning);
+
     // Route the latest roll into the per-side sidebar boxes (mobile only;
     // SVG layout doesn't read these). Pitch/fielding/extra-base/steal go
     // to the fielding team; swing/bunt go to the batting team.
@@ -423,10 +475,21 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
     useEffect(() => {
         if (state.lastRoll == null || !state.lastRollType) return;
         const t = state.lastRollType;
-        const fieldingSide: 'home' | 'away' = state.halfInning === 'top' ? 'home' : 'away';
-        const battingSide: 'home' | 'away' = state.halfInning === 'top' ? 'away' : 'home';
-        const fieldingTeamObj = state.halfInning === 'top' ? state.homeTeam : state.awayTeam;
-        const battingTeamObj = state.halfInning === 'top' ? state.awayTeam : state.homeTeam;
+
+        // Determine the halfInning AT THE TIME OF THE ROLL. Half-flips happen
+        // atomically with the roll that caused the 3rd out, so if we see a
+        // different halfInning than last effect run, the flip just happened
+        // and the roll belongs to the previous (pre-flip) half. Update the
+        // ref AFTER computing so the next roll has the correct baseline.
+        const halfInningAtRoll = prevHalfInningRef.current !== state.halfInning
+            ? prevHalfInningRef.current
+            : state.halfInning;
+        prevHalfInningRef.current = state.halfInning;
+
+        const fieldingSide: 'home' | 'away' = halfInningAtRoll === 'top' ? 'home' : 'away';
+        const battingSide: 'home' | 'away' = halfInningAtRoll === 'top' ? 'away' : 'home';
+        const fieldingTeamObj = halfInningAtRoll === 'top' ? state.homeTeam : state.awayTeam;
+        const battingTeamObj = halfInningAtRoll === 'top' ? state.awayTeam : state.homeTeam;
         const curBatter = battingTeamObj.lineup[battingTeamObj.currentBatterIndex];
         let side: 'home' | 'away' | null = null;
         let label = '';
@@ -505,6 +568,68 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         if (side === myRole) setMyRoll(next);
         else setOppRoll(next);
         if (t === 'swing') setSwingThisAtBat(true);
+
+        // Capture this roll's outcome into persistedResult (the bottom line
+        // of the advantage box). Persists across at-bats, replaced by the
+        // next swing/fielding result, cleared on half-inning flip. Use
+        // halfInningAtRoll-based iAmBatting so 3rd-out plays attribute the
+        // good-for-me tint to the correct side.
+        const iAmBattingAtRoll = (halfInningAtRoll === 'top' && myRole === 'away')
+            || (halfInningAtRoll === 'bottom' && myRole === 'home');
+        let resultText: string | null = null;
+        let resultGood = false;
+
+        if (t === 'swing' && state.lastOutcome) {
+            // GB outcomes get refined by the subsequent fielding decision —
+            // start with a generic label that the 'fielding' case below
+            // (when GB_DECISION lands) overwrites. Non-GB outcomes are
+            // final.
+            if (state.lastOutcome === 'GB') {
+                resultText = 'GROUND BALL';
+            } else {
+                resultText = outcomeNames[state.lastOutcome] || state.lastOutcome.toUpperCase();
+            }
+            // For the swing's result tint: the chart owner won the matchup,
+            // and the chart's outcome is what happened. Tint by whether the
+            // OUTCOME helps me (e.g., HR for me as the batter is good even
+            // though pitcher had advantage in that matchup).
+            const outOutcomes = ['SO', 'GB', 'FB', 'PU'];
+            const isOut = outOutcomes.includes(state.lastOutcome);
+            resultGood = iAmBattingAtRoll ? !isOut : isOut;
+        } else if (t === 'fielding') {
+            const dp = state.pendingDpResult;
+            if (dp) {
+                if (dp.choice === 'dp') resultText = dp.isDP ? 'DOUBLE PLAY' : 'GROUND OUT';
+                else if (dp.choice === 'force_home') resultText = 'FORCE OUT AT HOME';
+                else if (dp.choice === 'hold') resultText = 'GROUND OUT';
+                else resultText = 'GROUND OUT';
+                // Out for the batter / runner — good for fielding side.
+                resultGood = !iAmBattingAtRoll;
+            }
+        } else if (t === 'extra_base') {
+            const eb = state.pendingExtraBaseResult;
+            if (eb) {
+                resultText = eb.safe ? 'RUNNER SAFE' : 'RUNNER OUT';
+                resultGood = iAmBattingAtRoll ? eb.safe : !eb.safe;
+            }
+        } else if (t.startsWith('steal')) {
+            const sr = state.pendingStealResult;
+            if (sr) {
+                resultText = sr.safe ? 'STOLEN BASE' : 'CAUGHT STEALING';
+                resultGood = iAmBattingAtRoll ? sr.safe : !sr.safe;
+            }
+        } else if (t === 'bunt') {
+            // Bunt resolves on the pitcher's chart. PU = popup, runners
+            // hold; anything else = sacrifice successful.
+            if (state.lastOutcome === 'PU') resultText = 'BUNT POPUP';
+            else resultText = 'SAC BUNT';
+            // Either way the batter is out; good for fielding side.
+            resultGood = !iAmBattingAtRoll;
+        }
+
+        if (resultText) {
+            setPersistedResult({ text: resultText, goodForMe: resultGood });
+        }
         // rollKey is the only dep that matters here — it bumps on every
         // new roll. Other values referenced inside (state.lastPitchTotal,
         // pending* results, team objects) come from the same state update
@@ -876,24 +1001,32 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                                 />
                             </div>
                         </div>
-                        {/* Middle row spans both columns — pitch/swing
-                            advantage indicator from my perspective. Awaiting
-                            text shows until the current at-bat's swing chart
-                            resolves; once resolved it tints green when the
-                            result favors me, red when it doesn't. Resets to
-                            awaiting on every new at-bat (swingThisAtBat is
-                            cleared when atBatId changes). */}
+                        {/* Middle row spans both columns — two stacked
+                            lines. Top: pitch advantage indicator (resets
+                            per at-bat via swingThisAtBat). Bottom:
+                            persistedResult — outcome of the most recent
+                            swing/fielding/throw/catch/bunt, persists across
+                            at-bats within the same half-inning, cleared on
+                            half flip. */}
                         {(() => {
-                            const haveResult = swingThisAtBat
+                            const haveAdv = swingThisAtBat
                                 && state.lastSwingRoll != null
                                 && state.usedPitcherChart != null;
-                            if (!haveResult) return <MobileResultBox text="AWAITING PITCH" kind="awaiting"/>;
-                            const pitcherAdv = !!state.usedPitcherChart;
-                            const goodForMe = pitcherAdv === !iAmBatting;
+                            let advLabel: string;
+                            let advKind: 'awaiting' | 'good' | 'bad';
+                            if (!haveAdv) {
+                                advLabel = 'AWAITING PITCH';
+                                advKind = 'awaiting';
+                            } else {
+                                const pitcherAdv = !!state.usedPitcherChart;
+                                advLabel = pitcherAdv ? 'PITCHER ADV' : 'BATTER ADV';
+                                advKind = (pitcherAdv === !iAmBatting) ? 'good' : 'bad';
+                            }
                             return (
                                 <MobileResultBox
-                                    text={pitcherAdv ? 'PITCHER ADV' : 'BATTER ADV'}
-                                    kind={goodForMe ? 'good' : 'bad'}
+                                    advLabel={advLabel}
+                                    advKind={advKind}
+                                    result={persistedResult}
                                 />
                             );
                         })()}

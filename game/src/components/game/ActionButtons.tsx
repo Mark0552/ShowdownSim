@@ -1,3 +1,4 @@
+import { Children } from 'react';
 import type { GameState, GameAction, TeamState } from '../../engine/gameEngine';
 import { getCurrentBatter, getCurrentPitcher } from '../../engine/gameEngine';
 
@@ -35,6 +36,21 @@ interface ActionButtonsProps {
 
 type BtnColor = 'red' | 'green' | 'blue' | 'gold' | 'purple' | 'gray';
 
+/**
+ * Color semantics for the mobile action buttons (always-applies rules):
+ *   red    — rolls dice / executes the central event of this phase
+ *   green  — discretionary OFFENSIVE choice (steal, sac bunt, send runners)
+ *   purple — discretionary DEFENSIVE non-roll choice (intentional walk,
+ *            force home)
+ *   blue   — icon usage (RP, 20, SB, G — any context)
+ *   gold   — substitutions menu only
+ *   gray   — skip / decline / passive (no roll, no real action)
+ *
+ * Same action MUST get the same color across every phase. If you find
+ * yourself reaching for a different color for the same semantic action,
+ * pick a different label first.
+ */
+
 /** A single mobile action button — bold label on top, dim sub-text below. */
 function MobileBtn({ label, sub, onClick, color }: {
     label: string; sub?: string; onClick: () => void; color: BtnColor;
@@ -44,6 +60,29 @@ function MobileBtn({ label, sub, onClick, color }: {
             <span className="gb-m-act-btn-label">{label}</span>
             {sub && <span className="gb-m-act-btn-sub">{sub}</span>}
         </button>
+    );
+}
+
+/**
+ * Wraps the main action buttons in a CSS Grid that fills the action bar
+ * vertically and distributes buttons evenly based on count:
+ *   1 → 1×1 (full width × full height)
+ *   2 → 2×1
+ *   3 → 3×1
+ *   4 → 2×2
+ *   5–6 → 3×2
+ *   7+ → 3 columns auto rows, scrollable
+ *
+ * Falsy children (the conditional `{cond && <MobileBtn/>}` pattern) are
+ * filtered before counting so the data-count matches what's actually
+ * rendered. `data-count` drives the CSS variant in gameBoardMobile.css.
+ */
+function MainGrid({ children }: { children: React.ReactNode }) {
+    const filtered = Children.toArray(children).filter(Boolean);
+    return (
+        <div className="gb-m-actions-main" data-count={String(filtered.length)}>
+            {filtered}
+        </div>
     );
 }
 
@@ -131,7 +170,9 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
             case 'sp_roll':
                 return (
                     <div className="gb-m-actions">
-                        <MobileBtn label="ROLL FOR PITCHERS" onClick={() => onAction({ type: 'ROLL_STARTERS' })} color="gold"/>
+                        <MainGrid>
+                            <MobileBtn label="ROLL FOR PITCHERS" onClick={() => onAction({ type: 'ROLL_STARTERS' })} color="red"/>
+                        </MainGrid>
                     </div>
                 );
 
@@ -161,16 +202,18 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 const r2 = battingTeam.lineup.find(p => p.cardId === state.bases.second);
                 return (
                     <div className="gb-m-actions">
-                        {eligibleBench.length > 0 && <MobileBtn label="SUBSTITUTIONS" sub="Pinch hit / pinch run / defensive" color="gold" onClick={onShowSubPanel}/>}
-                        {sbRunners.map(sb => (
-                            <MobileBtn key={`sb-${sb.cardId}`} label={`SB: ${sb.name}`} sub={`${sb.fromBase}→${sb.toBase} (auto safe)`} color="blue"
-                                onClick={() => onAction({ type: 'USE_ICON', cardId: sb.cardId, icon: 'SB' })}/>
-                        ))}
-                        {canStealFromFirst && <MobileBtn label="STEAL 2ND" sub={`Spd ${r1?.speed ?? '?'} vs d20+Arm(${arm})`} color="green"
-                            onClick={() => onAction({ type: 'STEAL', runnerId: state.bases.first! })}/>}
-                        {canStealFromSecond && <MobileBtn label="STEAL 3RD" sub={`Spd ${r2?.speed ?? '?'} vs d20+Arm(${arm})+5`} color="green"
-                            onClick={() => onAction({ type: 'STEAL', runnerId: state.bases.second! })}/>}
-                        <MobileBtn label="NO ACTION" sub="Skip to defense" color="gray" onClick={() => onAction({ type: 'SKIP_SUB' })}/>
+                        <MainGrid>
+                            {eligibleBench.length > 0 && <MobileBtn label="SUBSTITUTIONS" sub="Pinch hit / pinch run / defensive" color="gold" onClick={onShowSubPanel}/>}
+                            {sbRunners.map(sb => (
+                                <MobileBtn key={`sb-${sb.cardId}`} label={`SB: ${sb.name}`} sub={`${sb.fromBase}→${sb.toBase} (auto safe)`} color="blue"
+                                    onClick={() => onAction({ type: 'USE_ICON', cardId: sb.cardId, icon: 'SB' })}/>
+                            ))}
+                            {canStealFromFirst && <MobileBtn label="STEAL 2ND" sub={`Spd ${r1?.speed ?? '?'} vs d20+Arm(${arm})`} color="green"
+                                onClick={() => onAction({ type: 'STEAL', runnerId: state.bases.first! })}/>}
+                            {canStealFromSecond && <MobileBtn label="STEAL 3RD" sub={`Spd ${r2?.speed ?? '?'} vs d20+Arm(${arm})+5`} color="green"
+                                onClick={() => onAction({ type: 'STEAL', runnerId: state.bases.second! })}/>}
+                            <MobileBtn label="NO ACTION" sub="Skip to defense" color="gray" onClick={() => onAction({ type: 'SKIP_SUB' })}/>
+                        </MainGrid>
                     </div>
                 );
             }
@@ -192,18 +235,20 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 const skipAction = state.phase === 'defense_sub' ? 'SKIP_SUB' : 'SKIP_IBB';
                 return (
                     <div className="gb-m-actions">
-                        {canChangePitcher && <MobileBtn label="SUBSTITUTIONS" sub="Pitching change / defensive sub" color="gold" onClick={onShowSubPanel}/>}
-                        {hasRP && <MobileBtn label="RP ICON (+3 CTRL)" sub="Rest of inning" color="blue"
-                            onClick={() => onAction({ type: 'USE_ICON', cardId: fieldingTeam.pitcher.cardId, icon: 'RP' })}/>}
-                        <MobileBtn label="INTENTIONAL WALK" sub="Walk batter to 1st" color="gold"
-                            onClick={() => onAction({ type: 'INTENTIONAL_WALK' })}/>
-                        {canBunt
-                            ? <MobileBtn label="READY TO PITCH" sub="Bunt option next" color="red"
-                                onClick={() => onAction({ type: skipAction as any })}/>
-                            : <MobileBtn label="ROLL PITCH" sub={pitchMath} color="red"
-                                onClick={() => onAction({ type: 'ROLL_PITCH' })}/>}
-                        {!canBunt && has20 && <MobileBtn label="USE 20 ICON" sub={pitch20Math} color="blue"
-                            onClick={() => onAction({ type: 'ROLL_PITCH', useIcon20: true })}/>}
+                        <MainGrid>
+                            {canChangePitcher && <MobileBtn label="SUBSTITUTIONS" sub="Pitching change / defensive sub" color="gold" onClick={onShowSubPanel}/>}
+                            {hasRP && <MobileBtn label="RP ICON (+3 CTRL)" sub="Rest of inning" color="blue"
+                                onClick={() => onAction({ type: 'USE_ICON', cardId: fieldingTeam.pitcher.cardId, icon: 'RP' })}/>}
+                            <MobileBtn label="INTENTIONAL WALK" sub="Walk batter to 1st" color="purple"
+                                onClick={() => onAction({ type: 'INTENTIONAL_WALK' })}/>
+                            {canBunt
+                                ? <MobileBtn label="READY TO PITCH" sub="Bunt option next" color="gray"
+                                    onClick={() => onAction({ type: skipAction as any })}/>
+                                : <MobileBtn label="ROLL PITCH" sub={pitchMath} color="red"
+                                    onClick={() => onAction({ type: 'ROLL_PITCH' })}/>}
+                            {!canBunt && has20 && <MobileBtn label="USE 20 ICON" sub={pitch20Math} color="blue"
+                                onClick={() => onAction({ type: 'ROLL_PITCH', useIcon20: true })}/>}
+                        </MainGrid>
                     </div>
                 );
             }
@@ -211,10 +256,12 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
             case 'bunt_decision':
                 return (
                     <div className="gb-m-actions">
-                        <MobileBtn label="SAC BUNT" sub="Batter out, runners advance" color="purple"
-                            onClick={() => onAction({ type: 'SAC_BUNT' })}/>
-                        <MobileBtn label="NO BUNT" sub="Proceed to pitch" color="gray"
-                            onClick={() => onAction({ type: 'SKIP_BUNT' })}/>
+                        <MainGrid>
+                            <MobileBtn label="SAC BUNT" sub="Batter out, runners advance" color="green"
+                                onClick={() => onAction({ type: 'SAC_BUNT' })}/>
+                            <MobileBtn label="NO BUNT" sub="Proceed to pitch" color="gray"
+                                onClick={() => onAction({ type: 'SKIP_BUNT' })}/>
+                        </MainGrid>
                     </div>
                 );
 
@@ -224,12 +271,14 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 const hasRP = state.inning > 6 && !rpUsed && fieldingTeam.pitcher.icons?.includes('RP');
                 return (
                     <div className="gb-m-actions">
-                        <MobileBtn label="ROLL PITCH" sub={pitchMath} color="red"
-                            onClick={() => onAction({ type: 'ROLL_PITCH' })}/>
-                        {has20 && <MobileBtn label="USE 20 ICON" sub={pitch20Math} color="blue"
-                            onClick={() => onAction({ type: 'ROLL_PITCH', useIcon20: true })}/>}
-                        {hasRP && <MobileBtn label="RP ICON (+3 CTRL)" sub="Rest of inning" color="blue"
-                            onClick={() => onAction({ type: 'USE_ICON', cardId: fieldingTeam.pitcher.cardId, icon: 'RP' })}/>}
+                        <MainGrid>
+                            <MobileBtn label="ROLL PITCH" sub={pitchMath} color="red"
+                                onClick={() => onAction({ type: 'ROLL_PITCH' })}/>
+                            {has20 && <MobileBtn label="USE 20 ICON" sub={pitch20Math} color="blue"
+                                onClick={() => onAction({ type: 'ROLL_PITCH', useIcon20: true })}/>}
+                            {hasRP && <MobileBtn label="RP ICON (+3 CTRL)" sub="Rest of inning" color="blue"
+                                onClick={() => onAction({ type: 'USE_ICON', cardId: fieldingTeam.pitcher.cardId, icon: 'RP' })}/>}
+                        </MainGrid>
                     </div>
                 );
             }
@@ -237,8 +286,10 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
             case 'swing':
                 return (
                     <div className="gb-m-actions">
-                        <MobileBtn label="ROLL SWING" sub={swingMath} color="green"
-                            onClick={() => onAction({ type: 'ROLL_SWING' })}/>
+                        <MainGrid>
+                            <MobileBtn label="ROLL SWING" sub={swingMath} color="red"
+                                onClick={() => onAction({ type: 'ROLL_SWING' })}/>
+                        </MainGrid>
                     </div>
                 );
 
@@ -250,11 +301,13 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                         <div className="gb-m-actions-label">
                             {state.lastOutcome ? `Result: ${outcomeNames[state.lastOutcome] || state.lastOutcome}` : 'Icon Decision'}
                         </div>
-                        {icons.map((ic, i) => (
-                            <MobileBtn key={`ic-${i}`} label={ic.description.split(':')[0]} color="gold"
-                                onClick={() => onAction({ type: 'USE_ICON', cardId: ic.cardId, icon: ic.icon })}/>
-                        ))}
-                        <MobileBtn label="DECLINE" color="gray" onClick={() => onAction({ type: 'SKIP_ICONS' })}/>
+                        <MainGrid>
+                            {icons.map((ic, i) => (
+                                <MobileBtn key={`ic-${i}`} label={ic.description.split(':')[0]} color="blue"
+                                    onClick={() => onAction({ type: 'USE_ICON', cardId: ic.cardId, icon: ic.icon })}/>
+                            ))}
+                            <MobileBtn label="DECLINE" color="gray" onClick={() => onAction({ type: 'SKIP_ICONS' })}/>
+                        </MainGrid>
                     </div>
                 );
             }
@@ -266,25 +319,27 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 return (
                     <div className="gb-m-actions">
                         <div className="gb-m-actions-label gb-m-actions-label-go">Send runners for extra bases?</div>
-                        {runners.map((r, i) => {
-                            const target = (r as any).targetWithBonuses ?? r.runnerSpeed;
-                            const homeBonus = r.toBase === 'home' ? 5 : 0;
-                            const twoOutBonus = target - r.runnerSpeed - homeBonus;
-                            const fb = r.fromBase === 'second' ? '2nd' : r.fromBase === 'third' ? '3rd' : '1st';
-                            const tb = r.toBase === 'home' ? 'H' : r.toBase === 'third' ? '3rd' : '2nd';
-                            const parts = [`${r.runnerSpeed}`];
-                            if (homeBonus) parts.push('+5h');
-                            if (twoOutBonus > 0) parts.push(`+${twoOutBonus}(2o)`);
-                            return (
-                                <MobileBtn key={`ebo-${i}`} label={`SEND: ${truncate(r.runnerName, 12)}`}
-                                    sub={`${fb}→${tb} Spd ${parts.join('')}=${target}`} color="green"
-                                    onClick={() => onAction({ type: 'SEND_RUNNERS', runnerIds: [r.runnerId] })}/>
-                            );
-                        })}
-                        {runners.length > 1 && <MobileBtn label="SEND ALL" sub="All runners advance" color="green"
-                            onClick={() => onAction({ type: 'SEND_RUNNERS', runnerIds: runners.map(r => r.runnerId) })}/>}
-                        <MobileBtn label="HOLD RUNNERS" sub="Stay at current bases" color="gray"
-                            onClick={() => onAction({ type: 'HOLD_RUNNERS' })}/>
+                        <MainGrid>
+                            {runners.map((r, i) => {
+                                const target = (r as any).targetWithBonuses ?? r.runnerSpeed;
+                                const homeBonus = r.toBase === 'home' ? 5 : 0;
+                                const twoOutBonus = target - r.runnerSpeed - homeBonus;
+                                const fb = r.fromBase === 'second' ? '2nd' : r.fromBase === 'third' ? '3rd' : '1st';
+                                const tb = r.toBase === 'home' ? 'H' : r.toBase === 'third' ? '3rd' : '2nd';
+                                const parts = [`${r.runnerSpeed}`];
+                                if (homeBonus) parts.push('+5h');
+                                if (twoOutBonus > 0) parts.push(`+${twoOutBonus}(2o)`);
+                                return (
+                                    <MobileBtn key={`ebo-${i}`} label={`SEND: ${truncate(r.runnerName, 12)}`}
+                                        sub={`${fb}→${tb} Spd ${parts.join('')}=${target}`} color="green"
+                                        onClick={() => onAction({ type: 'SEND_RUNNERS', runnerIds: [r.runnerId] })}/>
+                                );
+                            })}
+                            {runners.length > 1 && <MobileBtn label="SEND ALL" sub="All runners advance" color="green"
+                                onClick={() => onAction({ type: 'SEND_RUNNERS', runnerIds: runners.map(r => r.runnerId) })}/>}
+                            <MobileBtn label="HOLD RUNNERS" sub="Stay at current bases" color="gray"
+                                onClick={() => onAction({ type: 'HOLD_RUNNERS' })}/>
+                        </MainGrid>
                     </div>
                 );
             }
@@ -305,10 +360,14 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                 const holdRollVsG = `d20+IF(${ifField}+10) vs AvgSpd ${avgSpd}`;
                 type Btn = { label: string; sub: string; choice: string; color: BtnColor; needsRoll: boolean; useHoldRoll?: boolean };
                 const btns: Btn[] = [];
+                // GB defensive choices: DP and HOLD both roll dice → red.
+                // FORCE HOME doesn't roll → purple (defensive non-roll).
+                // LET ADVANCE is passive → gray. Sub-row of "USE G + ..."
+                // variants is icon-usage → blue.
                 if (state.gbOptions.canDP) btns.push({ label: 'DOUBLE PLAY', sub: rollVs, choice: 'dp', color: 'red', needsRoll: true });
                 if (state.gbOptions.canForceHome) btns.push({ label: 'FORCE HOME', sub: 'Out at home, batter to 1st', choice: 'force_home', color: 'purple', needsRoll: false });
-                if (state.gbOptions.canHoldThird) btns.push({ label: 'HOLD RUNNER', sub: holdRollVs, choice: 'hold', color: 'gold', needsRoll: true, useHoldRoll: true });
-                if (state.gbOptions.canHoldRunners) btns.push({ label: 'HOLD RUNNERS', sub: holdRollVs, choice: 'hold', color: 'gold', needsRoll: true, useHoldRoll: true });
+                if (state.gbOptions.canHoldThird) btns.push({ label: 'HOLD RUNNER', sub: holdRollVs, choice: 'hold', color: 'red', needsRoll: true, useHoldRoll: true });
+                if (state.gbOptions.canHoldRunners) btns.push({ label: 'HOLD RUNNERS', sub: holdRollVs, choice: 'hold', color: 'red', needsRoll: true, useHoldRoll: true });
                 if (state.gbOptions.canAdvanceRunners) btns.push({ label: 'LET ADVANCE', sub: 'Runners advance, out at 1st', choice: 'advance', color: 'gray', needsRoll: false });
                 if (btns.length === 0) btns.push({ label: 'LET ADVANCE', sub: 'Runners advance', choice: 'advance', color: 'gray', needsRoll: false });
                 const gPlayers = state.gbOptions.gPlayers || [];
@@ -317,15 +376,17 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                         <div className="gb-m-actions-label gb-m-actions-label-bad">
                             Ground Ball — IF: {ifField} | Batter Spd: {batSpd}{leadRunnerSpd ? ` | Avg Spd: ${avgSpd}` : ''}
                         </div>
-                        {btns.map((b, i) => (
-                            <MobileBtn key={`gb-${i}`} label={b.label} sub={b.sub} color={b.color}
-                                onClick={() => onAction({ type: 'GB_DECISION', choice: b.choice as any })}/>
-                        ))}
+                        <MainGrid>
+                            {btns.map((b, i) => (
+                                <MobileBtn key={`gb-${i}`} label={b.label} sub={b.sub} color={b.color}
+                                    onClick={() => onAction({ type: 'GB_DECISION', choice: b.choice as any })}/>
+                            ))}
+                        </MainGrid>
                         {gPlayers.length > 0 && (
                             <div className="gb-m-actions-sub">
                                 {btns.filter(b => b.needsRoll).map((b, bi) => gPlayers.map((gp, gi) => (
                                     <MobileBtn key={`gbg-${bi}-${gi}`} label={`USE G: ${gp.name}`}
-                                        sub={`(${gp.position}) ${b.useHoldRoll ? holdRollVsG : rollVsG} → ${b.label}`} color="gold"
+                                        sub={`(${gp.position}) ${b.useHoldRoll ? holdRollVsG : rollVsG} → ${b.label}`} color="blue"
                                         onClick={() => onAction({ type: 'GB_DECISION', choice: b.choice as any, goldGloveCardId: gp.cardId })}/>
                                 )))}
                             </div>
@@ -346,10 +407,12 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                         <div className="gb-m-actions-label gb-m-actions-label-go">
                             {t.runnerName} {t.fromBase ? `(${t.fromBase} → ${t.toBase})` : ''} — Use SB icon for automatic safe?
                         </div>
-                        <MobileBtn label="USE SB (AUTO SAFE)" sub="Runner safe automatically" color="green"
-                            onClick={() => onAction({ type: 'STEAL_SB_DECISION', useSB: true })}/>
-                        <MobileBtn label="NORMAL STEAL" sub={`Spd ${t.runnerSpeed} vs d20+Arm(${arm})${bonus ? `+${bonus}` : ''}`} color="gray"
-                            onClick={() => onAction({ type: 'STEAL_SB_DECISION', useSB: false })}/>
+                        <MainGrid>
+                            <MobileBtn label="USE SB (AUTO SAFE)" sub="Runner safe automatically" color="blue"
+                                onClick={() => onAction({ type: 'STEAL_SB_DECISION', useSB: true })}/>
+                            <MobileBtn label="NORMAL STEAL" sub={`Spd ${t.runnerSpeed} vs d20+Arm(${arm})${bonus ? `+${bonus}` : ''}`} color="gray"
+                                onClick={() => onAction({ type: 'STEAL_SB_DECISION', useSB: false })}/>
+                        </MainGrid>
                     </div>
                 );
             }
@@ -364,10 +427,12 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                         <div className="gb-m-actions-label gb-m-actions-label-go">
                             Trailing runner {t.runnerName} on {t.fromBase} — attempt to steal {t.toBase}?
                         </div>
-                        <MobileBtn label="ATTEMPT STEAL" sub={`${t.runnerName} → ${t.toBase}`} color="green"
-                            onClick={() => onAction({ type: 'STEAL_TRAILING_DECISION', attempt: true })}/>
-                        <MobileBtn label={`STAY ON ${String(t.fromBase).toUpperCase()}`} sub={`${t.runnerName} holds`} color="gray"
-                            onClick={() => onAction({ type: 'STEAL_TRAILING_DECISION', attempt: false })}/>
+                        <MainGrid>
+                            <MobileBtn label="ATTEMPT STEAL" sub={`${t.runnerName} → ${t.toBase}`} color="green"
+                                onClick={() => onAction({ type: 'STEAL_TRAILING_DECISION', attempt: true })}/>
+                            <MobileBtn label={`STAY ON ${String(t.fromBase).toUpperCase()}`} sub={`${t.runnerName} holds`} color="gray"
+                                onClick={() => onAction({ type: 'STEAL_TRAILING_DECISION', attempt: false })}/>
+                        </MainGrid>
                     </div>
                 );
             }
@@ -391,21 +456,23 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                         <div className="gb-m-actions-label gb-m-actions-label-bad">
                             {isMulti ? 'Double steal! Catcher chooses throw target.' : `${targets[0].runnerName} stealing ${targets[0].toBase} — defense throws.`}
                         </div>
-                        {targets.map((t: any, i: number) => {
-                            const def = `d20+Arm(${arm})${t.throwBonus ? `+${t.throwBonus}(${t.toBase})` : ''} vs Spd ${t.runnerSpeed}`;
-                            return (
-                                <MobileBtn key={`thr-${i}`} label={`THROW TO ${String(t.toBase).toUpperCase()}`}
-                                    sub={`(${t.runnerName}) ${def}`} color="gray"
-                                    onClick={() => onAction({ type: 'STEAL_G_DECISION', targetRunnerId: t.runnerId })}/>
-                            );
-                        })}
+                        <MainGrid>
+                            {targets.map((t: any, i: number) => {
+                                const def = `d20+Arm(${arm})${t.throwBonus ? `+${t.throwBonus}(${t.toBase})` : ''} vs Spd ${t.runnerSpeed}`;
+                                return (
+                                    <MobileBtn key={`thr-${i}`} label={`THROW TO ${String(t.toBase).toUpperCase()}`}
+                                        sub={`(${t.runnerName}) ${def}`} color="red"
+                                        onClick={() => onAction({ type: 'STEAL_G_DECISION', targetRunnerId: t.runnerId })}/>
+                                );
+                            })}
+                        </MainGrid>
                         {hasG && (
                             <div className="gb-m-actions-sub">
                                 {targets.map((t: any, i: number) => {
                                     const def = `d20+Arm(${arm}+10)${t.throwBonus ? `+${t.throwBonus}(${t.toBase})` : ''} vs Spd ${t.runnerSpeed}`;
                                     return (
                                         <MobileBtn key={`gt-${i}`} label={`USE G + THROW TO ${String(t.toBase).toUpperCase()}`}
-                                            sub={`(${catchers[0].name}) ${def}`} color="gold"
+                                            sub={`(${catchers[0].name}) ${def}`} color="blue"
                                             onClick={() => onAction({ type: 'STEAL_G_DECISION', targetRunnerId: t.runnerId, goldGloveCardId: catchers[0].cardId })}/>
                                     );
                                 })}
@@ -432,21 +499,23 @@ export default function ActionButtons({ state, myRole, isMyTurn, iAmBatting, onA
                         <div className="gb-m-actions-label gb-m-actions-label-bad">
                             Runners advancing — OF: {ofField} | Choose throw target:
                         </div>
-                        {runners.map((r, i) => {
-                            const target = (r as any).targetWithBonuses ?? r.runnerSpeed;
-                            return (
-                                <MobileBtn key={`eb-${i}`} label={`THROW: ${truncate(r.runnerName, 14)}`}
-                                    sub={`${r.fromBase}→${r.toBase} | d20+OF(${ofField}) vs ${target}`} color="red"
-                                    onClick={() => onAction({ type: 'EXTRA_BASE_THROW', runnerId: r.runnerId })}/>
-                            );
-                        })}
+                        <MainGrid>
+                            {runners.map((r, i) => {
+                                const target = (r as any).targetWithBonuses ?? r.runnerSpeed;
+                                return (
+                                    <MobileBtn key={`eb-${i}`} label={`THROW: ${truncate(r.runnerName, 14)}`}
+                                        sub={`${r.fromBase}→${r.toBase} | d20+OF(${ofField}) vs ${target}`} color="red"
+                                        onClick={() => onAction({ type: 'EXTRA_BASE_THROW', runnerId: r.runnerId })}/>
+                                );
+                            })}
+                        </MainGrid>
                         {gPlayers.length > 0 && (
                             <div className="gb-m-actions-sub">
                                 {runners.map((r, i) => gPlayers.map((gp: any, gi: number) => {
                                     const target = (r as any).targetWithBonuses ?? r.runnerSpeed;
                                     return (
                                         <MobileBtn key={`ebg-${i}-${gi}`} label={`USE G: ${gp.name}`}
-                                            sub={`(${gp.position}) d20+OF(${ofField}+10) vs ${target}`} color="gold"
+                                            sub={`(${gp.position}) d20+OF(${ofField}+10) vs ${target}`} color="blue"
                                             onClick={() => onAction({ type: 'EXTRA_BASE_THROW', runnerId: r.runnerId, goldGloveCardId: gp.cardId })}/>
                                     );
                                 }))}
