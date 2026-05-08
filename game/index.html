@@ -4,6 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MLB Showdown</title>
+
+    <!-- Browser tab icon. dice.png lives in game/public/ so Vite serves it
+         at the site root (/ShowdownSim/dice.png in production via the
+         base path). Vite rewrites the leading slash automatically. -->
+    <link rel="icon" type="image/png" href="%BASE_URL%dice.png">
+
+    <!-- iOS Home Screen / Safari standalone icon. Apple uses
+         apple-touch-icon as the home-screen shortcut image (and
+         auto-applies the rounded-square mask). The accompanying meta
+         tags enable the standalone full-screen launch and set the
+         status bar style to match the dark navy app chrome. -->
+    <link rel="apple-touch-icon" href="%BASE_URL%dice.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MLB Showdown">
+    <meta name="theme-color" content="#0f1923">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&display=swap" rel="stylesheet">
