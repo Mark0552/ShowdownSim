@@ -205,6 +205,12 @@ function MobileRollBox({ roll, onSpinComplete }: {
         }
         lastKeyRef.current = roll.triggerKey;
         setSpinning(true);
+        // Mobile sound parity with desktop's DiceSpinner. Desktop plays a
+        // per-pitcher sound (getPitchRollSound), but on mobile we keep it
+        // simple and always play the standard dice-roll. Without this,
+        // mobile users heard nothing on rolls — DiceSpinner is not mounted
+        // on mobile, so its own playSound call never fired.
+        playSound('dice-roll');
         const interval = setInterval(() => setDisplay(1 + Math.floor(Math.random() * 20)), 60);
         const timeout = setTimeout(() => {
             clearInterval(interval);
@@ -427,6 +433,19 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         goodForMe: boolean;
     } | null>(null);
 
+    // Display-only mirrors of pitchThisAtBat and persistedResult, gated on
+    // !diceAnimating. The canonical state updates immediately when a roll
+    // lands (so logic stays in sync with the engine), but the advantage
+    // indicator and result outcome shouldn't *visually* flip until the
+    // dice has finished spinning — same UX rule the rest of the board
+    // follows via frozenRef. A single effect drains the canonical values
+    // into the display values whenever diceAnimating clears.
+    const [displayPitchThisAtBat, setDisplayPitchThisAtBat] = useState(false);
+    const [displayPersistedResult, setDisplayPersistedResult] = useState<{
+        text: string;
+        goodForMe: boolean;
+    } | null>(null);
+
     // Clear the persisted result when the half-inning changes. Declared
     // BEFORE the routing useEffect so a 3rd-out roll (which flips the half
     // AND produces a result in the same state update) runs clear → set in
@@ -459,6 +478,20 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
             setPitchThisAtBat(false);
         }
     }, [atBatId]);
+
+    // Drain the canonical pitchThisAtBat / persistedResult into their
+    // display mirrors whenever dice is NOT animating. Result: the
+    // advantage indicator and result text only flip after the dice has
+    // finished spinning, matching the freeze-then-update rhythm the rest
+    // of the board (scoreboard, bases, batter highlight) already uses
+    // via frozenRef. While diceAnimating is true, the display values
+    // hold whatever they were before the roll landed — visually nothing
+    // changes until the spin completes.
+    useEffect(() => {
+        if (diceAnimating) return;
+        setDisplayPitchThisAtBat(pitchThisAtBat);
+        setDisplayPersistedResult(persistedResult);
+    }, [diceAnimating, pitchThisAtBat, persistedResult]);
 
     // Track the halfInning we observed at the LAST roll routing. The server
     // can flip halfInning in the same state update as the roll that caused
@@ -1018,13 +1051,16 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                         </div>
                         {/* Middle row spans both columns — two stacked
                             lines. Top: pitch advantage indicator (gated on
-                            pitchThisAtBat, set true the moment a pitch
-                            roll lands; reset on at-bat change). Bottom:
-                            persistedResult — outcome of the most recent
-                            swing/fielding/throw/catch/bunt; cleared by
-                            the next pitch roll AND on half flip. */}
+                            displayPitchThisAtBat, the dice-settle-deferred
+                            mirror of pitchThisAtBat; reset on at-bat
+                            change). Bottom: displayPersistedResult — the
+                            same deferred mirror of persistedResult.
+                            Reading the display mirrors here means the
+                            box doesn't visually flip until the dice has
+                            finished spinning, matching the freeze-then-
+                            update rhythm the rest of the board uses. */}
                         {(() => {
-                            const haveAdv = pitchThisAtBat
+                            const haveAdv = displayPitchThisAtBat
                                 && state.usedPitcherChart != null;
                             let advLabel: string;
                             let advKind: 'awaiting' | 'good' | 'bad';
@@ -1040,7 +1076,7 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
                                 <MobileResultBox
                                     advLabel={advLabel}
                                     advKind={advKind}
-                                    result={persistedResult}
+                                    result={displayPersistedResult}
                                 />
                             );
                         })()}
