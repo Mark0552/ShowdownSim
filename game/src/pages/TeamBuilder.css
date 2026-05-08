@@ -150,38 +150,25 @@
 
 .tb-slot-banner button:hover { background: rgba(255,255,255,0.3); }
 
-/* Mobile-only tab toggle — hidden on desktop where the 3-column grid
-   shows everything at once. The TSX always renders these buttons; the
-   `display: none` here keeps them off the desktop layout. */
-.tb-mobile-tabs { display: none; }
-
 /* ---------- Mobile (iOS Home Screen, portrait) ----------
- * The desktop layout — 3-column grid of catalog (1fr) + sidebar (~2-card
- * wide column) with lineup bar tucked under catalog — doesn't fit a
- * portrait phone. On mobile we collapse to a TEAM / CATALOG tab toggle:
- *   - TEAM tab: lineup + roster + bench (the team-build view)
- *   - CATALOG tab: filter + card grid (the picker view)
- * Picking a slot in TEAM auto-switches to CATALOG (with the slot banner
- * showing what we're filtering for); adding a card auto-switches back.
+ * The desktop 3-region layout (catalog top-left, sidebar right, lineup
+ * bottom) is preserved on mobile — just sized down. No tab toggle. The
+ * sidebar (starters / bullpen / bench) gets a narrow fixed column on
+ * the right; the lineup-bar at the bottom switches from flex-wrap to
+ * horizontal scroll so the 9 batter slots stay in a single row. The
+ * catalog fills the remaining space (top-left) and scrolls vertically.
  *
- * --card-w is also overridden so cards are 3-across on mobile instead of
- * the desktop 11-across (which would yield ~24px cards).
+ * Result: everything always visible, picking a slot scrolls the catalog
+ * to filter automatically, no flip-flopping between views.
  */
 @media (max-width: 899px) {
     :root {
-        /* 3 cards per row at 8px gap + 12px page padding = enough for
-           legible name + chart on each card. */
-        --card-w: calc((100vw - 12px - 16px) / 3);
-        --card-h: calc(var(--card-w) * 1.4);
+        /* Compact card size. Wide enough for a legible name + the
+           mobile control bar (←/→/✕) on filled cards. Used by lineup,
+           roster sidebar, bench. */
+        --card-w: 92px;
+        --card-h: calc(var(--card-w) * 1.4); /* ~129px */
         --card-gap: 6px;
-    }
-
-    /* Whole page scrolls naturally on mobile rather than dividing the
-       viewport into desktop-style scroll regions. */
-    .team-builder {
-        height: auto;
-        min-height: 100vh;
-        overflow: visible;
     }
 
     /* Header: stack lineup-name input row above the stats row so
@@ -210,59 +197,42 @@
     .tb-header-stats .divider { display: none; }
     .header-btn { padding: 8px 12px; font-size: 13px; min-height: 40px; }
 
-    /* Tab toggle visible only on mobile. */
-    .tb-mobile-tabs {
-        display: flex;
-        gap: 0;
-        background: var(--bg-secondary);
-        border-bottom: 1px solid var(--border);
-        flex-shrink: 0;
-    }
-    .tb-mobile-tab {
-        flex: 1;
-        padding: 12px;
-        background: none;
-        border: none;
-        border-bottom: 3px solid transparent;
-        color: var(--text-dim);
-        font-size: 13px;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        cursor: pointer;
-        min-height: 44px;
-    }
-    .tb-mobile-tab.active {
-        color: var(--accent);
-        border-bottom-color: var(--accent);
-        background: var(--bg-card);
-    }
-
-    /* Body: drop the grid; show only the active mobile tab. The catalog
-       and the sidebar/lineup are conditionally hidden via the parent's
-       `tb-mobile-{tab}` class. */
+    /* Body: 2-column / 2-row grid identical in shape to desktop, just
+       narrower. Catalog top-left fills 1fr; sidebar (starters/bullpen/
+       bench) gets a fixed narrow column on the right; lineup bar spans
+       the bottom of the catalog column only. `minmax(0, 1fr)` is
+       critical — plain `1fr` resolves to `auto` (min-content), which on
+       mobile lets the catalog's chart tables and card-meta rows force
+       the column wider than the viewport. `minmax(0, 1fr)` forces the
+       column to shrink to whatever space is left after the 116px
+       sidebar, so the page width stays at 100vw. */
     .tb-body {
-        display: block;
-        overflow: visible;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 116px;
+        grid-template-rows: 1fr auto;
+        flex: 1;
+        overflow: hidden;
     }
-    .tb-catalog,
-    .tb-sidebar,
+    .tb-catalog {
+        grid-column: 1;
+        grid-row: 1;
+        border-right: 1px solid var(--border);
+    }
+    .tb-sidebar {
+        grid-column: 2;
+        grid-row: 1 / 3;
+        background: var(--bg-secondary);
+        overflow-y: auto;
+    }
     .tb-lineup-bar {
-        display: block;
-        grid-column: auto;
-        grid-row: auto;
-        border: none;
-        background: transparent;
+        grid-column: 1;
+        grid-row: 2;
+        border-top: 1px solid var(--border);
+        border-right: 1px solid var(--border);
+        background: var(--bg-secondary);
+        /* Inner .lineup-slots is the scroll container (overflow-x: auto). */
+        overflow: hidden;
     }
-
-    /* Hide the inactive tab's content. Both .tb-sidebar and
-       .tb-lineup-bar belong to the TEAM tab; .tb-catalog is its own. */
-    .tb-mobile-team .tb-catalog { display: none; }
-    .tb-mobile-catalog .tb-sidebar,
-    .tb-mobile-catalog .tb-lineup-bar { display: none; }
-
-    /* TEAM tab content order: lineup bar, then roster + bench. */
-    .tb-mobile-team .tb-lineup-bar { order: 1; }
-    .tb-mobile-team .tb-sidebar { order: 2; }
 
     /* Slot banner sticks to the top of the catalog view so the user
        always sees what they're picking for as they scroll the card list. */

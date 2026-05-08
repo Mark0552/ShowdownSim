@@ -135,16 +135,36 @@
 
 /* Mobile (iOS Home Screen, portrait). */
 @media (max-width: 899px) {
-    .lineup-bar { padding: 8px; }
-    .lineup-header { margin-bottom: 8px; }
-    .lineup-header h3 { font-size: 14px; }
-
-    /* Wrap 9 batter slots into rows of 3 (matches the 3-across --card-w
-       defined globally in TeamBuilder.css for mobile). */
-    .lineup-slots {
-        flex-wrap: wrap;
-        gap: 6px;
+    .lineup-bar {
+        padding: 8px;
+        /* The bar itself is the scroll container — see TeamBuilder.css
+           where it has overflow-x: auto on the grid cell. The header
+           and slots row both live inside; the header stays put while
+           the slots row scrolls horizontally with the bar. */
+        height: 100%;
+        display: flex;
+        flex-direction: column;
     }
+    .lineup-header { margin-bottom: 6px; flex-shrink: 0; }
+    .lineup-header h3 { font-size: 13px; }
+
+    /* Single horizontal row, no wrap. User swipes left/right through
+       the 9 batter slots. Each card stays at --card-w (~92px on mobile);
+       .lineup-card already has flex-shrink: 0 so cards don't compress. */
+    .lineup-slots {
+        flex-wrap: nowrap;
+        gap: 6px;
+        align-items: stretch;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        /* iOS Safari: padding-bottom adds room for the scrollbar without
+           shifting cards up. */
+        padding-bottom: 4px;
+    }
+    /* Hide the horizontal scrollbar on mobile — the swipe affordance
+       is implicit. Keeps the row visually tidy. */
+    .lineup-slots::-webkit-scrollbar { display: none; }
 
     .lineup-card { padding: 4px; padding-bottom: 36px; }
     .lineup-pos { font-size: 11px; }

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import type { Card, PitcherCard } from '../types/cards';
 import type { TeamStore } from '../store/teamStore';
 import type { DragStore } from '../store/dragStore';
@@ -24,17 +24,6 @@ interface Props {
 export default function TeamBuilder({ cards, teamStore, dragStore, editingLineup, onBack }: Props) {
     const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
     const [activeSlot, setActiveSlot] = useState<SlotSelection | null>(null);
-
-    // Mobile-only two-pane tab toggle. The desktop 3-column grid (catalog +
-    // sidebar + lineup) doesn't fit on a phone, so on narrow viewports we
-    // collapse to two views and let the user swap between them. Picking a
-    // slot in TEAM auto-switches to CATALOG (so the user sees the picker
-    // banner + filtered grid); adding a card auto-switches back to TEAM.
-    // Desktop ignores this state — both panes render side-by-side.
-    const [mobileTab, setMobileTab] = useState<'team' | 'catalog'>('team');
-    useEffect(() => {
-        if (activeSlot) setMobileTab('catalog');
-    }, [activeSlot]);
 
     const filterOptions = useMemo(() => getFilterOptions(cards), [cards]);
 
@@ -79,9 +68,6 @@ export default function TeamBuilder({ cards, teamStore, dragStore, editingLineup
             teamStore.addToSlot(card, 'bench');
         }
         setActiveSlot(null);
-        // After adding on mobile, swap back to the TEAM view so the user
-        // sees the slot they just filled. Desktop ignores this state.
-        setMobileTab('team');
     }, [activeSlot, teamStore]);
 
     const handleSlotClick = useCallback((slot: SlotSelection | null) => {
@@ -132,7 +118,7 @@ export default function TeamBuilder({ cards, teamStore, dragStore, editingLineup
     };
 
     return (
-        <div className={`team-builder tb-mobile-${mobileTab}`}>
+        <div className="team-builder">
             <header className="tb-header">
                 <div className="tb-header-left">
                     {onBack && <button className="header-btn back-btn" onClick={onBack}>&larr;</button>}
@@ -162,22 +148,6 @@ export default function TeamBuilder({ cards, teamStore, dragStore, editingLineup
                     }}>Clear</button>
                 </div>
             </header>
-
-            {/* Mobile-only tab toggle — visible below 900px via CSS. */}
-            <div className="tb-mobile-tabs" role="tablist">
-                <button
-                    role="tab"
-                    aria-selected={mobileTab === 'team'}
-                    className={`tb-mobile-tab ${mobileTab === 'team' ? 'active' : ''}`}
-                    onClick={() => setMobileTab('team')}
-                >TEAM</button>
-                <button
-                    role="tab"
-                    aria-selected={mobileTab === 'catalog'}
-                    className={`tb-mobile-tab ${mobileTab === 'catalog' ? 'active' : ''}`}
-                    onClick={() => setMobileTab('catalog')}
-                >CATALOG</button>
-            </div>
 
             <div className="tb-body">
                 <div className="tb-catalog">
