@@ -69,10 +69,14 @@
     margin-left: auto;
 }
 
+/* Mobile-only "More filters" toggle row. Hidden on desktop where the
+   full 2-row filter is always visible. */
+.filter-more-row { display: none; }
+
 /* Mobile (iOS Home Screen, portrait). */
 @media (max-width: 899px) {
     .filter-bar {
-        padding: 10px;
+        padding: 8px 10px;
         gap: 6px;
         position: sticky;
         top: 0;
@@ -94,12 +98,68 @@
         font-size: 14px;
         min-height: 40px;
     }
-    /* Row 2 (year / set / edition / sort / dir / clear / count) wraps
-       cleanly with smaller selects. */
-    .filter-row:last-child {
+
+    /* Toggle row: visible on mobile, sits between row 1 and the
+       (collapsed) row 2. Holds the "More filters" chip + result count
+       so the count is always visible without expanding. */
+    .filter-more-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .filter-more-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background: var(--bg-card);
+        color: var(--text-dim);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        cursor: pointer;
+        min-height: 32px;
+    }
+    .filter-more-btn.open {
+        color: var(--accent);
+        border-color: var(--accent);
+    }
+    .filter-more-btn::before {
+        content: '+';
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1;
+    }
+    .filter-more-btn.open::before {
+        content: '\2212'; /* − minus sign */
+    }
+    .filter-more-count {
+        background: var(--accent);
+        color: white;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 1px 7px;
+        border-radius: 8px;
+        min-width: 18px;
+        text-align: center;
+    }
+    .filter-more-row .result-count {
+        margin-left: auto;
+        font-size: 11px;
+    }
+
+    /* Row 2 (year / set / edition / sort / dir / clear / count) is the
+       collapsible row. Hidden by default on mobile; shown when the
+       parent gets the .more-open class from the toggle. */
+    .filter-row-more {
+        display: none;
         gap: 4px;
     }
-    .filter-row:last-child select {
+    .filter-bar.more-open .filter-row-more { display: flex; flex-wrap: wrap; }
+
+    .filter-row-more select {
         flex: 1 1 calc(50% - 2px);
         min-width: 0;
         padding: 8px 6px;
@@ -112,10 +172,7 @@
         font-size: 13px;
         min-height: 36px;
     }
-    .result-count {
-        flex-basis: 100%;
-        text-align: right;
-        margin-left: 0;
-        font-size: 11px;
-    }
+    /* Hide the row 2 result-count on mobile — the count lives in the
+       toggle row instead so it's always visible. */
+    .filter-row-result-count { display: none; }
 }

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { FilterState } from '../../data/filters';
 import './FilterBar.css';
 
@@ -18,6 +19,25 @@ interface Props {
 export default function FilterBar({ filters, options, onChange, onClear, resultCount, totalCount }: Props) {
     // Combined position/type value
     const posValue = filters.position || (filters.type === 'hitter' ? 'AllHitters' : filters.type === 'pitcher' ? 'AllPitchers' : '');
+
+    // Mobile-only: collapse the second row (year/set/edition/sort) behind a
+    // "More filters" toggle to give the catalog grid more vertical room. Row
+    // 1 (search + position + team) stays visible since those are the most
+    // common filters. Desktop ignores this state — both rows render via CSS.
+    const [moreOpen, setMoreOpen] = useState(false);
+
+    // Count of "active" non-default narrowing filters, displayed on the
+    // mobile toggle chip. Sort/sortDir are excluded — they reorder rather
+    // than narrow. Position is excluded only when it equals 'AllHitters'
+    // (the umbrella selection that doesn't actually narrow). Team / year /
+    // set / edition all count when non-empty.
+    const activeCount = [
+        filters.position && filters.position !== 'AllHitters' ? 1 : 0,
+        filters.team ? 1 : 0,
+        filters.year ? 1 : 0,
+        filters.expansion ? 1 : 0,
+        filters.edition ? 1 : 0,
+    ].reduce((a, b) => a + b, 0);
 
     const handlePosChange = (val: string) => {
         // Reset both type and position, then set based on selection
@@ -40,7 +60,7 @@ export default function FilterBar({ filters, options, onChange, onClear, resultC
     };
 
     return (
-        <div className="filter-bar">
+        <div className={`filter-bar ${moreOpen ? 'more-open' : ''}`}>
             <div className="filter-row">
                 <input
                     type="text"
@@ -73,7 +93,23 @@ export default function FilterBar({ filters, options, onChange, onClear, resultC
                     {options.teams.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
             </div>
-            <div className="filter-row">
+            {/* Mobile-only "More filters" toggle row. Hidden on desktop via
+                CSS; on mobile it sits between row 1 and the (collapsed)
+                row 2 so the chip + count are always visible while the
+                heavy second row hides until tapped. */}
+            <div className="filter-more-row">
+                <button
+                    type="button"
+                    className={`filter-more-btn ${moreOpen ? 'open' : ''}`}
+                    onClick={() => setMoreOpen(o => !o)}
+                    aria-expanded={moreOpen}
+                >
+                    <span>{moreOpen ? 'Hide filters' : 'More filters'}</span>
+                    {activeCount > 0 && <span className="filter-more-count">{activeCount}</span>}
+                </button>
+                <span className="result-count">{resultCount} / {totalCount}</span>
+            </div>
+            <div className="filter-row filter-row-more">
                 <select value={filters.year} onChange={e => onChange('year', e.target.value)}>
                     <option value="">All Years</option>
                     {options.years.map(y => <option key={y} value={y}>20{y.replace("'", '')}</option>)}
@@ -100,7 +136,7 @@ export default function FilterBar({ filters, options, onChange, onClear, resultC
                     {filters.sortDir === 'asc' ? '↑' : '↓'}
                 </button>
                 <button className="clear-btn" onClick={onClear}>Clear</button>
-                <span className="result-count">{resultCount} / {totalCount}</span>
+                <span className="result-count filter-row-result-count">{resultCount} / {totalCount}</span>
             </div>
         </div>
     );
