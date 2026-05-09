@@ -50,17 +50,35 @@ function hasInvalidAssignment(team) {
     return false;
 }
 
+/** Stable signature of the current lineup's slot→card mapping. Used to
+ *  detect whether the alignment has changed since the user last
+ *  acknowledged it via DEFENSE_SETUP_COMMIT — sorting + joining ensures
+ *  array-order shuffles don't affect the comparison. Any sub or position
+ *  swap shifts the signature and re-prompts the defense_setup modal. */
+function alignmentSignature(team) {
+    return (team.lineup || [])
+        .map(p => `${p.assignedPosition || ''}:${p.cardId}`)
+        .sort()
+        .join('|');
+}
+
 /**
  * Called in place of enterPreAtBat at half-inning boundaries.
- * Jumps to defense_setup if the defending team has any OOP players;
- * otherwise falls through to enterPreAtBat.
+ * Jumps to defense_setup if the defending team has any OOP players AND
+ * the current alignment hasn't already been acknowledged. Once a user
+ * accepts an alignment via DEFENSE_SETUP_COMMIT, the signature is
+ * stored on the team; on subsequent half-innings we skip the modal as
+ * long as the alignment hasn't changed (subs, position swaps, etc.
+ * shift the signature and force a re-prompt).
  */
 export function enterDefenseSetupOrPreAtBat(state) {
     const defTeam = state[defSideFromHalf(state.halfInning)];
-    if (defTeam && hasInvalidAssignment(defTeam)) {
-        return { ...state, phase: 'defense_setup' };
+    if (!defTeam || !hasInvalidAssignment(defTeam)) return enterPreAtBat(state);
+    const currentSig = alignmentSignature(defTeam);
+    if (defTeam.lastAcknowledgedAlignmentSig === currentSig) {
+        return enterPreAtBat(state);
     }
-    return enterPreAtBat(state);
+    return { ...state, phase: 'defense_setup' };
 }
 
 /**
@@ -210,6 +228,12 @@ export function handleDefenseSetupCommit(state, action) {
     team.catcherArm = totals.catcherArm;
     team.fieldingAt = buildFieldingAt(team);
     team.roster = buildRoster(team);
+    // Stamp the just-committed alignment so future half-inning entries
+    // can short-circuit the defense_setup modal as long as the alignment
+    // hasn't changed (no subs, no position swaps). If the user later
+    // does a sub or swap that changes the signature, the comparison in
+    // enterDefenseSetupOrPreAtBat will fail and the modal re-prompts.
+    team.lastAcknowledgedAlignmentSig = alignmentSignature({ lineup: newLineup });
 
     const logs = [];
     if (droppedNames.length > 0) logs.push(`Defense sub: ${addedNames.join(', ')} in for ${droppedNames.join(', ')}`);
