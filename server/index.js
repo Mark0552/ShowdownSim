@@ -335,6 +335,21 @@ async function handleJoinGame(ws, msg, setContext) {
                         && data.state.awayTeam?.lineup && data.state.homeTeam?.lineup) {
                         loadedState = data.state;
                     }
+                    // Fallback: a freshly-created series-game-2 row only has
+                    // {homeLineup, awayLineup} in state (no homeTeam yet), so
+                    // loadedState stays null above. If the client's join_game
+                    // didn't include lineupData (e.g. a timing race where the
+                    // client read gameRow before its state was fully synced,
+                    // or a drafted game with no lineups-table row to fall
+                    // back on), room.homeLineup / awayLineup would still be
+                    // null when the init gate evaluates — and BOTH clients
+                    // would hang on "Waiting for opponent..." forever. Pull
+                    // the lineup data straight off the DB state here as a
+                    // server-side fallback so the init can proceed.
+                    if (data.state) {
+                        if (!room.homeLineup && data.state.homeLineup) room.homeLineup = data.state.homeLineup;
+                        if (!room.awayLineup && data.state.awayLineup) room.awayLineup = data.state.awayLineup;
+                    }
                 }
                 // Self-heal: series game 2+ should never be in sp_roll. If a
                 // prior race persisted one, discard so we re-init fresh with
