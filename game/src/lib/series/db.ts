@@ -84,21 +84,35 @@ export async function updateSeries(seriesId: string, updates: Partial<SeriesRow>
 }
 
 /**
- * Delete every game in a series, then the series row (if RLS permits).
+ * Delete every game in a series, then the series row.
  * Individual deleteGame calls cascade game_player_stats via FK; the last
  * game deletion triggers the orphan-series cleanup path. This function also
- * tries an explicit series delete at the end for the mid-series case where
+ * fires an explicit series delete at the end for the mid-series case where
  * the orphan path's RLS filter (waiting-only) wouldn't fire.
+ *
+ * Errors are NOT swallowed. The Supabase JS client returns `{ data, error }`
+ * — RLS denials and other failures come back via `.error` rather than
+ * throwing — so we have to inspect it explicitly. Without this, an RLS
+ * denial silently no-ops, the caller's optimistic UI clears the series,
+ * and the row reappears on the next page load.
  */
 export async function deleteSeries(seriesId: string): Promise<void> {
     const games = await getSeriesGames(seriesId);
+    const gameFailures: string[] = [];
     for (const g of games) {
         try { await deleteGame(g.id); }
-        catch { /* continue — best-effort */ }
+        catch (e: any) { gameFailures.push(e?.message || String(e)); }
     }
-    try {
-        await supabase.from('series').delete().eq('id', seriesId);
-    } catch { /* ignore */ }
+    const { error } = await supabase.from('series').delete().eq('id', seriesId);
+    if (error) {
+        const detail = error.code === '42501'
+            ? 'permission denied (RLS). Only the user who created the series can delete it.'
+            : (error.message || 'unknown error');
+        throw new Error(`Failed to delete series: ${detail}`);
+    }
+    if (gameFailures.length > 0) {
+        throw new Error(`Series row deleted, but ${gameFailures.length} game${gameFailures.length === 1 ? '' : 's'} could not be removed: ${gameFailures.join('; ')}`);
+    }
 }
 
 // ============================================================================
