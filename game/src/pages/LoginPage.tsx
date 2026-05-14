@@ -122,8 +122,8 @@ export default function LoginPage({ onLogin }: Props) {
     const handleVerifyOtp = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        if (!/^\d{6}$/.test(otpCode.trim())) {
-            setError('Enter the 6-digit code from your email.');
+        if (!/^\d{6,10}$/.test(otpCode.trim())) {
+            setError('Enter the code from your email.');
             return;
         }
         setLoading(true);
@@ -174,8 +174,8 @@ export default function LoginPage({ onLogin }: Props) {
     const handleResetVerify = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        if (!/^\d{6}$/.test(otpCode.trim())) {
-            setError('Enter the 6-digit code from your email.');
+        if (!/^\d{6,10}$/.test(otpCode.trim())) {
+            setError('Enter the code from your email.');
             return;
         }
         if (password.length < 8) {
@@ -301,20 +301,20 @@ export default function LoginPage({ onLogin }: Props) {
                     <form onSubmit={handleVerifyOtp}>
                         <div className="login-success-card">
                             <div className="login-success-icon">&#9993;</div>
-                            <p>We sent a 6-digit code to</p>
+                            <p>We sent a verification code to</p>
                             <p className="login-success-email">{email}</p>
                             <p>Enter it below to confirm your email and finish signing up.</p>
                         </div>
                         <input
                             type="text"
                             inputMode="numeric"
-                            pattern="\d{6}"
-                            placeholder="6-digit code"
+                            pattern="\d{6,10}"
+                            placeholder="Verification code"
                             value={otpCode}
-                            onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                            onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 10))}
                             required
                             autoComplete="one-time-code"
-                            maxLength={6}
+                            maxLength={10}
                         />
                         {error && <div className="login-error">{error}</div>}
                         {info && <div className="login-info">{info}</div>}
@@ -362,19 +362,19 @@ export default function LoginPage({ onLogin }: Props) {
                     <form onSubmit={handleResetVerify}>
                         <div className="login-success-card">
                             <div className="login-success-icon">&#9993;</div>
-                            <p>If <span className="login-success-email">{email}</span> is registered, a 6-digit reset code is on its way.</p>
+                            <p>If <span className="login-success-email">{email}</span> is registered, a reset code is on its way.</p>
                             <p>Enter the code and pick a new password.</p>
                         </div>
                         <input
                             type="text"
                             inputMode="numeric"
-                            pattern="\d{6}"
-                            placeholder="6-digit code"
+                            pattern="\d{6,10}"
+                            placeholder="Verification code"
                             value={otpCode}
-                            onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                            onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 10))}
                             required
                             autoComplete="one-time-code"
-                            maxLength={6}
+                            maxLength={10}
                         />
                         <input
                             type="password"

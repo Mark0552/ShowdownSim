@@ -106,13 +106,19 @@ SECURITY DEFINER
 SET search_path = public, auth
 AS $$
 BEGIN
-    -- raw_user_meta_data is JSONB; ->> coerces to text. If username is
-    -- missing (shouldn't happen for our signups but be safe), bail out
-    -- without creating a profile row — the user will hit a "no profile"
-    -- error on first use, which is louder than silently creating
-    -- something broken.
+    -- raw_user_meta_data is JSONB; ->> coerces to text. Skip the profile
+    -- insert silently when username is missing — this happens when
+    -- admin uses Supabase Dashboard's "Invite user" or "Add user"
+    -- features (which don't pass user_metadata). The auth.users row is
+    -- still created; the profile row just doesn't exist. Such users
+    -- can complete onboarding later. App signups always pass a
+    -- username, so they always get a profile.
+    --
+    -- Originally this raised an exception, which broke admin-invite
+    -- entirely AND surfaced as opaque "unexpected_failure" 500s on app
+    -- signup if anything stripped the user_metadata in transit.
     IF NEW.raw_user_meta_data ->> 'username' IS NULL THEN
-        RAISE EXCEPTION 'signup missing username in user_metadata';
+        RETURN NEW;
     END IF;
 
     INSERT INTO public.profiles (user_id, username)

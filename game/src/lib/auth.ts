@@ -114,7 +114,7 @@ export async function verifyOtp(email: string, code: string) {
             throw new Error('That code expired. Tap "Resend code" to get a new one.');
         }
         if (error.message.toLowerCase().includes('invalid')) {
-            throw new Error('Invalid code. Check the 6 digits and try again.');
+            throw new Error('Invalid code. Check the code and try again.');
         }
         throw error;
     }
@@ -155,7 +155,7 @@ export async function verifyRecoveryOtp(email: string, code: string) {
             throw new Error('That code expired. Request a new password reset.');
         }
         if (error.message.toLowerCase().includes('invalid')) {
-            throw new Error('Invalid code. Check the 6 digits and try again.');
+            throw new Error('Invalid code. Check the code and try again.');
         }
         throw error;
     }
