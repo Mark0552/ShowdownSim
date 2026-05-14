@@ -63,25 +63,27 @@ export default function RulesPage({ onBack }: Props) {
     return (
         <div className="rules-page">
             <div className="rules-container">
-                <div className="rules-header">
-                    <button className="rules-back" onClick={onBack}>&larr; Menu</button>
-                    <h1>Showdown Rules</h1>
-                    <div className="rules-header-spacer" />
-                </div>
+                <div className="rules-stickytop">
+                    <div className="rules-header">
+                        <button className="rules-back" onClick={onBack}>&larr; Menu</button>
+                        <h1>Showdown Rules</h1>
+                        <div className="rules-header-spacer" />
+                    </div>
 
-                <div className="rules-tabs">
-                    <button
-                        className={`rules-tab ${tab === 'start' ? 'active' : ''}`}
-                        onClick={() => setTab('start')}
-                    >Getting Started</button>
-                    <button
-                        className={`rules-tab ${tab === 'advanced' ? 'active' : ''}`}
-                        onClick={() => setTab('advanced')}
-                    >Advanced Rules</button>
-                    <button
-                        className={`rules-tab ${tab === 'expert' ? 'active' : ''}`}
-                        onClick={() => setTab('expert')}
-                    >Expert Rules</button>
+                    <div className="rules-tabs">
+                        <button
+                            className={`rules-tab ${tab === 'start' ? 'active' : ''}`}
+                            onClick={() => setTab('start')}
+                        >Getting Started</button>
+                        <button
+                            className={`rules-tab ${tab === 'advanced' ? 'active' : ''}`}
+                            onClick={() => setTab('advanced')}
+                        >Advanced Rules</button>
+                        <button
+                            className={`rules-tab ${tab === 'expert' ? 'active' : ''}`}
+                            onClick={() => setTab('expert')}
+                        >Expert Rules</button>
+                    </div>
                 </div>
 
                 <div className="rules-layout">

@@ -9,6 +9,21 @@
     margin: 0 auto;
 }
 
+/* Sticky wrapper around the header (Menu button + title) and the tab strip.
+   Locked to viewport top whenever the user scrolls. The negative margin +
+   matching padding pulls the page's top padding INTO the sticky element,
+   so when stuck there's no gap above it at viewport top. Solid bg-primary
+   so content underneath doesn't bleed through when scrolled. z-index keeps
+   it above the .rules-toc (which is also sticky, but stacks below this). */
+.rules-stickytop {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg-primary);
+    margin-top: -24px;
+    padding-top: 24px;
+}
+
 .rules-header {
     display: flex;
     justify-content: space-between;
@@ -79,13 +94,21 @@
 }
 
 .rules-toc {
+    /* On desktop, sticks in the sidebar column. top must clear the
+       .rules-stickytop wrapper (~140px tall on desktop: 24px page pad +
+       32px h1 + 24px header margin + ~38px tabs + 2px border + 24px tab
+       margin-bottom). Adding 8px so the TOC isn't flush against the
+       stickytop's bottom edge. z-index keeps it above the content but
+       below the stickytop's z-index: 10. */
     position: sticky;
-    top: 24px;
+    top: 148px;
+    z-index: 9;
+    background: var(--bg-primary);
     display: flex;
     flex-direction: column;
     gap: 2px;
     padding: 16px 0;
-    max-height: calc(100vh - 48px);
+    max-height: calc(100vh - 168px);
     overflow-y: auto;
 }
 
@@ -289,17 +312,44 @@
 @media (max-width: 899px) {
     .rules-page { padding: 12px; }
 
-    .rules-header {
-        gap: 12px;
-        margin-bottom: 16px;
+    /* Mobile stickytop: tighter top padding to match the page's 12px pad. */
+    .rules-stickytop {
+        margin-top: -12px;
+        padding-top: 12px;
     }
-    .rules-header h1 { font-size: 20px; }
-    .rules-header-spacer { display: none; }
-    .rules-back { padding: 8px 12px; min-height: 40px; font-size: 13px; }
+
+    /* Center the h1 between the back button and a matching-width spacer on
+       the right. Grid with 1fr / auto / 1fr columns guarantees the h1 lands
+       at exact horizontal center regardless of back-button width. The
+       spacer (un-hidden from its desktop display: none) reserves the right
+       column's space so the grid stays symmetrical. */
+    .rules-header {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+    .rules-header h1 {
+        font-size: 20px;
+        text-align: center;
+        grid-column: 2;
+    }
+    .rules-header-spacer {
+        display: block;
+        width: auto;
+        grid-column: 3;
+    }
+    .rules-back {
+        padding: 8px 12px;
+        min-height: 40px;
+        font-size: 13px;
+        justify-self: start;
+    }
 
     /* Top-level rules tabs scroll horizontally instead of wrapping. */
     .rules-tabs {
-        margin-bottom: 16px;
+        margin-bottom: 0;
         overflow-x: auto;
         flex-wrap: nowrap;
         scrollbar-width: none;
@@ -315,15 +365,25 @@
     /* Layout collapses to single column. */
     .rules-layout {
         grid-template-columns: 1fr;
-        gap: 16px;
+        gap: 12px;
     }
+
+    /* TOC sticks below the .rules-stickytop wrapper. Approximate height of
+       the wrapper on mobile: 12px page pad + 40px back-btn / h1 row + 12px
+       header margin + 44px tab min-height + 2px tabs border ≈ 110px. Add
+       a small buffer so the TOC isn't flush against the tabs' bottom edge.
+       Background + bottom border give it a defined edge once stuck so the
+       scrolling content below has a clear visual separator. */
     .rules-toc {
-        position: static;
+        position: sticky;
+        top: 110px;
+        z-index: 9;
+        background: var(--bg-primary);
         flex-direction: row;
         flex-wrap: wrap;
         gap: 4px;
         border-bottom: 1px solid var(--border);
-        padding: 0 0 12px 0;
+        padding: 8px 0;
         max-height: none;
         overflow-y: visible;
     }
