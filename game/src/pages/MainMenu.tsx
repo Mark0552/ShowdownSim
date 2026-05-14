@@ -2,12 +2,12 @@ import { signOut } from '../lib/auth';
 import './MainMenu.css';
 
 interface Props {
-    userEmail: string;
+    username: string;
     onNavigate: (page: string) => void;
     onLogout: () => void;
 }
 
-export default function MainMenu({ userEmail, onNavigate, onLogout }: Props) {
+export default function MainMenu({ username, onNavigate, onLogout }: Props) {
     const handleLogout = async () => {
         await signOut();
         onLogout();
@@ -17,7 +17,7 @@ export default function MainMenu({ userEmail, onNavigate, onLogout }: Props) {
         <div className="main-menu">
             <div className="menu-card">
                 <h1>MLB Showdown</h1>
-                <p className="menu-user">{userEmail}</p>
+                <p className="menu-user">{username}</p>
 
                 <div className="menu-buttons">
                     <button className="menu-btn" onClick={() => onNavigate('rules')}>

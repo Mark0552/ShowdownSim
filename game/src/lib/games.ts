@@ -11,7 +11,7 @@ export async function createGame(password?: string, mode: GameMode = 'lineup'): 
 
     const insert: any = {
         home_user_id: user.id,
-        home_user_email: getUsername(user),
+        home_username: getUsername(user),
         status: 'waiting',
         mode,
     };
@@ -104,7 +104,7 @@ export async function joinGame(gameId: string): Promise<GameRow> {
         .from('games')
         .update({
             away_user_id: user.id,
-            away_user_email: getUsername(user),
+            away_username: getUsername(user),
             status: 'lineup_select',
         })
         .eq('id', gameId)
@@ -134,7 +134,7 @@ export async function joinGame(gameId: string): Promise<GameRow> {
         try {
             await supabase
                 .from('series')
-                .update({ away_user_id: user.id, away_user_email: getUsername(user) })
+                .update({ away_user_id: user.id, away_username: getUsername(user) })
                 .eq('id', data.series_id)
                 .is('away_user_id', null);
         } catch { /* non-fatal */ }

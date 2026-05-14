@@ -227,7 +227,7 @@ export default function StatsPage({ onBack }: Props) {
                                 }
                                 const game = entry.game;
                                 const isHome = game.home_user_id === userId;
-                                const opponent = isHome ? game.away_user_email : game.home_user_email;
+                                const opponent = isHome ? game.away_username : game.home_username;
                                 const won = game.winner_user_id === userId;
                                 const homeScore = game.state?.score?.home ?? '?';
                                 const awayScore = game.state?.score?.away ?? '?';
@@ -381,9 +381,9 @@ export default function StatsPage({ onBack }: Props) {
                     <div className="stats-game-modal-content" onClick={(e) => e.stopPropagation()}>
                         <div className="stats-game-modal-header">
                             <div className="stats-game-modal-title">
-                                {selectedGame.away_user_email || 'Away'} {selectedGame.state.score.away}
+                                {selectedGame.away_username || 'Away'} {selectedGame.state.score.away}
                                 {' \u2013 '}
-                                {selectedGame.state.score.home} {selectedGame.home_user_email || 'Home'}
+                                {selectedGame.state.score.home} {selectedGame.home_username || 'Home'}
                                 <span className="stats-game-modal-date">
                                     {new Date(selectedGame.created_at).toLocaleDateString()}
                                 </span>

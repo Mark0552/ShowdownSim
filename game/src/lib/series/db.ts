@@ -26,7 +26,7 @@ export async function createSeries(bestOf: number, password?: string, mode: 'lin
         .from('series')
         .insert({
             home_user_id: user.id,
-            home_user_email: getUsername(user),
+            home_username: getUsername(user),
             best_of: bestOf,
             status: 'waiting',
             mode,
@@ -37,7 +37,7 @@ export async function createSeries(bestOf: number, password?: string, mode: 'lin
 
     const gameInsert: any = {
         home_user_id: user.id,
-        home_user_email: getUsername(user),
+        home_username: getUsername(user),
         status: 'waiting',
         series_id: series.id,
         game_number: 1,
@@ -143,22 +143,22 @@ export async function ensureNextSeriesGame(seriesId: string, gameNumber: number)
 
     const series = await getSeries(seriesId);
     const creatorUserId = series.home_user_id;
-    const creatorUsername = series.home_user_email;
+    const creatorUsername = series.home_username;
     // series.away_user_id wasn't populated for older series (joinGame only
     // wrote the games row). Fall back to deriving the opponent from any
     // sibling game whose home/away spread reveals the non-creator.
     let opponentUserId = series.away_user_id;
-    let opponentUsername = series.away_user_email;
+    let opponentUsername = series.away_username;
     if (!opponentUserId) {
         for (const g of games) {
             if (g.away_user_id && g.away_user_id !== creatorUserId) {
                 opponentUserId = g.away_user_id;
-                opponentUsername = g.away_user_email;
+                opponentUsername = g.away_username;
                 break;
             }
             if (g.home_user_id && g.home_user_id !== creatorUserId) {
                 opponentUserId = g.home_user_id;
-                opponentUsername = g.home_user_email;
+                opponentUsername = g.home_username;
                 break;
             }
         }
@@ -169,7 +169,7 @@ export async function ensureNextSeriesGame(seriesId: string, gameNumber: number)
             try {
                 await updateSeries(seriesId, {
                     away_user_id: opponentUserId,
-                    away_user_email: opponentUsername,
+                    away_username: opponentUsername,
                 } as Partial<SeriesRow>);
             } catch { /* non-fatal */ }
         }
@@ -215,8 +215,8 @@ export async function ensureNextSeriesGame(seriesId: string, gameNumber: number)
             .insert({
                 home_user_id: newHomeUserId,
                 away_user_id: newAwayUserId,
-                home_user_email: newHomeUsername,
-                away_user_email: newAwayUsername,
+                home_username: newHomeUsername,
+                away_username: newAwayUsername,
                 status: 'lineup_select',
                 series_id: seriesId,
                 game_number: gameNumber,

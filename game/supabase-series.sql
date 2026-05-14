@@ -6,8 +6,8 @@ CREATE TABLE IF NOT EXISTS series (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     home_user_id UUID NOT NULL REFERENCES auth.users(id),
     away_user_id UUID REFERENCES auth.users(id),
-    home_user_email TEXT,
-    away_user_email TEXT,
+    home_username TEXT,
+    away_username TEXT,
     best_of INT NOT NULL DEFAULT 1,       -- 1, 3, 5, or 7
     home_wins INT DEFAULT 0,
     away_wins INT DEFAULT 0,

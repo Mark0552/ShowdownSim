@@ -7,8 +7,8 @@ create table if not exists games (
     status text not null default 'waiting',
     home_user_id uuid references auth.users(id) not null,
     away_user_id uuid references auth.users(id),
-    home_user_email text,
-    away_user_email text,
+    home_username text,
+    away_username text,
     -- ON DELETE SET NULL: deleting a lineup doesn't block the delete; it just
     -- nulls the id on any games that reference it. Safe because games embed
     -- the full lineup data in state.homeLineup / state.awayLineup at start.

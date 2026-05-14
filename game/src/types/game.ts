@@ -9,8 +9,8 @@ export interface GameRow {
     mode: GameMode;
     home_user_id: string;
     away_user_id: string | null;
-    home_user_email: string | null;
-    away_user_email: string | null;
+    home_username: string | null;
+    away_username: string | null;
     home_lineup_id: string | null;
     away_lineup_id: string | null;
     home_lineup_name: string | null;
@@ -34,8 +34,8 @@ export interface SeriesRow {
     mode: GameMode;
     home_user_id: string;
     away_user_id: string | null;
-    home_user_email: string | null;
-    away_user_email: string | null;
+    home_username: string | null;
+    away_username: string | null;
     best_of: number;
     home_wins: number;
     away_wins: number;

@@ -284,7 +284,7 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
         const role = getMyRole(activeGame, userId);
         const myReady = role === 'home' ? activeGame.home_ready : activeGame.away_ready;
         const oppReady = role === 'home' ? activeGame.away_ready : activeGame.home_ready;
-        const oppEmail = role === 'home' ? activeGame.away_user_email : activeGame.home_user_email;
+        const oppEmail = role === 'home' ? activeGame.away_username : activeGame.home_username;
         const waiting = activeGame.status === 'waiting';
         const isDraft = activeGame.mode === 'draft';
 
@@ -558,8 +558,8 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
                                                         <div className="game-info">
                                                             <span className="game-opponent">
                                                                 {role === 'away'
-                                                                    ? `@ ${game.home_user_email || 'Home'}`
-                                                                    : `vs ${game.away_user_email || 'Away'}`
+                                                                    ? `@ ${game.home_username || 'Home'}`
+                                                                    : `vs ${game.away_username || 'Away'}`
                                                                 }
                                                             </span>
                                                             <span className={`game-status status-${game.status}`}>{game.status === 'in_progress' && game.state?.inning
@@ -612,7 +612,7 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
                                 <div className="game-info">
                                     <span className="game-host">
                                         {game.password && <span className="game-lock" title="Password protected">&#x1F512; </span>}
-                                        {game.home_user_email}
+                                        {game.home_username}
                                     </span>
                                     <span className="game-time">{formatTime(game.created_at)}</span>
                                 </div>

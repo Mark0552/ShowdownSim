@@ -42,7 +42,7 @@ React 19 + TypeScript + Vite SPA. No react-router — uses manual `useState<Page
 
 ### Backend: Supabase
 - **URL:** `https://jdvgjiklswargnqrqiet.supabase.co`
-- **Auth:** Email/password (emails are fake: `username@showdown.game`). No email confirmation. See "Usernames vs Emails" below — the user always thinks in terms of usernames; the email is an internal artifact.
+- **Auth:** Real email + username + password. Email confirmation required (6-digit OTP code, not magic link). Custom SMTP via Gmail App Password. Users can sign in with email **or** username. See "Auth Model" below.
 - **Tables:**
   - `lineups` — id, user_id, name, data (JSONB), created_at, updated_at. RLS: users see only their own.
   - `games` — id, status, mode, home/away user IDs and emails, lineup IDs/names, ready flags, ready-next flags, state (JSONB), password, winner, series_id, game_number. RLS: anyone can see waiting games, participants see their games, anyone can join a waiting game.
@@ -264,14 +264,20 @@ These are user-confirmed interpretations of MLB Showdown Advanced rules and hous
 - **GB Hold Runners:** a real roll — d20 + IF vs `round((batter speed + lead runner speed) / 2)`. Lead runner = furthest along (3rd > 2nd > 1st priority).
 - **Runner animation attribution (`computeRunnerMovements`):** iterate **lead runner first** (third → second → first) when assigning who scored. Runners can't pass each other in baseball, so the furthest-along missing runner is always the scorer. Iterating first-to-third misattributes DP-failed bases-loaded scenarios.
 
-## Usernames vs Emails
+## Auth Model
 
-The app uses **usernames**, not emails. Auth uses a synthetic email (`username@showdown.game`) under the hood, but users only see and think in terms of usernames. `getUsername(user)` strips the `@showdown.game` suffix.
+Real-email auth with username display. The flow:
 
-- `home_user_email` and `away_user_email` columns on the `games` and `series` tables are **misnamed** — they actually store usernames (populated via `getUsername(user)`). When reading them for display, treat as a username.
-- Do **not** say "email" in any UI label, toast, error, or comment a user might read. Use "username".
-- Renaming the DB columns is a bigger migration; leave the schema alone unless explicitly asked. New code should use `username`-style variable names so the intent is clear.
-- `series.home_user_email` / `away_user_email` can stay null even after the opponent joins (only the `games` row gets updated on join). For series-level username display, fall back to scanning child game rows for a non-null value.
+- **Sign up:** user provides email + username + password. Supabase stores email + password in `auth.users`; an `on_auth_user_created` trigger copies the username from `raw_user_meta_data` into `public.profiles`. The `profiles.username` column has a case-insensitive UNIQUE index, so a duplicate username INSERT inside the trigger rolls back the entire signup transaction (atomic — no orphaned `auth.users` row).
+- **Email confirmation:** Supabase sends a 6-digit OTP code via custom Gmail SMTP (configured in the dashboard, App Password auth). User enters the code into a `verify-otp` view in `LoginPage`. `LoginPage` persists `showdown_pending_verify_email` in localStorage so the user can close the browser between signup and verification and pick up where they left off.
+- **Sign in:** user types email OR username. If the identifier contains `@`, it's used directly. Otherwise the client calls the `email_for_username(username)` RPC (Postgres `SECURITY DEFINER` function granted to anon + authenticated), which returns the email associated with that username — then signs in with email + password. If the username doesn't exist, the RPC returns NULL and the client shows a generic "Invalid login" error so attackers can't enumerate which usernames exist.
+- **Password reset:** `resetPasswordForEmail` → Supabase sends a recovery OTP code → `verifyOtp({ type: 'recovery' })` puts the user in a special session → `updateUser({ password })` to finalize.
+
+**Database columns:** `games.home_username` / `games.away_username` / `series.home_username` / `series.away_username` store the username at game/series creation time, denormalized so the lobby can show opponent names without an extra join. These were previously misnamed `*_user_email`; renamed in `supabase-migration-real-email-auth.sql`.
+
+**Username uniqueness:** enforced via `public.profiles.username` UNIQUE constraint on `LOWER(username)` (case-insensitive). The trigger that inserts the profile fires in the same transaction as the auth signup, so the constraint violation aborts the whole signup atomically.
+
+**Trade-off accepted:** the `email_for_username` RPC lets an attacker who knows a username learn the associated email (one lookup per username). Usernames are already publicly readable on waiting games, so this turns "username known" into "email known". Mitigated by always showing generic login errors and relying on Supabase's IP-based rate limits. If this becomes a real problem, swap to an Edge Function with explicit rate limiting.
 
 ## Lineup Strategy Notes (for design discussions)
 
@@ -285,6 +291,7 @@ These were validated against the actual card data via `simulation/*.json`. When 
 
 ## Recently Completed
 
+- **Real-email + username auth with OTP confirmation (May 2026)** — Replaced the synthetic `@showdown.game` email scheme with real emails delivered via Gmail SMTP. Sign-up now collects email + username + password + confirm; Supabase sends a 6-digit OTP code (template uses `{{ .Token }}`); user enters it in a `verify-otp` view in `LoginPage`. Login accepts email OR username — username path resolves via the new `email_for_username(p_username)` Postgres RPC (`SECURITY DEFINER`, granted to anon). Password reset via OTP code → `verifyOtp({ type: 'recovery' })` → `updateUser({ password })`. New `public.profiles` table with `user_id` PK + `username` UNIQUE (`LOWER(username)` index for case-insensitive lookups); populated by the `on_auth_user_created` trigger so duplicate-username INSERT aborts the signup transaction atomically. Migration in `game/supabase-migration-real-email-auth.sql` (wipes all data, renames `*_user_email` → `*_username` on games + series, creates profiles + trigger + RPC). LoginPage persists `showdown_pending_verify_email` in localStorage so users can close the browser mid-OTP and resume. Trade-off accepted: `email_for_username` leaks email-for-known-username; mitigated by generic "Invalid login" errors and Supabase's default IP-based rate limits.
 - **DefenseSetupModal: skip re-prompt when alignment unchanged (May 2026)** — Previously fired the modal on every half-inning where the defense had any non-1B/non-DH OOP slot, even when the user had already accepted that exact alignment last time around. Now `enterDefenseSetupOrPreAtBat` (`server/engine/phases/defenseSetup.js`) compares the current alignment signature (sorted `slotKey:cardId` join over the lineup) against `team.lastAcknowledgedAlignmentSig` — stamped by `handleDefenseSetupCommit` after each accept. Match → skip the modal and fall through to `enterPreAtBat`. Any sub or position swap shifts the signature naturally and re-prompts on the next defensive half. The "no native arrangement possible" banner inside the modal now only appears the first time the user has to acknowledge a forced-OOP alignment, not every half-inning.
 - **App-wide mobile interactions pass (May 2026)** — Beyond CSS, made every drag-or-hover interaction work on touch:
   - **TeamBuilder**: dropped the `!slot` click guard so filled lineup/starter slots are tappable for replace. `addToSlot` already replaces on UNIQUE_SLOTS, so tap-replace works for free. Mobile-only ✕ button on each filled card (lineup, starters, bullpen, bench) calls `removeCard`. Mobile-only ←/→ arrows on lineup cards reorder `cardOrder`; on starter cards reorder via `setStarterOrder`. Bullpen and bench have no slot identity so they get ✕-only — no reorder.

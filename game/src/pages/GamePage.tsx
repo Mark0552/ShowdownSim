@@ -188,8 +188,8 @@ export default function GamePage({ gameId, onBack }: Props) {
                 if (!role) throw new Error('Not a participant');
 
                 setMyRole(role);
-                setHomeName(game.home_user_email || 'Home');
-                setAwayName(game.away_user_email || 'Away');
+                setHomeName(game.home_username || 'Home');
+                setAwayName(game.away_username || 'Away');
 
                 const lineupId = role === 'home' ? game.home_lineup_id : game.away_lineup_id;
                 let lineupData = null;

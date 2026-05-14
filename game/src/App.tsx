@@ -41,7 +41,7 @@ export default function App() {
     const [cards, setCards] = useState<Card[]>([]);
     const [cardsLoading, setCardsLoading] = useState(true);
     const [page, setPageState] = useState<Page>('login');
-    const [userEmail, setUserEmail] = useState('');
+    const [username, setUsername] = useState('');
     const [editingLineup, setEditingLineup] = useState<SavedLineup | null>(null);
     const [activeGameId, setActiveGameId] = useState<string | null>(null);
     const teamStore = useTeamStore();
@@ -71,7 +71,7 @@ export default function App() {
     useEffect(() => {
         getUser().then((user) => {
             if (user) {
-                setUserEmail(getUsername(user));
+                setUsername(getUsername(user));
                 // Restore page from hash if user is logged in
                 const { page: hashPage, gameId } = readHash();
                 if (hashPage === 'game' && gameId) {
@@ -91,7 +91,7 @@ export default function App() {
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
             if (event === 'SIGNED_OUT') {
                 setPage('login');
-                setUserEmail('');
+                setUsername('');
             }
         });
 
@@ -119,7 +119,7 @@ export default function App() {
     const handleLogin = async () => {
         const user = await getUser();
         if (user) {
-            setUserEmail(getUsername(user));
+            setUsername(getUsername(user));
             setPage('menu');
         }
     };
@@ -161,7 +161,7 @@ export default function App() {
         case 'menu':
             return (
                 <MainMenu
-                    userEmail={userEmail}
+                    username={username}
                     onNavigate={(p) => setPage(p as Page)}
                     onLogout={() => setPage('login')}
                 />

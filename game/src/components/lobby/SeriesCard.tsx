@@ -60,17 +60,17 @@ export default function SeriesCard({ series, games, userId, onResumeSeries, onDe
     // These don't change game-to-game even when the MLB schedule swaps home/away.
     const gameWithSeriesAway = games.find(g =>
         g.home_user_id === series.away_user_id
-            ? !!g.home_user_email
-            : !!g.away_user_email
+            ? !!g.home_username
+            : !!g.away_username
     );
-    const creatorUsername = series.home_user_email
-        || (games.find(g => g.home_user_id === series.home_user_id)?.home_user_email
-            || games.find(g => g.away_user_id === series.home_user_id)?.away_user_email)
+    const creatorUsername = series.home_username
+        || (games.find(g => g.home_user_id === series.home_user_id)?.home_username
+            || games.find(g => g.away_user_id === series.home_user_id)?.away_username)
         || 'Home';
-    const opponentUsername = series.away_user_email
+    const opponentUsername = series.away_username
         || (gameWithSeriesAway?.home_user_id === series.away_user_id
-            ? gameWithSeriesAway.home_user_email
-            : gameWithSeriesAway?.away_user_email)
+            ? gameWithSeriesAway.home_username
+            : gameWithSeriesAway?.away_username)
         || 'Away';
     const isCreator = series.home_user_id === userId;
     const showActions = !!(onResumeSeries || (onDeleteSeries && isCreator));
@@ -106,8 +106,8 @@ export default function SeriesCard({ series, games, userId, onResumeSeries, onDe
         rows.push({
             gameNumber: g.game_number,
             game: g,
-            homeUsername: g.home_user_email || (creatorHome ? creatorUsername : opponentUsername),
-            awayUsername: g.away_user_email || (creatorHome ? opponentUsername : creatorUsername),
+            homeUsername: g.home_username || (creatorHome ? creatorUsername : opponentUsername),
+            awayUsername: g.away_username || (creatorHome ? opponentUsername : creatorUsername),
             homeStarter: homeStarter ?? null,
             awayStarter: awayStarter ?? null,
             creatorHome,
