@@ -150,6 +150,73 @@
 
 .tb-slot-banner button:hover { background: rgba(255,255,255,0.3); }
 
+/* ===== Toast =====
+   Floats above the builder UI, regardless of which region the user is
+   in (catalog / sidebar / lineup bar). Used to confirm an add with an
+   Undo escape hatch, and to hint when a user taps a catalog card with
+   no active slot. Fixed-position so it doesn't reflow the layout —
+   important on mobile where every pixel of vertical space matters. */
+.tb-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--bg-secondary);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    font-size: 14px;
+    max-width: calc(100vw - 32px);
+    z-index: 1000;
+    animation: tb-toast-in 0.2s ease-out;
+}
+
+@keyframes tb-toast-in {
+    from { opacity: 0; transform: translate(-50%, 12px); }
+    to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.tb-toast-msg {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tb-toast-undo {
+    flex: 0 0 auto;
+    padding: 4px 10px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.tb-toast-undo:hover { background: var(--accent-dim); }
+
+.tb-toast-dismiss {
+    flex: 0 0 auto;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 18px;
+    line-height: 1;
+    padding: 2px 6px;
+    cursor: pointer;
+}
+
+.tb-toast-dismiss:hover { color: var(--text); }
+
 /* ---------- Mobile (iOS Home Screen, portrait) ----------
  * The desktop 3-region layout (catalog top-left, sidebar right, lineup
  * bottom) is preserved on mobile — just sized down. No tab toggle. The
@@ -245,4 +312,26 @@
         min-height: 44px;
     }
     .tb-slot-banner button { padding: 6px 14px; min-height: 32px; font-size: 12px; }
+
+    /* Toast sits above the bottom lineup bar (which is roughly card-h +
+       padding ≈ 145px) so it doesn't obscure the slot row that the user
+       might be reading after an add. Tighter padding + smaller font
+       keep it readable but unobtrusive on a phone. */
+    .tb-toast {
+        bottom: calc(var(--card-h) + 24px);
+        font-size: 13px;
+        padding: 10px 12px;
+        gap: 8px;
+        max-width: calc(100vw - 20px);
+    }
+    .tb-toast-undo {
+        padding: 6px 12px;
+        font-size: 13px;
+        min-height: 32px;
+    }
+    .tb-toast-dismiss {
+        font-size: 20px;
+        padding: 4px 8px;
+        min-height: 32px;
+    }
 }

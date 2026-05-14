@@ -1,5 +1,6 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Card, PitcherCard } from '../types/cards';
+import type { Team } from '../types/team';
 import type { TeamStore } from '../store/teamStore';
 import type { DragStore } from '../store/dragStore';
 import type { SlotSelection } from '../components/roster/RosterPanel';
@@ -12,6 +13,19 @@ import RosterPanel from '../components/roster/RosterPanel';
 import LineupBar from '../components/roster/LineupBar';
 import BenchPanel from '../components/roster/BenchPanel';
 import './TeamBuilder.css';
+
+/** Transient feedback shown after an add (with Undo) or when the user
+ *  taps a catalog card without an active slot (hint, no Undo). */
+interface ToastState {
+    message: string;
+    /** Pre-add team snapshot. When present, the toast renders an "Undo"
+     *  button that dispatches LOAD with this snapshot. Hint toasts pass
+     *  null so the Undo button is hidden. */
+    undoSnapshot: Team | null;
+    /** Bumped each time a new toast is set, so the auto-dismiss timer
+     *  in useEffect only clears its own toast (not a newer replacement). */
+    seq: number;
+}
 
 interface Props {
     cards: Card[];
@@ -53,8 +67,56 @@ export default function TeamBuilder({ cards, teamStore, dragStore, editingLineup
 
     const clearFilters = () => { setFilters(DEFAULT_FILTERS); setActiveSlot(null); };
 
+    // Transient toast for add confirmations + the "tap a slot first" hint
+    // for users who tap a catalog card without an active slot. Snapshots
+    // the pre-add team state so the Undo button can restore it.
+    const [toast, setToast] = useState<ToastState | null>(null);
+    const toastSeqRef = useRef(0);
+
+    // Auto-dismiss the toast 4s after it appears. The seq guards against
+    // an earlier timer clearing a newer toast that replaced it before the
+    // original 4s elapsed.
+    useEffect(() => {
+        if (!toast) return;
+        const seqAtMount = toast.seq;
+        const t = setTimeout(() => {
+            setToast(prev => (prev && prev.seq === seqAtMount ? null : prev));
+        }, 4000);
+        return () => clearTimeout(t);
+    }, [toast]);
+
+    const showToast = useCallback((message: string, undoSnapshot: Team | null) => {
+        toastSeqRef.current += 1;
+        setToast({ message, undoSnapshot, seq: toastSeqRef.current });
+    }, []);
+
+    const handleUndo = useCallback(() => {
+        if (!toast?.undoSnapshot) return;
+        teamStore.dispatch({ type: 'LOAD', team: toast.undoSnapshot });
+        setToast(null);
+    }, [toast, teamStore]);
+
     const handleAddCard = useCallback((card: Card) => {
-        if (!activeSlot) return;
+        // No active slot → can't route the card anywhere. Show a hint
+        // instead of silently no-op'ing (the silent no-op was the
+        // single biggest "what's happening?" mobile gripe).
+        if (!activeSlot) {
+            showToast('Tap a slot first, then pick a card to fill it.', null);
+            return;
+        }
+        // Snapshot pre-add team for Undo. JSON round-trip is safe — the
+        // Team shape is plain JSON, and the reducer treats LOAD as a
+        // full replacement.
+        const snapshot: Team = JSON.parse(JSON.stringify(teamStore.team));
+
+        // Build a human-readable slot label up front (activeSlot will be
+        // cleared by the end of this function).
+        const slotName =
+            activeSlot.type === 'field' ? activeSlot.filterPos
+            : activeSlot.type === 'starter' ? activeSlot.slotKey.replace('-', ' ')
+            : activeSlot.type === 'bullpen' ? 'Bullpen'
+            : 'Bench';
+
         if (activeSlot.type === 'field') {
             teamStore.addToSlot(card, activeSlot.slotKey);
         } else if (activeSlot.type === 'starter') {
@@ -68,7 +130,8 @@ export default function TeamBuilder({ cards, teamStore, dragStore, editingLineup
             teamStore.addToSlot(card, 'bench');
         }
         setActiveSlot(null);
-    }, [activeSlot, teamStore]);
+        showToast(`Added ${card.name} to ${slotName}`, snapshot);
+    }, [activeSlot, teamStore, showToast]);
 
     const handleSlotClick = useCallback((slot: SlotSelection | null) => {
         setActiveSlot(prev => {
@@ -198,6 +261,25 @@ export default function TeamBuilder({ cards, teamStore, dragStore, editingLineup
                     />
                 </div>
             </div>
+
+            {/* Toast overlay — fixed-position so it floats above whatever
+                region the user is interacting with. Renders the message
+                and an Undo button when an add just happened (snapshot
+                present) or just the message for hints (snapshot null).
+                Auto-dismisses after 4s via the useEffect above. */}
+            {toast && (
+                <div className="tb-toast" role="status">
+                    <span className="tb-toast-msg">{toast.message}</span>
+                    {toast.undoSnapshot && (
+                        <button className="tb-toast-undo" onClick={handleUndo}>Undo</button>
+                    )}
+                    <button
+                        className="tb-toast-dismiss"
+                        onClick={() => setToast(null)}
+                        aria-label="Dismiss"
+                    >&times;</button>
+                </div>
+            )}
         </div>
     );
 }

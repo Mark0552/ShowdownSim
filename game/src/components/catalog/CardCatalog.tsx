@@ -16,6 +16,23 @@ export default function CardCatalog({ cards, rosterCardIds, onAddCard, addLabel 
     const [hoverCard, setHoverCard] = useState<Card | null>(null);
     const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+    // Mobile breakpoint — on mobile we suppress the hover-tooltip entirely
+    // because (a) the catalog tile itself already shows full card info
+    // (image, chart, stats) inline and (b) iOS fires hover-on-tap which
+    // races the tap-to-add and surfaces a useless modal the user then has
+    // to dismiss after every add. Killing the tooltip on mobile is the
+    // single biggest UX win for builder browsing on a phone.
+    const [isMobile, setIsMobile] = useState(() =>
+        typeof window !== 'undefined' && window.matchMedia('(max-width: 899px)').matches
+    );
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const mq = window.matchMedia('(max-width: 899px)');
+        const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+        mq.addEventListener('change', handler);
+        return () => mq.removeEventListener('change', handler);
+    }, []);
+
     const handleDragStart = (e: React.DragEvent, card: Card) => {
         e.dataTransfer.setData('application/card-id', card.id);
         e.dataTransfer.effectAllowed = 'copyMove';
@@ -29,6 +46,8 @@ export default function CardCatalog({ cards, rosterCardIds, onAddCard, addLabel 
     };
 
     const handleMouseEnter = (card: Card) => {
+        // Tooltip only on desktop — see isMobile comment above.
+        if (isMobile) return;
         if (hoverTimer.current) clearTimeout(hoverTimer.current);
         hoverTimer.current = setTimeout(() => setHoverCard(card), 400);
     };
@@ -142,7 +161,7 @@ export default function CardCatalog({ cards, rosterCardIds, onAddCard, addLabel 
                 })}
             </div>
 
-            {hoverCard && <CardTooltip card={hoverCard} />}
+            {hoverCard && !isMobile && <CardTooltip card={hoverCard} />}
         </div>
     );
 }
