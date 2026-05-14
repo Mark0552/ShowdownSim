@@ -263,6 +263,25 @@
     margin-bottom: 12px;
 }
 
+/* Neutral callout box — used by the Getting Started tab for "key insight"
+   blocks (e.g. "spend on pitching first"). Distinct from .rules-construction
+   (which is reserved for under-construction warnings, yellow-tinted) and
+   .rules-note (small italic prose). Accent-tinted left border, bg matches
+   the formula blocks for visual consistency. */
+.rules-callout {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin: 14px 0;
+    line-height: 1.55;
+}
+
+.rules-callout strong {
+    color: var(--accent);
+}
+
 /* Mobile (iOS Home Screen, portrait). Existing rule already collapsed
  * the TOC + content into a single column at 800px; this extends that
  * coverage to the project's 899px breakpoint and tightens header/font
@@ -329,4 +348,5 @@
     .rules-table th,
     .rules-table td { padding: 8px 8px; }
     .rules-construction { padding: 14px 16px; }
+    .rules-callout { padding: 12px 14px; margin: 12px 0; }
 }
