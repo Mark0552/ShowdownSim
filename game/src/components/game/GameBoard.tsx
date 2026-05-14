@@ -446,48 +446,76 @@ export default function GameBoard({ state, myRole, isMyTurn, onAction, homeName,
         goodForMe: boolean;
     } | null>(null);
 
-    // Clear the persisted result when the half-inning changes. Declared
-    // BEFORE the routing useEffect so a 3rd-out roll (which flips the half
-    // AND produces a result in the same state update) runs clear → set in
-    // that order — React queues the setStates and applies them in order, so
-    // the new result wins and persists into the new half until that half's
-    // first swing replaces it.
+    // Clear the persisted result AND both roll boxes when the half-inning
+    // changes. Roles flip (pitcher ↔ batter), so any prior-half roll
+    // would be contextually wrong. Declared BEFORE the routing useEffect
+    // so a 3rd-out roll (which flips the half AND produces a result in
+    // the same state update) runs clear → set in that order — React
+    // queues the setStates in declaration order so the new roll/result
+    // wins and is what the user sees as the new half opens.
     const prevHalfForResultRef = useRef(state.halfInning);
     useEffect(() => {
         if (state.halfInning !== prevHalfForResultRef.current) {
             prevHalfForResultRef.current = state.halfInning;
+            setOppRoll(null);
+            setMyRoll(null);
             setPersistedResult(null);
         }
     }, [state.halfInning]);
 
-    // Clear roll boxes + reset the result indicator when a new at-bat
-    // starts — new batter, new half-inning, or new inning.
+    // At-bat-change handling, split across two refs so two different
+    // pieces of state (pitchThisAtBat vs the dice boxes) can be cleared
+    // on different timing rules:
     //
-    // Declared BEFORE the routing effect on purpose. React fires effects in
-    // declaration order; this lets a single state update that simultaneously
-    // changes the batter AND the swing roll (e.g. a strikeout that
-    // auto-advances) clear first, then route — so the new roll persists in
-    // the box. If this ran second, it would wipe the freshly-routed roll.
+    //   - pitchThisAtBat resets immediately on AB change. The display
+    //     mirror (displayPitchThisAtBat) handles the dice-animating
+    //     gating, so resetting the canonical value early is safe.
+    //
+    //   - The roll boxes (oppRoll / myRoll) clear ONLY once the dice
+    //     animation has finished — gated on !diceAnimating. Clearing
+    //     them immediately would kill the in-flight swing mid-tumble
+    //     (the server sends AB change and swing in a single state
+    //     update). Tracking lastAbForRollClearRef separately means we
+    //     still fire the clear when diceAnimating eventually flips
+    //     false, even if the AB id changed several renders earlier.
+    //
+    // persistedResult survives the AB clear — only the dice clear,
+    // matching the "AB ended → only the result text remains until the
+    // next pitch arrives" model.
     const atBatId = `${state.halfInning}-${state.inning}-${battingTeam.currentBatterIndex}-${batter?.cardId || ''}`;
-    const prevAtBatIdRef = useRef(atBatId);
+    const lastAbForPitchThisAtBatRef = useRef(atBatId);
+    const lastAbForRollClearRef = useRef(atBatId);
     useEffect(() => {
-        if (atBatId !== prevAtBatIdRef.current) {
-            prevAtBatIdRef.current = atBatId;
-            setOppRoll(null);
-            setMyRoll(null);
+        if (atBatId !== lastAbForPitchThisAtBatRef.current) {
+            lastAbForPitchThisAtBatRef.current = atBatId;
             setPitchThisAtBat(false);
         }
-    }, [atBatId]);
+        if (atBatId !== lastAbForRollClearRef.current && !diceAnimating) {
+            lastAbForRollClearRef.current = atBatId;
+            setOppRoll(null);
+            setMyRoll(null);
+        }
+    }, [atBatId, diceAnimating]);
 
     // Drain the canonical pitchThisAtBat / persistedResult into their
-    // display mirrors whenever dice is NOT animating. Result: the
-    // advantage indicator and result text only flip after the dice has
-    // finished spinning, matching the freeze-then-update rhythm the rest
-    // of the board (scoreboard, bases, batter highlight) already uses
-    // via frozenRef. While diceAnimating is true, the display values
-    // hold whatever they were before the roll landed — visually nothing
-    // changes until the spin completes.
+    // display mirrors with two different timing rules:
+    //
+    //   - persistedResult CLEARS propagate immediately. The new-pitch
+    //     routing fires setPersistedResult(null) — we want that null
+    //     to hit the result box instantly so the previous batter's
+    //     outcome is gone the moment the new pitch's animation starts.
+    //     The display flow becomes: previous swing's result visible →
+    //     new pitch arrives → result blanks → advantage indicator
+    //     reveals after pitch settles → swing animation → new result
+    //     reveals after swing settles.
+    //
+    //   - persistedResult SETS and pitchThisAtBat sync only when dice
+    //     is NOT animating. That keeps the same freeze-then-update
+    //     rhythm the rest of the board (scoreboard, bases, batter
+    //     highlight) uses via frozenRef — the indicator and result
+    //     don't flip mid-animation.
     useEffect(() => {
+        if (persistedResult === null) setDisplayPersistedResult(null);
         if (diceAnimating) return;
         setDisplayPitchThisAtBat(pitchThisAtBat);
         setDisplayPersistedResult(persistedResult);

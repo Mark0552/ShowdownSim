@@ -120,11 +120,16 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    /* Two big numbers (roll on top, total at bottom) with the equation
-       sandwiched between, plus a small label header and an optional
-       comparison footer. Tight gaps so the whole stack fits even on
-       short rows (~120px) — the parent .gb-m-side-* row is sized to the
-       pitcher-column stack height, not the box's natural height. */
+    /* Lock a minimum height so the box doesn't visibly shift between
+       roll types: empty placeholder (no children), swing/bunt (label +
+       roll number only), and pitch/fielding (label + roll + equation +
+       total + vs) all occupy the same vertical footprint. 90px ≈
+       label (9) + roll-big (24) + eq (~11) + total-big (22) + vs (8)
+       + 4×1px gaps + 6px padding + 2px border + ~8px breathing room.
+       Without this lock, the row's natural height tracks the tallest
+       child, which steals vertical space from the result row in the
+       middle of the sidebar whenever a breakdown lands. */
+    min-height: 90px;
     gap: 1px;
     padding: 3px 2px;
     margin: 2px;
@@ -184,13 +189,16 @@
 
 .gb-m-sb-result {
     /* Grows to absorb the gap between the top and bottom pcol stacks.
-       Top + bottom rows are content-sized, so this row is whatever
-       vertical space is left in the sidebar. Two stacked lines
-       (advantage indicator + persisted-result outcome) centered
-       vertically. Border tint comes from the most-recent meaningful
-       thing — result.goodForMe when set, else advantage's good/bad,
-       else awaiting (neutral). Text styling is split between the
-       .adv (top, small) and .outcome (bottom, larger) children. */
+       Top + bottom rows are content-sized (with min-height locking the
+       dice boxes to a constant 90px), so this row's height is the
+       leftover vertical space in the sidebar — predictable since the
+       dice rows can't shift any more. Two stacked lines (advantage
+       indicator + persisted-result outcome) centered vertically.
+       Border tint comes from the most-recent meaningful thing —
+       result.goodForMe when set, else advantage's good/bad, else
+       awaiting (neutral). Margin matches the dice boxes' 2px so the
+       result is flush with them horizontally and fills the full
+       available width. */
     flex: 1 1 0;
     min-height: 0;
     min-width: 0;
@@ -200,7 +208,7 @@
     justify-content: center;
     text-align: center;
     gap: 4px;
-    margin: 2px 4px;
+    margin: 2px;
     padding: 6px 8px;
     border: 1px solid #1f4068;
     border-radius: 4px;
