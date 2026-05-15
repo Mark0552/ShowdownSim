@@ -348,9 +348,15 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
                                         <p className="no-lineups">No saved lineups. Go back and create one first.</p>
                                     )}
                                     <div className="lineup-picker-grid">
-                                        {myLineups.map(lineup => {
+                                        {/* Pre-compute validation for sort, then put playable lineups first
+                                            so the user doesn't have to scan past invalid ones to find a
+                                            usable team. Within each group, the original updated_at order
+                                            from getLineups() is preserved (stable sort). */}
+                                        {[...myLineups]
+                                            .map(l => ({ l, v: l.data?.slots ? validateTeam(l.data) : { valid: false, errors: ['Empty lineup'], totalPoints: 0, playerCount: 0 } }))
+                                            .sort((a, b) => Number(b.v.valid) - Number(a.v.valid))
+                                            .map(({ l: lineup, v: validation }) => {
                                             const count = lineup.data?.slots?.length || 0;
-                                            const validation = lineup.data?.slots ? validateTeam(lineup.data) : { valid: false, errors: [], totalPoints: 0, playerCount: 0 };
                                             const isSelected = selectedLineup?.id === lineup.id;
                                             return (
                                                 <button
@@ -372,7 +378,10 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
                                                     </span>
                                                     <span className="pick-meta">{count} players {'\u2022'} {validation.totalPoints.toLocaleString()} pts</span>
                                                     {!validation.valid && (
-                                                        <span className="pick-meta" style={{ color: '#e94560', fontSize: 10 }}>Invalid</span>
+                                                        <span className="pick-meta" style={{ color: '#e94560', fontSize: 10 }}>
+                                                            Can't play {'\u2014'} {validation.errors[0] || 'invalid'}
+                                                            {validation.errors.length > 1 && ` (+${validation.errors.length - 1} more)`}
+                                                        </span>
                                                     )}
                                                 </button>
                                             );
