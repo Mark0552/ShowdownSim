@@ -20,7 +20,6 @@ const START_SECTIONS: Section[] = [
     { id: 'first-game', title: 'Playing a Game' },
     { id: 'common-icons', title: 'Common Icons' },
     { id: 'mobile-desktop', title: 'Mobile vs Desktop' },
-    { id: 'tips', title: 'Tips for New Players' },
     { id: 'glossary', title: 'Glossary' },
 ];
 
@@ -261,12 +260,6 @@ Otherwise (PITCH ROLL ≤ On-Base)
                     full stats and chart in a tooltip; tap on mobile.
                 </p>
 
-                <div className="rules-callout">
-                    <strong>Spend on pitching first.</strong> The single biggest mistake new players make is
-                    spreading the 5,000 points evenly across offense and defense. The optimal build is
-                    heavy on elite starting pitching — see the Tips section for details. Read that first
-                    before locking in a balanced-looking team.
-                </div>
             </section>
 
             <section id="first-game">
@@ -399,59 +392,6 @@ Otherwise (PITCH ROLL ≤ On-Base)
                 <p>
                     Both layouts share the same engine, the same connection, and identical state. One player
                     can be on mobile and the other on desktop with no compatibility issues.
-                </p>
-            </section>
-
-            <section id="tips">
-                <h2>Tips for New Players</h2>
-
-                <h3>1. Spend on pitching, not hitting</h3>
-                <p>
-                    The canonical optimal build at 5,000 points is four elite starters (each 500+ points,
-                    Control 5-6, IP 7-8, with CY + 20 icons), zero bullpen, ~280-point average hitters,
-                    and a cheap bench. Splitting your budget evenly across offense and defense leaves you
-                    with mediocre starters that fatigue at IP 6 — a Control-3 SP gives up batting practice.
-                    Spend the points where they have the highest marginal return.
-                </p>
-
-                <h3>2. OBP isn't OPS</h3>
-                <p>
-                    A walk-machine OB-13 hitter can have a lower OPS than an OB-12 hitter with denser hit
-                    ranges. When picking between two hitters at similar on-base numbers, look at the chart
-                    density: how many squares are devoted to S, DB, and HR? More is better.
-                </p>
-
-                <h3>3. Speed is undervalued</h3>
-                <p>
-                    Speed determines stolen-base success, makes double plays harder to turn against you,
-                    and helps you take extra bases on singles. An OB-11 / Speed-15 hitter is often more
-                    useful than an OB-12 / Speed-7 hitter despite costing less.
-                </p>
-
-                <h3>4. Use V icons in high-leverage spots</h3>
-                <p>
-                    Don't waste a V on a leadoff strikeout. Save them for runners on, two outs, late
-                    innings — situations where the reroll is most likely to change the game state.
-                </p>
-
-                <h3>5. The 20 icon is once per inning, per team</h3>
-                <p>
-                    Not per pitcher. Changing pitchers doesn't refresh it. Plan your icon usage around the
-                    inning, not the matchup.
-                </p>
-
-                <h3>6. Position penalties are no joke</h3>
-                <p>
-                    Putting a 2B at SS is −2 to your infield fielding for the whole game. On the rare
-                    occasions a sub forces an out-of-position placement, expect more double plays to fail
-                    and more extra-base attempts to succeed against you.
-                </p>
-
-                <h3>7. Stealing 3rd is harder than stealing 2nd</h3>
-                <p>
-                    When the defense throws to 3rd, the catcher gets a +5 arm bonus. Pick your spots —
-                    speed-15 runners are still favored, but Speed-12 runners stealing 3rd is a coin flip
-                    at best.
                 </p>
             </section>
 
