@@ -18,6 +18,7 @@ game/dist/
 game/public/cards
 game/public/hitters.json
 game/public/pitchers.json
+game/public/strategy_cards.json
 
 # Screenshots for bug reporting
 screenshots/

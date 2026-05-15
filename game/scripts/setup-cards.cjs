@@ -22,7 +22,7 @@ if (!fs.existsSync(cardsLink)) {
 }
 
 // Copy JSON data files from simulation/
-for (const file of ['hitters.json', 'pitchers.json']) {
+for (const file of ['hitters.json', 'pitchers.json', 'strategy_cards.json']) {
     const src = path.resolve(__dirname, '../../simulation/' + file);
     const dest = path.resolve(__dirname, '../public/' + file);
     if (fs.existsSync(src)) {

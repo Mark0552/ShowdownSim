@@ -1,0 +1,293 @@
+.strategy-cards-page {
+    min-height: 100vh;
+    background: transparent;
+    padding: 24px;
+}
+
+.strategy-cards-container {
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+.strategy-cards-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.strategy-cards-header h1 {
+    font-size: 24px;
+    color: var(--accent);
+    margin: 0;
+}
+
+.strategy-cards-back {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.strategy-cards-back:hover { border-color: var(--accent); color: var(--text); }
+
+.strategy-cards-header-spacer { width: 90px; }
+
+/* Filter controls — three groups (Year / Expansion / Type) of checkboxes
+   in a horizontal flex bar above the card view. Each group has its own
+   label so the user always knows which axis they're filtering. */
+.sc-controls {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    padding: 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 16px;
+}
+
+.sc-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.sc-filter-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+}
+
+.sc-filter-row {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.sc-filter-option {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    user-select: none;
+    color: var(--text);
+}
+
+.sc-filter-option input[type='checkbox'] {
+    accent-color: var(--accent);
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+}
+
+/* Nav strip with Prev / counter / Next. The counter is the only thing in
+   the row that flex-grows; the buttons hug the edges. */
+.sc-nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.sc-nav-btn {
+    padding: 8px 16px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.sc-nav-btn:hover:not(:disabled) { background: var(--accent-dim); }
+.sc-nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.sc-nav-counter {
+    flex: 1;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* The card itself — image left at native size, text panel right. */
+.sc-card {
+    display: grid;
+    grid-template-columns: 251px 1fr;
+    gap: 24px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+}
+
+.sc-img {
+    width: 251px;
+    height: 350px;
+    border-radius: 4px;
+    display: block;
+    object-fit: contain;
+    background: var(--bg-card);
+}
+
+.sc-img-missing {
+    width: 251px;
+    height: 350px;
+    background: var(--bg-card);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.sc-text h2 {
+    color: var(--accent);
+    margin: 0 0 6px;
+    font-size: 24px;
+}
+
+.sc-meta {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+}
+
+.sc-pill {
+    background: var(--bg-card);
+    padding: 3px 10px;
+    border-radius: 3px;
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+/* Type pills carry a colour for quick visual scan. Matches the convention
+   from CLAUDE.md / game UI for the Off/Def/Util split. */
+.sc-pill.sc-type-Off  { color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.4); }
+.sc-pill.sc-type-Def  { color: #60a5fa; border: 1px solid rgba(96, 165, 250, 0.4); }
+.sc-pill.sc-type-Util { color: #d4a018; border: 1px solid rgba(212, 160, 24, 0.4); }
+
+.sc-section h3 {
+    color: var(--text-dim);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 14px 0 4px;
+    font-weight: 600;
+}
+
+.sc-section p {
+    margin: 0;
+    line-height: 1.55;
+    font-size: 15px;
+    color: var(--text);
+}
+
+.sc-empty,
+.sc-loading,
+.sc-error {
+    padding: 60px;
+    text-align: center;
+    color: var(--text-dim);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.sc-error {
+    color: var(--error);
+    background: rgba(248, 113, 113, 0.1);
+    border-color: var(--error);
+}
+
+.sc-hint {
+    margin-top: 12px;
+    color: var(--text-muted);
+    font-size: 12px;
+    text-align: center;
+}
+
+/* Mobile: stack the image above the text, collapse filter groups vertically,
+   ensure buttons + checkboxes are thumb-tappable (min 40-44px). */
+@media (max-width: 899px) {
+    .strategy-cards-page { padding: 12px; }
+
+    .strategy-cards-header {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        grid-template-areas: "back title";
+        gap: 8px 12px;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+    .strategy-cards-back {
+        grid-area: back;
+        padding: 8px 12px;
+        min-height: 40px;
+        font-size: 13px;
+    }
+    .strategy-cards-header h1 {
+        grid-area: title;
+        font-size: 20px;
+    }
+    .strategy-cards-header-spacer { display: none; }
+
+    /* Filters stack vertically — each group on its own row so the labels
+       and checkboxes don't compete for horizontal space on narrow screens. */
+    .sc-controls {
+        flex-direction: column;
+        gap: 14px;
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+
+    .sc-filter-option {
+        font-size: 14px;
+        min-height: 32px;
+    }
+    .sc-filter-option input[type='checkbox'] {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* Nav: bigger thumb targets, counter still grows. */
+    .sc-nav { gap: 10px; margin-bottom: 12px; }
+    .sc-nav-btn {
+        padding: 12px 14px;
+        font-size: 14px;
+        min-height: 44px;
+        flex-shrink: 0;
+    }
+    .sc-nav-counter { font-size: 13px; }
+
+    /* Card content stacks vertically — image at top (scales to viewport
+       width but never exceeds its native 251×350 aspect), text panel
+       below. */
+    .sc-card {
+        grid-template-columns: 1fr;
+        padding: 14px;
+        gap: 14px;
+    }
+    .sc-img,
+    .sc-img-missing {
+        width: 100%;
+        max-width: 251px;
+        height: auto;
+        aspect-ratio: 251 / 350;
+        margin: 0 auto;
+    }
+    .sc-text h2 { font-size: 20px; }
+    .sc-meta { gap: 6px; margin-bottom: 12px; }
+    .sc-pill { font-size: 11px; padding: 3px 8px; }
+    .sc-section p { font-size: 14px; }
+}

@@ -68,15 +68,7 @@ export default function MainMenu({ username, onNavigate, onLogout }: Props) {
                         </span>
                     </button>
 
-                    {/* Standalone HTML viewer in game/public/. Opens in a
-                        new tab so the user can keep the app session alive
-                        and refer to cards while playing. BASE_URL resolves
-                        to the GH Pages prefix in production (/ShowdownSim/)
-                        and '/' in dev. */}
-                    <button
-                        className="menu-btn"
-                        onClick={() => window.open(`${import.meta.env.BASE_URL || '/'}strategy-cards.html`, '_blank', 'noopener')}
-                    >
+                    <button className="menu-btn" onClick={() => onNavigate('strategy-cards')}>
                         <span className="menu-btn-icon">&#9827;</span>
                         <span className="menu-btn-text">
                             <span className="menu-btn-title">Strategy Cards</span>

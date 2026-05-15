@@ -16,9 +16,10 @@ import StatsPage from './pages/StatsPage';
 import SimulationPage from './pages/SimulationPage';
 import PricingPage from './pages/PricingPage';
 import RulesPage from './pages/RulesPage';
+import StrategyCardsPage from './pages/StrategyCardsPage';
 import TeamBuilder from './pages/TeamBuilder';
 
-type Page = 'login' | 'menu' | 'lineups' | 'builder' | 'lobby' | 'game' | 'draft' | 'stats' | 'simulation' | 'pricing' | 'rules';
+type Page = 'login' | 'menu' | 'lineups' | 'builder' | 'lobby' | 'game' | 'draft' | 'stats' | 'simulation' | 'pricing' | 'rules' | 'strategy-cards';
 
 /** Read page + gameId from URL hash */
 function readHash(): { page: Page | null; gameId: string | null } {
@@ -30,7 +31,7 @@ function readHash(): { page: Page | null; gameId: string | null } {
     if (hash.startsWith('draft/')) {
         return { page: 'draft', gameId: hash.slice(6) };
     }
-    const validPages: Page[] = ['menu', 'lineups', 'builder', 'lobby', 'stats', 'simulation', 'pricing', 'rules'];
+    const validPages: Page[] = ['menu', 'lineups', 'builder', 'lobby', 'stats', 'simulation', 'pricing', 'rules', 'strategy-cards'];
     if (validPages.includes(hash as Page)) {
         return { page: hash as Page, gameId: null };
     }
@@ -211,6 +212,12 @@ export default function App() {
         case 'rules':
             return (
                 <RulesPage
+                    onBack={() => setPage('menu')}
+                />
+            );
+        case 'strategy-cards':
+            return (
+                <StrategyCardsPage
                     onBack={() => setPage('menu')}
                 />
             );
