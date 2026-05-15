@@ -129,8 +129,8 @@ function GettingStarted() {
                 <p>
                     Games run head-to-head over a live connection. The server rolls every die so there's no
                     honor system to worry about — both players see identical outcomes. A typical 9-inning
-                    game takes 30 to 45 minutes. Series play (best-of-3, 5, or 7) inherits lineups,
-                    rotations, and reliever fatigue across games.
+                    game takes 30 to 45 minutes. Series play (single game or best-of-3, 5, or 7) inherits
+                    lineups, rotations, and reliever fatigue across games.
                 </p>
                 <div className="rules-callout">
                     <strong>If you're brand new to Showdown,</strong> this tab is the place to start. The
@@ -222,10 +222,10 @@ Otherwise (PITCH ROLL ≤ On-Base)
                         <tr><th>Matchup</th><th>Pitcher wins ~</th><th>Notes</th></tr>
                     </thead>
                     <tbody>
-                        <tr><td>Control 3 vs OB 10</td><td>60%</td><td>Average pitcher, average hitter</td></tr>
-                        <tr><td>Control 5 vs OB 10</td><td>70%</td><td>Good pitcher exploits average hitter</td></tr>
-                        <tr><td>Control 5 vs OB 13</td><td>55%</td><td>Elite pitcher narrowly favored over elite hitter</td></tr>
-                        <tr><td>Control 3 vs OB 13</td><td>45%</td><td>Average pitcher loses more than half the time vs elite hitter</td></tr>
+                        <tr><td>Control 3 vs OB 10</td><td>65%</td><td>Average pitcher, average hitter</td></tr>
+                        <tr><td>Control 5 vs OB 10</td><td>75%</td><td>Good pitcher exploits average hitter</td></tr>
+                        <tr><td>Control 5 vs OB 13</td><td>60%</td><td>Elite pitcher narrowly favored over elite hitter</td></tr>
+                        <tr><td>Control 3 vs OB 13</td><td>50%</td><td>Coin flip — average pitcher gives up the chart half the time</td></tr>
                     </tbody>
                 </table>
                 <p>
@@ -244,7 +244,7 @@ Otherwise (PITCH ROLL ≤ On-Base)
 
                 <h3>Build Constraints</h3>
                 <ul>
-                    <li><strong>20 cards total.</strong> Exactly 20 — not 19, not 21. Saving an incomplete lineup is blocked.</li>
+                    <li><strong>20 cards total.</strong> Exactly 20 — not 19, not 21. You can save incomplete or invalid lineups as drafts; only valid lineups appear as selectable when you go to start a game.</li>
                     <li><strong>5,000 points.</strong> Cumulative card costs cannot exceed this.</li>
                     <li><strong>9 starting hitters</strong> in your batting order: one each at C, 1B, 2B, 3B, SS, CF, plus two LF/RF slots and one DH.</li>
                     <li><strong>4 starting pitchers</strong> in your rotation (SP1 through SP4). Series play rotates through these.</li>
@@ -255,9 +255,10 @@ Otherwise (PITCH ROLL ≤ On-Base)
                 <h3>How to Draft</h3>
                 <p>
                     Mark each card you add as <strong>Starter</strong>, <strong>Bullpen</strong>, or
-                    <strong> Bench</strong>. The catalog supports filters (year, position, team, point range)
-                    and a text search so you can find specific players quickly. Hover any card to see the
-                    full stats and chart in a tooltip; tap on mobile.
+                    <strong> Bench</strong>. The catalog supports filters (year, edition, position, team,
+                    point range) and a text search so you can find specific players quickly. On desktop,
+                    hover any card to pop a full-size tooltip with the chart; on mobile, the catalog tile
+                    itself shows the full stats and chart inline.
                 </p>
 
             </section>
@@ -351,24 +352,19 @@ Otherwise (PITCH ROLL ≤ On-Base)
                 <h2>Common Icons</h2>
                 <p>
                     The full list (with exact usage limits) is in <strong>Advanced Rules → Icons Reference</strong>.
-                    These are the ones you'll see most often.
+                    These are the ones you'll see most often. Each icon's role tag below indicates which
+                    type of card it appears on.
                 </p>
-
-                <h3>Pitcher Icons</h3>
                 <ul>
-                    <li><strong>K</strong> — Convert any hit or walk to a strikeout. Once per game.</li>
-                    <li><strong>20</strong> — +3 Control for one pitch. Once per inning per team.</li>
-                    <li><strong>RP</strong> — +3 Control for the rest of the inning. Relievers/closers only, inning 7+.</li>
-                    <li><strong>CY</strong> — Passive bonus: every 1-2-3 inning the pitcher finishes adds +1 to their effective IP, extending the start.</li>
-                </ul>
-
-                <h3>Hitter Icons</h3>
-                <ul>
-                    <li><strong>HR</strong> — Upgrade a double or triple to a home run. Once per game.</li>
-                    <li><strong>V</strong> — Reroll an out (not a K-converted strikeout). Twice per game.</li>
-                    <li><strong>S</strong> — Upgrade a single to a double. Once per game.</li>
-                    <li><strong>SB</strong> — Auto-steal the next base after reaching on any play. Once per game.</li>
-                    <li><strong>G</strong> — +10 fielding bonus on a double play or extra-base throw. Only when the player is on-card at their assigned position.</li>
+                    <li><strong>K</strong> <em>(pitcher)</em> — Convert any hit or walk to a strikeout. Once per game.</li>
+                    <li><strong>20</strong> <em>(pitcher)</em> — +3 Control for one pitch. Once per inning per team.</li>
+                    <li><strong>RP</strong> <em>(pitcher)</em> — +3 Control for the rest of the inning. Relievers/closers only, inning 7+.</li>
+                    <li><strong>CY</strong> <em>(pitcher)</em> — Passive bonus: every 1-2-3 inning the pitcher finishes adds +1 to their effective IP, extending the start.</li>
+                    <li><strong>HR</strong> <em>(hitter)</em> — Upgrade a double or triple to a home run. Once per game.</li>
+                    <li><strong>V</strong> <em>(hitter)</em> — Reroll an out (not a K-converted strikeout). Twice per game.</li>
+                    <li><strong>S</strong> <em>(hitter)</em> — Upgrade a single or single+ to a double. Once per game.</li>
+                    <li><strong>SB</strong> <em>(hitter)</em> — Auto-steal the next base after reaching on any play. Once per game.</li>
+                    <li><strong>G</strong> <em>(either)</em> — +10 fielding bonus on a double play or extra-base throw. Pitcher G also lets them play their own position. Requires the player to be on-card at their assigned position.</li>
                 </ul>
             </section>
 
@@ -487,74 +483,74 @@ function AdvancedRules() {
 
             <section id="icons">
                 <h2>Icons Reference</h2>
-
-                <h3>Pitcher Icons</h3>
+                <p>
+                    Icons appear on individual cards and grant one-time (or limited) effects. The
+                    <strong> Used by</strong> column indicates whether the icon appears on pitcher cards,
+                    hitter cards, or both. G is the only icon that appears on both card types and has
+                    slightly different rules for each.
+                </p>
                 <table className="rules-table">
                     <thead>
-                        <tr><th>Icon</th><th>Effect</th><th>Usage Limit</th></tr>
+                        <tr><th>Icon</th><th>Used by</th><th>Effect</th><th>Usage Limit</th></tr>
                     </thead>
                     <tbody>
                         <tr>
                             <td><strong>K</strong></td>
+                            <td>Pitcher</td>
                             <td>Override any hit or walk result to <strong>Strikeout</strong>. Offered to defense before the result applies.</td>
                             <td>1× per game</td>
                         </tr>
                         <tr>
                             <td><strong>20</strong></td>
+                            <td>Pitcher</td>
                             <td>+3 Control for a single pitch. Activated before the pitch roll.</td>
                             <td>1× per inning (team-scoped — not reset by pitching change)</td>
                         </tr>
                         <tr>
                             <td><strong>RP</strong></td>
+                            <td>Pitcher</td>
                             <td>+3 Control for the <em>remainder of the current inning</em>. Relievers/Closers only, inning 7+.</td>
                             <td>1× per pitcher per game</td>
                         </tr>
                         <tr>
                             <td><strong>CY</strong></td>
+                            <td>Pitcher</td>
                             <td>Passive: when the pitcher finishes a 1-2-3 inning, add +1 to their effective IP (reduces fatigue).</td>
                             <td>Unlimited</td>
                         </tr>
                         <tr>
-                            <td><strong>G</strong></td>
-                            <td>Pitcher plays their own position; +10 fielding bonus on DP / extra-base rolls.</td>
-                            <td>1× per game</td>
-                        </tr>
-                    </tbody>
-                </table>
-
-                <h3>Hitter Icons</h3>
-                <table className="rules-table">
-                    <thead>
-                        <tr><th>Icon</th><th>Effect</th><th>Usage Limit</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr>
                             <td><strong>HR</strong></td>
+                            <td>Hitter</td>
                             <td>Convert a DB or TR result to <strong>Home Run</strong>.</td>
                             <td>1× per game</td>
                         </tr>
                         <tr>
                             <td><strong>V</strong></td>
+                            <td>Hitter</td>
                             <td>Reroll an out (SO/GB/FB/PU). <strong>Cannot be used to reroll a K-induced strikeout</strong> — the K icon's conversion is final.</td>
                             <td>2× per game</td>
                         </tr>
                         <tr>
                             <td><strong>S</strong></td>
+                            <td>Hitter</td>
                             <td>Upgrade a Single or Single+ to a <strong>Double</strong>. Cannot be stacked with HR on the same result.</td>
                             <td>1× per game</td>
                         </tr>
                         <tr>
                             <td><strong>SB</strong></td>
+                            <td>Hitter</td>
                             <td>Batter auto-steals the next open base after reaching on any on-base result.</td>
                             <td>1× per game</td>
                         </tr>
                         <tr>
                             <td><strong>G</strong></td>
-                            <td>+10 fielding on a DP or extra-base roll at the player's slot. Defense chooses which G player to use when multiple are eligible.</td>
-                            <td>1× per player per game</td>
+                            <td>Either</td>
+                            <td>+10 fielding bonus on a DP or extra-base roll. <em>Pitcher:</em> also lets them play their own position. <em>Hitter:</em> applies at their assigned slot; defense chooses which G player to use when multiple are eligible. Either way, requires the player to be on-card at their assigned position (penalty = 0).</td>
+                            <td>Pitcher: 1× per game. Hitter: 1× per player per game.</td>
                         </tr>
                         <tr>
                             <td><strong>R / RY</strong></td>
+                            <td>Hitter</td>
                             <td>Informational (Rookie / Rookie Year). No gameplay effect.</td>
                             <td>—</td>
                         </tr>
@@ -999,8 +995,10 @@ else                     → runner SAFE  (ties go to the runner)`}
 
                 <h3>Best-of-N Format</h3>
                 <p>
-                    Series are best-of-3, best-of-5, or best-of-7. A series ends when one player wins a
-                    majority of games; subsequent games are not created once the outcome is decided.
+                    A series can be a <strong>single game</strong> or <strong>best-of-3, 5, or 7</strong>.
+                    A best-of-N series ends when one player wins a majority of games; subsequent games are
+                    not created once the outcome is decided. The single-game format ends after game 1
+                    regardless of who wins.
                 </p>
 
                 <h3>Locked Lineups</h3>
