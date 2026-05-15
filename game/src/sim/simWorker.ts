@@ -4,7 +4,7 @@
  * Messages:
  *   → from main: { type: 'run'; config: SimConfig; hitters: RawHitter[]; pitchers: RawPitcher[] }
  *   → from main: { type: 'cancel' }
- *   ← from worker: { type: 'progress'; phase: 'icons-on' | 'icons-off' | 'enhanced'; done: number; total: number; elapsedMs: number }
+ *   ← from worker: { type: 'progress'; phase: 'icons-on' | 'icons-off'; done: number; total: number; elapsedMs: number }
  *   ← from worker: { type: 'done'; data: SimExportData; elapsedMs: number }
  *   ← from worker: { type: 'error'; message: string }
  */
@@ -30,7 +30,7 @@ interface RunMsg {
 interface CancelMsg { type: 'cancel' }
 type InMsg = RunMsg | CancelMsg;
 
-type PhaseName = 'icons-on' | 'icons-off' | 'enhanced';
+type PhaseName = 'icons-on' | 'icons-off';
 
 let cancelled = false;
 
@@ -64,9 +64,9 @@ function runPhase(
         const stats = createHitterStats(hitter);
 
         for (const pitcher of pitcherData) {
-            pitcher.iconCounts = { '20': 0, K: 0, RP: 0, RY: 0 };
+            pitcher.iconCounts = { '20': 0, K: 0, RP: 0 };
             for (let ab = 0; ab < config.AT_BATS_PER_MATCHUP; ab++) {
-                const outcome = simulateAtBat(hitter, pitcher, stats, rollDie, rng, mode);
+                const outcome = simulateAtBat(hitter, pitcher, stats, rollDie, mode);
                 updateHitterStats(stats, outcome);
                 updatePitcherStats(pitcher, outcome, config.WEIGHTS);
             }
@@ -110,17 +110,11 @@ function runSimulation(msg: RunMsg) {
     const offResults = runPhase(hitters, pitchers, msg.config, rngOff, 'off', 'icons-off', startTime);
     if (!offResults) return;
 
-    const rngEnhanced = seedrandom(seed);
-    const enhResults = runPhase(hitters, pitchers, msg.config, rngEnhanced, 'enhanced', 'enhanced', startTime);
-    if (!enhResults) return;
-
     const data: SimExportData = {
         hittersOn: onResults.hitters,
         pitchersOn: onResults.pitchers,
         hittersOff: offResults.hitters,
         pitchersOff: offResults.pitchers,
-        hittersEnhanced: enhResults.hitters,
-        pitchersEnhanced: enhResults.pitchers,
     };
     (self as any).postMessage({ type: 'done', data, elapsedMs: Date.now() - startTime });
 }

@@ -56,9 +56,6 @@ const HITTER_COLUMNS: Column[] = [
     { key: 'Sused', label: 'S', decimals: 0, desc: 'S (Speed) icon uses \u2014 singles upgraded to doubles (once per 5-AB game).' },
     { key: 'HRused', label: 'HR*', decimals: 0, desc: 'HR (Power) icon uses \u2014 doubles/triples upgraded to HRs (once per 5-AB game).' },
     { key: 'totalIconWobaImpact', label: 'Ico+', decimals: 3, colorCode: 'positive-good', desc: 'Total icon wOBA impact \u2014 estimated wOBA boost from all icons combined.' },
-    { key: 'rAdjustmentAbs', label: 'RVar', decimals: 0, desc: 'R icon variance magnitude \u2014 cumulative sum of |\u00B13| applied to swing rolls. Linear with PA count for hitters with R; expected \u2248 1.71 \u00D7 PA. 0 if hitter lacks R.' },
-    { key: 'rAdjustmentNet', label: 'RNet', decimals: 0, colorCode: 'positive-good', desc: 'R icon net luck \u2014 signed sum of all \u00B13 adjustments. Positive (green) = R helped this hitter (rolls ran high); negative (red) = R hurt them. Should average ~0 across many sims.' },
-    { key: 'ryUsed', label: 'RY', decimals: 0, desc: 'RY icon uses \u2014 +3 swing bonuses applied on hitter-chart PAs (once per 5 ABs, Enhanced mode only).' },
 ];
 
 const PITCHER_COLUMNS: Column[] = [
@@ -87,9 +84,6 @@ const PITCHER_COLUMNS: Column[] = [
     { key: 'kIconHRsBlocked', label: 'K*', decimals: 0, desc: 'K icon uses \u2014 HRs converted to strikeouts (once per 9 innings).' },
     { key: 'twentyIconAdvantageSwings', label: '20*', decimals: 0, desc: '20 icon advantage swings \u2014 +3 control bonus flipped from hitter to pitcher chart.' },
     { key: 'rpIconAdvantageSwings', label: 'RP*', decimals: 0, desc: 'RP icon advantage swings \u2014 first-inning +3 control bonus flipped chart.' },
-    { key: 'rAdjustmentAbs', label: 'RVar', decimals: 0, desc: 'R icon variance magnitude \u2014 cumulative sum of |\u00B13| applied to pitch rolls. Linear with BF for pitchers with R; expected \u2248 1.71 \u00D7 BF. 0 if pitcher lacks R.' },
-    { key: 'rAdjustmentNet', label: 'RNet', decimals: 0, colorCode: 'positive-good', desc: 'R icon net luck \u2014 signed sum of all \u00B13 adjustments. Positive (green) = R helped this pitcher (rolls ran high \u2192 more pitcher-chart matchups); negative (red) = R hurt them. Should average ~0 across many sims.' },
-    { key: 'ryUsed', label: 'RY', decimals: 0, desc: 'RY icon uses \u2014 +3 pitch bonuses applied (once per 27 outs, Enhanced mode only).' },
 ];
 
 const HITTER_POSITIONS = ['All Hitters', 'C', '1B', '2B', '3B', 'SS', 'LF-RF', 'CF', 'DH'];
@@ -346,7 +340,6 @@ function buildModeContent(
 export interface SimExportData {
     hittersOn: HitterFinal[]; pitchersOn: PitcherFinal[];
     hittersOff: HitterFinal[]; pitchersOff: PitcherFinal[];
-    hittersEnhanced: HitterFinal[]; pitchersEnhanced: PitcherFinal[];
 }
 
 export function buildHtmlReport(
@@ -372,7 +365,6 @@ export function buildHtmlReport(
 
     const on = buildModeContent(data.hittersOn, data.pitchersOn, 'on', hitterPriceMap, pitcherPriceMap);
     const off = buildModeContent(data.hittersOff, data.pitchersOff, 'off', hitterPriceMap, pitcherPriceMap);
-    const enh = buildModeContent(data.hittersEnhanced, data.pitchersEnhanced, 'enh', hitterPriceMap, pitcherPriceMap);
 
     // CSS mirrors game/src/pages/SimulationPage.css with variable values inlined
     const style = `
@@ -694,12 +686,10 @@ body {
     <div class="sim-tabs sim-mode-tabs">
         <button class="sim-tab active" data-mode="on">Icons ON</button>
         <button class="sim-tab" data-mode="off">Icons OFF</button>
-        <button class="sim-tab" data-mode="enh">Enhanced (R/RY)</button>
     </div>
 
     ${modePanel('on', 'Icons ON', on, true)}
     ${modePanel('off', 'Icons OFF', off, false)}
-    ${modePanel('enh', 'Enhanced', enh, false)}
 </div></div>
 <script>${script}</script>
 </body></html>`;
