@@ -62,6 +62,11 @@ export default function PricingPage({ onBack }: Props) {
         const sorted = [...filtered].sort((a, b) => {
             const av = (a as any)[sortKey];
             const bv = (b as any)[sortKey];
+            // Push nulls to the end regardless of sort direction so the
+            // "no defined %" rows don't pollute either end of the ranking.
+            if (av == null && bv == null) return 0;
+            if (av == null) return 1;
+            if (bv == null) return -1;
             if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * mult;
             return String(av).localeCompare(String(bv)) * mult;
         });
@@ -248,9 +253,14 @@ export default function PricingPage({ onBack }: Props) {
                                                     <td className={`num ${r.residual < -20 ? 'resid-good' : r.residual > 20 ? 'resid-bad' : ''}`}>
                                                         {r.residual > 0 ? '+' : ''}{r.residual.toFixed(0)}
                                                     </td>
-                                                    {/* Over/Under % — residual as a % of actual price. + overpriced, − underpriced. */}
-                                                    <td className={`num ${r.overUnderPct < -5 ? 'resid-good' : r.overUnderPct > 5 ? 'resid-bad' : ''}`}>
-                                                        {r.overUnderPct > 0 ? '+' : ''}{r.overUnderPct.toFixed(1)}%
+                                                    {/* Over/Under % — (actual - predicted) / predicted * 100.
+                                                        + overpriced, − underpriced. Null when predicted ≤ 0
+                                                        (rare outlier cards where the linear model would otherwise
+                                                        report a meaningless percentage), rendered as a dash. */}
+                                                    <td className={`num ${r.overUnderPct == null ? '' : r.overUnderPct < -5 ? 'resid-good' : r.overUnderPct > 5 ? 'resid-bad' : ''}`}>
+                                                        {r.overUnderPct == null
+                                                            ? '—'
+                                                            : `${r.overUnderPct > 0 ? '+' : ''}${r.overUnderPct.toFixed(1)}%`}
                                                     </td>
                                                 </tr>
                                             ))}
