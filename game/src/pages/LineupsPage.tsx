@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { SavedLineup } from '../lib/lineups';
-import { getLineups, createLineup, deleteLineup } from '../lib/lineups';
+import { getLineups, copyLineup, deleteLineup } from '../lib/lineups';
 import { validateTeam } from '../logic/teamRules';
 import './LineupsPage.css';
 
@@ -33,6 +33,18 @@ export default function LineupsPage({ onBack, onEditLineup }: Props) {
         try {
             await deleteLineup(lineup.id);
             setLineups(prev => prev.filter(l => l.id !== lineup.id));
+        } catch (err: any) {
+            setError(err.message);
+        }
+    };
+
+    const handleCopy = async (lineup: SavedLineup) => {
+        setError('');
+        try {
+            const copy = await copyLineup(lineup);
+            // Most-recently-updated lineups come first from getLineups(); the
+            // fresh copy is naturally the newest, so prepend it to the list.
+            setLineups(prev => [copy, ...prev]);
         } catch (err: any) {
             setError(err.message);
         }
@@ -100,6 +112,7 @@ export default function LineupsPage({ onBack, onEditLineup }: Props) {
                                 </div>
                                 <div className="lineup-item-actions">
                                     <button className="lineup-edit-btn" onClick={() => onEditLineup(lineup)}>Edit</button>
+                                    <button className="lineup-copy-btn" onClick={() => handleCopy(lineup)}>Copy</button>
                                     <button className="lineup-delete-btn" onClick={() => handleDelete(lineup)}>Delete</button>
                                 </div>
                             </div>

@@ -141,6 +141,21 @@
 
 .lineup-edit-btn:hover { background: var(--accent-dim); }
 
+/* Copy button is a secondary action — same shape as Delete (neutral
+   border, dim text) but no destructive hover. Distinct from Edit (the
+   accent primary) so the row's primary CTA stays unambiguous. */
+.lineup-copy-btn {
+    padding: 8px 16px;
+    background: var(--bg-card);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.lineup-copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+
 .lineup-delete-btn {
     padding: 8px 16px;
     background: var(--bg-card);
@@ -193,6 +208,7 @@
     }
     .lineup-item-actions { gap: 10px; }
     .lineup-edit-btn,
+    .lineup-copy-btn,
     .lineup-delete-btn {
         flex: 1;
         padding: 12px;
