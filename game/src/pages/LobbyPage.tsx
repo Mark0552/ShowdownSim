@@ -284,7 +284,7 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
         const role = getMyRole(activeGame, userId);
         const myReady = role === 'home' ? activeGame.home_ready : activeGame.away_ready;
         const oppReady = role === 'home' ? activeGame.away_ready : activeGame.home_ready;
-        const oppEmail = role === 'home' ? activeGame.away_username : activeGame.home_username;
+        const oppUsername = role === 'home' ? activeGame.away_username : activeGame.home_username;
         const waiting = activeGame.status === 'waiting';
         const isDraft = activeGame.mode === 'draft';
 
@@ -319,7 +319,7 @@ export default function LobbyPage({ onBack, onGameStart }: Props) {
                                 </div>
                                 <span className="matchup-vs">VS</span>
                                 <div className={`matchup-player ${oppReady ? 'ready' : ''}`}>
-                                    <span className="matchup-label">{oppEmail || 'Opponent'}</span>
+                                    <span className="matchup-label">{oppUsername || 'Opponent'}</span>
                                     {oppReady && <span className="matchup-lineup">{role === 'home' ? activeGame.away_lineup_name : activeGame.home_lineup_name}</span>}
                                     <span className={`matchup-status ${oppReady ? 'ready' : ''}`}>{oppReady ? 'Ready' : 'Selecting...'}</span>
                                 </div>

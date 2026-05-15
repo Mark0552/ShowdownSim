@@ -190,10 +190,14 @@ export async function getUser(): Promise<User | null> {
     return _userPromise;
 }
 
+/** Display name for a user. Always a username — never the email.
+ *  App signup always sets user_metadata.username so the fallback is just
+ *  defense in depth for edge-case accounts (admin-invited users, etc.)
+ *  that lack metadata. We deliberately do NOT fall back to user.email
+ *  because the email isn't supposed to surface in any opponent-visible
+ *  display (lobby, game board, stats, series card). For accounts missing
+ *  the metadata, we surface a stable placeholder derived from the user
+ *  id instead. */
 export function getUsername(user: User): string {
-    return user.user_metadata?.username || user.email || '';
-}
-
-export function getEmail(user: User): string {
-    return user.email || '';
+    return user.user_metadata?.username || `Player-${user.id.slice(0, 8)}`;
 }
